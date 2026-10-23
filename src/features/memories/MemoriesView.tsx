@@ -7,7 +7,7 @@ import { realtimeBridge } from '@/core/realtime'
 import { dispatchPartnerInteraction } from '@/core/ai'
 import { useAudioRecorder } from '@/core/audio'
 import confetti from 'canvas-confetti'
-import { Plus, X, Mic, Square, Play, Pause, Loader2, Image as ImageIcon, Trash2, Maximize2, Download, ChevronLeft, ChevronRight, Heart } from 'lucide-react'
+import { Plus, X, Mic, Square, Play, Pause, Loader2, Image as ImageIcon, Trash2, Maximize2, Download, ChevronLeft, ChevronRight, Heart, Volume2 } from 'lucide-react'
 
 export interface MemoryItem {
   id: string
@@ -53,9 +53,11 @@ export const MemoriesView: React.FC = () => {
     isRecording,
     recordingTime,
     recordedAudio,
+    isPlayingPreview,
     startRecording,
     stopRecording,
     clearRecording,
+    togglePlayPreview,
     uploadVoiceMemo
   } = useAudioRecorder()
 
@@ -84,7 +86,7 @@ export const MemoriesView: React.FC = () => {
             title: row.title,
             caption: row.caption || '',
             mediaUrl: row.media_url,
-            voiceUrl: row.thumbnail_url?.includes('voice') ? row.thumbnail_url : undefined,
+            voiceUrl: row.thumbnail_url && (row.thumbnail_url.startsWith('data:audio') || row.thumbnail_url.startsWith('http')) ? row.thumbnail_url : undefined,
             rawDate: row.created_at,
             createdAt: formatLocalDate(row.created_at, {
               day: 'numeric',
@@ -409,21 +411,45 @@ export const MemoriesView: React.FC = () => {
                 <div key={m.id} className="timeline-item">
                   <span className="timeline-date">{m.createdAt}</span>
                   <div className="timeline-card flex items-center justify-between">
-                    <div>
+                    <div className="min-w-0 flex-1">
                       <b>{m.title}</b>
                       <span>{m.caption || `${m.addedBy} · saved together`}</span>
                     </div>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        handleDeleteMemory(m.id)
-                      }}
-                      className="text-[#888a82] hover:text-red-600 p-1 cursor-pointer transition ml-2"
-                      title="Delete moment"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                    <div className="flex items-center gap-2 shrink-0 ml-2">
+                      {m.voiceUrl && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handlePlayVoice(m.voiceUrl, m.id)
+                          }}
+                          className={`px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1 transition active:scale-95 cursor-pointer ${
+                            playingVoiceId === m.id
+                              ? 'bg-rose-600 text-white'
+                              : 'bg-[var(--app-accent)]/15 text-[var(--app-accent)] hover:bg-[var(--app-accent)]/25 border border-[var(--app-accent)]/20'
+                          }`}
+                          title={playingVoiceId === m.id ? 'Pause voice memo' : 'Listen to voice memo'}
+                        >
+                          {playingVoiceId === m.id ? (
+                            <Pause className="w-3 h-3 fill-current" />
+                          ) : (
+                            <Play className="w-3 h-3 fill-current" />
+                          )}
+                          <span className="text-[10px] pr-0.5">Voice</span>
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleDeleteMemory(m.id)
+                        }}
+                        className="text-[#888a82] hover:text-red-600 p-1 cursor-pointer transition"
+                        title="Delete moment"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -505,8 +531,37 @@ export const MemoriesView: React.FC = () => {
                     <div className="paper-title">{m.title}</div>
                     <div className="paper-meta">
                       <span>{m.createdAt}</span>
-                      <span>{m.voiceUrl ? '◉ Voice memo' : '✦ Photo'}</span>
+                      <span>{m.voiceUrl ? '◉ Voice whisper' : '✦ Photo'}</span>
                     </div>
+
+                    {/* Prominent One-Tap Voice Player on Front of Card */}
+                    {m.voiceUrl && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handlePlayVoice(m.voiceUrl, m.id)
+                        }}
+                        className={`mt-2 w-full py-1.5 px-3 rounded-full flex items-center justify-center gap-1.5 text-[11px] font-medium transition active:scale-95 cursor-pointer shadow-2xs ${
+                          playingVoiceId === m.id
+                            ? 'bg-rose-600 text-white animate-pulse'
+                            : 'bg-[var(--app-accent)]/15 hover:bg-[var(--app-accent)]/25 text-[var(--app-accent)] border border-[var(--app-accent)]/20'
+                        }`}
+                        title={playingVoiceId === m.id ? 'Pause voice memo' : 'Listen to voice memo'}
+                      >
+                        {playingVoiceId === m.id ? (
+                          <>
+                            <Pause className="w-3 h-3 fill-current" />
+                            <span>Playing whisper... (tap to pause)</span>
+                          </>
+                        ) : (
+                          <>
+                            <Play className="w-3 h-3 fill-current" />
+                            <span>▶ Listen to Voice Whisper</span>
+                          </>
+                        )}
+                      </button>
+                    )}
                   </div>
 
                   {/* BACK */}
@@ -517,15 +572,44 @@ export const MemoriesView: React.FC = () => {
 
                     {m.voiceUrl ? (
                       <div
-                        className="voice-row cursor-pointer"
+                        className={`voice-row cursor-pointer mt-2 p-2.5 rounded-xl border flex items-center justify-between transition ${
+                          playingVoiceId === m.id
+                            ? 'bg-rose-50 border-rose-300 text-rose-700 dark:bg-rose-950/30 dark:border-rose-800'
+                            : 'bg-[var(--app-accent)]/10 border-[var(--app-accent)]/25 text-[var(--app-accent)]'
+                        }`}
                         onClick={(e) => {
                           e.stopPropagation()
                           handlePlayVoice(m.voiceUrl, m.id)
                         }}
                       >
-                        {playingVoiceId === m.id
-                          ? '⏸ Pause audio'
-                          : `▶ Listen to ${m.addedBy} · Voice Note`}
+                        <div className="flex items-center gap-2">
+                          <div
+                            className={`w-7 h-7 rounded-full flex items-center justify-center text-white shrink-0 ${
+                              playingVoiceId === m.id ? 'bg-rose-600' : 'bg-[var(--app-accent)]'
+                            }`}
+                          >
+                            {playingVoiceId === m.id ? (
+                              <Pause className="w-3.5 h-3.5 fill-current" />
+                            ) : (
+                              <Play className="w-3.5 h-3.5 fill-current ml-0.5" />
+                            )}
+                          </div>
+                          <div className="text-left">
+                            <span className="block text-xs font-semibold text-[var(--ink)]">
+                              {playingVoiceId === m.id
+                                ? 'Playing Voice Note'
+                                : `Voice Note by ${m.addedBy}`}
+                            </span>
+                            <span className="text-[10px] text-[var(--soft)]">
+                              {playingVoiceId === m.id ? 'Tap to pause' : 'Tap to play together'}
+                            </span>
+                          </div>
+                        </div>
+                        <Volume2
+                          className={`w-4 h-4 ${
+                            playingVoiceId === m.id ? 'animate-bounce text-rose-600' : 'text-[var(--app-accent)]'
+                          }`}
+                        />
                       </div>
                     ) : (
                       <div className="text-[10px] text-[#8a8b83] italic py-1">
@@ -648,43 +732,74 @@ export const MemoriesView: React.FC = () => {
             </div>
 
             {/* Voice Whisper Recorder */}
-            <div className="mt-3 p-2.5 rounded-xl border border-[var(--line)] bg-[var(--paper)] flex items-center justify-between">
-              <div className="flex items-center gap-2 text-xs text-[var(--ink)]">
-                <Mic className="w-3.5 h-3.5 text-[var(--app-accent)]" />
-                <span>
-                  {isRecording
-                    ? `Recording whisper... ${recordingTime}s`
-                    : recordedAudio
-                    ? 'Whisper voice note attached'
-                    : 'Add a 30s voice whisper'}
-                </span>
-              </div>
+            <div className="mt-3 p-3 rounded-2xl border border-[var(--line)] bg-[var(--paper)]/80 flex flex-col gap-2.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-xs font-medium text-[var(--ink)]">
+                  {isRecording ? (
+                    <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-ping shrink-0" />
+                  ) : (
+                    <Mic className="w-4 h-4 text-[var(--app-accent)]" />
+                  )}
+                  <span>
+                    {isRecording
+                      ? `Recording whisper... ${recordingTime}s / 30s`
+                      : recordedAudio
+                      ? `Voice whisper attached (${recordingTime > 0 ? recordingTime : '30'}s)`
+                      : 'Add a 30s voice whisper'}
+                  </span>
+                </div>
 
-              {isRecording ? (
-                <button
-                  type="button"
-                  onClick={stopRecording}
-                  className="px-2.5 py-1 rounded-lg bg-red-600 text-white text-[10px] font-bold"
-                >
-                  Stop
-                </button>
-              ) : recordedAudio ? (
-                <button
-                  type="button"
-                  onClick={clearRecording}
-                  className="text-[10px] text-red-500 underline"
-                >
-                  Remove
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={startRecording}
-                  className="px-2.5 py-1 rounded-lg bg-[var(--app-accent)] text-white text-[10px] font-medium cursor-pointer hover:opacity-90"
-                >
-                  Record
-                </button>
-              )}
+                {isRecording ? (
+                  <button
+                    type="button"
+                    onClick={stopRecording}
+                    className="px-3 py-1 rounded-full bg-red-600 hover:bg-red-700 text-white text-[11px] font-bold shadow-xs active:scale-95 transition cursor-pointer"
+                  >
+                    ■ Stop
+                  </button>
+                ) : recordedAudio ? (
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={togglePlayPreview}
+                      className="px-3 py-1 rounded-full bg-[var(--app-accent)] hover:opacity-90 text-white text-[11px] font-medium flex items-center gap-1 shadow-2xs active:scale-95 transition cursor-pointer"
+                    >
+                      {isPlayingPreview ? (
+                        <>
+                          <Pause className="w-3 h-3 fill-current" />
+                          <span>Pause</span>
+                        </>
+                      ) : (
+                        <>
+                          <Play className="w-3 h-3 fill-current" />
+                          <span>Listen Preview</span>
+                        </>
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={clearRecording}
+                      className="px-2 py-1 text-[11px] text-red-500 hover:text-red-700 hover:underline transition cursor-pointer"
+                    >
+                      Re-record
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        await startRecording()
+                      } catch (err: any) {
+                        showToast(err.message || 'Microphone permission required to record.')
+                      }
+                    }}
+                    className="px-3 py-1 rounded-full bg-[var(--app-accent)] text-white text-[11px] font-medium cursor-pointer hover:opacity-90 shadow-2xs active:scale-95 transition flex items-center gap-1"
+                  >
+                    <span>● Record</span>
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* Save Button */}

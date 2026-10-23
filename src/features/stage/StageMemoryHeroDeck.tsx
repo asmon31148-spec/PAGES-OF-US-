@@ -81,7 +81,7 @@ export const StageMemoryHeroDeck: React.FC<StageMemoryHeroDeckProps> = ({
       if (data && data.length > 0) {
         const mapped: DeckMemoryItem[] = data.map((row) => {
           const { authorName, isMine } = getAuthorAttribution(row.author, user, partner?.nickname)
-          const voiceUrl = row.thumbnail_url?.includes('voice') || row.thumbnail_url?.includes('audio')
+          const voiceUrl = row.thumbnail_url && (row.thumbnail_url.startsWith('data:audio') || row.thumbnail_url.startsWith('http'))
             ? row.thumbnail_url
             : undefined
 
@@ -396,6 +396,35 @@ export const StageMemoryHeroDeck: React.FC<StageMemoryHeroDeckProps> = ({
             </div>
 
             <div className="flex items-center gap-1.5">
+              {/* 1-Tap Front Voice Note Button */}
+              {activeMemory.voiceUrl && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleToggleVoice(activeMemory.voiceUrl!, e)
+                  }}
+                  className={`flex items-center gap-1 px-2.5 py-1 rounded-full backdrop-blur-md text-[10px] font-medium border active:scale-95 transition cursor-pointer shadow-xs ${
+                    isPlayingVoice
+                      ? 'bg-rose-600 text-white border-rose-400 animate-pulse'
+                      : 'bg-white/20 hover:bg-white/30 text-white border-white/25'
+                  }`}
+                  title={isPlayingVoice ? 'Pause voice memo' : 'Play voice memo'}
+                >
+                  {isPlayingVoice ? (
+                    <>
+                      <Pause className="w-3 h-3 fill-current" />
+                      <span>Pause ♫</span>
+                    </>
+                  ) : (
+                    <>
+                      <Play className="w-3 h-3 fill-current" />
+                      <span>Voice ♫</span>
+                    </>
+                  )}
+                </button>
+              )}
+
               {/* Flip to story button */}
               <button
                 type="button"
