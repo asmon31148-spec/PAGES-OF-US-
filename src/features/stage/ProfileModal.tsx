@@ -2,7 +2,8 @@ import React, { useState, useRef } from 'react'
 import { useAuth } from '@/core/auth'
 import { useToast } from '@/core/toast'
 import { uploadMediaFile } from '@/core/storage/uploader'
-import { Camera, LogOut, Sparkles, User, Mail, Quote, Check, RefreshCw, X } from 'lucide-react'
+import { sendTestNotification } from '@/core/notifications'
+import { Camera, LogOut, Sparkles, User, Mail, Quote, Check, RefreshCw, X, Bell, BellRing } from 'lucide-react'
 
 interface ProfileModalProps {
   isOpen: boolean
@@ -29,10 +30,27 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) =
 
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [isTestingNotif, setIsTestingNotif] = useState(false)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   if (!isOpen || !user) return null
+
+  const handleSendTestNotification = async () => {
+    setIsTestingNotif(true)
+    try {
+      const ok = await sendTestNotification()
+      if (ok) {
+        showToast('Test notification sent! Check your notification bar ✨')
+      } else {
+        showToast('Please allow notifications in your phone settings.')
+      }
+    } catch {
+      showToast('Could not send notification.')
+    } finally {
+      setIsTestingNotif(false)
+    }
+  }
 
   // Handle Photo Picker & Direct Cloud Upload
   const handlePhotoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -242,6 +260,31 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) =
                 Paired with: <b className="text-[var(--app-accent)]">{partner.nickname}</b>
               </div>
             )}
+          </div>
+
+          {/* Phone Notifications & Test Trigger */}
+          <div className="p-3 rounded-2xl bg-[var(--paper)] border border-[var(--line)] space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-[var(--ink)]">
+                <Bell className="w-3.5 h-3.5 text-[var(--app-accent)]" />
+                <span>Phone Notifications</span>
+              </div>
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 font-medium">
+                Active
+              </span>
+            </div>
+            <p className="text-[11px] text-[var(--soft)]">
+              Instant alerts for partner pulses, love letters, and daily questions.
+            </p>
+            <button
+              type="button"
+              onClick={handleSendTestNotification}
+              disabled={isTestingNotif}
+              className="w-full py-2 px-3 rounded-xl border border-[var(--line)] bg-[var(--white)] text-[var(--ink)] text-xs font-medium hover:bg-[var(--line)]/30 transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+            >
+              <BellRing className="w-3.5 h-3.5 text-[var(--app-accent)]" />
+              <span>{isTestingNotif ? 'Sending alert...' : 'Send Test Notification to Phone'}</span>
+            </button>
           </div>
         </div>
 

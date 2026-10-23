@@ -16,6 +16,13 @@ import {
   PermissionsOnboardingModal
 } from '@/features/stage'
 import { hasCompletedPermissionsOnboarding } from '@/core/permissions/permissionsService'
+import {
+  initNotificationChannels,
+  scheduleDailyCoupleReminder,
+  triggerNativeNotification
+} from '@/core/notifications'
+import { getFirebaseDb } from '@/core/storage/firebase'
+import { collection, query, orderBy, limit, onSnapshot } from 'firebase/firestore'
 import { MemoriesView } from '@/features/memories'
 import { LetterboxView } from '@/features/letterbox'
 import { TimelineView } from '@/features/timeline'
@@ -35,7 +42,13 @@ const AppContent: React.FC = () => {
     () => !hasCompletedPermissionsOnboarding()
   )
 
-  // Maintain global real-time pulse and partner signal connection across all tabs
+  // 1. Initialize native notification channels and daily reminder on startup
+  useEffect(() => {
+    initNotificationChannels()
+    scheduleDailyCoupleReminder()
+  }, [])
+
+  // 2. Maintain global real-time pulse and partner signal connection across all tabs
   useEffect(() => {
     if (!space?.id) return
     realtimeBridge.connect(space.id)
@@ -51,18 +64,18 @@ const AppContent: React.FC = () => {
           origin: { y: 0.6 }
         })
         showToast(`${event.senderNickname || 'Your partner'} sent you a gentle pulse ✨`)
+        triggerNativeNotification({
+          title: `${event.senderNickname || 'Your partner'} sent a pulse ✨`,
+          body: 'A soft pulse was felt on your stage.'
+        })
       } else if (event.type === 'NOTIFICATION_TRIGGER' && event.data) {
         showToast(event.data.title)
 
-        // Native system notification when app is backgrounded or tab inactive
-        if ('Notification' in window && Notification.permission === 'granted' && document.hidden) {
-          try {
-            new Notification(event.data.title, {
-              body: event.data.body,
-              icon: '/favicon.svg'
-            })
-          } catch {}
-        }
+        // Native Android & Web notification
+        triggerNativeNotification({
+          title: event.data.title,
+          body: event.data.body
+        })
 
         try {
           if (navigator.vibrate) navigator.vibrate([80, 50, 80])
@@ -74,6 +87,33 @@ const AppContent: React.FC = () => {
       unsub()
     }
   }, [space?.id, user?.id, showToast])
+
+  // 3. Persistent Firestore notification listener (double redundancy for background/reconnect)
+  useEffect(() => {
+    if (!space?.id || !user?.id) return
+    const db = getFirebaseDb()
+    if (!db) return
+
+    const notifsRef = collection(db, 'spaces', space.id, 'notifications')
+    const q = query(notifsRef, orderBy('timestamp', 'desc'), limit(5))
+
+    const mountTime = Date.now()
+    const unsub = onSnapshot(q, (snapshot) => {
+      snapshot.docChanges().forEach((change) => {
+        if (change.type === 'added') {
+          const data = change.doc.data()
+          if (data.senderId !== user.id && data.timestamp > mountTime) {
+            triggerNativeNotification({
+              title: data.title || 'Partner Alert ✨',
+              body: data.body || 'Something new was shared in Pages of Us.'
+            })
+          }
+        }
+      })
+    })
+
+    return () => unsub()
+  }, [space?.id, user?.id])
 
   // If user is not yet logged in, show permanent true Auth Screen (Log in / Sign up)
   if (!user) {

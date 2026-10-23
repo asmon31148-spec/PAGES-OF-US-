@@ -1,3 +1,5 @@
+import { requestNativeNotificationPermission, initNotificationChannels } from '@/core/notifications'
+
 export interface PermissionStatusMap {
   notifications: 'granted' | 'denied' | 'prompt' | 'unavailable'
   camera: 'granted' | 'denied' | 'prompt' | 'unavailable'
@@ -15,15 +17,10 @@ export const markPermissionsOnboardingComplete = () => {
   localStorage.setItem(ONBOARDING_KEY, 'true')
 }
 
-// 1. Request Notification Permission
+// 1. Request Notification Permission (Native Android & Web)
 export const requestNotificationPermission = async (): Promise<'granted' | 'denied' | 'unavailable'> => {
-  if (!('Notification' in window)) return 'unavailable'
-  try {
-    const res = await Notification.requestPermission()
-    return res === 'granted' ? 'granted' : 'denied'
-  } catch {
-    return 'denied'
-  }
+  await initNotificationChannels()
+  return requestNativeNotificationPermission()
 }
 
 // 2. Request Camera & Microphone Permission

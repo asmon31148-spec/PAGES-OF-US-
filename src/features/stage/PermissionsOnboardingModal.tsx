@@ -15,6 +15,7 @@ import {
   requestAllSanctuaryPermissions,
   markPermissionsOnboardingComplete
 } from '@/core/permissions/permissionsService'
+import { triggerNativeNotification } from '@/core/notifications'
 
 interface PermissionsModalProps {
   isOpen: boolean
@@ -35,6 +36,10 @@ export const PermissionsOnboardingModal: React.FC<PermissionsModalProps> = ({
     try {
       await requestAllSanctuaryPermissions((step) => {
         setCurrentStep(step)
+      })
+      await triggerNativeNotification({
+        title: '❦ Notifications Active',
+        body: 'Your phone will now receive real-time alerts from your partner.'
       })
     } catch (err) {
       console.warn('Permissions request notice:', err)
