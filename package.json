@@ -13,6 +13,7 @@
     "cap:open:android": "npx cap open android"
   },
   "dependencies": {
+    "@capacitor-firebase/authentication": "^8.5.2",
     "@capacitor/android": "^8.5.3",
     "@capacitor/core": "^8.5.3",
     "@capacitor/device": "^8.0.3",
@@ -25,7 +26,7 @@
     "@types/leaflet": "^1.9.22",
     "@types/three": "^0.186.0",
     "canvas-confetti": "^1.9.4",
-    "firebase": "^13.1.0",
+    "firebase": "^12.19.0",
     "framer-motion": "^14.5.0",
     "howler": "^2.2.4",
     "leaflet": "^1.9.4",

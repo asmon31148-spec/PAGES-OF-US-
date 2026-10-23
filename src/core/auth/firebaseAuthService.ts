@@ -6,9 +6,12 @@ import {
   onAuthStateChanged,
   GoogleAuthProvider,
   signInWithPopup,
+  signInWithCredential,
   sendPasswordResetEmail,
   User as FirebaseUser
 } from 'firebase/auth'
+import { Capacitor } from '@capacitor/core'
+import { FirebaseAuthentication } from '@capacitor-firebase/authentication'
 import {
   doc,
   getDoc,
@@ -230,14 +233,34 @@ export const firebaseSignInWithGoogle = async (): Promise<{ user: UserProfile; s
   const db = getFirebaseDb()
   if (!auth || !db) throw new Error('Firebase is not yet configured.')
 
-  const provider = new GoogleAuthProvider()
-  provider.setCustomParameters({ prompt: 'select_account' })
-
   let cred: any
   try {
-    cred = await signInWithPopup(auth, provider)
+    if (Capacitor.isNativePlatform()) {
+      // Native Android Google One Tap / Credential Manager bottom sheet (stays inside app)
+      const result = await FirebaseAuthentication.signInWithGoogle()
+      if (result.credential?.idToken) {
+        const googleCred = GoogleAuthProvider.credential(result.credential.idToken)
+        cred = await signInWithCredential(auth, googleCred)
+      } else if (auth.currentUser) {
+        cred = { user: auth.currentUser }
+      } else if (result.user) {
+        cred = { user: result.user }
+      } else {
+        throw new Error('No user returned from Google Sign-In.')
+      }
+    } else {
+      // Web browser popup fallback
+      const provider = new GoogleAuthProvider()
+      provider.setCustomParameters({ prompt: 'select_account' })
+      cred = await signInWithPopup(auth, provider)
+    }
   } catch (err: any) {
-    if (err.code === 'auth/popup-closed-by-user') {
+    if (
+      err.code === 'auth/popup-closed-by-user' ||
+      err.message?.includes('canceled') ||
+      err.message?.includes('cancelled') ||
+      err.message?.includes('16')
+    ) {
       throw new Error('Google Sign-In was closed.')
     }
     if (err.code === 'auth/popup-blocked') {
