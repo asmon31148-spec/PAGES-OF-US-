@@ -445,103 +445,143 @@ export const StageView: React.FC<StageViewProps> = ({
         </div>
       </div>
 
-      {/* 3. PRESENCE (Avatars, Thoughts, Aura & Tether) */}
-      <div className="presence">
-        {/* You */}
-        <div
-          className="presence-person cursor-pointer min-w-0"
-          onClick={onOpenProfileModal}
-          title="Tap to customize your profile & note"
-        >
+      {/* 3. INTIMATE AVATAR TETHER & SPEECH BUBBLES (Image 2 Style) */}
+      <div className="relative p-5 rounded-3xl bg-[var(--white)] border border-[var(--line)] shadow-xs my-4">
+        <div className="flex items-center justify-between relative z-10">
+          {/* You / Left Avatar */}
           <div
-            className="avatar-wrap shrink-0 relative transition-all duration-300"
-            style={{
-              borderRadius: '9999px',
-              boxShadow: myMood ? `0 0 16px 3px ${myMood.glowColor}` : undefined
-            }}
+            className="flex flex-col items-center cursor-pointer min-w-0"
+            onClick={onOpenProfileModal}
+            title="Tap to customize your profile & thought note"
           >
-            <div className="avatar overflow-hidden">
-              {user?.avatarUrl ? (
-                <img src={user.avatarUrl} alt="You" className="w-full h-full object-cover" />
-              ) : (
-                <span>{user?.nickname ? user.nickname.charAt(0).toUpperCase() : '☁️'}</span>
-              )}
+            {/* Speech Bubble */}
+            <div className="relative mb-2 px-2.5 py-1 rounded-2xl bg-[var(--paper)] text-[var(--ink)] text-[10px] font-medium shadow-2xs border border-[var(--line)] max-w-[120px] truncate animate-bubble-float">
+              {user?.presenceStatus || 'Thinking of you 💕'}
+              <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-[var(--paper)] rotate-45 border-r border-b border-[var(--line)]"></div>
             </div>
-            {/* Mood Emoji Badge */}
-            {myMood && (
-              <div
-                className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-[var(--white)] shadow-md border border-[var(--line)] flex items-center justify-center text-[10px]"
-                title={`Aura: ${myMood.label}`}
-              >
-                {myMood.emoji}
+
+            <div
+              className="w-16 h-16 rounded-full p-0.5 bg-gradient-to-tr from-[#8a9b85] to-[#b77e6b] shadow-md relative transition-transform active:scale-95"
+              style={{
+                boxShadow: myMood ? `0 0 16px 3px ${myMood.glowColor}` : undefined
+              }}
+            >
+              <div className="w-full h-full rounded-full overflow-hidden bg-[var(--paper)] flex items-center justify-center font-bold text-lg text-[var(--ink)]">
+                {user?.avatarUrl ? (
+                  <img src={user.avatarUrl} alt="You" className="w-full h-full object-cover" />
+                ) : (
+                  <span>{user?.nickname ? user.nickname.charAt(0).toUpperCase() : 'Y'}</span>
+                )}
               </div>
-            )}
+              <span className="absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-white shadow-xs"></span>
+            </div>
+            <b className="text-xs font-semibold text-[var(--ink)] mt-1.5 truncate max-w-[85px]">
+              {user?.nickname || 'You'}
+            </b>
           </div>
-          <div className="presence-copy min-w-0">
-            <b className="truncate block text-sm font-semibold">{user?.nickname || 'You'}</b>
-            <span className="thought">{user?.presenceStatus || 'Tap profile to set status note...'}</span>
+
+          {/* Dotted Tether Line & Interactive Center Pulse (Image 2) */}
+          <div className="flex-1 flex flex-col items-center px-2 relative">
+            <div className="w-full border-t-2 border-dashed border-[#b3b7af] absolute top-1/2 -translate-y-1/2 z-0"></div>
+            <button
+              type="button"
+              onClick={handleSendPulse}
+              className={`relative z-10 px-3 py-1.5 rounded-full bg-[var(--white)] border border-[var(--line)] shadow-sm text-xs font-semibold text-[var(--ink)] hover:border-[var(--app-accent)] transition-all cursor-pointer flex items-center gap-1.5 ${
+                isPulsing ? 'scale-110 bg-rose-50 border-rose-300 text-rose-600' : 'active:scale-95'
+              }`}
+              title="Tap to send a gentle pulse to your partner"
+            >
+              <Heart className={`w-3.5 h-3.5 ${isPulsing ? 'fill-rose-500 text-rose-500 animate-ping' : 'text-rose-500 fill-rose-500'}`} />
+              <span className="text-[10px] font-mono">Tether</span>
+            </button>
+          </div>
+
+          {/* Partner / Right Avatar */}
+          {isPaired && partner ? (
+            <div className="flex flex-col items-center min-w-0">
+              {/* Partner Speech Bubble */}
+              <div className="relative mb-2 px-2.5 py-1 rounded-2xl bg-[var(--paper)] text-[var(--ink)] text-[10px] font-medium shadow-2xs border border-[var(--line)] max-w-[120px] truncate animate-bubble-float">
+                {partner.presenceStatus || 'Thinking of you ✨'}
+                <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-[var(--paper)] rotate-45 border-r border-b border-[var(--line)]"></div>
+              </div>
+
+              <div
+                className="w-16 h-16 rounded-full p-0.5 bg-gradient-to-tr from-[#b77e6b] to-[#8a9b85] shadow-md relative"
+                style={{
+                  boxShadow: partnerMood ? `0 0 16px 3px ${partnerMood.glowColor}` : undefined
+                }}
+              >
+                <div className="w-full h-full rounded-full overflow-hidden bg-[var(--paper)] flex items-center justify-center font-bold text-lg text-[var(--ink)]">
+                  {partner.avatarUrl ? (
+                    <img src={partner.avatarUrl} alt={partner.nickname} className="w-full h-full object-cover" />
+                  ) : (
+                    <span>{partner.nickname.charAt(0).toUpperCase()}</span>
+                  )}
+                </div>
+                <span className="absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-white shadow-xs"></span>
+              </div>
+              <b className="text-xs font-semibold text-[var(--ink)] mt-1.5 truncate max-w-[85px]">
+                {partner.nickname}
+              </b>
+            </div>
+          ) : (
+            <div
+              className="flex flex-col items-center cursor-pointer min-w-0"
+              onClick={onOpenPairModal}
+              title="Tap to connect with your partner"
+            >
+              <div className="relative mb-2 px-2.5 py-1 rounded-2xl bg-amber-50 text-amber-800 text-[10px] font-medium border border-amber-200">
+                Connect partner ＋
+                <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-amber-50 rotate-45 border-r border-b border-amber-200"></div>
+              </div>
+              <div className="w-16 h-16 rounded-full border-2 border-dashed border-[#8a9b85] flex items-center justify-center text-xl text-[#4d655a] bg-[#eef3eb]">
+                ＋
+              </div>
+              <span className="text-xs font-semibold text-[#4d655a] mt-1.5">Pair Space</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* 4. COUPLE STATS ROW (Image 2 Style) */}
+      <div className="grid grid-cols-2 gap-3 mb-4">
+        {/* Days Together */}
+        <div
+          onClick={() => setIsGoalsModalOpen(true)}
+          className="p-3.5 rounded-3xl bg-rose-500/10 border border-rose-500/20 shadow-xs cursor-pointer hover:opacity-90 active:scale-[0.98] transition flex items-center justify-between"
+          title="Tap to view relationship goals and milestones"
+        >
+          <div>
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-rose-700 block">
+              Days Together
+            </span>
+            <div className="text-xl font-extrabold text-[var(--ink)] mt-0.5">
+              {daysTogether}
+            </div>
+          </div>
+          <div className="w-9 h-9 rounded-2xl bg-[var(--white)] shadow-2xs border border-rose-200 flex items-center justify-center text-base text-rose-500">
+            ❤️
           </div>
         </div>
 
-        {/* Tether Button */}
-        <button
-          type="button"
-          className={`tether shrink-0 ${isPulsing ? 'scale-125' : ''}`}
-          onClick={handleSendPulse}
-          aria-label="Send a tether hello to partner"
-          title="Tap to send a gentle pulse"
+        {/* Milestone Goals Quick Progress */}
+        <div
+          onClick={() => setIsGoalsModalOpen(true)}
+          className="p-3.5 rounded-3xl bg-amber-500/10 border border-amber-500/20 shadow-xs cursor-pointer hover:opacity-90 active:scale-[0.98] transition flex items-center justify-between"
+          title="Tap to view relationship goals"
         >
-          ↔
-        </button>
-
-        {/* Partner / Invite State */}
-        {isPaired && partner ? (
-          <div className="presence-person min-w-0">
-            <div className="presence-copy min-w-0 text-right">
-              <b className="truncate block text-sm font-semibold">{partner.nickname}</b>
-              <span className="thought">{partner.presenceStatus || 'Thinking of you'}</span>
-            </div>
-            <div
-              className="avatar-wrap shrink-0 relative transition-all duration-300"
-              style={{
-                borderRadius: '9999px',
-                boxShadow: partnerMood ? `0 0 16px 3px ${partnerMood.glowColor}` : undefined
-              }}
-            >
-              <div className="avatar overflow-hidden">
-                {partner.avatarUrl ? (
-                  <img src={partner.avatarUrl} alt={partner.nickname} className="w-full h-full object-cover" />
-                ) : (
-                  <span>{partner.nickname.charAt(0).toUpperCase()}</span>
-                )}
-              </div>
-              {partnerMood && (
-                <div
-                  className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-[var(--white)] shadow-md border border-[var(--line)] flex items-center justify-center text-[10px]"
-                  title={`${partner.nickname}: ${partnerMood.label}`}
-                >
-                  {partnerMood.emoji}
-                </div>
-              )}
+          <div>
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-amber-800 block">
+              Story & Goals
+            </span>
+            <div className="text-xs font-bold text-[var(--ink)] mt-0.5">
+              Our Journey ✦
             </div>
           </div>
-        ) : (
-          <div
-            className="presence-person min-w-0 cursor-pointer"
-            onClick={onOpenPairModal}
-            title="Invite your partner to connect"
-          >
-            <div className="presence-copy min-w-0 text-right">
-              <b className="truncate text-[#4d655a]">Connect partner</b>
-              <span className="thought text-[#8a8b83]">Tap to pair ＋</span>
-            </div>
-            <div className="avatar-wrap shrink-0">
-              <div className="avatar border-dashed border-[#8a9b85] text-[#4d655a] bg-[#eef3eb]">
-                ＋
-              </div>
-            </div>
+          <div className="w-9 h-9 rounded-2xl bg-[var(--white)] shadow-2xs border border-amber-200 flex items-center justify-center text-base text-amber-600">
+            ✨
           </div>
-        )}
+        </div>
       </div>
 
       {/* 4. SHARED MOMENT HERO SPOTLIGHT & STORY DECK (Multi-moment carousel + card flip + voice player) */}
