@@ -431,7 +431,6 @@ export const StageView: React.FC<StageViewProps> = ({
       <div className="greeting">
         <div className="min-w-0">
           <small>{currentDateFormatted}</small>
-          <h2>A place for us.</h2>
         </div>
         <div
           className="flex flex-col items-end shrink-0 cursor-pointer hover:opacity-80 active:scale-95 transition"

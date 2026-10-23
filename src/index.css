@@ -164,20 +164,13 @@
 
 /* Greeting */
 .greeting {
-  margin: 18px 0 16px;
+  margin: 12px 0 14px;
   display: flex;
   justify-content: space-between;
-  align-items: flex-end;
+  align-items: center;
 }
 
-.greeting small {
-  display: block;
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.1em;
-  color: var(--soft);
-  text-transform: uppercase;
-  margin-bottom: 4px;
+.greeting small {-bottom: 0;
 }
 
 .greeting h2 {
