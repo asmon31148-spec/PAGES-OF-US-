@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
+import { Device } from '@capacitor/device'
 import { useAuth } from '@/core/auth'
 import { useToast } from '@/core/toast'
 import { getSupabaseClient } from '@/core/storage/supabase'
@@ -280,9 +281,9 @@ export const PartnerLocationCard: React.FC = () => {
     const map = L.map(mapContainerRef.current, {
       zoomControl: false,
       attributionControl: false,
-      dragging: true,
-      scrollWheelZoom: true,
-      touchZoom: true
+      dragging: false,
+      scrollWheelZoom: false,
+      touchZoom: false
     }).setView([initialLat, initialLng], 14)
 
     // OpenStreetMap Humanitarian / HOT Layer: 100% Free, NO API Key Required, Zero Watermarks
@@ -579,26 +580,55 @@ export const PartnerLocationCard: React.FC = () => {
     })
   }, [pinnedPlaces])
 
-  // Invalidate map size on expand toggle
+  // Invalidate map size & toggle touch dragging on expand toggle
   useEffect(() => {
-    if (mapInstanceRef.current) {
+    const map = mapInstanceRef.current
+    if (map) {
+      if (isExpandedMap) {
+        map.dragging.enable()
+        map.touchZoom.enable()
+        map.scrollWheelZoom.enable()
+      } else {
+        map.dragging.disable()
+        map.touchZoom.disable()
+        map.scrollWheelZoom.disable()
+      }
       setTimeout(() => {
-        mapInstanceRef.current?.invalidateSize()
+        map.invalidateSize()
       }, 200)
     }
   }, [isExpandedMap])
 
-  // Battery Info Helper
+  // Battery Info Helper (Native Capacitor Device Plugin + Web Battery Fallback)
   const getBatteryInfo = async (): Promise<{ level: number; isCharging: boolean } | null> => {
     try {
-      if ('getBattery' in navigator) {
-        const b = await (navigator as any).getBattery()
+      // 1. First try native Capacitor Device plugin (Android / iOS)
+      const capBattery = await Device.getBatteryInfo()
+      if (capBattery && typeof capBattery.batteryLevel === 'number' && !isNaN(capBattery.batteryLevel)) {
         return {
-          level: Math.round(b.level * 100),
-          isCharging: Boolean(b.charging)
+          level: Math.round(capBattery.batteryLevel * 100),
+          isCharging: Boolean(capBattery.isCharging)
         }
       }
-    } catch {}
+    } catch {
+      // Capacitor plugin unsupported in web desktop or permissions
+    }
+
+    try {
+      // 2. Fallback to standard web Battery API if available
+      if ('getBattery' in navigator) {
+        const b = await (navigator as any).getBattery()
+        if (typeof b?.level === 'number' && !isNaN(b.level)) {
+          return {
+            level: Math.round(b.level * 100),
+            isCharging: Boolean(b.charging)
+          }
+        }
+      }
+    } catch {
+      // Battery API blocked
+    }
+
     return null
   }
 
@@ -681,8 +711,8 @@ export const PartnerLocationCard: React.FC = () => {
         city,
         placeName: display,
         customLabel: customTag || selectedTag || undefined,
-        battery: batteryData?.level ?? 100,
-        isCharging: batteryData?.isCharging ?? false,
+        battery: batteryData ? batteryData.level : undefined,
+        isCharging: batteryData ? batteryData.isCharging : undefined,
         accuracy,
         isSharingEnabled: true,
         updatedAt: new Date().toISOString()
@@ -1121,11 +1151,23 @@ export const PartnerLocationCard: React.FC = () => {
       {/* 2. REAL INTERACTIVE MAP + MUTUAL CONSENT SHIELD */}
       <div
         className={`relative rounded-xl overflow-hidden border border-[var(--line)] bg-[var(--paper)] transition-all duration-300 isolate ${
-          isExpandedMap ? 'h-72' : 'h-52'
+          isExpandedMap ? 'h-80' : 'h-52'
         }`}
         style={{ isolation: 'isolate' }}
       >
-        <div ref={mapContainerRef} className="w-full h-full z-0" />
+        <div
+          ref={mapContainerRef}
+          className={`w-full h-full z-0 transition-opacity duration-200 ${
+            !isExpandedMap ? 'pointer-events-none' : 'pointer-events-auto'
+          }`}
+        />
+
+        {/* Normal Mode Scroll Affordance Pill */}
+        {!isExpandedMap && isMutualSharingActive && (
+          <div className="absolute bottom-2 left-2 z-10 bg-[var(--white)]/90 backdrop-blur-md px-2 py-0.5 rounded-md border border-[var(--line)] text-[8.5px] text-[var(--soft)] pointer-events-none shadow-2xs">
+            Tap ⤢ to interact with map
+          </div>
+        )}
 
         {/* Mutual Sharing Rule Overlay (When either or both have sharing paused) */}
         {!isMutualSharingActive && (

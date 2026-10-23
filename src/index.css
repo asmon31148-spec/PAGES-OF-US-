@@ -30,8 +30,16 @@
     --sar: env(safe-area-inset-right, 0px);
   }
 
-  * {
+  *, *::before, *::after {
     box-sizing: border-box;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  *::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
   }
 
   html, body {
@@ -45,6 +53,15 @@
     -moz-osx-font-smoothing: grayscale;
     -webkit-tap-highlight-color: transparent;
     touch-action: pan-y;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  html::-webkit-scrollbar,
+  body::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
   }
 }
 
@@ -65,9 +82,15 @@
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
-  padding: max(22px, calc(var(--sat, 0px) + 16px)) 16px max(86px, calc(var(--sab, 0px) + 76px));
+  padding: max(18px, calc(var(--sat, 0px) + 12px)) 12px max(68px, calc(var(--sab, 0px) + 60px));
   animation: fade 0.22s ease;
   overflow-x: hidden;
+}
+
+@media (min-width: 640px) {
+  .page {
+    padding: max(22px, calc(var(--sat, 0px) + 16px)) 16px max(74px, calc(var(--sab, 0px) + 64px));
+  }
 }
 
 @keyframes fade {
@@ -549,8 +572,8 @@
   z-index: 40;
   left: 50%;
   transform: translateX(-50%);
-  width: min(calc(100% - 24px), 416px);
-  bottom: max(12px, calc(var(--sab, 0px) + 8px));
+  width: min(calc(100% - 16px), 420px);
+  bottom: max(8px, calc(var(--sab, 0px) + 6px));
   height: 56px;
   display: flex;
   align-items: center;

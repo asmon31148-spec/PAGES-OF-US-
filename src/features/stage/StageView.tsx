@@ -584,7 +584,7 @@ export const StageView: React.FC<StageViewProps> = ({
       <PartnerLocationCard />
 
       {/* 9. Commercial Sanctuary Footer Mark */}
-      <div className="pt-6 pb-2 text-center select-none opacity-80">
+      <div className="pt-3 pb-1 text-center select-none opacity-80">
         <div className="flex items-center justify-center gap-2 text-[#b0b3ab] text-[11px]">
           <span className="w-8 h-px bg-[#deddd7]" />
           <span className="font-serif italic text-xs text-[#7a7d76]">pages of us</span>

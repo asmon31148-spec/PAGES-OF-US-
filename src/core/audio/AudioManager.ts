@@ -23,24 +23,24 @@ class GlobalAudioManager {
       id: 'rain',
       name: 'Gentle Rain',
       icon: 'CloudRain',
-      url: 'https://actions.google.com/sounds/v1/water/rain_heavy.ogg',
-      volume: 0.95,
+      url: '/audio/rain.mp3',
+      volume: 0.85,
       isPlaying: false
     },
     {
       id: 'fireplace',
       name: 'Warm Fireplace',
       icon: 'Flame',
-      url: 'https://actions.google.com/sounds/v1/ambiences/outdoor_fire_medium.ogg',
-      volume: 0.95,
+      url: '/audio/fireplace.mp3',
+      volume: 0.85,
       isPlaying: false
     },
     {
       id: 'night',
       name: 'Midnight Breeze',
       icon: 'Moon',
-      url: 'https://actions.google.com/sounds/v1/weather/wind_breeze.ogg',
-      volume: 0.95,
+      url: '/audio/breeze.mp3',
+      volume: 0.85,
       isPlaying: false
     }
   ]
@@ -222,7 +222,18 @@ class GlobalAudioManager {
           src: [sound.url],
           html5: true,
           loop: true,
-          volume: this.isMuted ? 0 : sound.volume
+          volume: this.isMuted ? 0 : sound.volume,
+          onloaderror: (_id, err) => {
+            console.warn(`Ambient sound '${soundId}' load error:`, err)
+            sound.isPlaying = false
+            this.notify()
+          },
+          onplayerror: (_id, err) => {
+            console.warn(`Ambient sound '${soundId}' play error, unlocking:`, err)
+            howl?.once('unlock', () => {
+              howl?.play()
+            })
+          }
         })
         this.ambientHowls.set(soundId, howl)
       } else {
