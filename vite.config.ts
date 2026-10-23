@@ -26,7 +26,7 @@ export default defineConfig({
         manualChunks(id: string) {
           if (id.includes('node_modules/three')) return 'vendor-3d'
           if (id.includes('node_modules/leaflet')) return 'vendor-maps'
-          if (id.includes('node_modules/firebase')) return 'vendor-firebase'
+          if (id.includes('node_modules/firebase') || id.includes('node_modules/@firebase')) return 'vendor-firebase'
           if (id.includes('node_modules/react') || id.includes('node_modules/react-dom')) return 'vendor-react'
         }
       }

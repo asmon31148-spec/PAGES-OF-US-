@@ -242,7 +242,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Derive partner profile if connected
   const partner = useMemo(() => {
-    if (!space || !user) return null
+    if (!space || !user || !space.members || typeof space.members !== 'object') return null
     const partnerId = Object.keys(space.members).find((id) => id !== user.id)
     return partnerId ? space.members[partnerId] : null
   }, [space, user])
