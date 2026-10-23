@@ -229,7 +229,7 @@ export const StagePinnedCorkboard: React.FC = () => {
     : Object.entries(notesData).find(([k]) => k !== user?.id)?.[1]
 
   return (
-    <div className="w-full rounded-2xl sm:rounded-3xl p-4 sm:p-5 border border-[var(--line)] bg-[var(--white)] shadow-xs transition-all my-4 space-y-3.5">
+    <div className="w-full py-5 px-2 border-b border-[var(--line)] transition-all my-2 space-y-3.5">
       {/* 1. Header Row */}
       <div className="flex items-center justify-between border-b border-[var(--line)]/60 pb-3">
         <div className="flex items-center gap-2">

@@ -545,7 +545,7 @@ export const StageView: React.FC<StageViewProps> = ({
 
       {/* 3.5. RELATIONSHIP MILESTONES & GOALS BENTO TILE (Inspired by Image 1) */}
       <div
-        className="w-full p-4 mb-4 rounded-3xl bg-[var(--white)] border border-[var(--line)] shadow-xs flex items-center justify-between cursor-pointer hover:shadow-md transition active:scale-[0.985]"
+        className="w-full py-3.5 px-2 mb-2 border-b border-[var(--line)] flex items-center justify-between cursor-pointer hover:opacity-85 transition active:scale-[0.99]"
         onClick={() => setIsGoalsModalOpen(true)}
         role="button"
         title="Open Relationship Story & Goals Tracker"

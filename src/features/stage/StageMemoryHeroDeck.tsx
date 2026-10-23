@@ -336,7 +336,7 @@ export const StageMemoryHeroDeck: React.FC<StageMemoryHeroDeckProps> = ({
   if (memories.length === 0) {
     return (
       <div
-        className="w-full rounded-2xl sm:rounded-3xl p-6 sm:p-7 border border-[var(--line)] bg-gradient-to-b from-[var(--paper)] to-[var(--white)] shadow-xs transition-all flex flex-col items-center text-center my-3 relative overflow-hidden"
+        className="w-full py-6 px-2 border-b border-[var(--line)] transition-all flex flex-col items-center text-center my-2 relative overflow-hidden"
       >
         <div className="w-12 h-12 rounded-full bg-[var(--app-accent)]/10 text-[var(--app-accent)] flex items-center justify-center mb-3">
           <Sparkles className="w-6 h-6" />
@@ -364,7 +364,7 @@ export const StageMemoryHeroDeck: React.FC<StageMemoryHeroDeckProps> = ({
 
   return (
     <div
-      className="relative w-full rounded-2xl sm:rounded-3xl overflow-hidden my-3 shadow-md border border-[var(--line)] select-none transition-all duration-300"
+      className="relative w-full rounded-2xl overflow-hidden my-3 border border-[var(--line)]/60 select-none transition-all duration-300"
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}

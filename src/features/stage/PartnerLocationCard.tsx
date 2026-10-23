@@ -1045,7 +1045,7 @@ export const PartnerLocationCard: React.FC = () => {
   }
 
   return (
-    <div className="mt-4 p-5 rounded-3xl border border-[var(--line)] bg-[var(--white)] space-y-4 shadow-xs text-[var(--ink)] transition-colors duration-200">
+    <div className="my-2 py-5 px-2 border-b border-[var(--line)] space-y-4 text-[var(--ink)] transition-colors duration-200">
       {/* 1. Header with Master Toggle & Privacy Info */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
