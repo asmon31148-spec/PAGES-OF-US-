@@ -38,6 +38,12 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
 
+      - name: Print Android Signing Fingerprints (SHA-1)
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew signingReport
+
       - name: Build Android Debug APK
         run: |
           cd android

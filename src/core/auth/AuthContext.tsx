@@ -4,7 +4,6 @@ import {
   loadStoredUser,
   loadStoredSpace,
   saveLocalSession,
-  loginAsGuest,
   cloudSignUp,
   cloudSignIn,
   cloudSignOut,
@@ -14,10 +13,7 @@ import {
   unpairCloudSpace,
   fetchLatestSpace,
   cloudSignInWithGoogle,
-  cloudResetPassword,
-  cloudInitRecaptcha,
-  cloudSendPhoneCode,
-  cloudVerifyPhoneCode
+  cloudResetPassword
 } from './authService'
 import { getSupabaseClient } from '../storage/supabase'
 import { getFirebaseAuth, getFirebaseDb, isFirebaseConfigured } from '../storage/firebase'
@@ -36,10 +32,6 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<void>
   signInWithGoogle: () => Promise<void>
   resetPassword: (email: string) => Promise<void>
-  initPhoneRecaptcha: (containerId: string) => any
-  sendPhoneCode: (phoneNumber: string, verifier: any) => Promise<any>
-  verifyPhoneCode: (confirmationResult: any, code: string, nickname?: string) => Promise<void>
-  loginGuest: (nickname?: string) => void
   logout: () => Promise<void>
   updateProfile: (updates: Partial<UserProfile>) => Promise<void>
   createSpace: (spaceName: string) => Promise<SharedSpace>
@@ -407,38 +399,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }
 
-  // Phone Auth
-  const initPhoneRecaptcha = (containerId: string) => {
-    return cloudInitRecaptcha(containerId)
-  }
-
-  const sendPhoneCode = async (phoneNumber: string, verifier: any) => {
-    setIsLoading(true)
-    try {
-      return await cloudSendPhoneCode(phoneNumber, verifier)
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const verifyPhoneCode = async (confirmationResult: any, code: string, nickname?: string) => {
-    setIsLoading(true)
-    try {
-      const res = await cloudVerifyPhoneCode(confirmationResult, code, nickname)
-      setUser(res.user)
-      if (res.space) setSpace(res.space)
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  // Instant Guest / Offline access
-  const loginGuest = (nickname = 'Maya') => {
-    const res = loginAsGuest(nickname)
-    setUser(res.user)
-    setSpace(res.space)
-  }
-
   // Sign Out
   const logout = async () => {
     setIsLoading(true)
@@ -525,10 +485,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         signIn,
         signInWithGoogle,
         resetPassword,
-        initPhoneRecaptcha,
-        sendPhoneCode,
-        verifyPhoneCode,
-        loginGuest,
         logout,
         updateProfile,
         createSpace,

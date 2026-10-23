@@ -1,16 +1,12 @@
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
-  signInAnonymously,
   signOut,
   updateProfile as updateAuthProfile,
   onAuthStateChanged,
   GoogleAuthProvider,
   signInWithPopup,
   sendPasswordResetEmail,
-  RecaptchaVerifier,
-  signInWithPhoneNumber,
-  ConfirmationResult,
   User as FirebaseUser
 } from 'firebase/auth'
 import {
@@ -75,78 +71,6 @@ export const saveLocalSession = (user?: UserProfile | null, space?: SharedSpace 
     }
   } catch {}
 }
-
-export const loginAsGuest = (
-  nickname = 'Maya'
-): { user: UserProfile; space: SharedSpace } => {
-  const guestUser: UserProfile = {
-    id: `guest_${Date.now()}`,
-    email: '',
-    nickname,
-    avatarUrl: '',
-    bio: 'A quiet digital sanctuary for us.',
-    presenceStatus: 'Thinking of you 🌿',
-    createdAt: new Date().toISOString(),
-    lastActiveAt: new Date().toISOString()
-  }
-  const guestSpace: SharedSpace = {
-    id: `space_${Date.now()}`,
-    spaceName: `${nickname}'s Space`,
-    pairCode: generatePairCode(),
-    creatorId: guestUser.id,
-    members: { [guestUser.id]: guestUser },
-    createdAt: new Date().toISOString()
-  }
-  guestUser.spaceId = guestSpace.id
-  saveLocalSession(guestUser, guestSpace)
-
-  // Ensure an anonymous Firebase Auth session so Firestore rules allow writes
-  const auth = getFirebaseAuth()
-  if (auth && !auth.currentUser) {
-    signInAnonymously(auth).catch((err) => {
-      console.warn('Anonymous auth failed:', err)
-    })
-  }
-
-  // Asynchronously register in Firestore so Phone B can pair with this code
-  const db = getFirebaseDb()
-  if (db) {
-    setDoc(doc(db, 'spaces', guestSpace.id), guestSpace).catch((err) =>
-      console.warn('Could not register guest space in Firestore:', err)
-    )
-    setDoc(doc(db, 'pair_codes', guestSpace.pairCode), { spaceId: guestSpace.id }).catch((err) =>
-      console.warn('Could not register guest pair code in Firestore:', err)
-    )
-    setDoc(doc(db, 'users', guestUser.id), guestUser).catch((err) =>
-      console.warn('Could not register guest user in Firestore:', err)
-    )
-  }
-
-  // Also register in Supabase as fallback
-  try {
-    const supabase = getSupabaseClient()
-    supabase.from('spaces').upsert({
-      id: guestSpace.id,
-      space_name: guestSpace.spaceName,
-      pair_code: guestSpace.pairCode,
-      creator_id: guestUser.id
-    }).then(null, () => {})
-    supabase.from('app_content').upsert({
-      id: guestSpace.id,
-      content: guestSpace,
-      updated_at: new Date().toISOString()
-    }).then(null, () => {})
-    supabase.from('app_content').upsert({
-      id: `pair_${guestSpace.pairCode}`,
-      content: { spaceId: guestSpace.id },
-      updated_at: new Date().toISOString()
-    }).then(null, () => {})
-  } catch {}
-
-  return { user: guestUser, space: guestSpace }
-}
-
-export const firebaseLoginAsGuest = loginAsGuest
 
 // 1. Permanent Cloud Sign Up (Firebase Auth + Firestore)
 export const firebaseSignUp = async (
@@ -384,79 +308,6 @@ export const firebaseResetPassword = async (email: string): Promise<void> => {
     }
     throw new Error(err.message || 'Unable to send password reset email.')
   }
-}
-
-// 2D. Phone Number Verification (SMS OTP)
-export const firebaseInitRecaptcha = (containerId: string): RecaptchaVerifier | null => {
-  const auth = getFirebaseAuth()
-  if (!auth) return null
-  try {
-    return new RecaptchaVerifier(auth, containerId, {
-      size: 'invisible',
-      callback: () => {}
-    })
-  } catch (err) {
-    console.warn('Recaptcha init notice:', err)
-    return null
-  }
-}
-
-export const firebaseSendPhoneCode = async (
-  phoneNumber: string,
-  verifier: RecaptchaVerifier
-): Promise<ConfirmationResult> => {
-  const auth = getFirebaseAuth()
-  if (!auth) throw new Error('Firebase is not configured.')
-  return await signInWithPhoneNumber(auth, phoneNumber, verifier)
-}
-
-export const firebaseVerifyPhoneCode = async (
-  confirmationResult: ConfirmationResult,
-  otpCode: string,
-  nickname = 'Partner'
-): Promise<{ user: UserProfile; space: SharedSpace | null }> => {
-  const db = getFirebaseDb()
-  if (!db) throw new Error('Firebase is not configured.')
-
-  const cred = await confirmationResult.confirm(otpCode)
-  const firebaseUser = cred.user
-  const userDocRef = doc(db, 'users', firebaseUser.uid)
-
-  let profile: UserProfile | null = null
-  try {
-    const snap = await getDoc(userDocRef)
-    if (snap.exists()) {
-      profile = snap.data() as UserProfile
-    }
-  } catch {}
-
-  if (!profile) {
-    profile = {
-      id: firebaseUser.uid,
-      email: firebaseUser.phoneNumber || '',
-      nickname: nickname || 'Partner',
-      avatarUrl: '',
-      bio: 'A quiet digital sanctuary for us.',
-      presenceStatus: 'Thinking of you 🌿',
-      createdAt: new Date().toISOString(),
-      lastActiveAt: new Date().toISOString()
-    }
-    await setDoc(userDocRef, profile, { merge: true })
-  }
-
-  let userSpace: SharedSpace | null = null
-  if (profile.spaceId) {
-    userSpace = await firebaseFetchSpace(profile.spaceId)
-  }
-
-  if (!userSpace) {
-    userSpace = await firebaseCreateSpace(`${profile.nickname}'s Space`, profile)
-    profile.spaceId = userSpace.id
-    await setDoc(userDocRef, { spaceId: userSpace.id }, { merge: true })
-  }
-
-  saveLocalSession(profile, userSpace)
-  return { user: profile, space: userSpace }
 }
 
 // 3. Sign Out

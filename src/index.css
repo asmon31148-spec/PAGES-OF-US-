@@ -1429,24 +1429,11 @@ body::-webkit-scrollbar {
   }
 }
 
-@keyframes speechBubbleBounce {
-  0%, 100% {
-    transform: translateY(0px);
-  }
-  50% {
-    transform: translateY(-4px);
-  }
-}
-
 .animate-cloud-slow {
   animation: cloudFloatSlow 4.5s ease-in-out infinite;
 }
 
 .animate-cloud-delayed {
   animation: cloudFloatDelayed 5.5s ease-in-out 1s infinite;
-}
-
-.animate-bubble-float {
-  animation: speechBubbleBounce 3s ease-in-out infinite;
 }
 

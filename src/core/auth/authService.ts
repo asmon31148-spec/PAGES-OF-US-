@@ -13,11 +13,7 @@ import {
   firebaseUnpairSpace,
   firebaseFetchSpace,
   firebaseSignInWithGoogle,
-  firebaseResetPassword,
-  firebaseInitRecaptcha,
-  firebaseSendPhoneCode,
-  firebaseVerifyPhoneCode,
-  firebaseLoginAsGuest
+  firebaseResetPassword
 } from './firebaseAuthService'
 import { UserProfile, SharedSpace } from './types'
 import { realtimeBridge } from '../realtime'
@@ -67,60 +63,6 @@ export const saveLocalSession = (user?: UserProfile | null, space?: SharedSpace 
       localStorage.setItem(LOCAL_SPACE_KEY, JSON.stringify(space))
     }
   } catch {}
-}
-
-export const loginAsGuest = (
-  nickname = 'Maya'
-): { user: UserProfile; space: SharedSpace } => {
-  if (isFirebaseConfigured()) {
-    return firebaseLoginAsGuest(nickname)
-  }
-
-  const guestUser: UserProfile = {
-    id: `guest_${Date.now()}`,
-    email: '',
-    nickname,
-    avatarUrl: '',
-    bio: 'A quiet digital sanctuary for us.',
-    presenceStatus: 'Thinking of you 🌿',
-    createdAt: new Date().toISOString(),
-    lastActiveAt: new Date().toISOString()
-  }
-  const guestSpace: SharedSpace = {
-    id: `space_${Date.now()}`,
-    spaceName: `${nickname}'s Space`,
-    pairCode: generatePairCode(),
-    creatorId: guestUser.id,
-    members: { [guestUser.id]: guestUser },
-    createdAt: new Date().toISOString()
-  }
-  guestUser.spaceId = guestSpace.id
-  saveLocalSession(guestUser, guestSpace)
-
-  // Asynchronously register in Supabase so Phone B can pair with this code
-  try {
-    const supabase = getSupabaseClient()
-    supabase.from('spaces').upsert({
-      id: guestSpace.id,
-      space_name: guestSpace.spaceName,
-      pair_code: guestSpace.pairCode,
-      creator_id: guestUser.id
-    }).then(null, () => {})
-
-    supabase.from('app_content').upsert({
-      id: guestSpace.id,
-      content: guestSpace,
-      updated_at: new Date().toISOString()
-    }).then(null, () => {})
-
-    supabase.from('app_content').upsert({
-      id: `pair_${guestSpace.pairCode}`,
-      content: { spaceId: guestSpace.id },
-      updated_at: new Date().toISOString()
-    }).then(null, () => {})
-  } catch {}
-
-  return { user: guestUser, space: guestSpace }
 }
 
 const getAdminSupabaseClient = () => {
@@ -468,23 +410,6 @@ export const cloudResetPassword = async (email: string): Promise<void> => {
   const anonClient = getSupabaseClient()
   const { error } = await anonClient.auth.resetPasswordForEmail(email)
   if (error) throw new Error(error.message)
-}
-
-// 3D. Phone Number Verification (SMS OTP)
-export const cloudInitRecaptcha = (containerId: string) => {
-  return firebaseInitRecaptcha(containerId)
-}
-
-export const cloudSendPhoneCode = async (phoneNumber: string, verifier: any) => {
-  return firebaseSendPhoneCode(phoneNumber, verifier)
-}
-
-export const cloudVerifyPhoneCode = async (
-  confirmationResult: any,
-  code: string,
-  nickname?: string
-): Promise<{ user: UserProfile; space: SharedSpace | null }> => {
-  return firebaseVerifyPhoneCode(confirmationResult, code, nickname)
 }
 
 // 4. Permanent Profile Customization Update
