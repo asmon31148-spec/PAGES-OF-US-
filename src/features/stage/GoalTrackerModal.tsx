@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useAuth } from '@/core/auth'
+import { useTheme } from '@/core/theme'
 import { useToast } from '@/core/toast'
 import { getSupabaseClient } from '@/core/storage/supabase'
 import { getFirebaseDb } from '@/core/storage/firebase'
@@ -93,6 +94,7 @@ export const GoalTrackerModal: React.FC<GoalTrackerModalProps> = ({
   onUpdateAnniversary
 }) => {
   const { user, space, partner } = useAuth()
+  const { theme } = useTheme()
   const { showToast } = useToast()
 
   const [goals, setGoals] = useState<CoupleGoalItem[]>([])
@@ -269,7 +271,13 @@ export const GoalTrackerModal: React.FC<GoalTrackerModalProps> = ({
   const completedCount = goals.filter((g) => g.isCompleted).length
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col justify-start overflow-y-auto px-4 py-5 sm:p-8 bg-[var(--bg)] text-[var(--ink)] animate-in fade-in transition-colors duration-200">
+    <div
+      className="fixed inset-0 z-[9999] flex flex-col justify-start overflow-y-auto px-4 py-5 sm:p-8 animate-in fade-in transition-colors duration-200"
+      style={{
+        backgroundColor: theme.bg,
+        color: theme.textPrimary
+      }}
+    >
       <div className="w-full max-w-md mx-auto flex-1 flex flex-col my-auto space-y-4">
         {/* Top Header Bar */}
         <div className="flex items-center justify-between pb-3 border-b border-[var(--line)]">
@@ -288,13 +296,25 @@ export const GoalTrackerModal: React.FC<GoalTrackerModalProps> = ({
         </div>
 
         {/* 1. Relationship Days Counter Hero Banner (Image 1 Style) */}
-        <div className="p-6 rounded-3xl bg-gradient-to-br from-rose-500/10 via-pink-500/5 to-amber-500/10 border border-rose-500/20 shadow-md text-center space-y-2">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[var(--white)] shadow-2xs border border-[var(--line)] text-[11px] font-semibold text-rose-600">
+        <div
+          className="p-6 rounded-3xl border shadow-md text-center space-y-2"
+          style={{
+            backgroundColor: theme.surface,
+            borderColor: theme.surfaceBorder
+          }}
+        >
+          <div
+            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full shadow-2xs border text-[11px] font-semibold text-rose-600"
+            style={{
+              backgroundColor: theme.badgeBg,
+              borderColor: theme.surfaceBorder
+            }}
+          >
             <Heart className="w-3.5 h-3.5 fill-rose-500 text-rose-500" />
             <span>Been Together</span>
           </div>
 
-          <div className="text-4xl font-extrabold tracking-tight text-[var(--ink)]">
+          <div className="text-4xl font-extrabold tracking-tight">
             {daysTogether} Days
           </div>
 
@@ -375,11 +395,15 @@ export const GoalTrackerModal: React.FC<GoalTrackerModalProps> = ({
           {filteredGoals.map((goal) => (
             <div
               key={goal.id}
-              className={`p-3.5 rounded-2xl border transition-all duration-200 flex items-center justify-between gap-3 ${
+              className={`p-3.5 rounded-2xl border transition-all duration-200 flex items-center justify-between gap-3 shadow-xs ${
                 goal.isCompleted
-                  ? 'bg-emerald-500/5 border-emerald-500/25 shadow-xs'
-                  : 'bg-[var(--white)] border-[var(--line)] hover:border-[var(--app-accent)]/50 shadow-xs'
+                  ? 'bg-emerald-500/10 border-emerald-500/30'
+                  : ''
               }`}
+              style={{
+                backgroundColor: goal.isCompleted ? undefined : theme.surface,
+                borderColor: goal.isCompleted ? undefined : theme.surfaceBorder
+              }}
             >
               <div className="flex items-center gap-3 min-w-0 flex-1">
                 <div
