@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Pages of Us</string>
+    <string name="title_activity_main">Pages of Us</string>
+    <string name="package_name">com.pagesofus.app</string>
+    <string name="custom_url_scheme">com.pagesofus.app</string>
+</resources>

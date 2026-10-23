@@ -1,0 +1,19 @@
+{
+  "short_name": "Pages of Us",
+  "name": "Pages of Us — Sanctuary for Two",
+  "description": "A quiet, private digital sanctuary for two partners.",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "192x192 512x512",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#efede8",
+  "theme_color": "#efede8",
+  "display": "standalone",
+  "orientation": "portrait",
+  "categories": ["lifestyle", "social"]
+}

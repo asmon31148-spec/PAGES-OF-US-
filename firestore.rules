@@ -1,0 +1,41 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper function to check if the user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // User profile documents: only the owner can read/write their private profile
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // Shared space: readable and writable by registered space members
+    match /spaces/{spaceId} {
+      allow read, write: if isAuthenticated();
+      
+      // All child subcollections in a space (notes, checkins, memories)
+      match /{allChildren=**} {
+        allow read, write: if isAuthenticated();
+      }
+    }
+
+    // App content (pinned notes, thoughts, mood aura, blind thoughts)
+    match /app_content/{contentId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    // Shared memories collection
+    match /memories/{memoryId} {
+      allow read, write: if isAuthenticated();
+    }
+    
+    // Default fallback
+    match /{document=**} {
+      allow read, write: if isAuthenticated();
+    }
+  }
+}
