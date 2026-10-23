@@ -11,7 +11,6 @@ import {
   User as FirebaseUser
 } from 'firebase/auth'
 import { Capacitor } from '@capacitor/core'
-import { FirebaseAuthentication } from '@capacitor-firebase/authentication'
 import {
   doc,
   getDoc,
@@ -237,6 +236,7 @@ export const firebaseSignInWithGoogle = async (): Promise<{ user: UserProfile; s
   try {
     if (Capacitor.isNativePlatform()) {
       // Native Android Google One Tap / Credential Manager bottom sheet (stays inside app)
+      const { FirebaseAuthentication } = await import('@capacitor-firebase/authentication')
       const result = await FirebaseAuthentication.signInWithGoogle()
       if (result.credential?.idToken) {
         const googleCred = GoogleAuthProvider.credential(result.credential.idToken)

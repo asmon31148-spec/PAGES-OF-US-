@@ -35,6 +35,11 @@ export const getFirebaseApp = (): FirebaseApp | null => {
   return app
 }
 
+// Eagerly initialize default app on module load if configured
+try {
+  getFirebaseApp()
+} catch {}
+
 export const getFirebaseAuth = (): Auth | null => {
   const firebaseApp = getFirebaseApp()
   if (!firebaseApp) return null
