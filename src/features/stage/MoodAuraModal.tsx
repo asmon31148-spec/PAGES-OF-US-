@@ -77,36 +77,36 @@ export const MoodAuraModal: React.FC<MoodAuraModalProps> = ({
   if (!isOpen) return null
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm transition-opacity duration-200"
-      onClick={onClose}
-    >
-      <div
-        className="w-full max-w-md bg-[var(--white)] text-[var(--ink)] rounded-t-3xl sm:rounded-3xl border border-[var(--line)] shadow-2xl overflow-hidden p-6 animate-in slide-in-from-bottom-6 duration-300"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
+    <div className="fixed inset-0 z-50 flex flex-col justify-start overflow-y-auto px-4 py-5 sm:p-8 bg-[var(--bg)] text-[var(--ink)] animate-in fade-in transition-colors duration-200">
+      <div className="w-full max-w-md mx-auto flex-1 flex flex-col my-auto space-y-4">
+        {/* Top Header Bar */}
         <div className="flex items-center justify-between pb-3 border-b border-[var(--line)]">
-          <div>
-            <span className="text-[10px] tracking-widest font-mono uppercase text-[var(--app-accent)] font-bold">
-              Intimate Presence
-            </span>
-            <h3 className="font-serif text-lg font-medium text-[var(--ink)]">
-              How is your heart feeling?
-            </h3>
-          </div>
           <button
             type="button"
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-[var(--paper)] flex items-center justify-center text-[var(--soft)] hover:text-[var(--ink)] transition cursor-pointer"
+            className="p-1.5 rounded-full cursor-pointer hover:bg-[var(--paper)] transition flex items-center gap-1.5 text-xs font-medium text-[var(--soft)]"
           >
             <X className="w-4 h-4" />
+            <span>Close</span>
           </button>
+          <div className="text-center">
+            <h3 className="text-sm font-semibold tracking-tight">Today's Mood Aura</h3>
+          </div>
+          <div className="w-12" />
         </div>
 
-        <p className="text-xs text-[var(--soft)] mt-2 mb-4 leading-relaxed">
-          Select a quiet aura for today. Your partner will see your ambient glow around your avatar on their home screen.
-        </p>
+        <div className="p-6 rounded-3xl border border-[var(--line)] bg-[var(--white)] shadow-md space-y-4 flex-1 my-auto">
+          <div>
+            <span className="text-[10px] tracking-widest font-semibold uppercase text-[var(--app-accent)]">
+              DAILY PRESENCE
+            </span>
+            <h2 className="text-lg font-bold text-[var(--ink)] mt-0.5">
+              How is your heart feeling?
+            </h2>
+            <p className="text-xs text-[var(--soft)] mt-1 leading-relaxed">
+              Select a mood aura for today. Your partner will see your ambient glow around your avatar on their home screen.
+            </p>
+          </div>
 
         {/* Mood Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-[50vh] overflow-y-auto pr-1">
@@ -166,6 +166,7 @@ export const MoodAuraModal: React.FC<MoodAuraModalProps> = ({
             </button>
           </div>
         )}
+        </div>
       </div>
     </div>
   )

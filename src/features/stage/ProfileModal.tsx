@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react'
 import { useAuth } from '@/core/auth'
 import { useToast } from '@/core/toast'
 import { uploadMediaFile } from '@/core/storage/uploader'
-import { Camera, LogOut, Sparkles, User, Mail, Quote, Check, RefreshCw } from 'lucide-react'
+import { Camera, LogOut, Sparkles, User, Mail, Quote, Check, RefreshCw, X } from 'lucide-react'
 
 interface ProfileModalProps {
   isOpen: boolean
@@ -88,25 +88,36 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) =
   const initial = (nickname || user.nickname || 'Y').charAt(0).toUpperCase()
 
   return (
-    <div
-      className="modal-backdrop show"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose()
-      }}
-    >
-      <div className="modal max-w-sm">
-        <div className="modal-handle"></div>
-        <button type="button" className="close" onClick={onClose}>
-          ×
-        </button>
+    <div className="fixed inset-0 z-50 flex flex-col justify-start overflow-y-auto px-4 py-5 sm:p-8 bg-[var(--bg)] text-[var(--ink)] animate-in fade-in transition-colors duration-200">
+      <div className="w-full max-w-md mx-auto flex-1 flex flex-col my-auto space-y-4">
+        {/* Top Header Bar */}
+        <div className="flex items-center justify-between pb-3 border-b border-[var(--line)]">
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-1.5 rounded-full cursor-pointer hover:bg-[var(--paper)] transition flex items-center gap-1.5 text-xs font-medium text-[var(--soft)]"
+          >
+            <X className="w-4 h-4" />
+            <span>Close</span>
+          </button>
+          <div className="text-center">
+            <h3 className="text-sm font-semibold tracking-tight">Your Profile</h3>
+          </div>
+          <div className="w-12" />
+        </div>
 
-        <div className="modal-date">ACCOUNT & PRESENCE</div>
-        <h3>Customize Profile</h3>
-        <p className="text-[11px] text-[var(--soft)] mb-4">
-          Your profile, avatar, and Instagram-style note are stored permanently in the cloud.
-        </p>
+        <div className="p-6 rounded-3xl border border-[var(--line)] bg-[var(--white)] shadow-md space-y-5 flex-1 my-auto">
+          <div>
+            <div className="text-[10px] tracking-widest font-semibold uppercase text-[var(--app-accent)]">
+              ACCOUNT & PRESENCE
+            </div>
+            <h2 className="text-lg font-bold text-[var(--ink)] mt-0.5">Edit Profile</h2>
+            <p className="text-xs text-[var(--soft)] mt-0.5">
+              Your profile, avatar photo, and daily thoughts sync instantly with your partner.
+            </p>
+          </div>
 
-        {/* 1. Avatar Photo Section */}
+          {/* 1. Avatar Photo Section */}
         <div className="flex flex-col items-center justify-center mb-5">
           <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
             <div className="w-20 h-20 rounded-full p-1 bg-gradient-to-tr from-[#8a9b85] to-[#b77e6b] shadow-md">
@@ -234,31 +245,32 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) =
           </div>
         </div>
 
-        {/* Buttons */}
-        <div className="flex gap-2 mt-5">
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={isSaving}
-            className="flex-1 py-2.5 rounded-xl bg-[var(--app-accent)] text-white text-xs font-medium cursor-pointer hover:opacity-90 transition shadow-xs flex items-center justify-center gap-1.5 disabled:opacity-50"
-          >
-            {isSaving ? (
-              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-            ) : (
-              <Check className="w-3.5 h-3.5" />
-            )}
-            <span>Save Profile</span>
-          </button>
+          {/* Buttons */}
+          <div className="flex gap-2 pt-2">
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={isSaving}
+              className="flex-1 py-3 rounded-2xl bg-[var(--app-accent)] text-white text-xs font-semibold cursor-pointer hover:opacity-90 transition shadow-xs flex items-center justify-center gap-1.5 disabled:opacity-50"
+            >
+              {isSaving ? (
+                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Check className="w-3.5 h-3.5" />
+              )}
+              <span>Save Profile</span>
+            </button>
 
-          <button
-            type="button"
-            onClick={handleLogout}
-            className="py-2.5 px-3 rounded-xl border border-rose-300 dark:border-rose-900 bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 text-xs font-medium cursor-pointer hover:opacity-85 transition flex items-center gap-1"
-            title="Log out of account"
-          >
-            <LogOut className="w-3.5 h-3.5" />
-            <span>Logout</span>
-          </button>
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="py-3 px-4 rounded-2xl border border-rose-300 dark:border-rose-900 bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 text-xs font-semibold cursor-pointer hover:opacity-85 transition flex items-center gap-1"
+              title="Log out of account"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span>Logout</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>

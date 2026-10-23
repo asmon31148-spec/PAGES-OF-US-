@@ -21,8 +21,9 @@
     --green: #708279;
     --green-dark: var(--app-accent, #425b4d);
     --terra: #b77e6b;
-    --serif: 'Playfair Display', Georgia, serif;
-    --sans: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --apple: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "SF Pro", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --serif: var(--apple);
+    --sans: var(--apple);
 
     --sat: env(safe-area-inset-top, 0px);
     --sab: env(safe-area-inset-bottom, 0px);
@@ -1369,5 +1370,44 @@ button:active:not(:disabled),
 [role='button']:active,
 .cursor-pointer:active {
   transform: scale(0.98);
+}
+
+/* =========================================================================
+   ULTIMATE GLOBAL SCROLLBAR ERASER (LIGHT & DARK MODE 100% INVISIBLE)
+   ========================================================================= */
+html,
+body,
+#root,
+div,
+main,
+section,
+article,
+aside,
+nav,
+* {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+
+::-webkit-scrollbar,
+*::-webkit-scrollbar,
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  background: transparent !important;
+}
+
+::-webkit-scrollbar-thumb,
+*::-webkit-scrollbar-thumb {
+  display: none !important;
+  background: transparent !important;
+}
+
+::-webkit-scrollbar-track,
+*::-webkit-scrollbar-track {
+  display: none !important;
+  background: transparent !important;
 }
 

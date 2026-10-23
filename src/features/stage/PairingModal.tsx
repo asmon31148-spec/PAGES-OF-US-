@@ -44,29 +44,35 @@ export const PairingModal: React.FC<PairingModalProps> = ({ isOpen, onClose }) =
 
   return (
     <div
-      className="fixed inset-0 z-[1000] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm animate-in fade-in"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose()
-      }}
+      className="fixed inset-0 z-[1000] flex flex-col justify-start overflow-y-auto px-4 py-5 sm:p-8 bg-[var(--app-bg)] text-[var(--ink)] animate-in fade-in transition-colors duration-200"
     >
-      <div className="w-full max-w-sm rounded-t-3xl sm:rounded-3xl p-6 shadow-2xl relative border border-[var(--line)] bg-[var(--white)] text-[var(--ink)] max-h-[90dvh] overflow-y-auto">
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 p-2 rounded-full text-[var(--soft)] hover:text-[var(--ink)] transition cursor-pointer"
-        >
-          <X className="w-4 h-4" />
-        </button>
+      <div className="w-full max-w-md mx-auto flex-1 flex flex-col my-auto space-y-4">
+        {/* Top Header Bar */}
+        <div className="flex items-center justify-between pb-3 border-b border-[var(--line)]">
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-1.5 rounded-full cursor-pointer hover:bg-[var(--paper)] transition flex items-center gap-1.5 text-xs font-medium text-[var(--ink)]"
+          >
+            <X className="w-4 h-4" />
+            <span>Close</span>
+          </button>
+          <div className="text-center">
+            <h3 className="text-sm font-semibold tracking-tight text-[var(--ink)]">Partner Connection</h3>
+          </div>
+          <div className="w-12" />
+        </div>
 
-        <div className="space-y-4">
+        <div className="p-6 rounded-3xl border border-[var(--line)] bg-[var(--white)] shadow-md space-y-4 flex-1 my-auto">
           {/* Header */}
           <div className="text-center space-y-1">
-            <div className="w-10 h-10 rounded-2xl mx-auto flex items-center justify-center mb-1.5 bg-[var(--paper)] text-[var(--app-accent)]">
+            <div className="w-11 h-11 rounded-2xl mx-auto flex items-center justify-center mb-1.5 bg-[var(--paper)] text-[var(--app-accent)] shadow-2xs">
               <Sparkles className="w-5 h-5 text-[var(--terra)]" />
             </div>
-            <h2 className="text-base font-serif font-semibold text-[var(--ink)]">
+            <h2 className="text-base font-bold text-[var(--ink)]">
               Two-Device Connection
             </h2>
-            <p className="text-[11px] text-[var(--soft)] leading-relaxed">
+            <p className="text-xs text-[var(--soft)] leading-relaxed">
               Connect both phones to share this private world in real time.
             </p>
           </div>

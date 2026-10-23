@@ -591,7 +591,7 @@ export const StageView: React.FC<StageViewProps> = ({
           <span className="w-8 h-px bg-[#deddd7]" />
         </div>
         <p className="text-[9px] text-[#93968d] mt-1 tracking-wider uppercase">
-          A quiet digital sanctuary for two
+          A private shared space for two
         </p>
       </div>
 

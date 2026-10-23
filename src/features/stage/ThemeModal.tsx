@@ -16,23 +16,39 @@ export const ThemeModal: React.FC<ThemeModalProps> = ({ isOpen, onClose }) => {
   const filteredThemes = availableThemes.filter((t) => (activeTab === 'dark' ? t.isDark : !t.isDark))
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-in fade-in">
-      <div
-        className="w-full max-w-sm rounded-3xl p-6 shadow-2xl relative border max-h-[85vh] overflow-y-auto no-scrollbar transition-colors duration-200"
-        style={{
-          backgroundColor: theme.bgSecondary,
-          borderColor: theme.surfaceBorder,
-          color: theme.textPrimary
-        }}
-      >
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 p-2 rounded-full opacity-60 hover:opacity-100 transition cursor-pointer"
-        >
-          <X className="w-4 h-4" />
-        </button>
+    <div
+      className="fixed inset-0 z-50 flex flex-col justify-start overflow-y-auto px-4 py-5 sm:p-8 animate-in fade-in transition-colors duration-200"
+      style={{
+        backgroundColor: theme.bg,
+        color: theme.textPrimary
+      }}
+    >
+      <div className="w-full max-w-md mx-auto flex-1 flex flex-col my-auto space-y-4">
+        {/* Top Header Bar */}
+        <div className="flex items-center justify-between pb-3 border-b border-[var(--line)]">
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-1.5 rounded-full cursor-pointer hover:bg-[var(--paper)] transition flex items-center gap-1.5 text-xs font-medium"
+            style={{ color: theme.textPrimary }}
+          >
+            <X className="w-4 h-4" />
+            <span>Close</span>
+          </button>
+          <div className="text-center">
+            <h3 className="text-sm font-semibold tracking-tight">Appearance & Themes</h3>
+          </div>
+          <div className="w-12" />
+        </div>
 
-        <div className="space-y-4">
+        <div
+          className="p-6 rounded-3xl border shadow-md space-y-4 flex-1 my-auto transition-colors duration-200"
+          style={{
+            backgroundColor: theme.surface,
+            borderColor: theme.surfaceBorder,
+            color: theme.textPrimary
+          }}
+        >
           <div className="flex items-center gap-2.5">
             <div
               className="p-2 rounded-xl"
@@ -41,9 +57,9 @@ export const ThemeModal: React.FC<ThemeModalProps> = ({ isOpen, onClose }) => {
               <Palette className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-base font-bold">Sanctuary Atmosphere</h2>
+              <h2 className="text-base font-bold">Theme & Atmosphere</h2>
               <p className="text-xs" style={{ color: theme.textMuted }}>
-                Choose your light and dark mood aesthetic
+                Choose your light and dark visual style
               </p>
             </div>
           </div>

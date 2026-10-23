@@ -395,7 +395,7 @@ export const BlindPromptCard: React.FC = () => {
 
     const resetData: BlindPromptData = {
       question: question.trim(),
-      vibeTag: vibeTag || 'MIDNIGHT THOUGHTS',
+      vibeTag: vibeTag || 'DAILY THOUGHTS',
       category,
       stage,
       isAiGenerated: isAi,
@@ -459,7 +459,7 @@ export const BlindPromptCard: React.FC = () => {
     <>
       {/* SECTION HEADER ROW */}
       <div className="section-row flex-wrap gap-y-1">
-        <strong>Midnight thoughts</strong>
+        <strong>Random thoughts</strong>
         <div className="flex items-center gap-1.5 shrink-0">
           <span className="text-[9px] tracking-wider text-[#7a8178] uppercase max-w-[105px] truncate">
             {promptData.vibeTag || 'THIS WEEK · 04'}
@@ -664,7 +664,7 @@ export const BlindPromptCard: React.FC = () => {
               ×
             </button>
             <div className="modal-date">
-              {promptData.vibeTag || 'MIDNIGHT THOUGHTS · BLIND REVEAL'}
+              {promptData.vibeTag || 'RANDOM THOUGHTS · BLIND REVEAL'}
             </div>
             <h3 className="text-xl leading-snug">{promptData.question}</h3>
             <p className="text-xs text-[var(--soft)] mb-3 not-italic">
@@ -731,7 +731,7 @@ export const BlindPromptCard: React.FC = () => {
             </button>
 
             <div className="modal-date">QUESTION STUDIO</div>
-            <h3 className="text-xl mb-1">Pick your next Midnight Thought</h3>
+            <h3 className="text-xl mb-1">Pick your next Random Thought</h3>
             <p className="text-xs text-[var(--soft)] not-italic mb-4">
               Generate AI questions tailored to your relationship vibe or write your own.
             </p>
