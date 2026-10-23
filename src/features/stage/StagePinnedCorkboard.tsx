@@ -327,7 +327,7 @@ export const StagePinnedCorkboard: React.FC = () => {
                 setTempNoteInput('')
                 setIsEditingMyNote(true)
               }}
-              className="w-full py-3.5 px-3 rounded-xl border border-dashed border-[var(--line)] hover:border-[#425b4d]/60 bg-white/80 dark:bg-black/20 hover:bg-white transition-all flex items-center justify-center gap-2 group active:scale-[0.98] cursor-pointer my-1"
+              className="w-full py-3 px-3 rounded-xl border border-dashed border-[#425b4d]/35 hover:border-[#425b4d] bg-[#425b4d]/[0.03] hover:bg-[#425b4d]/[0.08] transition-all flex items-center justify-center gap-2 group active:scale-[0.98] cursor-pointer my-1"
             >
               <Edit3 className="w-3.5 h-3.5 text-[#425b4d] group-hover:scale-110 transition-transform" />
               <span className="text-xs font-medium text-[var(--ink)]">
@@ -384,7 +384,7 @@ export const StagePinnedCorkboard: React.FC = () => {
               </p>
             </div>
           ) : (
-            <div className="w-full py-3.5 px-3 rounded-xl border border-[var(--line)]/50 bg-black/[0.02] dark:bg-white/[0.02] text-center my-1 flex items-center justify-center">
+            <div className="w-full py-3 px-3 rounded-xl border border-dashed border-[var(--line)]/60 bg-transparent text-center my-1 flex items-center justify-center">
               <p className="text-xs text-[var(--soft)] font-medium italic">
                 Waiting for {partner?.nickname || 'partner'} to pin a note...
               </p>
