@@ -233,7 +233,7 @@ export const StagePinnedCorkboard: React.FC = () => {
       {/* 1. Header Row */}
       <div className="flex items-center justify-between border-b border-[var(--line)]/60 pb-3">
         <div className="flex items-center gap-2">
-          <span className="w-7 h-7 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+          <span className="w-7 h-7 rounded-full bg-[#425b4d]/10 text-[#425b4d] flex items-center justify-center shrink-0">
             <Pin className="w-3.5 h-3.5" />
           </span>
           <div>
@@ -272,38 +272,42 @@ export const StagePinnedCorkboard: React.FC = () => {
       {/* 2. Dual Sticky Notes Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
         {/* Your Sticky Note */}
-        <div className="relative p-3.5 rounded-xl border border-amber-200/60 dark:border-amber-900/40 bg-amber-50/40 dark:bg-amber-950/20 flex flex-col justify-between min-h-[105px] transition shadow-2xs">
+        <div className="relative p-4 rounded-2xl border border-[var(--line)] bg-[var(--paper)]/75 dark:bg-white/[0.03] flex flex-col justify-between min-h-[120px] transition shadow-xs">
           {/* Note Top Bar */}
-          <div className="flex items-center justify-between gap-1 mb-1.5 border-b border-amber-200/40 dark:border-amber-900/30 pb-1.5">
-            <div className="flex items-center gap-1.5">
-              <span className="text-[10px] font-semibold text-[var(--ink)]">From You</span>
+          <div className="flex items-center justify-between gap-1 mb-2 border-b border-[var(--line)]/60 pb-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="w-2 h-2 rounded-full bg-[#425b4d] shrink-0" />
+              <span className="text-xs font-semibold text-[var(--ink)] truncate">From You</span>
+              <span className="px-1.5 py-0.5 rounded-full bg-[#425b4d]/10 text-[#425b4d] font-mono text-[9px] font-semibold uppercase tracking-wider shrink-0">
+                You
+              </span>
               {myNoteEntry?.updatedAt && (
-                <span className="text-[9px] text-[var(--soft)] font-mono">
+                <span className="text-[10px] text-[var(--soft)] font-mono truncate hidden sm:inline">
                   • {formatLocalDate(myNoteEntry.updatedAt, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
                 </span>
               )}
             </div>
 
             {myNoteEntry && (
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1 shrink-0">
                 <button
                   type="button"
                   onClick={() => {
                     setTempNoteInput(myNoteEntry.note)
                     setIsEditingMyNote(true)
                   }}
-                  className="p-1 hover:text-[var(--app-accent)] text-[var(--soft)] transition cursor-pointer"
+                  className="p-1.5 rounded-md hover:bg-black/5 dark:hover:bg-white/10 text-[var(--soft)] hover:text-[var(--ink)] transition cursor-pointer"
                   title="Edit your pinned note"
                 >
-                  <Edit3 className="w-3 h-3" />
+                  <Edit3 className="w-3.5 h-3.5" />
                 </button>
                 <button
                   type="button"
                   onClick={handleClearMyNote}
-                  className="p-1 hover:text-red-500 text-[var(--soft)] transition cursor-pointer"
+                  className="p-1.5 rounded-md hover:bg-red-500/10 text-[var(--soft)] hover:text-red-500 transition cursor-pointer"
                   title="Clear your pinned note"
                 >
-                  <Trash2 className="w-3 h-3" />
+                  <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </div>
             )}
@@ -311,9 +315,11 @@ export const StagePinnedCorkboard: React.FC = () => {
 
           {/* Note Content */}
           {myNoteEntry ? (
-            <p className="font-serif italic text-xs text-[var(--ink)] leading-relaxed py-1">
-              “{myNoteEntry.note}”
-            </p>
+            <div className="p-3 rounded-xl bg-white/95 dark:bg-black/20 border border-[var(--line)] shadow-2xs my-1">
+              <p className="font-serif italic text-xs sm:text-[13px] text-[var(--ink)] leading-relaxed select-text">
+                “{myNoteEntry.note}”
+              </p>
+            </div>
           ) : (
             <button
               type="button"
@@ -321,28 +327,35 @@ export const StagePinnedCorkboard: React.FC = () => {
                 setTempNoteInput('')
                 setIsEditingMyNote(true)
               }}
-              className="w-full py-3 px-3 border border-dashed border-amber-400/50 rounded-lg text-center text-xs font-medium text-amber-700 dark:text-amber-300 hover:bg-amber-100/30 transition active:scale-[0.98] cursor-pointer"
+              className="w-full py-3.5 px-3 rounded-xl border border-dashed border-[var(--line)] hover:border-[#425b4d]/60 bg-white/80 dark:bg-black/20 hover:bg-white transition-all flex items-center justify-center gap-2 group active:scale-[0.98] cursor-pointer my-1"
             >
-              📌 Pin a reminder or sweet note
+              <Edit3 className="w-3.5 h-3.5 text-[#425b4d] group-hover:scale-110 transition-transform" />
+              <span className="text-xs font-medium text-[var(--ink)]">
+                Write a reminder or sweet note
+              </span>
             </button>
           )}
 
-          <div className="flex items-center justify-between text-[9px] text-[var(--soft)] pt-1">
+          <div className="flex items-center justify-between text-[10px] text-[var(--soft)] pt-1.5">
             <span>Only you can edit this pin</span>
-            <span className="text-amber-600/70 dark:text-amber-400/70">✦ Your board</span>
+            <span className="font-mono text-[9.5px] text-[#425b4d] font-medium">✦ Active Board</span>
           </div>
         </div>
 
         {/* Partner's Sticky Note */}
-        <div className="relative p-3.5 rounded-xl border border-rose-200/60 dark:border-rose-900/40 bg-rose-50/40 dark:bg-rose-950/20 flex flex-col justify-between min-h-[105px] transition shadow-2xs">
+        <div className="relative p-4 rounded-2xl border border-[var(--line)] bg-[var(--paper)]/75 dark:bg-white/[0.03] flex flex-col justify-between min-h-[120px] transition shadow-xs">
           {/* Partner Top Bar */}
-          <div className="flex items-center justify-between gap-1 mb-1.5 border-b border-rose-200/40 dark:border-rose-900/30 pb-1.5">
-            <div className="flex items-center gap-1.5">
-              <span className="text-[10px] font-semibold text-[var(--ink)]">
+          <div className="flex items-center justify-between gap-1 mb-2 border-b border-[var(--line)]/60 pb-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="w-2 h-2 rounded-full bg-[#c97a63] shrink-0" />
+              <span className="text-xs font-semibold text-[var(--ink)] truncate">
                 From {partner?.nickname || 'Partner'}
               </span>
+              <span className="px-1.5 py-0.5 rounded-full bg-[#c97a63]/10 text-[#c97a63] font-mono text-[9px] font-semibold uppercase tracking-wider shrink-0">
+                Partner
+              </span>
               {partnerNoteEntry?.updatedAt && (
-                <span className="text-[9px] text-[var(--soft)] font-mono">
+                <span className="text-[10px] text-[var(--soft)] font-mono truncate hidden sm:inline">
                   • {formatLocalDate(partnerNoteEntry.updatedAt, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
                 </span>
               )}
@@ -355,30 +368,32 @@ export const StagePinnedCorkboard: React.FC = () => {
                   confetti({ particleCount: 20, spread: 45, origin: { y: 0.65 } })
                   showToast(`Acknowledged ${partner?.nickname || 'partner'}'s note 💕`)
                 }}
-                className="p-1 hover:text-rose-500 text-[var(--soft)] transition cursor-pointer"
+                className="p-1.5 rounded-md hover:bg-rose-500/10 text-[var(--soft)] hover:text-rose-500 transition cursor-pointer"
                 title="Send heart reaction"
               >
-                <Heart className="w-3 h-3 fill-rose-500 text-rose-500" />
+                <Heart className="w-3.5 h-3.5 fill-rose-500 text-rose-500" />
               </button>
             )}
           </div>
 
           {/* Partner Note Content */}
           {partnerNoteEntry ? (
-            <p className="font-serif italic text-xs text-[var(--ink)] leading-relaxed py-1">
-              “{partnerNoteEntry.note}”
-            </p>
+            <div className="p-3 rounded-xl bg-white/95 dark:bg-black/20 border border-[var(--line)] shadow-2xs my-1">
+              <p className="font-serif italic text-xs sm:text-[13px] text-[var(--ink)] leading-relaxed select-text">
+                “{partnerNoteEntry.note}”
+              </p>
+            </div>
           ) : (
-            <div className="py-3 text-center">
-              <p className="text-[11px] text-[var(--soft)] italic">
+            <div className="w-full py-3.5 px-3 rounded-xl border border-[var(--line)]/50 bg-black/[0.02] dark:bg-white/[0.02] text-center my-1 flex items-center justify-center">
+              <p className="text-xs text-[var(--soft)] font-medium italic">
                 Waiting for {partner?.nickname || 'partner'} to pin a note...
               </p>
             </div>
           )}
 
-          <div className="flex items-center justify-between text-[9px] text-[var(--soft)] pt-1">
+          <div className="flex items-center justify-between text-[10px] text-[var(--soft)] pt-1.5">
             <span>Posted by {partnerNoteEntry?.updatedBy || partner?.nickname || 'Partner'}</span>
-            <span className="text-rose-600/70 dark:text-rose-400/70">✦ Partner's pin</span>
+            <span className="font-mono text-[9.5px] text-[#c97a63] font-medium">✦ Partner's Pin</span>
           </div>
         </div>
       </div>
