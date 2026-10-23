@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
-import { Device } from '@capacitor/device'
+import { Geolocation } from '@capacitor/geolocation'
 import { useAuth } from '@/core/auth'
 import { useToast } from '@/core/toast'
 import { getSupabaseClient } from '@/core/storage/supabase'
@@ -10,8 +10,6 @@ import L from 'leaflet'
 import {
   Navigation,
   MapPin,
-  Battery,
-  BatteryCharging,
   RefreshCw,
   Plus,
   Trash2,
@@ -45,8 +43,6 @@ export interface UserLocationData {
   neighborhood?: string
   city?: string
   customLabel?: string
-  battery?: number
-  isCharging?: boolean
   accuracy?: number
   isSharingEnabled: boolean
   updatedAt: string
@@ -599,39 +595,6 @@ export const PartnerLocationCard: React.FC = () => {
     }
   }, [isExpandedMap])
 
-  // Battery Info Helper (Native Capacitor Device Plugin + Web Battery Fallback)
-  const getBatteryInfo = async (): Promise<{ level: number; isCharging: boolean } | null> => {
-    try {
-      // 1. First try native Capacitor Device plugin (Android / iOS)
-      const capBattery = await Device.getBatteryInfo()
-      if (capBattery && typeof capBattery.batteryLevel === 'number' && !isNaN(capBattery.batteryLevel)) {
-        return {
-          level: Math.round(capBattery.batteryLevel * 100),
-          isCharging: Boolean(capBattery.isCharging)
-        }
-      }
-    } catch {
-      // Capacitor plugin unsupported in web desktop or permissions
-    }
-
-    try {
-      // 2. Fallback to standard web Battery API if available
-      if ('getBattery' in navigator) {
-        const b = await (navigator as any).getBattery()
-        if (typeof b?.level === 'number' && !isNaN(b.level)) {
-          return {
-            level: Math.round(b.level * 100),
-            isCharging: Boolean(b.charging)
-          }
-        }
-      }
-    } catch {
-      // Battery API blocked
-    }
-
-    return null
-  }
-
   // Reverse Geocoding with Distance-Throttled Cache
   const reverseGeocode = async (
     lat: number,
@@ -698,7 +661,6 @@ export const PartnerLocationCard: React.FC = () => {
     async (lat: number, lng: number, accuracy?: number, customTag?: string) => {
       if (!user) return
 
-      const batteryData = await getBatteryInfo()
       const { neighborhood, city, display } = await reverseGeocode(lat, lng)
 
       const updatedLoc: UserLocationData = {
@@ -711,8 +673,6 @@ export const PartnerLocationCard: React.FC = () => {
         city,
         placeName: display,
         customLabel: customTag || selectedTag || undefined,
-        battery: batteryData ? batteryData.level : undefined,
-        isCharging: batteryData ? batteryData.isCharging : undefined,
         accuracy,
         isSharingEnabled: true,
         updatedAt: new Date().toISOString()
@@ -787,49 +747,48 @@ export const PartnerLocationCard: React.FC = () => {
     [user, selectedTag, spaceId, locationDocId, pinnedPlaces, showToast]
   )
 
-  // 5. REQUIREMENT 3: TRUE LIVE GPS TRACKING (App Open)
-  // Continuous watchPosition with High Accuracy and 0 cache age
+  // 5. TRUE LIVE GPS TRACKING (App Open) via Native Geolocation Plugin
   useEffect(() => {
     if (!isMySharingOn || !user?.id) {
       setGpsStatus('Sharing paused')
       return
     }
 
-    if (!('geolocation' in navigator)) {
-      setGpsStatus('GPS not supported')
-      return
+    setGpsStatus('Tracking live GPS')
+    let watchId: string | null = null
+
+    const startWatch = async () => {
+      try {
+        await Geolocation.requestPermissions()
+        watchId = await Geolocation.watchPosition(
+          { enableHighAccuracy: true },
+          (pos, err) => {
+            if (err || !pos) return
+            const lat = pos.coords.latitude
+            const lng = pos.coords.longitude
+            const accuracy = pos.coords.accuracy ? Math.round(pos.coords.accuracy) : 10
+
+            setGpsStatus(`Live GPS (±${accuracy}m)`)
+
+            const now = Date.now()
+            if (now - lastBroadcastTimeRef.current > 2500) {
+              lastBroadcastTimeRef.current = now
+              syncMyPosition(lat, lng, accuracy)
+            }
+          }
+        )
+      } catch (e) {
+        console.warn('GPS watch error:', e)
+        setGpsStatus('GPS Standby')
+      }
     }
 
-    setGpsStatus('Tracking live GPS')
-
-    const watchId = navigator.geolocation.watchPosition(
-      (pos) => {
-        const lat = pos.coords.latitude
-        const lng = pos.coords.longitude
-        const accuracy = Math.round(pos.coords.accuracy)
-
-        setGpsStatus(`Live GPS (±${accuracy}m)`)
-
-        // Broadcast throttled to every 1.8 seconds to avoid network saturation
-        const now = Date.now()
-        if (now - lastBroadcastTimeRef.current > 1800) {
-          lastBroadcastTimeRef.current = now
-          syncMyPosition(lat, lng, accuracy)
-        }
-      },
-      (err) => {
-        console.warn('GPS watch error:', err.message)
-        setGpsStatus(err.code === 1 ? 'Permission denied' : 'Locating...')
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 0 // NO STALE CACHE - True Live Fix
-      }
-    )
+    startWatch()
 
     return () => {
-      navigator.geolocation.clearWatch(watchId)
+      if (watchId) {
+        Geolocation.clearWatch({ id: watchId })
+      }
     }
   }, [isMySharingOn, user?.id, syncMyPosition])
 
@@ -888,41 +847,35 @@ export const PartnerLocationCard: React.FC = () => {
     }
   }
 
-  // Force single-shot fresh GPS fix
-  const handleForceGpsUpdate = () => {
+  // Force single-shot fresh GPS fix via Native Geolocation
+  const handleForceGpsUpdate = async () => {
     if (!user) return
     setIsUpdating(true)
     showToast('Acquiring fresh satellite/Wi-Fi fix...')
 
-    if (!('geolocation' in navigator)) {
-      showToast('Geolocation is not supported by your device.')
+    try {
+      await Geolocation.requestPermissions()
+      const pos = await Geolocation.getCurrentPosition({
+        enableHighAccuracy: true,
+        timeout: 10000
+      })
+
+      const lat = pos.coords.latitude
+      const lng = pos.coords.longitude
+      const accuracy = pos.coords.accuracy ? Math.round(pos.coords.accuracy) : 10
+
+      await syncMyPosition(lat, lng, accuracy)
       setIsUpdating(false)
-      return
+      showToast(`📍 Live GPS acquired (±${accuracy}m)`)
+
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.flyTo([lat, lng], 15, { duration: 1.2 })
+      }
+    } catch (err: any) {
+      console.warn('Geolocation error:', err)
+      setIsUpdating(false)
+      showToast('Could not acquire GPS. Please make sure Location is enabled on your phone.')
     }
-
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        const lat = pos.coords.latitude
-        const lng = pos.coords.longitude
-        const accuracy = Math.round(pos.coords.accuracy)
-
-        await syncMyPosition(lat, lng, accuracy)
-        setIsUpdating(false)
-        showToast(`📍 Live GPS acquired (±${accuracy}m)`)
-
-        // Center map on user
-        if (mapInstanceRef.current) {
-          mapInstanceRef.current.flyTo([lat, lng], 15, { duration: 1.2 })
-        }
-      },
-      (err) => {
-        console.warn('Geolocation error:', err)
-        setIsUpdating(false)
-        showToast('GPS unavailable. You can search or pinpoint your real address.')
-        setShowCalibrateModal(true)
-      },
-      { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
-    )
   }
 
   // Address Search using Nominatim (Solves false location on desktop)
@@ -1276,8 +1229,8 @@ export const PartnerLocationCard: React.FC = () => {
         )}
       </div>
 
-      {/* 3. REQUIREMENT 6: LIVE DISTANCE BADGE */}
-      {isMutualSharingActive && myLoc && partnerLoc && (
+      {/* 3. LIVE DISTANCE BADGE */}
+      {isMutualSharingActive && myLoc && partnerLoc ? (
         <div className="p-2.5 rounded-xl border border-[var(--line)] bg-[var(--paper)] flex items-center justify-between shadow-xs">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-full bg-[var(--app-accent)] text-[var(--app-accent-text)] flex items-center justify-center font-bold text-xs shadow-xs">
@@ -1307,6 +1260,26 @@ export const PartnerLocationCard: React.FC = () => {
             </span>
           </div>
         </div>
+      ) : (
+        /* If partner is not sharing location */
+        <div className="p-2.5 rounded-xl border border-[var(--line)] bg-[var(--paper)] flex items-center justify-between shadow-xs">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-full bg-[var(--white)] border border-[var(--line)] flex items-center justify-center text-xs">
+              📍
+            </div>
+            <div>
+              <div className="text-[9px] uppercase tracking-wider font-semibold text-[var(--soft)]">
+                Partner Location Status
+              </div>
+              <div className="text-xs font-semibold text-[var(--ink)]">
+                {partner?.nickname ? `${partner.nickname}'s location is turned off` : 'Partner is not sharing location'}
+              </div>
+            </div>
+          </div>
+          <span className="text-[9px] font-medium text-amber-600 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
+            Paused
+          </span>
+        </div>
       )}
 
       {/* 4. Partner & You Live Status Cards */}
@@ -1317,23 +1290,15 @@ export const PartnerLocationCard: React.FC = () => {
             <span className="font-semibold text-[10px] text-[var(--ink)] truncate">
               {partner?.nickname || 'Partner'}
             </span>
-            {isPartnerSharingOn && partnerLoc?.battery !== undefined ? (
-              <div
-                className="flex items-center gap-0.5 text-[9px] text-[var(--soft)]"
-                title="Partner's battery"
-              >
-                {partnerLoc.isCharging ? (
-                  <BatteryCharging className="w-3 h-3 text-emerald-600" />
-                ) : (
-                  <Battery className="w-3 h-3" />
-                )}
-                <span>{partnerLoc.battery}%</span>
-              </div>
-            ) : (
-              <span className="text-[8px] font-medium text-[var(--soft)]">
-                {isPartnerSharingOn ? 'Active' : 'Sharing Paused'}
-              </span>
-            )}
+            <span
+              className={`text-[8px] font-medium px-2 py-0.5 rounded-full ${
+                isPartnerSharingOn
+                  ? 'text-emerald-700 bg-emerald-500/10 border border-emerald-500/20'
+                  : 'text-[var(--soft)] bg-[var(--white)] border border-[var(--line)]'
+              }`}
+            >
+              {isPartnerSharingOn ? 'Sharing ON' : 'Paused'}
+            </span>
           </div>
 
           <p className="font-serif text-[11px] text-[var(--ink)] truncate font-medium">
@@ -1363,23 +1328,15 @@ export const PartnerLocationCard: React.FC = () => {
             <span className="font-semibold text-[10px] text-[var(--ink)] truncate">
               You ({user?.nickname || 'You'})
             </span>
-            {isMySharingOn && myLoc?.battery !== undefined ? (
-              <div
-                className="flex items-center gap-0.5 text-[9px] text-[var(--soft)]"
-                title="Your battery"
-              >
-                {myLoc.isCharging ? (
-                  <BatteryCharging className="w-3 h-3 text-emerald-600" />
-                ) : (
-                  <Battery className="w-3 h-3" />
-                )}
-                <span>{myLoc.battery}%</span>
-              </div>
-            ) : (
-              <span className="text-[8px] font-medium text-[#8a8b83]">
-                {isMySharingOn ? 'Sharing ON' : 'Paused'}
-              </span>
-            )}
+            <span
+              className={`text-[8px] font-medium px-2 py-0.5 rounded-full ${
+                isMySharingOn
+                  ? 'text-emerald-700 bg-emerald-500/10 border border-emerald-500/20'
+                  : 'text-[var(--soft)] bg-[var(--white)] border border-[var(--line)]'
+              }`}
+            >
+              {isMySharingOn ? 'Sharing ON' : 'Paused'}
+            </span>
           </div>
 
           <p className="font-serif text-[11px] text-[#3d423c] truncate font-medium">
@@ -1778,8 +1735,8 @@ export const PartnerLocationCard: React.FC = () => {
 
             <div className="space-y-3 my-3 text-xs text-[var(--soft)]">
               <p className="not-italic text-[11px] leading-relaxed text-[var(--ink)]">
-                <b>What is collected:</b> GPS latitude and longitude, reverse-geocoded
-                neighborhood/city, and battery percentage to let your partner know if your phone is low on charge.
+                <b>What is collected:</b> GPS latitude and longitude, and reverse-geocoded
+                neighborhood/city to calculate real-time distance to your partner.
               </p>
               <p className="not-italic text-[11px] leading-relaxed text-[var(--ink)]">
                 <b>Why it is collected:</b> Strictly to render your dual presence, tether line, and live distance on your private shared stage.

@@ -10,6 +10,7 @@ import { realtimeBridge } from '@/core/realtime'
 import { BlindPromptCard } from './BlindPromptCard'
 import { PartnerLocationCard } from './PartnerLocationCard'
 import { MoodAuraModal, MoodAura, MOOD_AURA_OPTIONS } from './MoodAuraModal'
+import { GoalTrackerModal } from './GoalTrackerModal'
 import { StageMemoryHeroDeck } from './StageMemoryHeroDeck'
 import { StageDailyCheckin } from './StageDailyCheckin'
 import { StagePinnedCorkboard } from './StagePinnedCorkboard'
@@ -40,10 +41,11 @@ export const StageView: React.FC<StageViewProps> = ({
   const moodDocId = `mood_aura_${spaceId}`
   const anniversaryDocId = `anniversary_${spaceId}`
 
-  // 1. Anniversary Date state
+  // 1. Anniversary Date state & Goals Tracker
   const [customAnniversary, setCustomAnniversary] = useState<string | null>(null)
   const [isEditingAnniversary, setIsEditingAnniversary] = useState(false)
   const [anniversaryInput, setAnniversaryInput] = useState('')
+  const [isGoalsModalOpen, setIsGoalsModalOpen] = useState(false)
 
   // 2. Daily Intimate Mood Aura
   const [myMood, setMyMood] = useState<MoodAura | null>(null)
@@ -433,11 +435,8 @@ export const StageView: React.FC<StageViewProps> = ({
         </div>
         <div
           className="flex flex-col items-end shrink-0 cursor-pointer hover:opacity-80 active:scale-95 transition"
-          onClick={() => {
-            setAnniversaryInput(customAnniversary || '')
-            setIsEditingAnniversary(true)
-          }}
-          title="Tap to customize your anniversary & days together"
+          onClick={() => setIsGoalsModalOpen(true)}
+          title="Tap to view our relationship story, firsts & goals"
         >
           <span className="date">Together since {togetherYear} ✎</span>
           <span className="text-[10px] font-mono tracking-wide text-[#738276] mt-0.5">
@@ -479,20 +478,7 @@ export const StageView: React.FC<StageViewProps> = ({
             )}
           </div>
           <div className="presence-copy min-w-0">
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <b className="truncate">{user?.nickname || 'You'}</b>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  setIsMoodModalOpen(true)
-                }}
-                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-[var(--paper)] hover:opacity-85 border border-[var(--line)] text-[9.5px] text-[var(--ink)] font-medium transition cursor-pointer"
-                title="Tap to change your daily mood aura"
-              >
-                {myMood ? `${myMood.emoji} ${myMood.label}` : '✦ Aura'}
-              </button>
-            </div>
+            <b className="truncate block text-sm font-semibold">{user?.nickname || 'You'}</b>
             <span className="thought">{user?.presenceStatus || 'Tap profile to set status note...'}</span>
           </div>
         </div>
@@ -512,17 +498,7 @@ export const StageView: React.FC<StageViewProps> = ({
         {isPaired && partner ? (
           <div className="presence-person min-w-0">
             <div className="presence-copy min-w-0 text-right">
-              <div className="flex items-center justify-end gap-1.5 flex-wrap">
-                {partnerMood && (
-                  <span
-                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-[var(--paper)] border border-[var(--line)] text-[9.5px] text-[var(--ink)] font-medium"
-                    title={`${partner.nickname} is feeling: ${partnerMood.label}`}
-                  >
-                    {partnerMood.emoji} {partnerMood.label}
-                  </span>
-                )}
-                <b className="truncate">{partner.nickname}</b>
-              </div>
+              <b className="truncate block text-sm font-semibold">{partner.nickname}</b>
               <span className="thought">{partner.presenceStatus || 'Thinking of you'}</span>
             </div>
             <div
@@ -650,6 +626,27 @@ export const StageView: React.FC<StageViewProps> = ({
         onClose={() => setIsMoodModalOpen(false)}
         currentMoodId={myMood?.id}
         onSelectMood={handleSelectMood}
+      />
+
+      {/* Couple Goals & Story Modal */}
+      <GoalTrackerModal
+        isOpen={isGoalsModalOpen}
+        onClose={() => setIsGoalsModalOpen(false)}
+        daysTogether={daysTogether}
+        startDate={startDate}
+        onUpdateAnniversary={async (newDateStr) => {
+          setCustomAnniversary(newDateStr)
+          const supabase = getSupabaseClient()
+          try {
+            await supabase.from('app_content').upsert({
+              id: anniversaryDocId,
+              content: { anniversaryDate: newDateStr },
+              updated_at: new Date().toISOString()
+            })
+          } catch (e) {
+            console.warn('Error saving anniversary:', e)
+          }
+        }}
       />
     </div>
   )
