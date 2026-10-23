@@ -1,6 +1,7 @@
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
+  signInAnonymously,
   signOut,
   updateProfile as updateAuthProfile,
   onAuthStateChanged,
@@ -98,6 +99,14 @@ export const loginAsGuest = (
   }
   guestUser.spaceId = guestSpace.id
   saveLocalSession(guestUser, guestSpace)
+
+  // Ensure an anonymous Firebase Auth session so Firestore rules allow writes
+  const auth = getFirebaseAuth()
+  if (auth && !auth.currentUser) {
+    signInAnonymously(auth).catch((err) => {
+      console.warn('Anonymous auth failed:', err)
+    })
+  }
 
   // Asynchronously register in Firestore so Phone B can pair with this code
   const db = getFirebaseDb()

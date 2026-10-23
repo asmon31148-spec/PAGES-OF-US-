@@ -76,8 +76,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
       onClose?.()
     } catch (err: any) {
       if (err.code === 'auth/unauthorized-domain' || err.message?.includes('unauthorized-domain')) {
+        const currentHost = window.location.hostname || 'your domain'
         setErrorMessage(
-          'Your mobile IP (192.168.0.202) is not authorized for Google Sign-In in Firebase Console yet. In Firebase Console → Authentication → Settings → Authorized Domains, add 192.168.0.202. Alternatively, log in instantly below with Email & Password!'
+          `Domain/Host (${currentHost}) is not authorized for Google Sign-In in Firebase Console yet. In Firebase Console → Authentication → Settings → Authorized Domains, add "${currentHost}". Alternatively, log in instantly below with Email & Password!`
         )
       } else if (err.code === 'auth/popup-closed-by-user') {
         setErrorMessage('Google Sign-In was closed before completing.')

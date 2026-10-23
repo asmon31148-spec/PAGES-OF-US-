@@ -121,16 +121,31 @@ export const LetterboxView: React.FC = () => {
     }
   }, [spaceId, fetchLetters])
 
-  const handleOpenLetter = (letter: LetterItem) => {
+  const handleOpenLetter = async (letter: LetterItem) => {
     // Check if sealed until future date
     if (letter.sealedUntilDate) {
       const today = new Date().toISOString().split('T')[0]
       if (today < letter.sealedUntilDate) {
-        showToast(`This letter is sealed until ${formatLocalDate(letter.sealedUntilDate, { day: 'numeric', month: 'long', year: 'numeric' })}.`)
-        return
+        if (letter.isMine) {
+          showToast(`Author preview (sealed for ${partner?.nickname || 'partner'} until ${formatLocalDate(letter.sealedUntilDate, { day: 'numeric', month: 'short' })})`)
+        } else {
+          showToast(`This letter is sealed until ${formatLocalDate(letter.sealedUntilDate, { day: 'numeric', month: 'long', year: 'numeric' })}.`)
+          return
+        }
       }
     }
     setSelectedLetter(letter)
+
+    // Mark as read if opened by recipient
+    if (!letter.isRead && !letter.isMine) {
+      setLetters((prev) => prev.map((l) => (l.id === letter.id ? { ...l, isRead: true } : l)))
+      try {
+        const supabase = getSupabaseClient()
+        await supabase.from('letters').update({ is_read: true }).eq('id', letter.id)
+      } catch (err) {
+        console.warn('Error updating letter read receipt:', err)
+      }
+    }
   }
 
   const handleDeleteLetter = async (id: string) => {

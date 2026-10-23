@@ -16,50 +16,12 @@ export interface MemoryItem {
   mediaUrl: string
   voiceUrl?: string
   createdAt: string
+  rawDate?: string
   addedBy: string
   isMine?: boolean
   rotation?: string
 }
 
-// Sample fallback editorial moments from the mockup
-const SEED_MEMORIES: MemoryItem[] = [
-  {
-    id: 'seed-1',
-    title: 'The long way home',
-    caption: 'We missed the last bus and found that tiny street full of lanterns. You said it felt like the city had saved it just for us.',
-    mediaUrl: '',
-    createdAt: '18 OCT · MOMENT',
-    addedBy: 'Partner',
-    rotation: '-1deg'
-  },
-  {
-    id: 'seed-2',
-    title: 'One more song',
-    caption: 'The kitchen light was still on at 1 am. We danced badly and laughed quietly so nobody would wake.',
-    mediaUrl: '',
-    createdAt: '02 SEP · HOME',
-    addedBy: 'You',
-    rotation: '1deg'
-  },
-  {
-    id: 'seed-3',
-    title: 'Rain check',
-    caption: 'We had no umbrella and absolutely nowhere to be. Still my favorite afternoon.',
-    mediaUrl: '',
-    createdAt: '14 AUG · EXPLORING',
-    addedBy: 'Both',
-    rotation: '-1deg'
-  },
-  {
-    id: 'seed-4',
-    title: 'Sunday, slowly',
-    caption: 'Blueberry pancakes, an old record, nowhere else we needed to be.',
-    mediaUrl: '',
-    createdAt: '21 JUL · HOME',
-    addedBy: 'Partner',
-    rotation: '1deg'
-  }
-]
 
 export const MemoriesView: React.FC = () => {
   const { user, space, partner } = useAuth()
@@ -123,6 +85,7 @@ export const MemoriesView: React.FC = () => {
             caption: row.caption || '',
             mediaUrl: row.media_url,
             voiceUrl: row.thumbnail_url?.includes('voice') ? row.thumbnail_url : undefined,
+            rawDate: row.created_at,
             createdAt: formatLocalDate(row.created_at, {
               day: 'numeric',
               month: 'short'
@@ -365,6 +328,25 @@ export const MemoriesView: React.FC = () => {
     }
   }
 
+  // Dynamic Year Grouping for Memories Timeline View
+  const groupedMemories = React.useMemo(() => {
+    const groups: Record<number, MemoryItem[]> = {}
+    memories.forEach((item) => {
+      let year = new Date().getFullYear()
+      if (item.rawDate) {
+        const parsed = new Date(item.rawDate).getFullYear()
+        if (!isNaN(parsed) && parsed > 1900) {
+          year = parsed
+        }
+      }
+      if (!groups[year]) groups[year] = []
+      groups[year].push(item)
+    })
+    return Object.entries(groups)
+      .map(([y, list]) => ({ year: Number(y), items: list }))
+      .sort((a, b) => b.year - a.year)
+  }, [memories])
+
   return (
     <div className="page active" id="memories">
       {/* 1. TOPBAR */}
@@ -419,28 +401,32 @@ export const MemoriesView: React.FC = () => {
 
       {/* 4. TIMELINE OR POLAROIDS */}
       {showTimeline ? (
-        <div className="timeline-panel">
-          <div className="timeline-year">2026 · THE DAYS YOU KEPT</div>
-          {memories.map((m) => (
-            <div key={m.id} className="timeline-item">
-              <span className="timeline-date">{m.createdAt}</span>
-              <div className="timeline-card flex items-center justify-between">
-                <div>
-                  <b>{m.title}</b>
-                  <span>{m.caption || `${m.addedBy} · saved together`}</span>
+        <div className="space-y-6">
+          {groupedMemories.map(({ year, items }) => (
+            <div key={year} className="timeline-panel">
+              <div className="timeline-year">{year} · THE DAYS YOU KEPT</div>
+              {items.map((m) => (
+                <div key={m.id} className="timeline-item">
+                  <span className="timeline-date">{m.createdAt}</span>
+                  <div className="timeline-card flex items-center justify-between">
+                    <div>
+                      <b>{m.title}</b>
+                      <span>{m.caption || `${m.addedBy} · saved together`}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleDeleteMemory(m.id)
+                      }}
+                      className="text-[#888a82] hover:text-red-600 p-1 cursor-pointer transition ml-2"
+                      title="Delete moment"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    handleDeleteMemory(m.id)
-                  }}
-                  className="text-[#888a82] hover:text-red-600 p-1 cursor-pointer transition ml-2"
-                  title="Delete moment"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
-              </div>
+              ))}
             </div>
           ))}
         </div>

@@ -31,6 +31,25 @@ export const TimelineView: React.FC = () => {
 
   const spaceId = space?.id || 'default_space'
 
+  // Dynamic Year Grouping for Milestones
+  const groupedMilestones = React.useMemo(() => {
+    const groups: Record<number, MilestoneItem[]> = {}
+    milestones.forEach((item) => {
+      let year = new Date().getFullYear()
+      if (item.rawDate) {
+        const parsed = new Date(item.rawDate).getFullYear()
+        if (!isNaN(parsed) && parsed > 1900) {
+          year = parsed
+        }
+      }
+      if (!groups[year]) groups[year] = []
+      groups[year].push(item)
+    })
+    return Object.entries(groups)
+      .map(([y, list]) => ({ year: Number(y), items: list }))
+      .sort((a, b) => b.year - a.year)
+  }, [milestones])
+
   // Fetch real milestones from Supabase
   const fetchMilestones = useCallback(async () => {
     try {
@@ -239,25 +258,29 @@ export const TimelineView: React.FC = () => {
           </button>
         </div>
       ) : (
-        <div className="timeline-panel" style={{ marginTop: '16px' }}>
-          <div className="timeline-year">{new Date().getFullYear()} · THE DAYS YOU KEPT</div>
-          {milestones.map((item) => (
-            <div key={item.id} className="timeline-item">
-              <span className="timeline-date">{item.date}</span>
-              <div className="timeline-card flex items-center justify-between">
-                <div>
-                  <b>{item.title}</b>
-                  <span>{item.story ? `${item.story} · Kept by ${item.addedBy}` : `Kept by ${item.addedBy}`}</span>
+        <div className="space-y-6 mt-4">
+          {groupedMilestones.map(({ year, items }) => (
+            <div key={year} className="timeline-panel">
+              <div className="timeline-year">{year} · THE DAYS YOU KEPT</div>
+              {items.map((item) => (
+                <div key={item.id} className="timeline-item">
+                  <span className="timeline-date">{item.date}</span>
+                  <div className="timeline-card flex items-center justify-between">
+                    <div>
+                      <b>{item.title}</b>
+                      <span>{item.story ? `${item.story} · Kept by ${item.addedBy}` : `Kept by ${item.addedBy}`}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteMilestone(item.id)}
+                      className="text-[#888a82] hover:text-red-600 p-1 cursor-pointer transition ml-2"
+                      title="Delete milestone"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => handleDeleteMilestone(item.id)}
-                  className="text-[#888a82] hover:text-red-600 p-1 cursor-pointer transition ml-2"
-                  title="Delete milestone"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
-              </div>
+              ))}
             </div>
           ))}
         </div>

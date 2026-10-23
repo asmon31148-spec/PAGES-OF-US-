@@ -294,6 +294,11 @@ export const VaultView: React.FC = () => {
             </div>
 
             <div className="pin-help">Your shared four-digit code</div>
+            {vaultConfig.passcode === '2512' && (
+              <div className="mt-2.5 text-[10.5px] text-[var(--soft)] bg-[var(--paper)] px-3 py-1.5 rounded-full border border-[var(--line)] inline-block">
+                First time? Default PIN is <b className="text-[var(--ink)]">2512</b>
+              </div>
+            )}
           </div>
 
           {/* Reserved Bottom Section for Vault Custom Additions & Security Status */}

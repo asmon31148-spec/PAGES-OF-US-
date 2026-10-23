@@ -3,11 +3,10 @@ import { useAuth } from '@/core/auth'
 import { useTheme } from '@/core/theme'
 import { useAudio } from '@/core/audio'
 import { useToast } from '@/core/toast'
-import { getSupabaseClient, formatLocalDate } from '@/core/storage'
+import { getSupabaseClient } from '@/core/storage'
 import { getFirebaseDb } from '@/core/storage/firebase'
 import { doc, setDoc } from 'firebase/firestore'
 import { realtimeBridge } from '@/core/realtime'
-import { dispatchPartnerInteraction } from '@/core/ai'
 import { BlindPromptCard } from './BlindPromptCard'
 import { PartnerLocationCard } from './PartnerLocationCard'
 import { MoodAuraModal, MoodAura, MOOD_AURA_OPTIONS } from './MoodAuraModal'
@@ -15,7 +14,7 @@ import { StageMemoryHeroDeck } from './StageMemoryHeroDeck'
 import { StageDailyCheckin } from './StageDailyCheckin'
 import { StagePinnedCorkboard } from './StagePinnedCorkboard'
 import confetti from 'canvas-confetti'
-import { RefreshCw } from 'lucide-react'
+import { RefreshCw, Calendar, Heart } from 'lucide-react'
 
 interface StageViewProps {
   onGoToMemories?: () => void
@@ -38,14 +37,13 @@ export const StageView: React.FC<StageViewProps> = ({
   const { showToast } = useToast()
 
   const spaceId = space?.id || 'default_space'
-  const notesDocId = `notes_${spaceId}`
   const moodDocId = `mood_aura_${spaceId}`
+  const anniversaryDocId = `anniversary_${spaceId}`
 
-  // 1. Thought status state (Instagram note style, synced to Supabase)
-  const [myThought, setMyThought] = useState('Listening to rain 🌧')
-  const [partnerThought, setPartnerThought] = useState('')
-  const [isEditingThought, setIsEditingThought] = useState(false)
-  const [tempThought, setTempThought] = useState('')
+  // 1. Anniversary Date state
+  const [customAnniversary, setCustomAnniversary] = useState<string | null>(null)
+  const [isEditingAnniversary, setIsEditingAnniversary] = useState(false)
+  const [anniversaryInput, setAnniversaryInput] = useState('')
 
   // 2. Daily Intimate Mood Aura
   const [myMood, setMyMood] = useState<MoodAura | null>(null)
@@ -60,29 +58,23 @@ export const StageView: React.FC<StageViewProps> = ({
   // 4. Real-time pulse state
   const [isPulsing, setIsPulsing] = useState(false)
 
-  // Fetch Thoughts and Moods from Supabase
+  // Fetch Anniversary and Moods from Supabase
   useEffect(() => {
     const supabase = getSupabaseClient()
 
-    // A. Thoughts
-    const fetchThoughts = async () => {
+    // A. Anniversary Date
+    const fetchAnniversary = async () => {
       try {
         const { data } = await supabase
           .from('app_content')
           .select('content')
-          .eq('id', notesDocId)
+          .eq('id', anniversaryDocId)
           .maybeSingle()
-
-        if (data?.content) {
-          if (user?.id && data.content[user.id]?.text) {
-            setMyThought(data.content[user.id].text)
-          }
-          if (partner?.id && data.content[partner.id]?.text) {
-            setPartnerThought(data.content[partner.id].text)
-          }
+        if (data?.content?.anniversaryDate) {
+          setCustomAnniversary(data.content.anniversaryDate)
         }
       } catch (err) {
-        console.warn('Error fetching thoughts:', err)
+        console.warn('Error fetching anniversary:', err)
       }
     }
 
@@ -109,7 +101,7 @@ export const StageView: React.FC<StageViewProps> = ({
       }
     }
 
-    fetchThoughts()
+    fetchAnniversary()
     fetchMoods()
 
     // Realtime channel for app_content
@@ -123,13 +115,8 @@ export const StageView: React.FC<StageViewProps> = ({
           table: 'app_content'
         },
         (payload: any) => {
-          if (payload.new?.id === notesDocId && payload.new?.content) {
-            if (user?.id && payload.new.content[user.id]?.text) {
-              setMyThought(payload.new.content[user.id].text)
-            }
-            if (partner?.id && payload.new.content[partner.id]?.text) {
-              setPartnerThought(payload.new.content[partner.id].text)
-            }
+          if (payload.new?.id === anniversaryDocId && payload.new?.content?.anniversaryDate) {
+            setCustomAnniversary(payload.new.content.anniversaryDate)
           }
           if (payload.new?.id === moodDocId && payload.new?.content) {
             if (user?.id) {
@@ -152,9 +139,6 @@ export const StageView: React.FC<StageViewProps> = ({
         setIsPulsing(true)
         setTimeout(() => setIsPulsing(false), 2000)
       }
-      if (event.type === 'PINNED_NOTE_CHANGED' && event.data?.notes) {
-        fetchThoughts()
-      }
       if (event.type === 'MOOD_UPDATE') {
         if (event.senderId !== user?.id) {
           const m = event.data ? MOOD_AURA_OPTIONS.find((o) => o.id === event.data.id) : null
@@ -173,7 +157,35 @@ export const StageView: React.FC<StageViewProps> = ({
       supabase.removeChannel(channel)
       unsubscribePulse()
     }
-  }, [spaceId, notesDocId, moodDocId, user?.id, partner?.id, showToast])
+  }, [spaceId, moodDocId, anniversaryDocId, user?.id, partner?.id, showToast])
+
+  // Handle Save Anniversary Date
+  const handleSaveAnniversary = async () => {
+    if (!anniversaryInput || !user) return
+    setCustomAnniversary(anniversaryInput)
+    setIsEditingAnniversary(false)
+    confetti({ particleCount: 30, spread: 60, origin: { y: 0.6 } })
+    showToast('Anniversary date updated! ✨')
+
+    try {
+      const supabase = getSupabaseClient()
+      const nowIso = new Date().toISOString()
+      await supabase.from('app_content').upsert({
+        id: anniversaryDocId,
+        content: { anniversaryDate: anniversaryInput, updatedBy: user.nickname, updatedAt: nowIso },
+        updated_at: nowIso
+      })
+
+      const db = getFirebaseDb()
+      if (db && spaceId) {
+        try {
+          await setDoc(doc(db, 'spaces', spaceId, 'features', 'anniversary'), { anniversaryDate: anniversaryInput }, { merge: true })
+        } catch {}
+      }
+    } catch (err) {
+      console.warn('Error saving anniversary:', err)
+    }
+  }
 
   // Handle Select Mood Aura
   const handleSelectMood = async (mood: MoodAura | null) => {
@@ -257,11 +269,13 @@ export const StageView: React.FC<StageViewProps> = ({
       // Refresh content
       const supabase = getSupabaseClient()
       try {
-        const [thoughtsRes, moodRes] = await Promise.all([
-          supabase.from('app_content').select('content').eq('id', notesDocId).maybeSingle(),
+        const [annivRes, moodRes] = await Promise.all([
+          supabase.from('app_content').select('content').eq('id', anniversaryDocId).maybeSingle(),
           supabase.from('app_content').select('content').eq('id', moodDocId).maybeSingle()
         ])
-        if (thoughtsRes.data?.content && user?.id) setMyThought(thoughtsRes.data.content[user.id]?.text || '')
+        if (annivRes.data?.content?.anniversaryDate) {
+          setCustomAnniversary(annivRes.data.content.anniversaryDate)
+        }
         const moodContent = moodRes.data?.content
         if (moodContent && user?.id) {
           const m = MOOD_AURA_OPTIONS.find((o) => o.id === moodContent[user.id]?.id)
@@ -305,102 +319,29 @@ export const StageView: React.FC<StageViewProps> = ({
     setTimeout(() => setIsPulsing(false), 1800)
   }
 
-  // Save Thought
-  const handleSaveThought = async () => {
-    if (!tempThought.trim() || !user) return
-    setMyThought(tempThought.trim())
-    setIsEditingThought(false)
-    showToast('Your thought has been updated.')
-
-    try {
-      const supabase = getSupabaseClient()
-      const { data } = await supabase
-        .from('app_content')
-        .select('content')
-        .eq('id', notesDocId)
-        .maybeSingle()
-
-      const current = data?.content || {}
-      current[user.id] = {
-        text: tempThought.slice(0, 50),
-        author: user.nickname,
-        updatedAt: new Date().toISOString()
-      }
-
-      await supabase.from('app_content').upsert({
-        id: notesDocId,
-        content: current,
-        updated_at: new Date().toISOString()
-      })
-
-      // Sync to Firebase Firestore
-      const db = getFirebaseDb()
-      if (db && spaceId) {
-        try {
-          await setDoc(doc(db, 'spaces', spaceId, 'features', 'notes'), { notes: current }, { merge: true })
-        } catch {}
-      }
-
-      // Realtime peer broadcast
-      await realtimeBridge.broadcast({
-        type: 'PINNED_NOTE_CHANGED',
-        senderId: user.id,
-        senderNickname: user.nickname,
-        timestamp: Date.now(),
-        data: { notes: current }
-      }).catch(() => {})
-
-      dispatchPartnerInteraction(user, space, 'THOUGHT_POSTED', {
-        thought: tempThought.slice(0, 50)
-      }).catch(() => {})
-    } catch (err) {
-      console.warn('Error saving thought:', err)
-    }
-  }
-
-  // Delete Thought Note
-  const handleDeleteThought = async () => {
-    if (!user) return
-    setMyThought('')
-    setTempThought('')
-    setIsEditingThought(false)
-    showToast('Thought status cleared.')
-
-    try {
-      const supabase = getSupabaseClient()
-      const { data } = await supabase
-        .from('app_content')
-        .select('content')
-        .eq('id', notesDocId)
-        .maybeSingle()
-
-      const current = data?.content || {}
-      delete current[user.id]
-
-      await supabase.from('app_content').upsert({
-        id: notesDocId,
-        content: current,
-        updated_at: new Date().toISOString()
-      })
-    } catch (err) {
-      console.warn('Error clearing thought:', err)
-    }
-  }
-
   const currentDateFormatted = new Date().toLocaleDateString('en-US', {
     weekday: 'long',
     month: 'long',
     day: 'numeric'
   }).toUpperCase()
 
-  const togetherYear = space?.createdAt ? new Date(space.createdAt).getFullYear() : 2024
+  // Calculate actual anniversary start date and days together
+  const anniversaryDate = customAnniversary || space?.createdAt
+  const startDate = React.useMemo(() => {
+    if (anniversaryDate) {
+      const d = new Date(anniversaryDate)
+      if (!isNaN(d.getTime())) return d
+    }
+    return new Date('2024-01-01')
+  }, [anniversaryDate])
+
+  const togetherYear = startDate.getFullYear()
 
   const daysTogether = React.useMemo(() => {
-    const startDate = space?.createdAt ? new Date(space.createdAt) : new Date('2024-01-01')
-    const diffTime = Math.abs(Date.now() - startDate.getTime())
+    const diffTime = Math.max(0, Date.now() - startDate.getTime())
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
     return Math.max(1, diffDays)
-  }, [space?.createdAt])
+  }, [startDate])
 
   return (
     <div
@@ -490,8 +431,15 @@ export const StageView: React.FC<StageViewProps> = ({
           <small>{currentDateFormatted}</small>
           <h2>A place for us.</h2>
         </div>
-        <div className="flex flex-col items-end shrink-0">
-          <span className="date">Together since {togetherYear}</span>
+        <div
+          className="flex flex-col items-end shrink-0 cursor-pointer hover:opacity-80 active:scale-95 transition"
+          onClick={() => {
+            setAnniversaryInput(customAnniversary || '')
+            setIsEditingAnniversary(true)
+          }}
+          title="Tap to customize your anniversary & days together"
+        >
+          <span className="date">Together since {togetherYear} ✎</span>
           <span className="text-[10px] font-mono tracking-wide text-[#738276] mt-0.5">
             Day {daysTogether} together ✦
           </span>
@@ -503,10 +451,7 @@ export const StageView: React.FC<StageViewProps> = ({
         {/* You */}
         <div
           className="presence-person cursor-pointer min-w-0"
-          onClick={onOpenProfileModal || (() => {
-            setTempThought(myThought)
-            setIsEditingThought(true)
-          })}
+          onClick={onOpenProfileModal}
           title="Tap to customize your profile & note"
         >
           <div
@@ -548,7 +493,7 @@ export const StageView: React.FC<StageViewProps> = ({
                 {myMood ? `${myMood.emoji} ${myMood.label}` : '✦ Aura'}
               </button>
             </div>
-            <span className="thought">{user?.presenceStatus || myThought || 'Tap to set note...'}</span>
+            <span className="thought">{user?.presenceStatus || 'Tap profile to set status note...'}</span>
           </div>
         </div>
 
@@ -578,7 +523,7 @@ export const StageView: React.FC<StageViewProps> = ({
                 )}
                 <b className="truncate">{partner.nickname}</b>
               </div>
-              <span className="thought">{partner.presenceStatus || partnerThought || 'Thinking of you'}</span>
+              <span className="thought">{partner.presenceStatus || 'Thinking of you'}</span>
             </div>
             <div
               className="avatar-wrap shrink-0 relative transition-all duration-300"
@@ -650,54 +595,49 @@ export const StageView: React.FC<StageViewProps> = ({
         </p>
       </div>
 
-      {/* MODAL: Edit Thought Note */}
-      {isEditingThought && (
+      {/* MODAL: Customize Anniversary Date */}
+      {isEditingAnniversary && (
         <div
-          className="modal-backdrop"
+          className="modal-backdrop show"
           onClick={(e) => {
-            if (e.target === e.currentTarget) setIsEditingThought(false)
+            if (e.target === e.currentTarget) setIsEditingAnniversary(false)
           }}
         >
-          <div className="modal">
+          <div className="modal max-w-xs">
             <div className="modal-handle" />
             <button
               type="button"
               className="close"
-              onClick={() => setIsEditingThought(false)}
+              onClick={() => setIsEditingAnniversary(false)}
             >
               ×
             </button>
-            <div className="modal-date">YOUR STATUS NOTE</div>
-            <h3>What's on your mind?</h3>
+            <div className="modal-date">ANNIVERSARY & DAYS TOGETHER</div>
+            <h3>When did you meet?</h3>
+            <p style={{ fontStyle: 'normal', fontSize: '11px', color: '#777a76', marginBottom: '12px' }}>
+              Set your actual couple anniversary so your days together counter is 100% accurate.
+            </p>
             <input
-              type="text"
-              maxLength={45}
-              value={tempThought}
-              onChange={(e) => setTempThought(e.target.value)}
-              placeholder="e.g. Listening to rain 🌧 or Craving ramen 🍜"
-              className="w-full p-3 rounded-xl border border-[var(--line)] bg-[var(--paper)] text-[var(--ink)] text-xs outline-none font-sans"
+              type="date"
+              value={anniversaryInput}
+              onChange={(e) => setAnniversaryInput(e.target.value)}
+              className="w-full p-2.5 rounded-xl border border-[var(--line)] bg-[var(--paper)] text-[var(--ink)] text-xs font-mono outline-none mb-4"
               autoFocus
             />
-            <div className="flex justify-between text-[10px] text-[var(--soft)] mt-2">
-              <span>Visible to your partner right now</span>
-              <span>{tempThought.length}/45</span>
-            </div>
-            <div className="flex gap-2 mt-4">
-              {myThought && (
-                <button
-                  type="button"
-                  onClick={handleDeleteThought}
-                  className="py-2.5 px-4 rounded-xl border border-red-300 dark:border-red-900 text-red-600 dark:text-red-400 text-xs font-medium cursor-pointer hover:bg-red-500/10 transition"
-                >
-                  Clear
-                </button>
-              )}
+            <div className="flex gap-2">
               <button
                 type="button"
-                onClick={handleSaveThought}
+                onClick={() => setIsEditingAnniversary(false)}
+                className="py-2.5 px-4 rounded-xl border border-[var(--line)] text-xs text-[var(--soft)] hover:bg-[var(--line)]/30 transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveAnniversary}
                 className="flex-1 py-2.5 rounded-xl bg-[var(--app-accent)] text-white text-xs font-medium cursor-pointer hover:opacity-90"
               >
-                Update thought
+                Save Anniversary
               </button>
             </div>
           </div>
