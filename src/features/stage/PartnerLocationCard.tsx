@@ -1045,7 +1045,7 @@ export const PartnerLocationCard: React.FC = () => {
   }
 
   return (
-    <div className="mt-4 p-4 rounded-2xl border border-[var(--line)] bg-[var(--white)] space-y-3.5 shadow-sm text-[var(--ink)] transition-colors duration-200">
+    <div className="mt-4 p-5 rounded-3xl border border-[var(--line)] bg-[var(--white)] space-y-4 shadow-xs text-[var(--ink)] transition-colors duration-200">
       {/* 1. Header with Master Toggle & Privacy Info */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -1103,7 +1103,7 @@ export const PartnerLocationCard: React.FC = () => {
 
       {/* 2. REAL INTERACTIVE MAP + MUTUAL CONSENT SHIELD */}
       <div
-        className={`relative rounded-xl overflow-hidden border border-[var(--line)] bg-[var(--paper)] transition-all duration-300 isolate ${
+        className={`relative rounded-2xl overflow-hidden border border-[var(--line)] bg-[var(--paper)] transition-all duration-300 isolate ${
           isExpandedMap ? 'h-80' : 'h-52'
         }`}
         style={{ isolation: 'isolate' }}
@@ -1231,18 +1231,18 @@ export const PartnerLocationCard: React.FC = () => {
 
       {/* 3. LIVE DISTANCE BADGE */}
       {isMutualSharingActive && myLoc && partnerLoc ? (
-        <div className="p-2.5 rounded-xl border border-[var(--line)] bg-[var(--paper)] flex items-center justify-between shadow-xs">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-full bg-[var(--app-accent)] text-[var(--app-accent-text)] flex items-center justify-center font-bold text-xs shadow-xs">
+        <div className="p-3.5 rounded-2xl border border-[var(--line)] bg-[var(--paper)] flex items-center justify-between shadow-xs">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-full bg-[var(--app-accent)] text-[var(--app-accent-text)] flex items-center justify-center font-bold text-sm shadow-xs shrink-0">
               {distanceKm !== null && distanceKm < 0.05 ? '💕' : '📍'}
             </div>
             <div>
-              <div className="text-[9px] uppercase tracking-wider font-semibold text-[var(--app-accent)]">
+              <div className="text-[10px] uppercase tracking-wider font-bold text-[var(--app-accent)]">
                 {distanceKm !== null && distanceKm < 0.05
                   ? 'Together Right Now'
                   : 'Live Distance Apart'}
               </div>
-              <div className="text-xs font-serif font-bold text-[var(--ink)]">
+              <div className="text-sm font-semibold text-[var(--ink)] tracking-tight">
                 {distanceKm !== null
                   ? distanceKm < 0.05
                     ? 'You two are together!'
@@ -1255,20 +1255,20 @@ export const PartnerLocationCard: React.FC = () => {
           </div>
 
           <div className="text-right">
-            <span className="text-[8px] font-medium text-[var(--app-accent)] bg-[var(--white)] px-2 py-0.5 rounded-full border border-[var(--line)] shadow-2xs">
+            <span className="text-[9px] font-semibold text-[var(--app-accent)] bg-[var(--white)] px-2.5 py-1 rounded-full border border-[var(--line)] shadow-2xs">
               {distanceKm !== null && distanceKm < 0.05 ? 'Same place' : 'Live Tether Active'}
             </span>
           </div>
         </div>
       ) : (
         /* If partner is not sharing location */
-        <div className="p-2.5 rounded-xl border border-[var(--line)] bg-[var(--paper)] flex items-center justify-between shadow-xs">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-full bg-[var(--white)] border border-[var(--line)] flex items-center justify-center text-xs">
+        <div className="p-3.5 rounded-2xl border border-[var(--line)] bg-[var(--paper)] flex items-center justify-between shadow-xs">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-full bg-[var(--white)] border border-[var(--line)] flex items-center justify-center text-sm shrink-0">
               📍
             </div>
             <div>
-              <div className="text-[9px] uppercase tracking-wider font-semibold text-[var(--soft)]">
+              <div className="text-[10px] uppercase tracking-wider font-semibold text-[var(--soft)]">
                 Partner Location Status
               </div>
               <div className="text-xs font-semibold text-[var(--ink)]">
@@ -1276,16 +1276,16 @@ export const PartnerLocationCard: React.FC = () => {
               </div>
             </div>
           </div>
-          <span className="text-[9px] font-medium text-amber-600 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
+          <span className="text-[10px] font-semibold text-amber-600 bg-amber-500/10 px-2.5 py-0.5 rounded-full border border-amber-500/20">
             Paused
           </span>
         </div>
       )}
 
       {/* 4. Partner & You Live Status Cards */}
-      <div className="grid grid-cols-2 gap-2 text-xs">
+      <div className="grid grid-cols-2 gap-2.5 text-xs">
         {/* Partner Card */}
-        <div className="p-2.5 rounded-xl border border-[var(--line)] bg-[var(--paper)] space-y-1">
+        <div className="p-3 rounded-2xl border border-[var(--line)] bg-[var(--paper)] space-y-1">
           <div className="flex items-center justify-between">
             <span className="font-semibold text-[10px] text-[var(--ink)] truncate">
               {partner?.nickname || 'Partner'}
@@ -1323,7 +1323,7 @@ export const PartnerLocationCard: React.FC = () => {
         </div>
 
         {/* You Card */}
-        <div className="p-2.5 rounded-xl border border-[var(--line)] bg-[var(--paper)] space-y-1">
+        <div className="p-3 rounded-2xl border border-[var(--line)] bg-[var(--paper)] space-y-1">
           <div className="flex items-center justify-between">
             <span className="font-semibold text-[10px] text-[var(--ink)] truncate">
               You ({user?.nickname || 'You'})

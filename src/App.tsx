@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { ThemeProvider, useTheme } from '@/core/theme'
 import { AudioProvider } from '@/core/audio'
 import { AuthProvider, useAuth } from '@/core/auth'
@@ -130,21 +131,32 @@ const AppContent: React.FC = () => {
         className="w-full max-w-md mx-auto min-h-[100dvh] relative flex flex-col sm:border-x sm:shadow-lg overflow-x-hidden transition-colors duration-300"
         style={{ backgroundColor: theme.bg, borderColor: theme.surfaceBorder }}
       >
-        {/* Main Active Page View */}
+        {/* Main Active Page View with Silky Smooth Framer Motion Page Transition */}
         <main className="flex-1 w-full flex flex-col">
-          {activeTab === 'stage' && (
-            <StageView
-              onGoToMemories={() => setActiveTab('memories')}
-              onOpenPairModal={() => setIsPairModalOpen(true)}
-              onOpenAudioModal={() => setIsAudioModalOpen(true)}
-              onOpenThemeModal={() => setIsThemeModalOpen(true)}
-              onOpenProfileModal={() => setIsProfileModalOpen(true)}
-            />
-          )}
-          {activeTab === 'memories' && <MemoriesView />}
-          {activeTab === 'letters' && <LetterboxView />}
-          {activeTab === 'timeline' && <TimelineView />}
-          {activeTab === 'vault' && <VaultView />}
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeTab}
+              initial={{ opacity: 0, y: 10, scale: 0.995 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -8, scale: 0.995 }}
+              transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+              className="flex-1 w-full flex flex-col"
+            >
+              {activeTab === 'stage' && (
+                <StageView
+                  onGoToMemories={() => setActiveTab('memories')}
+                  onOpenPairModal={() => setIsPairModalOpen(true)}
+                  onOpenAudioModal={() => setIsAudioModalOpen(true)}
+                  onOpenThemeModal={() => setIsThemeModalOpen(true)}
+                  onOpenProfileModal={() => setIsProfileModalOpen(true)}
+                />
+              )}
+              {activeTab === 'memories' && <MemoriesView />}
+              {activeTab === 'letters' && <LetterboxView />}
+              {activeTab === 'timeline' && <TimelineView />}
+              {activeTab === 'vault' && <VaultView />}
+            </motion.div>
+          </AnimatePresence>
         </main>
 
         {/* Bottom Floating Navigation */}

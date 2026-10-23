@@ -15,7 +15,7 @@ import { StageMemoryHeroDeck } from './StageMemoryHeroDeck'
 import { StageDailyCheckin } from './StageDailyCheckin'
 import { StagePinnedCorkboard } from './StagePinnedCorkboard'
 import confetti from 'canvas-confetti'
-import { RefreshCw, Calendar, Heart } from 'lucide-react'
+import { RefreshCw, Calendar, Heart, Target, ChevronRight, Sparkles } from 'lucide-react'
 
 interface StageViewProps {
   onGoToMemories?: () => void
@@ -542,6 +542,37 @@ export const StageView: React.FC<StageViewProps> = ({
             </div>
           </div>
         )}
+      </div>
+
+      {/* 3.5. RELATIONSHIP MILESTONES & GOALS BENTO TILE (Inspired by Image 1) */}
+      <div
+        className="w-full p-4 mb-4 rounded-3xl bg-[var(--white)] border border-[var(--line)] shadow-xs flex items-center justify-between cursor-pointer hover:shadow-md transition active:scale-[0.985]"
+        onClick={() => setIsGoalsModalOpen(true)}
+        role="button"
+        title="Open Relationship Story & Goals Tracker"
+      >
+        <div className="flex items-center gap-3.5 min-w-0">
+          <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-[#e07a5f]/20 to-[#f4a261]/20 text-[#e07a5f] flex items-center justify-center text-xl shrink-0 shadow-2xs border border-[#e07a5f]/15">
+            🎯
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] font-bold tracking-wider text-[var(--terra)] uppercase">
+                Milestones & Goals
+              </span>
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-[var(--app-accent)]/10 text-[var(--app-accent)] font-semibold border border-[var(--app-accent)]/20">
+                Day {daysTogether}
+              </span>
+            </div>
+            <p className="text-xs font-medium text-[var(--ink)] mt-0.5 truncate">
+              Celebrate couple firsts & set new dreams ✦
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-1 text-[var(--soft)] text-xs shrink-0 ml-2">
+          <span className="hidden sm:inline text-[11px]">View</span>
+          <ChevronRight className="w-4 h-4" />
+        </div>
       </div>
 
       {/* 4. SHARED MOMENT HERO SPOTLIGHT & STORY DECK (Multi-moment carousel + card flip + voice player) */}
