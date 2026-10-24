@@ -83,14 +83,14 @@
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
-  padding: max(18px, calc(var(--sat, 0px) + 12px)) 12px max(68px, calc(var(--sab, 0px) + 60px));
+  padding: max(48px, calc(var(--sat, 0px) + 16px)) 14px max(64px, calc(var(--sab, 0px) + 58px));
   animation: fade 0.22s ease;
   overflow-x: hidden;
 }
 
 @media (min-width: 640px) {
   .page {
-    padding: max(22px, calc(var(--sat, 0px) + 16px)) 16px max(74px, calc(var(--sab, 0px) + 64px));
+    padding: max(52px, calc(var(--sat, 0px) + 20px)) 16px max(70px, calc(var(--sab, 0px) + 62px));
   }
 }
 
@@ -110,20 +110,25 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  min-height: 36px;
-  margin-bottom: 12px;
+  min-height: 44px;
+  margin-bottom: 16px;
+  gap: 12px;
 }
 
 .wordmark {
-  font: 600 18px var(--serif);
-  letter-spacing: -0.025em;
+  font-family: var(--serif);
+  font-size: 24px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
   color: var(--ink);
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .top-actions {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
 
 .connection {
@@ -567,22 +572,26 @@
   cursor: pointer;
 }
 
-/* Floating Bottom Nav (Fixed to Bottom Viewport) */
+/* Docked Stationary Bottom Nav (Edge-to-Edge with Screen Bottom and Sides) */
 .bottom-nav {
   position: fixed;
   z-index: 40;
-  left: 50%;
-  transform: translateX(-50%);
-  width: min(calc(100% - 16px), 420px);
-  bottom: max(8px, calc(var(--sab, 0px) + 6px));
-  height: 56px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: calc(56px + max(0px, var(--sab, 0px)));
+  padding-bottom: max(4px, var(--sab, 0px));
   display: flex;
   align-items: center;
   justify-content: space-around;
-  border: 1px solid var(--line);
-  border-radius: 20px;
+  border-top: 1px solid var(--line);
+  border-left: none;
+  border-right: none;
+  border-bottom: none;
+  border-radius: 0;
   background: var(--white);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.05);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   transition: all 0.25s ease;

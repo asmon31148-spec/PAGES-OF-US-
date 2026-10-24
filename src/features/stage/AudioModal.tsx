@@ -368,29 +368,29 @@ export const AudioModal: React.FC<AudioModalProps> = ({ isOpen, onClose }) => {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex flex-col justify-start overflow-y-auto px-4 py-5 sm:p-8 transition-colors duration-200 animate-in fade-in"
+      className="fixed inset-0 z-[1000] flex flex-col overflow-hidden"
       style={{
         backgroundColor: theme.bg,
         color: theme.textPrimary
       }}
     >
-      <div className="w-full max-w-md mx-auto flex-1 flex flex-col my-auto space-y-4">
-        {/* Top Header Bar */}
-        <div className="flex items-center justify-between pb-3 border-b border-[var(--line)]">
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-1.5 rounded-full cursor-pointer hover:bg-[var(--paper)] transition flex items-center gap-1.5 text-xs font-medium"
-            style={{ color: theme.textPrimary }}
-          >
-            <X className="w-4 h-4" />
-            <span>Close</span>
-          </button>
-          <div className="text-center">
-            <h3 className="text-sm font-semibold tracking-tight">Atmosphere & Music</h3>
-          </div>
-          <div className="w-12" />
+      {/* Top Header Bar */}
+      <div className="pt-safe px-4 py-3 flex items-center justify-between border-b border-[var(--line)] bg-[var(--white)] shrink-0">
+        <button
+          type="button"
+          onClick={onClose}
+          className="p-1.5 -ml-1.5 rounded-full cursor-pointer hover:bg-[var(--paper)] transition flex items-center gap-1.5 text-xs font-medium text-[var(--ink)]"
+        >
+          <X className="w-4 h-4" />
+          <span>Close</span>
+        </button>
+        <div className="text-center">
+          <h3 className="text-sm font-semibold tracking-tight">Atmosphere & Music</h3>
         </div>
+        <div className="w-12" />
+      </div>
+
+      <div className="flex-1 overflow-y-auto px-4 py-6 max-w-md mx-auto w-full space-y-5">
 
         <div className="space-y-5 flex-1">
           {/* Subtitle */}

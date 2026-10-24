@@ -851,34 +851,65 @@ export const PartnerLocationCard: React.FC = () => {
   const handleForceGpsUpdate = async () => {
     if (!user) return
     setIsUpdating(true)
-    showToast('Acquiring fresh satellite/Wi-Fi fix...')
 
     try {
-      await Geolocation.requestPermissions()
-      const pos = await Geolocation.getCurrentPosition({
-        enableHighAccuracy: true,
-        timeout: 10000
-      })
+      try {
+        await Geolocation.requestPermissions()
+      } catch {}
 
-      const lat = pos.coords.latitude
-      const lng = pos.coords.longitude
-      const accuracy = pos.coords.accuracy ? Math.round(pos.coords.accuracy) : 10
+      // Step 1: Sub-second fast network/cached coordinates (zero waiting for user)
+      let gotQuickFix = false
+      try {
+        const quickPos = await Geolocation.getCurrentPosition({
+          enableHighAccuracy: false,
+          timeout: 3000,
+          maximumAge: 300000
+        })
+        if (quickPos?.coords) {
+          gotQuickFix = true
+          const qLat = quickPos.coords.latitude
+          const qLng = quickPos.coords.longitude
+          const qAcc = quickPos.coords.accuracy ? Math.round(quickPos.coords.accuracy) : 35
+          syncMyPosition(qLat, qLng, qAcc)
+          if (mapInstanceRef.current) {
+            mapInstanceRef.current.flyTo([qLat, qLng], 14, { duration: 0.8 })
+          }
+        }
+      } catch {}
 
-      await syncMyPosition(lat, lng, accuracy)
-      setIsUpdating(false)
-      showToast(`📍 Live GPS acquired (±${accuracy}m)`)
+      // Step 2: High precision GPS refinement in background
+      try {
+        const pos = await Geolocation.getCurrentPosition({
+          enableHighAccuracy: true,
+          timeout: 12000,
+          maximumAge: 10000
+        })
 
-      if (mapInstanceRef.current) {
-        mapInstanceRef.current.flyTo([lat, lng], 15, { duration: 1.2 })
+        const lat = pos.coords.latitude
+        const lng = pos.coords.longitude
+        const accuracy = pos.coords.accuracy ? Math.round(pos.coords.accuracy) : 10
+
+        await syncMyPosition(lat, lng, accuracy)
+        setIsUpdating(false)
+        showToast(`📍 Location updated (±${accuracy}m)`)
+
+        if (mapInstanceRef.current) {
+          mapInstanceRef.current.flyTo([lat, lng], 15, { duration: 1.0 })
+        }
+      } catch (gpsErr) {
+        setIsUpdating(false)
+        if (gotQuickFix) {
+          showToast('📍 Location acquired via mobile network')
+        } else if (!locations[user.id]?.lat) {
+          showToast('Please make sure Location is enabled on your phone.')
+        }
       }
     } catch (err: any) {
       console.warn('Geolocation error:', err)
       setIsUpdating(false)
-      showToast('Could not acquire GPS. Please make sure Location is enabled on your phone.')
     }
   }
 
-  // Address Search using Nominatim (Solves false location on desktop)
   const handleSearchAddress = async () => {
     if (!searchQuery.trim()) return
     setIsSearchingAddress(true)

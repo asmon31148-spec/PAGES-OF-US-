@@ -6,8 +6,9 @@ import { getSupabaseClient } from '@/core/storage/supabase'
 import { getFirebaseDb } from '@/core/storage/firebase'
 import { doc, setDoc, onSnapshot } from 'firebase/firestore'
 import { realtimeBridge } from '@/core/realtime'
+import { uploadMediaFile } from '@/core/storage/uploader'
 import confetti from 'canvas-confetti'
-import { Lock, Unlock, Play, Edit3, X, Loader2, Delete } from 'lucide-react'
+import { Lock, Unlock, Play, Edit3, X, Loader2, Delete, Upload, Video } from 'lucide-react'
 
 export interface VaultConfig {
   isLocked: boolean
@@ -47,6 +48,37 @@ export const VaultView: React.FC = () => {
   const [editVideoUrl, setEditVideoUrl] = useState('')
   const [editNote, setEditNote] = useState('')
   const [isSaving, setIsSaving] = useState(false)
+  const [isUploadingMedia, setIsUploadingMedia] = useState(false)
+  const fileInputRef = React.useRef<HTMLInputElement | null>(null)
+
+  const handleSelectMediaFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setIsUploadingMedia(true)
+    showToast('Uploading video/photo to secure vault...')
+    try {
+      const result = await uploadMediaFile(file, 'vault')
+      setEditVideoUrl(result.url)
+      showToast('Media attached successfully! 🎬')
+    } catch (err: any) {
+      console.warn('Upload error, using local base64:', err)
+      try {
+        const reader = new FileReader()
+        reader.onload = () => {
+          if (typeof reader.result === 'string') {
+            setEditVideoUrl(reader.result)
+            showToast('Media loaded from device! 🎬')
+          }
+        }
+        reader.readAsDataURL(file)
+      } catch {
+        showToast('Could not read selected file.')
+      }
+    } finally {
+      setIsUploadingMedia(false)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+  }
 
   // 1. Fetch cloud vault config from Supabase & Firestore, and subscribe
   useEffect(() => {
@@ -378,25 +410,25 @@ export const VaultView: React.FC = () => {
         </div>
       )}
 
-      {/* EDIT CAPSULE MODAL */}
+      {/* EDIT CAPSULE MODAL - Full Screen Solid Smooth Page */}
       {isConfiguring && (
         <div
-          className="modal-backdrop show"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setIsConfiguring(false)
-          }}
+          className="fixed inset-0 z-50 bg-[var(--app-bg)] text-[var(--ink)] flex flex-col overflow-hidden"
         >
-          <div className="modal">
-            <div className="modal-handle"></div>
+          <div className="pt-safe px-4 py-3 flex items-center justify-between border-b border-[var(--line)] bg-[var(--white)] shrink-0">
             <button
               type="button"
-              className="close"
               onClick={() => setIsConfiguring(false)}
+              className="p-1.5 -ml-1.5 rounded-full hover:bg-[var(--paper)] transition flex items-center gap-1 text-xs font-medium text-[var(--ink)] cursor-pointer"
             >
-              ×
+              <X className="w-4 h-4" />
+              <span>Cancel</span>
             </button>
-            <div className="modal-date">SECRET CAPSULE SETTINGS</div>
-            <h3>Configure Capsule</h3>
+            <h3 className="text-sm font-semibold tracking-tight text-[var(--ink)]">Configure Capsule</h3>
+            <div className="w-12" />
+          </div>
+
+          <div className="flex-1 overflow-y-auto px-4 py-6 max-w-md mx-auto w-full space-y-4">
 
             <div className="space-y-3">
               <div>
@@ -431,10 +463,54 @@ export const VaultView: React.FC = () => {
               </div>
 
               <div>
-                <label className="text-[10px] text-[var(--soft)] block mb-1">Video URL (optional)</label>
+                <label className="text-[10px] text-[var(--soft)] font-medium block mb-1.5">Attach Video or Photo</label>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  accept="video/*,image/*"
+                  className="hidden"
+                  onChange={handleSelectMediaFile}
+                />
+                <div className="flex gap-2 items-center mb-2">
+                  <button
+                    type="button"
+                    disabled={isUploadingMedia}
+                    onClick={() => fileInputRef.current?.click()}
+                    className="flex-1 py-2.5 px-3 rounded-xl border border-[var(--line)] bg-[var(--paper)] hover:bg-[var(--line)]/40 text-[var(--ink)] text-xs font-medium flex items-center justify-center gap-2 transition cursor-pointer"
+                  >
+                    {isUploadingMedia ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin text-[var(--app-accent)]" />
+                        <span>Attaching media...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="w-3.5 h-3.5 text-[var(--app-accent)]" />
+                        <span>Choose from Files / Google Photos</span>
+                      </>
+                    )}
+                  </button>
+                  {editVideoUrl && (
+                    <button
+                      type="button"
+                      onClick={() => setEditVideoUrl('')}
+                      className="py-2.5 px-3 rounded-xl border border-red-500/20 text-red-500 hover:bg-red-500/10 text-xs transition cursor-pointer"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+
+                {editVideoUrl && (
+                  <div className="mb-2 p-2 rounded-xl bg-[var(--paper)] border border-[var(--line)] flex items-center justify-between text-[11px] text-[var(--ink)]">
+                    <span className="truncate max-w-[240px] font-mono text-[10px]">{editVideoUrl.substring(0, 40)}...</span>
+                    <span className="text-[10px] text-emerald-600 font-medium shrink-0 ml-2">✓ Media Attached</span>
+                  </div>
+                )}
+
                 <input
                   type="url"
-                  placeholder="https://..."
+                  placeholder="Or paste external video link (https://...)"
                   value={editVideoUrl}
                   onChange={(e) => setEditVideoUrl(e.target.value)}
                   className="w-full p-2.5 rounded-xl border border-[var(--line)] bg-[var(--paper)] text-[var(--ink)] text-xs outline-none"

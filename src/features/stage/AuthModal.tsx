@@ -64,18 +64,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
       showToast('Signed in with Google! Welcome to Pages of Us 💕')
       onClose?.()
     } catch (err: any) {
-      if (err.code === 'auth/unauthorized-domain' || err.message?.includes('unauthorized-domain')) {
-        setErrorMessage(
-          'Google Sign-In is active for web. On the Android app, please log in with Email & Password!'
-        )
-        setIsEmailSheetOpen(true)
-      } else if (err.code === 'auth/popup-closed-by-user') {
-        setErrorMessage('Google Sign-In was closed before completing.')
+      console.warn('Google sign-in error:', err)
+      if (
+        err.code === 'auth/popup-closed-by-user' ||
+        err.message?.includes('closed') ||
+        err.message?.includes('canceled') ||
+        err.message?.includes('cancelled')
+      ) {
+        setErrorMessage('Google Sign-In was closed.')
       } else {
-        setErrorMessage(
-          'Please continue with your Email and Password below!'
-        )
-        setIsEmailSheetOpen(true)
+        setErrorMessage(err.message || 'Google Sign-In failed. Please try again.')
       }
     } finally {
       setIsSubmitting(false)

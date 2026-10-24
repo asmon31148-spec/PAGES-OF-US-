@@ -44,26 +44,25 @@ export const PairingModal: React.FC<PairingModalProps> = ({ isOpen, onClose }) =
 
   return (
     <div
-      className="fixed inset-0 z-[1000] flex flex-col justify-start overflow-y-auto px-4 py-5 sm:p-8 bg-[var(--app-bg)] text-[var(--ink)] animate-in fade-in transition-colors duration-200"
+      className="fixed inset-0 z-[1000] flex flex-col bg-[var(--app-bg)] text-[var(--ink)] overflow-hidden"
     >
-      <div className="w-full max-w-md mx-auto flex-1 flex flex-col my-auto space-y-4">
-        {/* Top Header Bar */}
-        <div className="flex items-center justify-between pb-3 border-b border-[var(--line)]">
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-1.5 rounded-full cursor-pointer hover:bg-[var(--paper)] transition flex items-center gap-1.5 text-xs font-medium text-[var(--ink)]"
-          >
-            <X className="w-4 h-4" />
-            <span>Close</span>
-          </button>
-          <div className="text-center">
-            <h3 className="text-sm font-semibold tracking-tight text-[var(--ink)]">Partner Connection</h3>
-          </div>
-          <div className="w-12" />
+      {/* Top Header Bar */}
+      <div className="pt-safe px-4 py-3 flex items-center justify-between border-b border-[var(--line)] bg-[var(--white)] shrink-0">
+        <button
+          type="button"
+          onClick={onClose}
+          className="p-1.5 -ml-1.5 rounded-full cursor-pointer hover:bg-[var(--paper)] transition flex items-center gap-1.5 text-xs font-medium text-[var(--ink)]"
+        >
+          <X className="w-4 h-4" />
+          <span>Close</span>
+        </button>
+        <div className="text-center">
+          <h3 className="text-sm font-semibold tracking-tight text-[var(--ink)]">Partner Connection</h3>
         </div>
+        <div className="w-12" />
+      </div>
 
-        <div className="p-6 rounded-3xl border border-[var(--line)] bg-[var(--white)] shadow-md space-y-4 flex-1 my-auto">
+      <div className="flex-1 overflow-y-auto px-4 py-6 max-w-md mx-auto w-full space-y-6">
           {/* Header */}
           <div className="text-center space-y-1">
             <div className="w-11 h-11 rounded-2xl mx-auto flex items-center justify-center mb-1.5 bg-[var(--paper)] text-[var(--app-accent)] shadow-2xs">
@@ -214,7 +213,6 @@ export const PairingModal: React.FC<PairingModalProps> = ({ isOpen, onClose }) =
               </button>
             </div>
           )}
-        </div>
       </div>
     </div>
   )

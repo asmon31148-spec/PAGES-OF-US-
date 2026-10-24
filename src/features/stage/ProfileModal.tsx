@@ -106,25 +106,24 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) =
   const initial = (nickname || user.nickname || 'Y').charAt(0).toUpperCase()
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col justify-start overflow-y-auto px-4 py-5 sm:p-8 bg-[var(--bg)] text-[var(--ink)] animate-in fade-in transition-colors duration-200">
-      <div className="w-full max-w-md mx-auto flex-1 flex flex-col my-auto space-y-4">
-        {/* Top Header Bar */}
-        <div className="flex items-center justify-between pb-3 border-b border-[var(--line)]">
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-1.5 rounded-full cursor-pointer hover:bg-[var(--paper)] transition flex items-center gap-1.5 text-xs font-medium text-[var(--soft)]"
-          >
-            <X className="w-4 h-4" />
-            <span>Close</span>
-          </button>
-          <div className="text-center">
-            <h3 className="text-sm font-semibold tracking-tight">Your Profile</h3>
-          </div>
-          <div className="w-12" />
+    <div className="fixed inset-0 z-[1000] flex flex-col bg-[var(--app-bg)] text-[var(--ink)] overflow-hidden">
+      {/* Top Header Bar */}
+      <div className="pt-safe px-4 py-3 flex items-center justify-between border-b border-[var(--line)] bg-[var(--white)] shrink-0">
+        <button
+          type="button"
+          onClick={onClose}
+          className="p-1.5 -ml-1.5 rounded-full cursor-pointer hover:bg-[var(--paper)] transition flex items-center gap-1.5 text-xs font-medium text-[var(--ink)]"
+        >
+          <X className="w-4 h-4" />
+          <span>Close</span>
+        </button>
+        <div className="text-center">
+          <h3 className="text-sm font-semibold tracking-tight text-[var(--ink)]">Your Profile</h3>
         </div>
+        <div className="w-12" />
+      </div>
 
-        <div className="p-6 rounded-3xl border border-[var(--line)] bg-[var(--white)] shadow-md space-y-5 flex-1 my-auto">
+      <div className="flex-1 overflow-y-auto px-4 py-6 max-w-md mx-auto w-full space-y-5">
           <div>
             <div className="text-[10px] tracking-widest font-semibold uppercase text-[var(--app-accent)]">
               ACCOUNT & PRESENCE
@@ -314,7 +313,6 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) =
               <span>Logout</span>
             </button>
           </div>
-        </div>
       </div>
     </div>
   )

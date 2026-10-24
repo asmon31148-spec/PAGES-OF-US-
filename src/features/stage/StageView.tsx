@@ -367,34 +367,18 @@ export const StageView: React.FC<StageViewProps> = ({
         </div>
       </div>
 
-      {/* 1. TOPBAR */}
+      {/* 1. TOPBAR - Elegant, Spacious, Uncrowded */}
       <header className="topbar">
-        <div className="wordmark">Pages of Us</div>
+        <h1 className="wordmark">Pages of Us</h1>
         <div className="top-actions">
-          <div
-            className={`connection ${isPaired ? 'paired' : 'unpaired cursor-pointer hover:opacity-85'}`}
-            onClick={onOpenPairModal}
-            role="button"
-            title={isPaired ? `Connected with ${partner?.nickname}` : 'Tap to pair with your partner'}
-          >
-            <i
-              className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                isPaired ? 'bg-emerald-600' : 'bg-amber-500 animate-pulse'
-              }`}
-            />
-            <span className="truncate max-w-[100px]">
-              {isPaired && partner ? partner.nickname : 'Connect partner ＋'}
-            </span>
-          </div>
-
           <button
             type="button"
             className="music-pill flex items-center gap-1.5 shrink-0"
             onClick={onOpenAudioModal}
-            title="Music & Atmosphere"
+            title="Music and Atmosphere"
           >
             <span>♫</span>
-            <span className="max-w-[75px] truncate">
+            <span className="max-w-[80px] truncate">
               {isPlaying ? (currentTrack?.title || 'Atmosphere') : 'Atmosphere'}
             </span>
           </button>
@@ -412,9 +396,9 @@ export const StageView: React.FC<StageViewProps> = ({
           {/* User Profile Avatar Pill */}
           <button
             type="button"
-            className="w-7 h-7 rounded-full p-0.5 bg-gradient-to-tr from-[#8a9b85] to-[#b77e6b] shrink-0 cursor-pointer shadow-xs hover:scale-105 transition"
+            className="w-8 h-8 rounded-full p-0.5 bg-gradient-to-tr from-[#8a9b85] to-[#b77e6b] shrink-0 cursor-pointer shadow-xs hover:scale-105 transition"
             onClick={onOpenProfileModal}
-            title="Customize your profile & note"
+            title="Customize your profile and note"
           >
             <div className="w-full h-full rounded-full bg-[var(--white)] overflow-hidden flex items-center justify-center text-[10px] font-bold text-[var(--ink)]">
               {user?.avatarUrl ? (
@@ -433,9 +417,12 @@ export const StageView: React.FC<StageViewProps> = ({
           <small>{currentDateFormatted}</small>
         </div>
         <div
-          className="flex flex-col items-end shrink-0 cursor-pointer hover:opacity-80 active:scale-95 transition"
-          onClick={() => setIsGoalsModalOpen(true)}
-          title="Tap to view our relationship story, firsts & goals"
+          className="flex flex-col items-end shrink-0 cursor-pointer hover:opacity-80 transition"
+          onClick={() => {
+            setAnniversaryInput(anniversaryDate ? new Date(anniversaryDate).toISOString().split('T')[0] : '')
+            setIsEditingAnniversary(true)
+          }}
+          title="Tap to adjust your anniversary date"
         >
           <span className="date">Together since {togetherYear} ✎</span>
           <span className="text-[10px] font-mono tracking-wide text-[#738276] mt-0.5">
@@ -588,18 +575,6 @@ export const StageView: React.FC<StageViewProps> = ({
 
       {/* 8. LIVE PARTNER LOCATION TRACKER */}
       <PartnerLocationCard />
-
-      {/* 9. Commercial Sanctuary Footer Mark */}
-      <div className="pt-3 pb-1 text-center select-none opacity-80">
-        <div className="flex items-center justify-center gap-2 text-[#b0b3ab] text-[11px]">
-          <span className="w-8 h-px bg-[#deddd7]" />
-          <span className="font-serif italic text-xs text-[#7a7d76]">pages of us</span>
-          <span className="w-8 h-px bg-[#deddd7]" />
-        </div>
-        <p className="text-[9px] text-[#93968d] mt-1 tracking-wider uppercase">
-          A private shared space for two
-        </p>
-      </div>
 
       {/* MODAL: Customize Anniversary Date */}
       {isEditingAnniversary && (
