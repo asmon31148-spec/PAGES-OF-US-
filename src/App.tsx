@@ -25,8 +25,7 @@ import {
 import { getFirebaseDb } from '@/core/storage/firebase'
 import { collection, query, orderBy, limit, onSnapshot } from 'firebase/firestore'
 import { MemoriesView } from '@/features/memories'
-import { LetterboxView } from '@/features/letterbox'
-import { TimelineView } from '@/features/timeline'
+import { WorldView } from '@/features/world'
 import { VaultView } from '@/features/vault'
 
 const AppContent: React.FC = () => {
@@ -151,9 +150,8 @@ const AppContent: React.FC = () => {
                   onOpenProfileModal={() => setIsProfileModalOpen(true)}
                 />
               )}
+              {activeTab === 'world' && <WorldView />}
               {activeTab === 'memories' && <MemoriesView />}
-              {activeTab === 'letters' && <LetterboxView />}
-              {activeTab === 'timeline' && <TimelineView />}
               {activeTab === 'vault' && <VaultView />}
             </motion.div>
           </AnimatePresence>
