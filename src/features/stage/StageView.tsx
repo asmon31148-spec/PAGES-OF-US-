@@ -334,7 +334,7 @@ export const StageView: React.FC<StageViewProps> = ({
       const d = new Date(anniversaryDate)
       if (!isNaN(d.getTime())) return d
     }
-    return new Date('2024-01-01')
+    return space?.createdAt ? new Date(space.createdAt) : new Date()
   }, [anniversaryDate])
 
   const togetherYear = startDate.getFullYear()

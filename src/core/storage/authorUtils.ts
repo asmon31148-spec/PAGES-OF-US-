@@ -32,11 +32,13 @@ export const getAuthorAttribution = (
   partnerNickname?: string
 ): { authorName: string; isMine: boolean; label: string } => {
   const parsed = parseAuthor(rawAuthor)
-  const isMine = Boolean(
-    (currentUser?.id && parsed.id === currentUser.id) ||
-    (!parsed.id && currentUser?.nickname && parsed.name.toLowerCase() === currentUser.nickname.toLowerCase()) ||
-    parsed.name === 'You'
-  )
+  
+  let isMine = false
+  if (currentUser?.id && parsed.id) {
+    isMine = parsed.id === currentUser.id
+  } else if (currentUser?.nickname && parsed.name) {
+    isMine = parsed.name.toLowerCase() === currentUser.nickname.toLowerCase()
+  }
 
   const authorName = isMine
     ? (currentUser?.nickname || 'You')

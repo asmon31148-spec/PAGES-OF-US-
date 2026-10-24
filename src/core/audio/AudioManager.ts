@@ -11,7 +11,24 @@ class GlobalAudioManager {
   private listeners: Set<AudioEventListener> = new Set()
 
   public currentTrack: Track | null = null
-  public playlist: Track[] = []
+  public playlist: Track[] = [
+    {
+      id: 'default_piano_sanctuary',
+      title: 'Piano Sanctuary',
+      artist: 'Pages of Us',
+      audioUrl: 'https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3?filename=lofi-study-112191.mp3',
+      duration: 147,
+      addedBy: 'Sanctuary'
+    },
+    {
+      id: 'default_lofi_evening',
+      title: 'Midnight Reverie',
+      artist: 'Acoustic Calm',
+      audioUrl: 'https://cdn.pixabay.com/download/audio/2022/01/18/audio_d0a13f69d2.mp3?filename=relaxed-vlog-night-street-131746.mp3',
+      duration: 132,
+      addedBy: 'Sanctuary'
+    }
+  ]
   public isPlaying: boolean = false
   public volume: number = 90 // 0 to 100 (crisp, loud default)
   public progress: number = 0

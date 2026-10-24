@@ -1,3 +1,5 @@
+import { Geolocation } from '@capacitor/geolocation'
+import { Capacitor } from '@capacitor/core'
 import { requestNativeNotificationPermission, initNotificationChannels } from '@/core/notifications'
 
 export interface PermissionStatusMap {
@@ -59,8 +61,17 @@ export const requestMediaPermissions = async (): Promise<{
   return { camera, microphone }
 }
 
-// 3. Request Location Permission
+// 3. Request Location Permission (Native Capacitor + Web fallback)
 export const requestLocationPermission = async (): Promise<'granted' | 'denied' | 'unavailable'> => {
+  if (Capacitor.isNativePlatform()) {
+    try {
+      const res = await Geolocation.requestPermissions()
+      return res.location === 'granted' ? 'granted' : 'denied'
+    } catch {
+      return 'denied'
+    }
+  }
+
   if (!navigator.geolocation) return 'unavailable'
   return new Promise((resolve) => {
     navigator.geolocation.getCurrentPosition(

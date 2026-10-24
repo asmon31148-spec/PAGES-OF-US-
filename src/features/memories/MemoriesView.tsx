@@ -255,6 +255,7 @@ export const MemoriesView: React.FC = () => {
         mediaUrl: finalMediaUrl || '',
         voiceUrl: finalVoiceUrl || undefined,
         createdAt: formatLocalDate(nowIso, { day: 'numeric', month: 'short' }).toUpperCase(),
+        rawDate: nowIso,
         addedBy: 'You',
         isMine: true,
         rotation: chosenRotation

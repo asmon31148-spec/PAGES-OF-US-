@@ -37,9 +37,14 @@ export const TimelineView: React.FC = () => {
     milestones.forEach((item) => {
       let year = new Date().getFullYear()
       if (item.rawDate) {
-        const parsed = new Date(item.rawDate).getFullYear()
-        if (!isNaN(parsed) && parsed > 1900) {
-          year = parsed
+        const yearMatch = item.rawDate.match(/^(\d{4})/)
+        if (yearMatch) {
+          year = parseInt(yearMatch[1], 10)
+        } else {
+          const parsed = new Date(item.rawDate).getFullYear()
+          if (!isNaN(parsed) && parsed > 1900) {
+            year = parsed
+          }
         }
       }
       if (!groups[year]) groups[year] = []

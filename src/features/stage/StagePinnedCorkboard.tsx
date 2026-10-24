@@ -364,12 +364,20 @@ export const StagePinnedCorkboard: React.FC = () => {
             {partnerNoteEntry && (
               <button
                 type="button"
-                onClick={() => {
-                  confetti({ particleCount: 20, spread: 45, origin: { y: 0.65 } })
-                  showToast(`Acknowledged ${partner?.nickname || 'partner'}'s note 💕`)
+                onClick={async () => {
+                  confetti({ particleCount: 25, spread: 50, origin: { y: 0.65 } })
+                  showToast(`Sent love to ${partner?.nickname || 'partner'} for their note 💕`)
+                  try {
+                    await realtimeBridge.broadcast({
+                      type: 'PULSE',
+                      senderId: user?.id || '',
+                      senderNickname: user?.nickname || 'Partner',
+                      timestamp: Date.now()
+                    })
+                  } catch {}
                 }}
-                className="p-1.5 rounded-md hover:bg-rose-500/10 text-[var(--soft)] hover:text-rose-500 transition cursor-pointer"
-                title="Send heart reaction"
+                className="p-1.5 rounded-md hover:bg-rose-500/10 text-rose-500 transition cursor-pointer active:scale-90"
+                title="Send heart reaction to partner"
               >
                 <Heart className="w-3.5 h-3.5 fill-rose-500 text-rose-500" />
               </button>

@@ -228,6 +228,7 @@ export const StageDailyCheckin: React.FC = () => {
       ...checkinData,
       question: nextPreset.text,
       category: nextPreset.category,
+      answers: {}, // Clear answers so old responses don't falsely attach to the new question
       askedBy: undefined,
       askedById: undefined,
       askedAt: undefined
@@ -245,10 +246,10 @@ export const StageDailyCheckin: React.FC = () => {
       ...checkinData,
       question: customQuestionInput.trim(),
       category: customCategoryInput.trim() || 'Custom Question',
+      answers: {}, // Fresh question gets fresh answers
       askedBy: user.nickname,
       askedById: user.id,
       askedAt: new Date().toISOString(),
-      // Keep existing care checks
       careChecks: checkinData.careChecks || []
     }
 
