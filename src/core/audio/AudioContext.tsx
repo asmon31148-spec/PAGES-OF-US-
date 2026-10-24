@@ -21,6 +21,8 @@ interface AudioContextType {
   toggleAmbient: (soundId: string) => void
   setAmbientVolume: (soundId: string, volume: number) => void
   setPlaylist: (tracks: Track[]) => void
+  duckForMedia: () => void
+  restoreFromMedia: () => void
 }
 
 const AudioContext = createContext<AudioContextType | null>(null)
@@ -55,7 +57,9 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         toggleMute: () => audioManager.toggleMute(),
         toggleAmbient: (id) => audioManager.toggleAmbient(id),
         setAmbientVolume: (id, v) => audioManager.setAmbientVolume(id, v),
-        setPlaylist: (tracks) => audioManager.setPlaylist(tracks)
+        setPlaylist: (tracks) => audioManager.setPlaylist(tracks),
+        duckForMedia: () => audioManager.duckForMedia(),
+        restoreFromMedia: () => audioManager.restoreFromMedia()
       }}
     >
       {children}

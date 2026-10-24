@@ -14,6 +14,7 @@ import { MoodAuraModal, MoodAura, MOOD_AURA_OPTIONS } from './MoodAuraModal'
 import { GoalTrackerModal } from './GoalTrackerModal'
 import { StageMemoryHeroDeck } from './StageMemoryHeroDeck'
 import { StagePinnedCorkboard } from './StagePinnedCorkboard'
+import { AppTopBar } from '@/components/ui/AppTopBar'
 import { syncAndroidWidget } from '@/core/services/widgetSyncService'
 import confetti from 'canvas-confetti'
 import { RefreshCw, Calendar, Heart, Target, ChevronRight, Sparkles } from 'lucide-react'
@@ -373,49 +374,13 @@ export const StageView: React.FC<StageViewProps> = ({
         </div>
       </div>
 
-      {/* 1. TOPBAR - Elegant, Spacious, Uncrowded */}
-      <header className="topbar">
-        <h1 className="wordmark">Pages of Us</h1>
-        <div className="top-actions">
-          <button
-            type="button"
-            className="music-pill flex items-center gap-1.5 shrink-0"
-            onClick={onOpenAudioModal}
-            title="Music and Atmosphere"
-          >
-            <span>♫</span>
-            <span className="max-w-[80px] truncate">
-              {isPlaying ? (currentTrack?.title || 'Atmosphere') : 'Atmosphere'}
-            </span>
-          </button>
-
-          {/* Quick Light / Dark Mode Toggle */}
-          <button
-            type="button"
-            className="music-pill flex items-center justify-center w-8 h-8 !p-0 shrink-0"
-            onClick={toggleDarkLight}
-            title={isDark ? 'Switch to Light Sanctuary (☀️)' : 'Switch to Dark Sanctuary (🌙)'}
-          >
-            {isDark ? '☀️' : '🌙'}
-          </button>
-
-          {/* User Profile Avatar Pill */}
-          <button
-            type="button"
-            className="w-8 h-8 rounded-full p-0.5 bg-gradient-to-tr from-[#8a9b85] to-[#b77e6b] shrink-0 cursor-pointer shadow-xs hover:scale-105 transition"
-            onClick={onOpenProfileModal}
-            title="Customize your profile and note"
-          >
-            <div className="w-full h-full rounded-full bg-[var(--white)] overflow-hidden flex items-center justify-center text-[10px] font-bold text-[var(--ink)]">
-              {user?.avatarUrl ? (
-                <img src={user.avatarUrl} alt="Me" className="w-full h-full object-cover" />
-              ) : (
-                <span>{user?.nickname?.charAt(0).toUpperCase() || 'Y'}</span>
-              )}
-            </div>
-          </button>
-        </div>
-      </header>
+      {/* 1. TOPBAR - Universal Consistent Header */}
+      <AppTopBar
+        title="Pages of Us"
+        onOpenAudioModal={onOpenAudioModal}
+        onOpenThemeModal={onOpenThemeModal}
+        onOpenProfileModal={onOpenProfileModal}
+      />
 
       {/* 2. GREETING */}
       <div className="greeting">
@@ -431,7 +396,7 @@ export const StageView: React.FC<StageViewProps> = ({
           title="Tap to adjust your anniversary date"
         >
           <span className="date">Together since {togetherYear} ✎</span>
-          <span className="text-[10px] font-mono tracking-wide text-[#738276] mt-0.5">
+          <span className="text-[10px] font-mono tracking-wide text-[var(--soft)] mt-0.5">
             Day {daysTogether} together ✦
           </span>
         </div>
@@ -522,11 +487,11 @@ export const StageView: React.FC<StageViewProps> = ({
             title="Invite your partner to connect"
           >
             <div className="presence-copy min-w-0 text-right">
-              <b className="truncate text-[#4d655a]">Connect partner</b>
-              <span className="thought text-[#8a8b83]">Tap to pair ＋</span>
+              <b className="truncate text-[var(--app-accent)]">Connect partner</b>
+              <span className="thought text-[var(--soft)]">Tap to pair ＋</span>
             </div>
             <div className="avatar-wrap shrink-0">
-              <div className="avatar border-dashed border-[#8a9b85] text-[#4d655a] bg-[#eef3eb]">
+              <div className="avatar border-dashed border-[var(--app-accent)]/40 text-[var(--app-accent)] bg-[var(--app-accent)]/10">
                 ＋
               </div>
             </div>
@@ -542,7 +507,7 @@ export const StageView: React.FC<StageViewProps> = ({
         title="Open Relationship Story & Goals Tracker"
       >
         <div className="flex items-center gap-3.5 min-w-0">
-          <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-[#e07a5f]/20 to-[#f4a261]/20 text-[#e07a5f] flex items-center justify-center text-xl shrink-0 shadow-2xs border border-[#e07a5f]/15">
+          <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-[var(--terra)]/20 to-[var(--sand)]/20 text-[var(--terra)] flex items-center justify-center text-xl shrink-0 shadow-2xs border border-[var(--terra)]/20">
             🎯
           </div>
           <div className="min-w-0">
@@ -593,7 +558,7 @@ export const StageView: React.FC<StageViewProps> = ({
             </button>
             <div className="modal-date">ANNIVERSARY & DAYS TOGETHER</div>
             <h3>When did you meet?</h3>
-            <p style={{ fontStyle: 'normal', fontSize: '11px', color: '#777a76', marginBottom: '12px' }}>
+            <p style={{ fontStyle: 'normal', fontSize: '11px', color: 'var(--soft)', marginBottom: '12px' }}>
               Set your actual couple anniversary so your days together counter is 100% accurate.
             </p>
             <input

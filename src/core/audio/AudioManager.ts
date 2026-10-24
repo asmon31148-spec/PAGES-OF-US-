@@ -63,6 +63,8 @@ class GlobalAudioManager {
   ]
 
   private progressInterval: number | null = null
+  private wasPlayingBeforeDuck: boolean = false
+  private activeAmbientBeforeDuck: string[] = []
 
   constructor() {
     try {
@@ -272,6 +274,49 @@ class GlobalAudioManager {
     const howl = this.ambientHowls.get(soundId)
     if (howl && !this.isMuted) {
       howl.volume(sound.volume)
+    }
+    this.notify()
+  }
+
+  // Audio Ducking for Voice Whispers, Video Playback & Modals
+  public duckForMedia() {
+    if (this.isPlaying && this.currentHowl) {
+      this.wasPlayingBeforeDuck = true
+      this.currentHowl.pause()
+      this.isPlaying = false
+      this.stopProgressTracking()
+    }
+    // Duck active ambient layers
+    this.activeAmbientBeforeDuck = []
+    this.ambientSounds.forEach((s) => {
+      if (s.isPlaying) {
+        this.activeAmbientBeforeDuck.push(s.id)
+        const howl = this.ambientHowls.get(s.id)
+        if (howl) howl.pause()
+        s.isPlaying = false
+      }
+    })
+    this.notify()
+  }
+
+  public restoreFromMedia() {
+    if (this.wasPlayingBeforeDuck && this.currentHowl) {
+      this.currentHowl.play()
+      this.isPlaying = true
+      this.startProgressTracking()
+      this.wasPlayingBeforeDuck = false
+    }
+    // Restore active ambient layers
+    if (this.activeAmbientBeforeDuck.length > 0) {
+      this.activeAmbientBeforeDuck.forEach((id) => {
+        const sound = this.ambientSounds.find((s) => s.id === id)
+        const howl = this.ambientHowls.get(id)
+        if (sound && howl) {
+          sound.isPlaying = true
+          howl.play()
+        }
+      })
+      this.activeAmbientBeforeDuck = []
     }
     this.notify()
   }

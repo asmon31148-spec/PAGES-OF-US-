@@ -36,7 +36,8 @@ import {
   Sun,
   Moon,
   Plane,
-  Car
+  Car,
+  X
 } from 'lucide-react'
 
 export interface UserLocationData {
@@ -1175,7 +1176,7 @@ export const PartnerLocationCard: React.FC = () => {
           <button
             type="button"
             onClick={() => setShowPrivacyNoteModal(true)}
-            className="text-[#7a8178] hover:text-[#4d655a] transition cursor-pointer p-1"
+            className="text-[var(--soft)] hover:text-[var(--app-accent)] transition cursor-pointer p-1"
             title="Privacy policy & how sharing works"
           >
             <Info className="w-3.5 h-3.5" />
@@ -1185,7 +1186,7 @@ export const PartnerLocationCard: React.FC = () => {
             type="button"
             onClick={() => handleToggleSharing(!isMySharingOn)}
             className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-              isMySharingOn ? 'bg-[#4d655a]' : 'bg-[#deddd7]'
+              isMySharingOn ? 'bg-[var(--app-accent)]' : 'bg-[var(--line)]'
             }`}
             title={isMySharingOn ? 'Turn location sharing OFF' : 'Turn location sharing ON'}
           >
@@ -1230,7 +1231,7 @@ export const PartnerLocationCard: React.FC = () => {
         {/* Partner Local Clock */}
         <div className="flex items-center gap-2.5 min-w-0 text-right justify-end">
           <div className="min-w-0">
-            <span className="text-[10px] uppercase font-bold text-[#e07a5f] block truncate">
+            <span className="text-[10px] uppercase font-bold text-[var(--terra)] block truncate">
               {partner?.nickname || 'Partner'} · {partnerLoc?.city || 'Sky'}
             </span>
             <span className="text-sm font-bold font-mono text-[var(--ink)] tracking-tight">
@@ -1498,7 +1499,7 @@ export const PartnerLocationCard: React.FC = () => {
             </span>
           </div>
 
-          <p className="font-serif text-[11px] text-[#3d423c] truncate font-medium">
+          <p className="font-serif text-[11px] text-[var(--ink)] truncate font-medium">
             {isMySharingOn
               ? myLoc
                 ? myLoc.customLabel || myLoc.neighborhood || myLoc.placeName || 'Sharing live'
@@ -1506,7 +1507,7 @@ export const PartnerLocationCard: React.FC = () => {
               : 'Sharing is paused'}
           </p>
 
-          <span className="text-[8px] text-[#8a8b83] block truncate">
+          <span className="text-[8px] text-[var(--soft)] block truncate">
             {isMySharingOn && myLoc
               ? `${myLoc.city ? `${myLoc.city} · ` : ''}${formatLastSeen(myLoc.updatedAt)}`
               : 'Tap toggle to turn on'}
@@ -1517,13 +1518,13 @@ export const PartnerLocationCard: React.FC = () => {
       {/* 5. Shared Places Chips (Requirements 4, 5, 7) */}
       <div className="pt-0.5">
         <div className="flex items-center justify-between mb-1.5">
-          <span className="text-[9px] font-semibold text-[#666861] uppercase tracking-wider">
+          <span className="text-[9px] font-semibold text-[var(--soft)] uppercase tracking-wider">
             Shared Places ({pinnedPlaces.length})
           </span>
           <button
             type="button"
             onClick={() => setShowAddPlaceModal(true)}
-            className="text-[9px] text-[#4d655a] font-medium hover:underline flex items-center gap-0.5 cursor-pointer"
+            className="text-[9px] text-[var(--app-accent)] font-medium hover:underline flex items-center gap-0.5 cursor-pointer"
           >
             <Plus className="w-2.5 h-2.5" />
             <span>Pin New Place</span>
@@ -1620,55 +1621,58 @@ export const PartnerLocationCard: React.FC = () => {
 
       {/* MODAL 1: Explicit Consent & Permission Dialog */}
       {showConsentModal && (
-        <div
-          className="modal-backdrop show"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setShowConsentModal(false)
-          }}
-        >
-          <div className="modal">
-            <div className="modal-handle"></div>
+        <div className="fixed inset-0 z-[2000] bg-[var(--app-bg)] text-[var(--ink)] flex flex-col overflow-y-auto animate-fadeIn">
+          {/* Header */}
+          <div className="pt-safe px-4 py-3 flex items-center justify-between border-b border-[var(--line)] bg-[var(--white)] sticky top-0 z-10 shadow-2xs">
+            <div>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--app-accent)]">
+                LOCATION PRIVACY & PERMISSION
+              </span>
+              <h2 className="text-base font-serif font-bold text-[var(--ink)]">
+                Share location with {partner?.nickname || 'your partner'}?
+              </h2>
+            </div>
             <button
               type="button"
-              className="close"
               onClick={() => setShowConsentModal(false)}
+              className="p-1.5 rounded-full hover:bg-[var(--line)]/40 text-[var(--soft)] hover:text-[var(--ink)] transition cursor-pointer"
             >
-              ×
+              <X className="w-5 h-5" />
             </button>
-            <div className="modal-date">LOCATION PRIVACY & PERMISSION</div>
-            <h3>Share location with {partner?.nickname || 'your partner'}?</h3>
+          </div>
 
-            <div className="space-y-3 my-3 text-xs text-[var(--soft)]">
-              <div className="flex items-start gap-2.5 p-2.5 rounded-xl bg-[var(--paper)] border border-[var(--line)]">
+          <div className="flex-1 p-5 max-w-md mx-auto w-full space-y-4">
+            <div className="space-y-3 text-xs text-[var(--soft)]">
+              <div className="flex items-start gap-2.5 p-3 rounded-2xl bg-[var(--paper)] border border-[var(--line)]">
                 <ShieldCheck className="w-4 h-4 text-[var(--app-accent)] shrink-0 mt-0.5" />
-                <p className="not-italic text-[11px] leading-relaxed text-[var(--ink)]">
+                <p className="not-italic text-xs leading-relaxed text-[var(--ink)]">
                   <b>Private for you two:</b> Your GPS location is shared exclusively with{' '}
                   {partner?.nickname || 'your partner'}. It is never tracked or shared with third parties.
                 </p>
               </div>
 
-              <div className="flex items-start gap-2.5 p-2.5 rounded-xl bg-[var(--paper)] border border-[var(--line)]">
+              <div className="flex items-start gap-2.5 p-3 rounded-2xl bg-[var(--paper)] border border-[var(--line)]">
                 <Lock className="w-4 h-4 text-[var(--terra)] shrink-0 mt-0.5" />
-                <p className="not-italic text-[11px] leading-relaxed text-[var(--ink)]">
+                <p className="not-italic text-xs leading-relaxed text-[var(--ink)]">
                   <b>Mutual rule:</b> You will only be able to see their location when both of you
                   have location sharing turned ON.
                 </p>
               </div>
 
-              <div className="flex items-start gap-2.5 p-2.5 rounded-xl bg-[var(--paper)] border border-[var(--line)]">
+              <div className="flex items-start gap-2.5 p-3 rounded-2xl bg-[var(--paper)] border border-[var(--line)]">
                 <EyeOff className="w-4 h-4 text-[var(--soft)] shrink-0 mt-0.5" />
-                <p className="not-italic text-[11px] leading-relaxed text-[var(--ink)]">
+                <p className="not-italic text-xs leading-relaxed text-[var(--ink)]">
                   <b>Stop anytime:</b> Tap the toggle switch at any time to immediately stop sharing
                   and remove your pin from the map.
                 </p>
               </div>
             </div>
 
-            <div className="flex gap-2 mt-4">
+            <div className="flex gap-2 pt-4">
               <button
                 type="button"
                 onClick={() => setShowConsentModal(false)}
-                className="flex-1 py-2.5 rounded-xl border border-[var(--line)] bg-[var(--paper)] text-xs font-medium text-[var(--ink)] cursor-pointer hover:opacity-85 transition"
+                className="flex-1 py-3 rounded-2xl border border-[var(--line)] bg-[var(--paper)] text-xs font-medium text-[var(--ink)] cursor-pointer hover:opacity-85 transition"
               >
                 Not Now
               </button>
@@ -1679,9 +1683,9 @@ export const PartnerLocationCard: React.FC = () => {
                   setShowConsentModal(false)
                   handleForceGpsUpdate()
                 }}
-                className="flex-1 py-2.5 rounded-xl bg-[var(--app-accent)] text-white text-xs font-medium cursor-pointer hover:opacity-90 transition shadow-xs flex items-center justify-center gap-1.5"
+                className="flex-1 py-3 rounded-2xl bg-[var(--app-accent)] text-white text-xs font-medium cursor-pointer hover:opacity-90 transition shadow-xs flex items-center justify-center gap-1.5"
               >
-                <ShieldCheck className="w-3.5 h-3.5" />
+                <ShieldCheck className="w-4 h-4" />
                 <span>Agree & Turn ON</span>
               </button>
             </div>
@@ -1691,29 +1695,33 @@ export const PartnerLocationCard: React.FC = () => {
 
       {/* MODAL 2: Calibrate / Search Real Address (Fixes False IP Location) */}
       {showCalibrateModal && (
-        <div
-          className="modal-backdrop show"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setShowCalibrateModal(false)
-          }}
-        >
-          <div className="modal">
-            <div className="modal-handle"></div>
+        <div className="fixed inset-0 z-[2000] bg-[var(--app-bg)] text-[var(--ink)] flex flex-col overflow-y-auto animate-fadeIn">
+          {/* Header */}
+          <div className="pt-safe px-4 py-3 flex items-center justify-between border-b border-[var(--line)] bg-[var(--white)] sticky top-0 z-10 shadow-2xs">
+            <div>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--app-accent)]">
+                REAL LOCATION CALIBRATION
+              </span>
+              <h2 className="text-base font-serif font-bold text-[var(--ink)]">
+                Set Your Real Location
+              </h2>
+            </div>
             <button
               type="button"
-              className="close"
               onClick={() => setShowCalibrateModal(false)}
+              className="p-1.5 rounded-full hover:bg-[var(--line)]/40 text-[var(--soft)] hover:text-[var(--ink)] transition cursor-pointer"
             >
-              ×
+              <X className="w-5 h-5" />
             </button>
-            <div className="modal-date">REAL LOCATION CALIBRATION</div>
-            <h3>Set Your Real Location</h3>
-            <p className="not-italic text-[11px] text-[var(--soft)] mb-3">
+          </div>
+
+          <div className="flex-1 p-5 max-w-md mx-auto w-full space-y-4">
+            <p className="not-italic text-xs text-[var(--soft)] leading-relaxed">
               On desktop PCs or devices without a GPS chip, browsers sometimes report an inaccurate IP location (e.g. ISP node). Search your real street or city below to set your pin accurately.
             </p>
 
             {/* Address Search Bar */}
-            <div className="flex gap-2 mb-3">
+            <div className="flex gap-2">
               <div className="relative flex-1">
                 <input
                   type="text"
@@ -1723,15 +1731,15 @@ export const PartnerLocationCard: React.FC = () => {
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') handleSearchAddress()
                   }}
-                  className="w-full text-xs py-2 px-3 pl-8 rounded-xl border border-[var(--line)] bg-[var(--paper)] text-[var(--ink)] focus:outline-none focus:border-[var(--app-accent)]"
+                  className="w-full text-xs py-2.5 px-3 pl-8 rounded-xl border border-[var(--line)] bg-[var(--paper)] text-[var(--ink)] focus:outline-none focus:border-[var(--app-accent)]"
                 />
-                <Search className="w-3.5 h-3.5 text-[var(--soft)] absolute left-2.5 top-2.5" />
+                <Search className="w-4 h-4 text-[var(--soft)] absolute left-2.5 top-3" />
               </div>
               <button
                 type="button"
                 onClick={handleSearchAddress}
                 disabled={isSearchingAddress}
-                className="py-2 px-3 rounded-xl bg-[var(--app-accent)] text-white text-xs font-medium hover:opacity-90 transition disabled:opacity-50 cursor-pointer"
+                className="py-2.5 px-4 rounded-xl bg-[var(--app-accent)] text-white text-xs font-medium hover:opacity-90 transition disabled:opacity-50 cursor-pointer shadow-xs"
               >
                 {isSearchingAddress ? 'Searching...' : 'Search'}
               </button>
@@ -1739,32 +1747,32 @@ export const PartnerLocationCard: React.FC = () => {
 
             {/* Search Results Dropdown */}
             {searchResults.length > 0 && (
-              <div className="space-y-1.5 max-h-48 overflow-y-auto mb-3 p-1 rounded-xl border border-[var(--line)] bg-[var(--paper)]">
+              <div className="space-y-1.5 max-h-60 overflow-y-auto p-1.5 rounded-2xl border border-[var(--line)] bg-[var(--paper)]">
                 {searchResults.map((item, idx) => (
                   <button
                     key={idx}
                     type="button"
                     onClick={() => handleSelectSearchedLocation(item)}
-                    className="w-full text-left p-2 rounded-lg hover:bg-[var(--white)] transition text-[11px] text-[var(--ink)] border-b border-[var(--line)] last:border-0"
+                    className="w-full text-left p-2.5 rounded-xl hover:bg-[var(--white)] transition text-xs text-[var(--ink)] border-b border-[var(--line)] last:border-0"
                   >
                     <div className="font-semibold">{item.display_name.split(',')[0]}</div>
-                    <div className="text-[9px] text-[var(--soft)] truncate">{item.display_name}</div>
+                    <div className="text-[10px] text-[var(--soft)] truncate mt-0.5">{item.display_name}</div>
                   </button>
                 ))}
               </div>
             )}
 
             {/* Force Live GPS Button */}
-            <div className="border-t border-[var(--line)] pt-3">
+            <div className="border-t border-[var(--line)] pt-4">
               <button
                 type="button"
                 onClick={() => {
                   setShowCalibrateModal(false)
                   handleForceGpsUpdate()
                 }}
-                className="w-full py-2 px-3 rounded-xl border border-[var(--line)] bg-[var(--paper)] text-xs font-medium text-[var(--app-accent)] hover:opacity-90 transition flex items-center justify-center gap-1.5 cursor-pointer"
+                className="w-full py-3 px-4 rounded-2xl border border-[var(--line)] bg-[var(--paper)] text-xs font-medium text-[var(--app-accent)] hover:opacity-90 transition flex items-center justify-center gap-2 cursor-pointer shadow-2xs"
               >
-                <Crosshair className="w-3.5 h-3.5" />
+                <Crosshair className="w-4 h-4" />
                 <span>Re-detect Fresh GPS Hardware Sensor</span>
               </button>
             </div>
@@ -1774,30 +1782,34 @@ export const PartnerLocationCard: React.FC = () => {
 
       {/* MODAL 3: Add Shared Pinned Place */}
       {showAddPlaceModal && (
-        <div
-          className="modal-backdrop show"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setShowAddPlaceModal(false)
-          }}
-        >
-          <div className="modal">
-            <div className="modal-handle"></div>
+        <div className="fixed inset-0 z-[2000] bg-[var(--app-bg)] text-[var(--ink)] flex flex-col overflow-y-auto animate-fadeIn">
+          {/* Header */}
+          <div className="pt-safe px-4 py-3 flex items-center justify-between border-b border-[var(--line)] bg-[var(--white)] sticky top-0 z-10 shadow-2xs">
+            <div>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--app-accent)]">
+                SHARED PLACES
+              </span>
+              <h2 className="text-base font-serif font-bold text-[var(--ink)]">
+                Pin a Place for Both of You
+              </h2>
+            </div>
             <button
               type="button"
-              className="close"
               onClick={() => setShowAddPlaceModal(false)}
+              className="p-1.5 rounded-full hover:bg-[var(--line)]/40 text-[var(--soft)] hover:text-[var(--ink)] transition cursor-pointer"
             >
-              ×
+              <X className="w-5 h-5" />
             </button>
-            <div className="modal-date">SHARED PLACES</div>
-            <h3>Pin a Place for Both of You</h3>
-            <p className="not-italic text-[11px] text-[var(--soft)] mb-3">
+          </div>
+
+          <div className="flex-1 p-5 max-w-md mx-auto w-full space-y-4">
+            <p className="not-italic text-xs text-[var(--soft)] leading-relaxed">
               Add places like Home, Cafe, or University. When either partner enters or leaves, Page of Us will alert the other!
             </p>
 
-            <div className="space-y-3 mb-4">
+            <div className="space-y-4">
               <div>
-                <label className="text-[10px] font-semibold text-[var(--soft)] uppercase block mb-1">
+                <label className="text-[10px] font-semibold text-[var(--soft)] uppercase block mb-1.5">
                   Place Name
                 </label>
                 <input
@@ -1805,12 +1817,12 @@ export const PartnerLocationCard: React.FC = () => {
                   placeholder="e.g. Our Apartment, Cozy Cafe..."
                   value={newPlaceName}
                   onChange={(e) => setNewPlaceName(e.target.value)}
-                  className="w-full text-xs py-2 px-3 rounded-xl border border-[var(--line)] bg-[var(--paper)] text-[var(--ink)] focus:outline-none focus:border-[var(--app-accent)]"
+                  className="w-full text-xs py-2.5 px-3 rounded-xl border border-[var(--line)] bg-[var(--paper)] text-[var(--ink)] focus:outline-none focus:border-[var(--app-accent)]"
                 />
               </div>
 
               <div>
-                <label className="text-[10px] font-semibold text-[var(--soft)] uppercase block mb-1">
+                <label className="text-[10px] font-semibold text-[var(--soft)] uppercase block mb-1.5">
                   Choose Cute Icon
                 </label>
                 <div className="grid grid-cols-4 gap-2">
@@ -1819,21 +1831,21 @@ export const PartnerLocationCard: React.FC = () => {
                       key={p.label}
                       type="button"
                       onClick={() => setNewPlaceIcon(p.icon)}
-                      className={`p-2 rounded-xl border text-center transition cursor-pointer ${
+                      className={`p-2.5 rounded-2xl border text-center transition cursor-pointer ${
                         newPlaceIcon === p.icon
-                          ? 'border-[var(--app-accent)] bg-[var(--white)]'
+                          ? 'border-[var(--app-accent)] bg-[var(--white)] shadow-xs'
                           : 'border-[var(--line)] bg-[var(--paper)] hover:opacity-85'
                       }`}
                     >
-                      <div className="text-base">{p.icon}</div>
-                      <div className="text-[9px] font-medium text-[var(--ink)]">{p.label}</div>
+                      <div className="text-lg">{p.icon}</div>
+                      <div className="text-[9px] font-medium text-[var(--ink)] mt-0.5">{p.label}</div>
                     </button>
                   ))}
                 </div>
               </div>
 
               <div>
-                <label className="text-[10px] font-semibold text-[var(--soft)] uppercase block mb-1">
+                <label className="text-[10px] font-semibold text-[var(--soft)] uppercase block mb-1.5">
                   Geofence Radius: {newPlaceRadius} meters
                 </label>
                 <input
@@ -1843,9 +1855,9 @@ export const PartnerLocationCard: React.FC = () => {
                   step="25"
                   value={newPlaceRadius}
                   onChange={(e) => setNewPlaceRadius(Number(e.target.value))}
-                  className="w-full accent-[var(--app-accent)]"
+                  className="w-full accent-[var(--app-accent)] cursor-pointer"
                 />
-                <div className="flex justify-between text-[9px] text-[var(--soft)]">
+                <div className="flex justify-between text-[10px] text-[var(--soft)] mt-1">
                   <span>50m (Cozy)</span>
                   <span>150m (Standard)</span>
                   <span>500m (Campus)</span>
@@ -1853,11 +1865,11 @@ export const PartnerLocationCard: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex gap-2">
+            <div className="flex gap-2 pt-4">
               <button
                 type="button"
                 onClick={() => setShowAddPlaceModal(false)}
-                className="flex-1 py-2.5 rounded-xl border border-[var(--line)] bg-[var(--paper)] text-xs font-medium text-[var(--ink)] cursor-pointer hover:opacity-85 transition"
+                className="flex-1 py-3 rounded-2xl border border-[var(--line)] bg-[var(--paper)] text-xs font-medium text-[var(--ink)] cursor-pointer hover:opacity-85 transition"
               >
                 Cancel
               </button>
@@ -1865,7 +1877,7 @@ export const PartnerLocationCard: React.FC = () => {
                 type="button"
                 onClick={handleSaveNewPlace}
                 disabled={!newPlaceName.trim()}
-                className="flex-1 py-2.5 rounded-xl bg-[var(--app-accent)] text-white text-xs font-medium cursor-pointer hover:opacity-90 transition shadow-xs disabled:opacity-50"
+                className="flex-1 py-3 rounded-2xl bg-[var(--app-accent)] text-white text-xs font-medium cursor-pointer hover:opacity-90 transition shadow-xs disabled:opacity-50"
               >
                 Save Pinned Place
               </button>
@@ -1876,36 +1888,39 @@ export const PartnerLocationCard: React.FC = () => {
 
       {/* MODAL 4: Privacy Note (What is collected and why) */}
       {showPrivacyNoteModal && (
-        <div
-          className="modal-backdrop show"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setShowPrivacyNoteModal(false)
-          }}
-        >
-          <div className="modal">
-            <div className="modal-handle"></div>
+        <div className="fixed inset-0 z-[2000] bg-[var(--app-bg)] text-[var(--ink)] flex flex-col overflow-y-auto animate-fadeIn">
+          {/* Header */}
+          <div className="pt-safe px-4 py-3 flex items-center justify-between border-b border-[var(--line)] bg-[var(--white)] sticky top-0 z-10 shadow-2xs">
+            <div>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--app-accent)]">
+                SECURITY & PRIVACY
+              </span>
+              <h2 className="text-base font-serif font-bold text-[var(--ink)]">
+                How Location Works in Pages of Us
+              </h2>
+            </div>
             <button
               type="button"
-              className="close"
               onClick={() => setShowPrivacyNoteModal(false)}
+              className="p-1.5 rounded-full hover:bg-[var(--line)]/40 text-[var(--soft)] hover:text-[var(--ink)] transition cursor-pointer"
             >
-              ×
+              <X className="w-5 h-5" />
             </button>
-            <div className="modal-date">SECURITY & PRIVACY</div>
-            <h3>How Location Works in Pages of Us</h3>
+          </div>
 
-            <div className="space-y-3 my-3 text-xs text-[var(--soft)]">
-              <p className="not-italic text-[11px] leading-relaxed text-[var(--ink)]">
+          <div className="flex-1 p-5 max-w-md mx-auto w-full space-y-4">
+            <div className="space-y-3 text-xs text-[var(--soft)]">
+              <p className="not-italic text-xs leading-relaxed text-[var(--ink)] p-3 rounded-2xl bg-[var(--paper)] border border-[var(--line)]">
                 <b>What is collected:</b> GPS latitude and longitude, and reverse-geocoded
                 neighborhood/city to calculate real-time distance to your partner.
               </p>
-              <p className="not-italic text-[11px] leading-relaxed text-[var(--ink)]">
+              <p className="not-italic text-xs leading-relaxed text-[var(--ink)] p-3 rounded-2xl bg-[var(--paper)] border border-[var(--line)]">
                 <b>Why it is collected:</b> Strictly to render your dual presence, tether line, and live distance on your private shared stage.
               </p>
-              <p className="not-italic text-[11px] leading-relaxed text-[var(--ink)]">
+              <p className="not-italic text-xs leading-relaxed text-[var(--ink)] p-3 rounded-2xl bg-[var(--paper)] border border-[var(--line)]">
                 <b>Mutual rule:</b> If you turn off sharing, your partner's pin is also hidden from your screen until you re-enable it.
               </p>
-              <p className="not-italic text-[11px] leading-relaxed text-[var(--ink)]">
+              <p className="not-italic text-xs leading-relaxed text-[var(--ink)] p-3 rounded-2xl bg-[var(--paper)] border border-[var(--line)]">
                 <b>Data deletion:</b> Tap <i>"Clear History"</i> at the bottom of the card at any time to permanently remove all stored location coordinates.
               </p>
             </div>
@@ -1913,7 +1928,7 @@ export const PartnerLocationCard: React.FC = () => {
             <button
               type="button"
               onClick={() => setShowPrivacyNoteModal(false)}
-              className="w-full mt-2 py-2.5 rounded-xl bg-[var(--app-accent)] text-white text-xs font-medium cursor-pointer hover:opacity-90 transition"
+              className="w-full mt-4 py-3 rounded-2xl bg-[var(--app-accent)] text-white text-xs font-medium cursor-pointer hover:opacity-90 transition shadow-xs"
             >
               Close Note
             </button>
@@ -1923,28 +1938,32 @@ export const PartnerLocationCard: React.FC = () => {
 
       {/* MODAL 5: Place Tag Modal / Presets */}
       {showTagModal && (
-        <div
-          className="modal-backdrop show"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setShowTagModal(false)
-          }}
-        >
-          <div className="modal">
-            <div className="modal-handle"></div>
+        <div className="fixed inset-0 z-[2000] bg-[var(--app-bg)] text-[var(--ink)] flex flex-col overflow-y-auto animate-fadeIn">
+          {/* Header */}
+          <div className="pt-safe px-4 py-3 flex items-center justify-between border-b border-[var(--line)] bg-[var(--white)] sticky top-0 z-10 shadow-2xs">
+            <div>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--app-accent)]">
+                LOCATION STATUS
+              </span>
+              <h2 className="text-base font-serif font-bold text-[var(--ink)]">
+                Where are you right now?
+              </h2>
+            </div>
             <button
               type="button"
-              className="close"
               onClick={() => setShowTagModal(false)}
+              className="p-1.5 rounded-full hover:bg-[var(--line)]/40 text-[var(--soft)] hover:text-[var(--ink)] transition cursor-pointer"
             >
-              ×
+              <X className="w-5 h-5" />
             </button>
-            <div className="modal-date">LOCATION STATUS</div>
-            <h3>Where are you right now?</h3>
-            <p className="not-italic text-[11px] text-[var(--soft)] mb-3">
+          </div>
+
+          <div className="flex-1 p-5 max-w-md mx-auto w-full space-y-4">
+            <p className="not-italic text-xs text-[var(--soft)] leading-relaxed">
               Choose a familiar tag or preset location for your partner to see.
             </p>
 
-            <div className="grid grid-cols-2 gap-2 mb-4">
+            <div className="grid grid-cols-2 gap-2.5">
               {PLACE_TAGS.map((tag) => (
                 <button
                   key={tag}
@@ -1956,7 +1975,7 @@ export const PartnerLocationCard: React.FC = () => {
                       syncMyPosition(myLoc.lat, myLoc.lng, myLoc.accuracy, tag)
                     }
                   }}
-                  className="p-2.5 rounded-xl border border-[var(--line)] bg-[var(--paper)] text-left text-xs text-[var(--ink)] font-medium hover:opacity-85 cursor-pointer"
+                  className="p-3 rounded-2xl border border-[var(--line)] bg-[var(--paper)] text-left text-xs text-[var(--ink)] font-medium hover:border-[var(--app-accent)] hover:bg-[var(--white)] cursor-pointer transition shadow-2xs"
                 >
                   {tag}
                 </button>

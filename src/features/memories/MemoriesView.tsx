@@ -12,7 +12,8 @@ import {
   formatLocalDate
 } from '@/core/storage'
 import { realtimeBridge } from '@/core/realtime'
-import { useAudioRecorder } from '@/core/audio'
+import { useAudioRecorder, audioManager } from '@/core/audio'
+import { AppTopBar } from '@/components/ui/AppTopBar'
 import confetti from 'canvas-confetti'
 import {
   Plus,
@@ -60,7 +61,17 @@ type CollectionType = 'captured' | 'letters' | 'timeline'
 type MediaFilterType = 'all' | 'photos' | 'videos' | 'audio'
 type AddMemoryMode = 'chooser' | 'photo' | 'video' | 'voice'
 
-export const MemoriesView: React.FC = () => {
+export interface MemoriesViewProps {
+  onOpenAudioModal?: () => void
+  onOpenThemeModal?: () => void
+  onOpenProfileModal?: () => void
+}
+
+export const MemoriesView: React.FC<MemoriesViewProps> = ({
+  onOpenAudioModal,
+  onOpenThemeModal,
+  onOpenProfileModal
+}) => {
   const { user, space, partner } = useAuth()
   const { theme, isDark } = useTheme()
   const { showToast } = useToast()
@@ -227,13 +238,14 @@ export const MemoriesView: React.FC = () => {
     })
   }, [memories, mediaFilter, searchQuery])
 
-  // Audio Playback Controller
+  // Audio Playback Controller with Ambient Ducking
   const handleToggleVoicePlayback = (url: string, id: string) => {
     if (playingVoiceId === id) {
       if (voiceAudio) {
         voiceAudio.pause()
       }
       setPlayingVoiceId(null)
+      audioManager.restoreFromMedia()
       return
     }
 
@@ -241,6 +253,7 @@ export const MemoriesView: React.FC = () => {
       voiceAudio.pause()
     }
 
+    audioManager.duckForMedia()
     const audio = new Audio(url)
     setVoiceAudio(audio)
     setPlayingVoiceId(id)
@@ -254,14 +267,26 @@ export const MemoriesView: React.FC = () => {
     audio.onended = () => {
       setPlayingVoiceId(null)
       setVoiceProgress(0)
+      audioManager.restoreFromMedia()
     }
 
     audio.play().catch((e) => {
       console.warn('Playback error:', e)
       showToast('Could not play audio.')
       setPlayingVoiceId(null)
+      audioManager.restoreFromMedia()
     })
   }
+
+  // Restore ambient audio when unmounting
+  useEffect(() => {
+    return () => {
+      if (voiceAudio) {
+        voiceAudio.pause()
+      }
+      audioManager.restoreFromMedia()
+    }
+  }, [voiceAudio])
 
   // Toggle Heart
   const handleToggleLike = (id: string, e?: React.MouseEvent) => {
@@ -407,14 +432,23 @@ export const MemoriesView: React.FC = () => {
   return (
     <div className="page active !p-0 flex flex-col min-h-screen bg-[var(--app-bg)] text-[var(--ink)]">
       {/* 1. TOP HEADER & ETHEREAL BLURRED ATMOSPHERE */}
-      <div className="relative pt-safe px-4 pt-10 pb-4 overflow-hidden bg-gradient-to-b from-rose-200/40 via-purple-100/20 to-transparent dark:from-rose-950/30 dark:via-purple-950/15 dark:to-transparent border-b border-[var(--line)]/40">
+      <div className="relative pt-safe px-4 pt-4 pb-4 overflow-hidden bg-gradient-to-b from-rose-200/40 via-purple-100/20 to-transparent dark:from-rose-950/30 dark:via-purple-950/15 dark:to-transparent border-b border-[var(--line)]/40">
         {/* Soft background aura sphere */}
         <div className="absolute -top-12 -left-12 w-48 h-48 rounded-full bg-rose-300/30 dark:bg-rose-600/10 blur-3xl pointer-events-none" />
         <div className="absolute top-0 -right-12 w-48 h-48 rounded-full bg-indigo-300/25 dark:bg-indigo-600/10 blur-3xl pointer-events-none" />
 
         <div className="relative z-10 max-w-lg mx-auto w-full">
+          {/* Universal Topbar */}
+          <AppTopBar
+            title="Memories"
+            subtitle="Our shared journey & whispers"
+            onOpenAudioModal={onOpenAudioModal}
+            onOpenThemeModal={onOpenThemeModal}
+            onOpenProfileModal={onOpenProfileModal}
+          />
+
           {/* Main Title from Reference Image */}
-          <div className="mb-3">
+          <div className="mb-3 mt-1">
             <h1 className="font-serif text-3xl sm:text-4xl font-medium tracking-tight text-[var(--ink)] leading-[1.15]">
               Memories <br />
               <span className="opacity-90 italic">don't begin in focus.</span>
@@ -696,6 +730,9 @@ export const MemoriesView: React.FC = () => {
                         src={activeStackCard.mediaUrl}
                         controls
                         playsInline
+                        onPlay={() => audioManager.duckForMedia()}
+                        onPause={() => audioManager.restoreFromMedia()}
+                        onEnded={() => audioManager.restoreFromMedia()}
                         className="w-full h-full object-cover"
                       />
                     </div>
@@ -1148,6 +1185,9 @@ export const MemoriesView: React.FC = () => {
                         <video
                           src={previewUrl}
                           controls
+                          onPlay={() => audioManager.duckForMedia()}
+                          onPause={() => audioManager.restoreFromMedia()}
+                          onEnded={() => audioManager.restoreFromMedia()}
                           className="max-h-56 rounded-xl object-contain mb-2 bg-black"
                         />
                       ) : (

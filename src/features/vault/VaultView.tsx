@@ -7,6 +7,8 @@ import { getFirebaseDb } from '@/core/storage/firebase'
 import { doc, setDoc, onSnapshot } from 'firebase/firestore'
 import { realtimeBridge } from '@/core/realtime'
 import { uploadMediaFile } from '@/core/storage/uploader'
+import { AppTopBar } from '@/components/ui/AppTopBar'
+import { audioManager } from '@/core/audio'
 import confetti from 'canvas-confetti'
 import { Lock, Unlock, Play, Edit3, X, Loader2, Delete, Upload, Video } from 'lucide-react'
 
@@ -19,7 +21,17 @@ export interface VaultConfig {
   personalNote: string
 }
 
-export const VaultView: React.FC = () => {
+export interface VaultViewProps {
+  onOpenAudioModal?: () => void
+  onOpenThemeModal?: () => void
+  onOpenProfileModal?: () => void
+}
+
+export const VaultView: React.FC<VaultViewProps> = ({
+  onOpenAudioModal,
+  onOpenThemeModal,
+  onOpenProfileModal
+}) => {
   const { user, space, partner } = useAuth()
   const { theme, isDark, toggleDarkLight } = useTheme()
   const { showToast } = useToast()
@@ -188,8 +200,16 @@ export const VaultView: React.FC = () => {
     setIsUnlocked(false)
     setEnteredPin('')
     setIsPlayingVideo(false)
+    audioManager.restoreFromMedia()
     showToast('Capsule locked.')
   }
+
+  // Restore ambient music on unmount
+  useEffect(() => {
+    return () => {
+      audioManager.restoreFromMedia()
+    }
+  }, [])
 
   const handleOpenConfig = () => {
     setEditTitle(vaultConfig.title)
@@ -248,21 +268,14 @@ export const VaultView: React.FC = () => {
 
   return (
     <div className={`page vault-page active ${isUnlocked ? 'unlocked' : ''}`} id="capsule">
-      {/* 1. TOPBAR */}
-      <header className="topbar">
-        <div className="wordmark">Pages of Us</div>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            className="music-pill flex items-center justify-center w-8 h-8 !p-0"
-            onClick={toggleDarkLight}
-            title={isDark ? 'Switch to Light Sanctuary (☀️)' : 'Switch to Dark Sanctuary (🌙)'}
-          >
-            {isDark ? '☀️' : '🌙'}
-          </button>
-          <span className="overline">PRIVATE</span>
-        </div>
-      </header>
+      {/* 1. TOPBAR - Universal Consistent Header */}
+      <AppTopBar
+        title="Secret Vault"
+        subtitle="Private couple time capsule"
+        onOpenAudioModal={onOpenAudioModal}
+        onOpenThemeModal={onOpenThemeModal}
+        onOpenProfileModal={onOpenProfileModal}
+      />
 
       {/* 2. LOCKED VIEW */}
       {!isUnlocked ? (
@@ -362,6 +375,9 @@ export const VaultView: React.FC = () => {
                 src={vaultConfig.videoUrl}
                 controls
                 autoPlay
+                onPlay={() => audioManager.duckForMedia()}
+                onPause={() => audioManager.restoreFromMedia()}
+                onEnded={() => audioManager.restoreFromMedia()}
                 className="w-full h-full object-cover"
               />
             ) : (

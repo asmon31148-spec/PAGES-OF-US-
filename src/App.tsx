@@ -150,9 +150,27 @@ const AppContent: React.FC = () => {
                   onOpenProfileModal={() => setIsProfileModalOpen(true)}
                 />
               )}
-              {activeTab === 'world' && <WorldView />}
-              {activeTab === 'memories' && <MemoriesView />}
-              {activeTab === 'vault' && <VaultView />}
+              {activeTab === 'world' && (
+                <WorldView
+                  onOpenAudioModal={() => setIsAudioModalOpen(true)}
+                  onOpenThemeModal={() => setIsThemeModalOpen(true)}
+                  onOpenProfileModal={() => setIsProfileModalOpen(true)}
+                />
+              )}
+              {activeTab === 'memories' && (
+                <MemoriesView
+                  onOpenAudioModal={() => setIsAudioModalOpen(true)}
+                  onOpenThemeModal={() => setIsThemeModalOpen(true)}
+                  onOpenProfileModal={() => setIsProfileModalOpen(true)}
+                />
+              )}
+              {activeTab === 'vault' && (
+                <VaultView
+                  onOpenAudioModal={() => setIsAudioModalOpen(true)}
+                  onOpenThemeModal={() => setIsThemeModalOpen(true)}
+                  onOpenProfileModal={() => setIsProfileModalOpen(true)}
+                />
+              )}
             </motion.div>
           </AnimatePresence>
         </main>
