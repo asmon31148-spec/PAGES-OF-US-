@@ -77,7 +77,7 @@ export const MoodAuraModal: React.FC<MoodAuraModalProps> = ({
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col justify-start overflow-y-auto px-4 py-5 sm:p-8 bg-[var(--bg)] text-[var(--ink)] animate-in fade-in transition-colors duration-200">
+    <div className="fixed inset-0 z-[2000] flex flex-col justify-start overflow-y-auto px-4 py-5 sm:p-8 bg-[var(--app-bg)] text-[var(--ink)] animate-in fade-in transition-colors duration-200">
       <div className="w-full max-w-md mx-auto flex-1 flex flex-col my-auto space-y-4">
         {/* Top Header Bar */}
         <div className="flex items-center justify-between pb-3 border-b border-[var(--line)]">

@@ -647,9 +647,9 @@ export const StageDailySync: React.FC = () => {
       {/* FULL-SCREEN SOLID MODAL: WRITE ANSWER */}
       {/* ================================================================= */}
       {isAnswering && (
-        <div className="fixed inset-0 z-50 bg-[var(--bg)] flex flex-col animate-fadeIn">
+        <div className="fixed inset-0 z-[2000] bg-[var(--app-bg)] text-[var(--ink)] flex flex-col animate-fadeIn">
           {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3.5 border-b border-[var(--line)] bg-[var(--white)] shrink-0">
+          <div className="pt-safe px-4 py-3.5 flex items-center justify-between border-b border-[var(--line)] bg-[var(--white)] shrink-0 shadow-2xs">
             <button
               type="button"
               onClick={() => setIsAnswering(false)}
@@ -665,7 +665,7 @@ export const StageDailySync: React.FC = () => {
               type="button"
               onClick={handleSubmitAnswer}
               disabled={isSubmitting || !answerInput.trim()}
-              className="px-4 py-1.5 rounded-full bg-[var(--app-accent)] text-white text-xs font-bold disabled:opacity-40 transition shadow-sm"
+              className="px-4 py-1.5 rounded-full bg-[var(--app-accent)] text-white text-xs font-bold disabled:opacity-40 transition shadow-sm cursor-pointer"
             >
               {isSubmitting ? 'Sealing...' : 'Seal & Send'}
             </button>
@@ -673,7 +673,7 @@ export const StageDailySync: React.FC = () => {
 
           {/* Body */}
           <div className="flex-1 overflow-y-auto p-4 sm:p-6 max-w-lg mx-auto w-full space-y-4">
-            <div className="p-4 rounded-2xl bg-[var(--chip-bg)] border border-[var(--line)]">
+            <div className="p-4 rounded-2xl bg-[var(--white)] border border-[var(--line)] shadow-2xs">
               <span className="text-[10px] uppercase font-bold text-[var(--terra)] tracking-wider block mb-1">
                 {syncData.vibeTag || 'DAILY SYNC'}
               </span>
@@ -695,8 +695,8 @@ export const StageDailySync: React.FC = () => {
               />
             </div>
 
-            <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-800 dark:text-amber-200 text-xs flex items-start gap-2.5">
-              <Lock className="w-4 h-4 shrink-0 mt-0.5" />
+            <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-800 dark:text-amber-200 text-xs flex items-start gap-2.5 shadow-2xs">
+              <Lock className="w-4 h-4 shrink-0 mt-0.5 text-amber-600" />
               <span>
                 Your answer is encrypted and sealed. Neither you nor {partner?.nickname || 'your partner'} can see
                 each other&rsquo;s answers until both of you have answered!
@@ -710,9 +710,9 @@ export const StageDailySync: React.FC = () => {
       {/* FULL-SCREEN SOLID MODAL: PERSONALIZE / STUDIO */}
       {/* ================================================================= */}
       {showStudioModal && (
-        <div className="fixed inset-0 z-50 bg-[var(--bg)] flex flex-col animate-fadeIn">
+        <div className="fixed inset-0 z-[2000] bg-[var(--app-bg)] text-[var(--ink)] flex flex-col animate-fadeIn">
           {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3.5 border-b border-[var(--line)] bg-[var(--white)] shrink-0">
+          <div className="pt-safe px-4 py-3.5 flex items-center justify-between border-b border-[var(--line)] bg-[var(--white)] shrink-0 shadow-2xs">
             <button
               type="button"
               onClick={() => setShowStudioModal(false)}
@@ -907,7 +907,7 @@ export const StageDailySync: React.FC = () => {
 
       {/* MODAL: ADD CARE ITEM */}
       {isAddingCare && (
-        <div className="fixed inset-0 z-50 bg-[var(--bg)]/90 backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[2000] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="w-full max-w-xs rounded-2xl bg-[var(--white)] border border-[var(--line)] p-4 shadow-xl space-y-3">
             <div className="flex items-center justify-between">
               <h4 className="text-xs font-bold text-[var(--ink)]">Add Daily Care Reminder</h4>
