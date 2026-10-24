@@ -7,12 +7,12 @@ import { getSupabaseClient } from '@/core/storage'
 import { getFirebaseDb } from '@/core/storage/firebase'
 import { doc, setDoc } from 'firebase/firestore'
 import { realtimeBridge } from '@/core/realtime'
-import { BlindPromptCard } from './BlindPromptCard'
-import { PartnerLocationCard } from './PartnerLocationCard'
+import { StageDailySync } from './StageDailySync'
+import { StageLiveTouchPad } from './StageLiveTouchPad'
+import { StageAtmosphere } from './StageAtmosphere'
 import { MoodAuraModal, MoodAura, MOOD_AURA_OPTIONS } from './MoodAuraModal'
 import { GoalTrackerModal } from './GoalTrackerModal'
 import { StageMemoryHeroDeck } from './StageMemoryHeroDeck'
-import { StageDailyCheckin } from './StageDailyCheckin'
 import { StagePinnedCorkboard } from './StagePinnedCorkboard'
 import confetti from 'canvas-confetti'
 import { RefreshCw, Calendar, Heart, Target, ChevronRight, Sparkles } from 'lucide-react'
@@ -431,6 +431,8 @@ export const StageView: React.FC<StageViewProps> = ({
         </div>
       </div>
 
+      <StageAtmosphere />
+
       {/* 3. PRESENCE (Avatars, Thoughts, Aura & Tether) */}
       <div className="presence">
         {/* You */}
@@ -470,15 +472,11 @@ export const StageView: React.FC<StageViewProps> = ({
         </div>
 
         {/* Tether Button */}
-        <button
-          type="button"
-          className={`tether shrink-0 ${isPulsing ? 'scale-125' : ''}`}
-          onClick={handleSendPulse}
-          aria-label="Send a tether hello to partner"
-          title="Tap to send a gentle pulse"
-        >
-          ↔
-        </button>
+        <StageLiveTouchPad
+          isPulsing={isPulsing}
+          onQuickPulse={handleSendPulse}
+          disabled={!isPaired}
+        />
 
         {/* Partner / Invite State */}
         {isPaired && partner ? (
@@ -564,17 +562,11 @@ export const StageView: React.FC<StageViewProps> = ({
       {/* 4. SHARED MOMENT HERO SPOTLIGHT & STORY DECK (Multi-moment carousel + card flip + voice player) */}
       <StageMemoryHeroDeck onGoToMemories={onGoToMemories} />
 
-      {/* 5. MIDNIGHT THOUGHTS (BLIND REVEAL) */}
-      <BlindPromptCard />
+      {/* 5. DAILY CONNECTION (BLIND ENVELOPE REVEAL & CARE CHECKS) */}
+      <StageDailySync />
 
-      {/* 6. DAILY CHECK-IN & SCHEDULED CARE CHECKS (Spacious elevated card with dual answers + care series) */}
-      <StageDailyCheckin />
-
-      {/* 7. PINNED CORKBOARD FOR TODAY (Dual partner sticky notes with author stamps & strict edit lockdown) */}
+      {/* 6. PINNED CORKBOARD FOR TODAY (Dual partner sticky notes with author stamps & strict edit lockdown) */}
       <StagePinnedCorkboard />
-
-      {/* 8. LIVE PARTNER LOCATION TRACKER */}
-      <PartnerLocationCard />
 
       {/* MODAL: Customize Anniversary Date */}
       {isEditingAnniversary && (

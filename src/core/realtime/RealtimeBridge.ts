@@ -40,6 +40,12 @@ class SpaceRealtimeBridge {
                 navigator.vibrate([120, 80, 180])
               }
             } catch {}
+          } else if (event.type === 'LIVE_TOUCH_START') {
+            try {
+              if (navigator.vibrate) {
+                navigator.vibrate([40, 50, 40])
+              }
+            } catch {}
           }
 
           this.listeners.forEach((listener) => listener(event))

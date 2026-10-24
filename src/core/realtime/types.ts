@@ -1,5 +1,7 @@
 export type RealtimeEventType =
   | 'PULSE'
+  | 'LIVE_TOUCH_START'
+  | 'LIVE_TOUCH_END'
   | 'MEMORY_ADDED'
   | 'LETTER_SEALED'
   | 'MILESTONE_ADDED'
