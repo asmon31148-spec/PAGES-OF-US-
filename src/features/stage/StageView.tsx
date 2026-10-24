@@ -14,6 +14,7 @@ import { MoodAuraModal, MoodAura, MOOD_AURA_OPTIONS } from './MoodAuraModal'
 import { GoalTrackerModal } from './GoalTrackerModal'
 import { StageMemoryHeroDeck } from './StageMemoryHeroDeck'
 import { StagePinnedCorkboard } from './StagePinnedCorkboard'
+import { syncAndroidWidget } from '@/core/services/widgetSyncService'
 import confetti from 'canvas-confetti'
 import { RefreshCw, Calendar, Heart, Target, ChevronRight, Sparkles } from 'lucide-react'
 
@@ -344,6 +345,11 @@ export const StageView: React.FC<StageViewProps> = ({
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
     return Math.max(1, diffDays)
   }, [startDate])
+
+  // Sync to Native Android Home Screen Widget (The Locket Effect)
+  React.useEffect(() => {
+    syncAndroidWidget(partner?.nickname, partner?.presenceStatus, daysTogether)
+  }, [partner?.nickname, partner?.presenceStatus, daysTogether])
 
   return (
     <div
