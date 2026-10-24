@@ -5,6 +5,9 @@ on:
     branches: [ main, master ]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build-apk:
     name: Build Android APK
@@ -22,6 +25,9 @@ jobs:
 
       - name: Install Node Dependencies
         run: npm install
+
+      - name: Generate App Icons
+        run: node scripts/generate-icons.cjs
 
       - name: Build Web Application
         run: npm run build
@@ -44,6 +50,7 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleDebug --stacktrace
           ./gradlew signingReport
+          cp app/build/outputs/apk/debug/app-debug.apk app/build/outputs/apk/debug/PagesOfUs.apk
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
@@ -51,3 +58,23 @@ jobs:
           name: PagesOfUs-Debug-APK
           path: android/app/build/outputs/apk/debug/*.apk
           retention-days: 30
+
+      - name: Release APK to GitHub Releases
+        uses: softprops/action-gh-release@v2
+        if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main'
+        with:
+          tag_name: latest
+          name: "Pages of Us — Sanctuary for Two (Android)"
+          body: |
+            ### 🌿 Pages of Us — Native Android App
+            Direct 1-tap download for Android.
+            
+            - **App Name**: Pages of Us
+            - **Package**: `com.pagesofus.app`
+            - **New**: Custom Velvet Sanctuary App Icon & Adaptive Icon
+            - **Features**: Dual World Clocks, Real-time GPS Tether, Synchronized Live Touch Pad, Android Home Screen Locket Widget, Ambient Sanctuary Music with Smart Ducking.
+          files: |
+            android/app/build/outputs/apk/debug/PagesOfUs.apk
+            android/app/build/outputs/apk/debug/app-debug.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
