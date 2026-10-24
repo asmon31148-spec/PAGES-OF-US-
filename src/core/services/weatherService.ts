@@ -5,6 +5,7 @@ export interface WeatherInfo {
   condition: 'clear' | 'partly_cloudy' | 'rain' | 'drizzle' | 'snow' | 'thunderstorm' | 'fog'
   emoji: string
   label: string
+  utcOffsetSeconds?: number
 }
 
 const cache = new Map<string, { data: WeatherInfo; timestamp: number }>()
@@ -69,7 +70,8 @@ export async function fetchLiveWeather(lat: number, lng: number): Promise<Weathe
       isDay,
       condition,
       emoji,
-      label
+      label,
+      utcOffsetSeconds: json.utc_offset_seconds ?? 0
     }
 
     cache.set(cacheKey, { data: info, timestamp: Date.now() })

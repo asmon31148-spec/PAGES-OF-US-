@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react'
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { Geolocation } from '@capacitor/geolocation'
 import { useAuth } from '@/core/auth'
 import { useToast } from '@/core/toast'
@@ -7,6 +7,7 @@ import { getFirebaseDb } from '@/core/storage/firebase'
 import { doc, setDoc, getDoc, collection, onSnapshot } from 'firebase/firestore'
 import { realtimeBridge } from '@/core/realtime'
 import L from 'leaflet'
+import { fetchLiveWeather, WeatherInfo } from '@/core/services/weatherService'
 import {
   Navigation,
   MapPin,
@@ -30,7 +31,12 @@ import {
   Crosshair,
   Sliders,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Clock,
+  Sun,
+  Moon,
+  Plane,
+  Car
 } from 'lucide-react'
 
 export interface UserLocationData {
@@ -133,6 +139,24 @@ export const PartnerLocationCard: React.FC = () => {
   const insidePlacesRef = useRef<{ [placeId: string]: boolean }>({})
   const locationsRef = useRef<SharedLocationsMap>(locations)
   locationsRef.current = locations
+
+  // Dual Clocks & Weather State for Option 1
+  const [partnerWeather, setPartnerWeather] = useState<WeatherInfo | null>(null)
+  const [nowTime, setNowTime] = useState<Date>(new Date())
+
+  useEffect(() => {
+    const timer = setInterval(() => setNowTime(new Date()), 10000)
+    return () => clearInterval(timer)
+  }, [])
+
+  useEffect(() => {
+    const pLoc = locations[partner?.id || '']
+    if (pLoc?.lat && pLoc?.lng) {
+      fetchLiveWeather(pLoc.lat, pLoc.lng).then((w) => {
+        if (w) setPartnerWeather(w)
+      })
+    }
+  }, [locations, partner?.id])
 
   // 1. Fetch & Listen to Realtime updates on shared locations & places
   useEffect(() => {
@@ -277,9 +301,9 @@ export const PartnerLocationCard: React.FC = () => {
     const map = L.map(mapContainerRef.current, {
       zoomControl: false,
       attributionControl: false,
-      dragging: false,
-      scrollWheelZoom: false,
-      touchZoom: false
+      dragging: true,
+      scrollWheelZoom: true,
+      touchZoom: true
     }).setView([initialLat, initialLng], 14)
 
     // OpenStreetMap Humanitarian / HOT Layer: 100% Free, NO API Key Required, Zero Watermarks
@@ -1065,6 +1089,48 @@ export const PartnerLocationCard: React.FC = () => {
     return dMeters <= p.radiusMeters
   })
 
+  // Option 1 Calculations: Dual Clocks & Estimated Travel
+  const userLocalTimeStr = nowTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  const userIsDay = nowTime.getHours() >= 6 && nowTime.getHours() < 19
+
+  const partnerLocalTime = useMemo(() => {
+    if (!partnerWeather || partnerWeather.utcOffsetSeconds === undefined) {
+      if (partnerLoc?.lng !== undefined) {
+        const offsetHours = Math.round(partnerLoc.lng / 15)
+        const utcTime = nowTime.getTime() + nowTime.getTimezoneOffset() * 60000
+        return new Date(utcTime + offsetHours * 3600000)
+      }
+      return nowTime
+    }
+    const utcTime = nowTime.getTime() + nowTime.getTimezoneOffset() * 60000
+    return new Date(utcTime + partnerWeather.utcOffsetSeconds * 1000)
+  }, [nowTime, partnerWeather, partnerLoc?.lng])
+
+  const partnerLocalTimeStr = partnerLocalTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  const partnerIsDay = partnerWeather ? partnerWeather.isDay : (partnerLocalTime.getHours() >= 6 && partnerLocalTime.getHours() < 19)
+
+  const timeDiffHours = useMemo(() => {
+    if (!partnerWeather || partnerWeather.utcOffsetSeconds === undefined) {
+      if (partnerLoc?.lng !== undefined && myLoc?.lng !== undefined) {
+        return Math.round((partnerLoc.lng - myLoc.lng) / 15)
+      }
+      return 0
+    }
+    const myOffsetSeconds = -nowTime.getTimezoneOffset() * 60
+    return Math.round((partnerWeather.utcOffsetSeconds - myOffsetSeconds) / 3600)
+  }, [partnerWeather, partnerLoc?.lng, myLoc?.lng, nowTime])
+
+  const travelTimeEst = useMemo(() => {
+    if (!distanceKm || distanceKm < 0.1) return null
+    if (distanceKm > 350) {
+      const flightHrs = (distanceKm / 750).toFixed(1)
+      return `✈️ ~${flightHrs}h direct flight`
+    } else {
+      const driveHrs = (distanceKm / 75).toFixed(1)
+      return `🚗 ~${driveHrs}h drive`
+    }
+  }, [distanceKm])
+
   const formatLastSeen = (isoString?: string) => {
     if (!isoString) return ''
     const diffMins = Math.round((Date.now() - new Date(isoString).getTime()) / 60000)
@@ -1076,7 +1142,7 @@ export const PartnerLocationCard: React.FC = () => {
   }
 
   return (
-    <div className="my-2 py-5 px-2 border-b border-[var(--line)] space-y-4 text-[var(--ink)] transition-colors duration-200">
+    <div className="w-full space-y-4 text-[var(--ink)] transition-colors duration-200">
       {/* 1. Header with Master Toggle & Privacy Info */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -1132,18 +1198,61 @@ export const PartnerLocationCard: React.FC = () => {
         </div>
       </div>
 
+      {/* DUAL WORLD CLOCKS (LDR Essential) */}
+      <div className="p-3.5 rounded-2xl border border-[var(--line)] bg-[var(--white)] shadow-2xs flex items-center justify-between">
+        {/* User Local Clock */}
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-600 flex items-center justify-center text-sm shrink-0">
+            {userIsDay ? <Sun className="w-4 h-4 text-amber-500" /> : <Moon className="w-4 h-4 text-indigo-400" />}
+          </div>
+          <div className="min-w-0">
+            <span className="text-[10px] uppercase font-bold text-[var(--soft)] block truncate">
+              {user?.nickname || 'You'} · {myLoc?.city || 'Local'}
+            </span>
+            <span className="text-sm font-bold font-mono text-[var(--ink)] tracking-tight">
+              {userLocalTimeStr}
+            </span>
+          </div>
+        </div>
+
+        {/* Center Difference Pill */}
+        <div className="flex flex-col items-center px-2 shrink-0">
+          <span className="text-[9px] font-bold px-2.5 py-0.5 rounded-full bg-[var(--chip-bg)] border border-[var(--line)] text-[var(--terra)] whitespace-nowrap">
+            {timeDiffHours === 0
+              ? 'Same timezone ✦'
+              : timeDiffHours > 0
+              ? `${Math.abs(timeDiffHours)}h ahead ✦`
+              : `${Math.abs(timeDiffHours)}h behind ✦`}
+          </span>
+          <span className="text-[8px] font-mono text-[var(--soft)] mt-0.5">Tethered</span>
+        </div>
+
+        {/* Partner Local Clock */}
+        <div className="flex items-center gap-2.5 min-w-0 text-right justify-end">
+          <div className="min-w-0">
+            <span className="text-[10px] uppercase font-bold text-[#e07a5f] block truncate">
+              {partner?.nickname || 'Partner'} · {partnerLoc?.city || 'Sky'}
+            </span>
+            <span className="text-sm font-bold font-mono text-[var(--ink)] tracking-tight">
+              {partnerLocalTimeStr}
+            </span>
+          </div>
+          <div className="w-8 h-8 rounded-xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center text-sm shrink-0">
+            {partnerIsDay ? <Sun className="w-4 h-4 text-amber-500" /> : <Moon className="w-4 h-4 text-indigo-400" />}
+          </div>
+        </div>
+      </div>
+
       {/* 2. REAL INTERACTIVE MAP + MUTUAL CONSENT SHIELD */}
       <div
-        className={`relative rounded-2xl overflow-hidden border border-[var(--line)] bg-[var(--paper)] transition-all duration-300 isolate ${
-          isExpandedMap ? 'h-80' : 'h-52'
+        className={`relative rounded-3xl overflow-hidden border border-[var(--line)] bg-[var(--paper)] transition-all duration-300 isolate shadow-xs ${
+          isExpandedMap ? 'h-[65vh] min-h-[440px]' : 'h-[46vh] min-h-[320px]'
         }`}
         style={{ isolation: 'isolate' }}
       >
         <div
           ref={mapContainerRef}
-          className={`w-full h-full z-0 transition-opacity duration-200 ${
-            !isExpandedMap ? 'pointer-events-none' : 'pointer-events-auto'
-          }`}
+          className="w-full h-full z-0 transition-opacity duration-200 pointer-events-auto"
         />
 
         {/* Normal Mode Scroll Affordance Pill */}
@@ -1260,20 +1369,27 @@ export const PartnerLocationCard: React.FC = () => {
         )}
       </div>
 
-      {/* 3. LIVE DISTANCE BADGE */}
+      {/* 3. LIVE DISTANCE & TRAVEL BADGE */}
       {isMutualSharingActive && myLoc && partnerLoc ? (
-        <div className="p-3.5 rounded-2xl border border-[var(--line)] bg-[var(--paper)] flex items-center justify-between shadow-xs">
+        <div className="p-4 rounded-2xl border border-[var(--line)] bg-[var(--white)] shadow-xs flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-full bg-[var(--app-accent)] text-[var(--app-accent-text)] flex items-center justify-center font-bold text-sm shadow-xs shrink-0">
-              {distanceKm !== null && distanceKm < 0.05 ? '💕' : '📍'}
+            <div className="w-10 h-10 rounded-2xl bg-[var(--app-accent)]/15 text-[var(--app-accent)] flex items-center justify-center text-lg font-bold shadow-xs shrink-0">
+              {distanceKm !== null && distanceKm < 0.05 ? '💕' : '✈️'}
             </div>
             <div>
-              <div className="text-[10px] uppercase tracking-wider font-bold text-[var(--app-accent)]">
-                {distanceKm !== null && distanceKm < 0.05
-                  ? 'Together Right Now'
-                  : 'Live Distance Apart'}
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] uppercase tracking-wider font-bold text-[var(--app-accent)]">
+                  {distanceKm !== null && distanceKm < 0.05
+                    ? 'Together Right Now'
+                    : 'Live Distance Apart'}
+                </span>
+                {travelTimeEst && (
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-[var(--paper)] text-[var(--ink)] font-semibold border border-[var(--line)]">
+                    {travelTimeEst}
+                  </span>
+                )}
               </div>
-              <div className="text-sm font-semibold text-[var(--ink)] tracking-tight">
+              <div className="text-base font-bold text-[var(--ink)] tracking-tight mt-0.5">
                 {distanceKm !== null
                   ? distanceKm < 0.05
                     ? 'You two are together!'
@@ -1286,9 +1402,21 @@ export const PartnerLocationCard: React.FC = () => {
           </div>
 
           <div className="text-right">
-            <span className="text-[9px] font-semibold text-[var(--app-accent)] bg-[var(--white)] px-2.5 py-1 rounded-full border border-[var(--line)] shadow-2xs">
-              {distanceKm !== null && distanceKm < 0.05 ? 'Same place' : 'Live Tether Active'}
-            </span>
+            {partnerWeather ? (
+              <div className="text-right">
+                <span className="text-xs font-bold text-[var(--ink)] flex items-center justify-end gap-1">
+                  <span>{partnerWeather.emoji}</span>
+                  <span>{partnerWeather.temperature}°C</span>
+                </span>
+                <span className="text-[9px] text-[var(--soft)] block font-medium">
+                  {partnerWeather.label}
+                </span>
+              </div>
+            ) : (
+              <span className="text-[9px] font-semibold text-[var(--app-accent)] bg-[var(--paper)] px-2.5 py-1 rounded-full border border-[var(--line)] shadow-2xs">
+                Live Tether Active
+              </span>
+            )}
           </div>
         </div>
       ) : (
@@ -1407,7 +1535,9 @@ export const PartnerLocationCard: React.FC = () => {
             {pinnedPlaces.map((place) => (
               <div
                 key={place.id}
-                className="px-2 py-1 rounded-lg border border-[var(--line)] bg-[var(--paper)] text-[10px] text-[var(--ink)] flex items-center gap-1.5 shadow-2xs"
+                onClick={() => mapInstanceRef.current?.flyTo([place.lat, place.lng], 16)}
+                className="px-2.5 py-1.5 rounded-xl border border-[var(--line)] bg-[var(--white)] text-[11px] text-[var(--ink)] flex items-center gap-1.5 shadow-2xs cursor-pointer hover:border-[var(--app-accent)] transition active:scale-95"
+                title="Tap to fly map to this spot"
               >
                 <span>{place.icon}</span>
                 <span className="font-medium">{place.name}</span>
