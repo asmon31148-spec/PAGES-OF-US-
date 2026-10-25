@@ -19,17 +19,12 @@ public class PagesOfUsWidgetProvider extends AppWidgetProvider {
 
     public static void updateAppWidget(Context context, AppWidgetManager appWidgetManager, int appWidgetId) {
         SharedPreferences prefs = context.getSharedPreferences("PagesOfUsWidget", Context.MODE_PRIVATE);
-        String partnerName = prefs.getString("partnerName", "Partner");
         String partnerThought = prefs.getString("partnerThought", "Thinking of you...");
         String daysTogether = prefs.getString("daysTogether", "Together ✦");
 
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.pages_of_us_widget);
-        views.setTextViewText(R.id.widget_partner_name, partnerName);
         views.setTextViewText(R.id.widget_partner_thought, partnerThought);
         views.setTextViewText(R.id.widget_days_together, daysTogether);
-
-        String initial = partnerName.length() > 0 ? partnerName.substring(0, 1).toUpperCase() : "♥";
-        views.setTextViewText(R.id.widget_avatar_initial, initial);
 
         // Click on widget opens MainActivity
         Intent intent = new Intent(context, MainActivity.class);

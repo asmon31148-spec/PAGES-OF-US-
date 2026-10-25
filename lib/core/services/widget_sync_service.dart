@@ -4,18 +4,16 @@ class WidgetSyncService {
   static const String appWidgetProvider = 'PagesOfUsWidgetProvider';
 
   static Future<void> syncWidget({
-    required String? partnerName,
+    String? partnerName,
     required String? partnerThought,
     required int daysTogether,
   }) async {
     try {
       await HomeWidget.saveWidgetData<String>(
-        'partnerName',
-        partnerName ?? 'Partner',
-      );
-      await HomeWidget.saveWidgetData<String>(
         'partnerThought',
-        partnerThought ?? 'Thinking of you...',
+        partnerThought != null && partnerThought.isNotEmpty
+            ? '“$partnerThought”'
+            : '“Thinking of you...”',
       );
       await HomeWidget.saveWidgetData<String>(
         'daysTogether',

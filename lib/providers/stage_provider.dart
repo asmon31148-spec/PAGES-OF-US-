@@ -188,9 +188,12 @@ class StageProvider extends ChangeNotifier {
   }
 
   void _syncWidget(String? partnerId) {
+    String? thought;
+    if (partnerId != null && _pinnedNotes.containsKey(partnerId)) {
+      thought = _pinnedNotes[partnerId]?.content;
+    }
     WidgetSyncService.syncWidget(
-      partnerName: null,
-      partnerThought: null,
+      partnerThought: thought,
       daysTogether: daysTogether,
     );
   }
