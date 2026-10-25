@@ -52,7 +52,6 @@ class MoodAuraModal extends StatelessWidget {
             Text(
               'How are you feeling right now?',
               style: TextStyle(
-                fontFamily: 'serif',
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
                 color: isDark ? AppColors.darkInk : AppColors.lightInk,

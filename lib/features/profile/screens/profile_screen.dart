@@ -100,7 +100,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
               Text(
                 'Change Profile Photo',
                 style: TextStyle(
-                  fontFamily: 'serif',
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
                   color: isDark ? AppColors.darkInk : AppColors.lightInk,
@@ -169,8 +168,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         title: Text(
           'Log Out of Sanctuary?',
           style: TextStyle(
-            fontFamily: 'serif',
             fontSize: 17,
+            fontWeight: FontWeight.bold,
             color: isDark ? AppColors.darkInk : AppColors.lightInk,
           ),
         ),
@@ -241,8 +240,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         title: Text(
           'Your Sanctuary Profile',
           style: TextStyle(
-            fontFamily: 'serif',
-            fontSize: 17,
+            fontSize: 18,
             fontWeight: FontWeight.bold,
             color: ink,
           ),
@@ -341,8 +339,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               Text(
                 user?.nickname ?? 'Partner',
                 style: TextStyle(
-                  fontFamily: 'serif',
-                  fontSize: 19,
+                  fontSize: 20,
                   fontWeight: FontWeight.bold,
                   color: ink,
                 ),
@@ -470,8 +467,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         Text(
                           'Shared Sanctuary Space',
                           style: TextStyle(
-                            fontFamily: 'serif',
-                            fontSize: 13,
+                            fontSize: 14,
                             fontWeight: FontWeight.bold,
                             color: ink,
                           ),
@@ -632,8 +628,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 Text(
                                   'Sanctuary Concierge & Help',
                                   style: TextStyle(
-                                    fontFamily: 'serif',
-                                    fontSize: 13.5,
+                                    fontSize: 14,
                                     fontWeight: FontWeight.bold,
                                     color: ink,
                                   ),

@@ -142,7 +142,6 @@ class MemoryStackView extends StatelessWidget {
                 Text(
                   'No memories match your filter',
                   style: TextStyle(
-                    fontFamily: 'serif',
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                     color: isDark ? AppColors.darkInk : AppColors.lightInk,
@@ -319,7 +318,6 @@ class MemoryStackView extends StatelessWidget {
                         Text(
                           memory.title,
                           style: TextStyle(
-                            fontFamily: 'serif',
                             fontSize: 14,
                             fontWeight: FontWeight.bold,
                             color: isDark ? AppColors.darkInk : AppColors.lightInk,
@@ -345,7 +343,6 @@ class MemoryStackView extends StatelessWidget {
                       child: Text(
                         memory.title,
                         style: TextStyle(
-                          fontFamily: 'serif',
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                           color: isDark ? AppColors.darkInk : AppColors.lightInk,
@@ -610,7 +607,6 @@ class MemoryStackView extends StatelessWidget {
               style: TextStyle(
                 color: Colors.white.withOpacity(0.75),
                 fontSize: 12,
-                fontFamily: 'serif',
                 fontWeight: FontWeight.bold,
               ),
             ),

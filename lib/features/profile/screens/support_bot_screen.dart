@@ -161,7 +161,6 @@ class _SupportBotScreenState extends State<SupportBotScreen> {
                 Text(
                   'Sanctuary Concierge',
                   style: TextStyle(
-                    fontFamily: 'serif',
                     fontSize: 15,
                     fontWeight: FontWeight.bold,
                     color: ink,

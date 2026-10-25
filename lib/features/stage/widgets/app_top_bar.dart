@@ -41,7 +41,6 @@ class AppTopBar extends StatelessWidget {
                 Text(
                   title,
                   style: TextStyle(
-                    fontFamily: 'serif',
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
                     color: isDark ? AppColors.darkInk : AppColors.lightInk,

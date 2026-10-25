@@ -90,9 +90,8 @@ class _StageDailySyncCardState extends State<StageDailySyncCard> {
           Text(
             prompt,
             style: TextStyle(
-              fontFamily: 'serif',
               fontSize: 16,
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.bold,
               color: isDark ? AppColors.darkInk : AppColors.lightInk,
               height: 1.3,
             ),

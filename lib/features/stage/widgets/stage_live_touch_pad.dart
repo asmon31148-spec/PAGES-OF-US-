@@ -183,7 +183,6 @@ class _StageLiveTouchPadState extends State<StageLiveTouchPad>
                               Text(
                                 'Synchronized Touch Pad',
                                 style: TextStyle(
-                                  fontFamily: 'serif',
                                   fontSize: 14,
                                   fontWeight: FontWeight.bold,
                                   color: isDark ? AppColors.darkInk : AppColors.lightInk,

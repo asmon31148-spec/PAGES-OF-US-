@@ -84,7 +84,6 @@ class StageMemoryHeroCard extends StatelessWidget {
                     Text(
                       '“No matter how many places we go, this is still my favorite view.”',
                       style: TextStyle(
-                        fontFamily: 'serif',
                         fontSize: 14,
                         fontStyle: FontStyle.italic,
                         color: isDark ? AppColors.darkInk : AppColors.lightInk,

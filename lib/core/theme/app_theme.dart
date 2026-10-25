@@ -13,7 +13,6 @@ class AppTheme {
         surface: AppColors.lightSurface,
         onSurface: AppColors.lightInk,
       ),
-      fontFamily: 'serif',
       cardTheme: CardThemeData(
         color: AppColors.lightSurface,
         elevation: 0,
@@ -31,7 +30,6 @@ class AppTheme {
           color: AppColors.lightInk,
           fontSize: 24,
           fontWeight: FontWeight.bold,
-          fontFamily: 'serif',
         ),
       ),
     );
@@ -48,7 +46,6 @@ class AppTheme {
         surface: AppColors.darkSurface,
         onSurface: AppColors.darkInk,
       ),
-      fontFamily: 'serif',
       cardTheme: CardThemeData(
         color: AppColors.darkSurface,
         elevation: 0,
@@ -66,7 +63,6 @@ class AppTheme {
           color: AppColors.darkInk,
           fontSize: 24,
           fontWeight: FontWeight.bold,
-          fontFamily: 'serif',
         ),
       ),
     );

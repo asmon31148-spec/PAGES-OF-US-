@@ -82,7 +82,6 @@ class _LetterboxSubviewState extends State<LetterboxSubview> {
                 Text(
                   'No sealed letters yet',
                   style: TextStyle(
-                    fontFamily: 'serif',
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                     color: isDark ? AppColors.darkInk : AppColors.lightInk,
@@ -227,7 +226,6 @@ class _LetterboxSubviewState extends State<LetterboxSubview> {
                   Text(
                     letter.title,
                     style: TextStyle(
-                      fontFamily: 'serif',
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
                       color: isDark ? AppColors.darkInk : AppColors.lightInk,
@@ -294,7 +292,6 @@ class _LetterboxSubviewState extends State<LetterboxSubview> {
               Text(
                 letter.title,
                 style: TextStyle(
-                  fontFamily: 'serif',
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
                   color: isDark ? AppColors.darkInk : AppColors.lightInk,
@@ -314,7 +311,6 @@ class _LetterboxSubviewState extends State<LetterboxSubview> {
                   child: Text(
                     letter.body,
                     style: TextStyle(
-                      fontFamily: 'serif',
                       fontSize: 15,
                       height: 1.6,
                       color: isDark ? AppColors.darkInk : AppColors.lightInk,
@@ -367,7 +363,7 @@ class _LetterboxSubviewState extends State<LetterboxSubview> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Seal a Love Letter in Letterbox', style: TextStyle(fontFamily: 'serif', fontSize: 18, fontWeight: FontWeight.bold)),
+                    const Text('Seal a Love Letter in Letterbox', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 12),
                     TextField(
                       controller: titleCtrl,

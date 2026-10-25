@@ -1,19 +1,20 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:confetti/confetti.dart';
 import 'package:provider/provider.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:video_player/video_player.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../../core/theme/app_colors.dart';
-import '../../../core/services/media_upload_service.dart';
 import '../../../core/widgets/full_screen_video_player.dart';
-import '../widgets/vault_video_thumbnail.dart';
-import '../../../providers/theme_provider.dart';
+import '../../../data/models/event_capsule.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../providers/vault_provider.dart';
 import '../../stage/widgets/app_top_bar.dart';
 import '../../stage/widgets/profile_modal.dart';
+import '../widgets/vault_video_thumbnail.dart';
+import '../widgets/scratch_card_reveal.dart';
+import '../widgets/time_lock_countdown.dart';
+import '../widgets/romance_keypad.dart';
+import '../widgets/romance_confetti.dart';
+import '../widgets/add_event_capsule_dialog.dart';
 
 class VaultScreen extends StatefulWidget {
   const VaultScreen({super.key});
@@ -23,268 +24,267 @@ class VaultScreen extends StatefulWidget {
 }
 
 class _VaultScreenState extends State<VaultScreen> {
+  late ConfettiController _confettiController;
+
   @override
   void initState() {
     super.initState();
+    _confettiController = ConfettiController(duration: const Duration(seconds: 4));
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final auth = context.read<AuthProvider>();
-      if (auth.space != null) {
-        context.read<VaultProvider>().initVaultSync(auth.space!.id);
+      final spaceId = context.read<AuthProvider>().space?.id;
+      if (spaceId != null) {
+        context.read<VaultProvider>().initVaultSync(spaceId);
       }
     });
   }
 
   @override
+  void dispose() {
+    _confettiController.dispose();
+    super.dispose();
+  }
+
+  void _openProfileModal() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => const ProfileModal(),
+    );
+  }
+
+  void _showAddCapsuleModal(BuildContext context, {EventCapsule? existing}) {
+    final auth = context.read<AuthProvider>();
+    final space = auth.space;
+    final user = auth.user;
+    if (space == null || user == null) return;
+
+    showDialog(
+      context: context,
+      builder: (_) => AddEventCapsuleDialog(
+        spaceId: space.id,
+        userId: user.id,
+        userName: user.nickname,
+        initialCapsule: existing,
+      ),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final isDark = context.watch<ThemeProvider>().isDark;
     final vaultProvider = context.watch<VaultProvider>();
     final authProvider = context.watch<AuthProvider>();
-    final spaceId = authProvider.space?.id ?? 'default_space';
+    final user = authProvider.user;
+    final space = authProvider.space;
+
+    // Check if we should trigger confetti burst
+    if (vaultProvider.shouldTriggerConfetti) {
+      _confettiController.play();
+      vaultProvider.resetConfettiTrigger();
+    }
+
+    final capsule = vaultProvider.selectedCapsule;
+    final isOwner = capsule != null && user != null && (capsule.creatorId.isEmpty || capsule.creatorId == user.id);
 
     return Scaffold(
-      backgroundColor: isDark ? AppColors.darkBg : AppColors.lightBg,
+      backgroundColor: AppColors.romanceBg,
       body: SafeArea(
-        child: Column(
+        child: Stack(
           children: [
-            AppTopBar(
-              title: 'Our Vault',
-              subtitle: 'Confidential time capsule & secret note',
-              onOpenProfile: () => ProfileModal.show(context),
+            Column(
+              children: [
+                // 1. Top Bar
+                AppTopBar(
+                  onAvatarTap: _openProfileModal,
+                  overrideTitle: 'Our Vault',
+                  overrideSubtitle: 'Confidential event capsules & secrets...',
+                ),
+
+                // 2. Event Capsules Timeline Selector
+                _buildCapsuleTimeline(vaultProvider, space?.id ?? '', user?.id ?? ''),
+
+                // 3. Main Content (Locked vs Unlocked)
+                Expanded(
+                  child: capsule == null
+                      ? const Center(
+                          child: CircularProgressIndicator(color: AppColors.romanceRoseGold),
+                        )
+                      : vaultProvider.isUnlocked
+                          ? _buildUnlockedCapsule(context, capsule, isOwner, vaultProvider)
+                          : _buildLockedCapsule(context, capsule, vaultProvider),
+                ),
+              ],
             ),
-            Expanded(
-              child: vaultProvider.isUnlocked
-                  ? _buildUnlockedVault(context, vaultProvider, isDark, spaceId)
-                  : _buildLockedKeypad(context, vaultProvider, isDark),
-            ),
+
+            // Confetti Petal & Gold Burst Overlay
+            RomanceConfettiOverlay(controller: _confettiController),
           ],
         ),
       ),
     );
   }
 
-  // --- LOCKED KEYPAD ---
-  Widget _buildLockedKeypad(
-    BuildContext context,
-    VaultProvider vaultProvider,
-    bool isDark,
-  ) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+  Widget _buildCapsuleTimeline(VaultProvider vaultProvider, String spaceId, String userId) {
+    return Container(
+      height: 48,
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
         children: [
-          const SizedBox(height: 20),
-          Container(
-            width: 72,
-            height: 72,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: AppColors.terra.withOpacity(0.12),
-              border: Border.all(color: AppColors.terra.withOpacity(0.3)),
-            ),
-            alignment: Alignment.center,
-            child: const Icon(Icons.lock_outline, size: 36, color: AppColors.terra),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'Sanctuary Vault',
-            style: TextStyle(
-              fontFamily: 'serif',
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-              color: isDark ? AppColors.darkInk : AppColors.lightInk,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'Enter your 4-digit couple passcode to unseal',
-            style: TextStyle(
-              fontSize: 12,
-              color: isDark ? AppColors.darkSoft : AppColors.lightSoft,
-            ),
-          ),
-          const SizedBox(height: 24),
-
-          // 4-Digit PIN Indicators
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: List.generate(4, (index) {
-              final isFilled = index < vaultProvider.enteredPin.length;
-              return Container(
-                margin: const EdgeInsets.symmetric(horizontal: 10),
-                width: 16,
-                height: 16,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: vaultProvider.isError
-                      ? Colors.redAccent
-                      : isFilled
-                          ? AppColors.terra
-                          : (isDark ? AppColors.darkCard : AppColors.lightBorder),
-                  border: Border.all(
-                    color: vaultProvider.isError
-                        ? Colors.redAccent
-                        : (isFilled ? AppColors.terra : AppColors.lightBorder),
+          // Create New Capsule Button
+          GestureDetector(
+            onTap: () => _showAddCapsuleModal(context),
+            child: Container(
+              margin: const EdgeInsets.only(right: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                color: AppColors.romanceWine,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: AppColors.romanceRoseGold.withOpacity(0.5)),
+                boxShadow: [
+                  BoxShadow(color: AppColors.romanceWine.withOpacity(0.3), blurRadius: 8),
+                ],
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.add_rounded, color: Colors.white, size: 16),
+                  SizedBox(width: 4),
+                  Text(
+                    'New Capsule ✦',
+                    style: TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.bold),
                   ),
-                ),
-              );
-            }),
-          ),
-          if (vaultProvider.isError)
-            Padding(
-              padding: const EdgeInsets.only(top: 12),
-              child: Text(
-                'Incorrect passcode. Please try again.',
-                style: const TextStyle(fontSize: 11, color: Colors.redAccent, fontWeight: FontWeight.bold),
+                ],
               ),
             ),
-          const SizedBox(height: 32),
+          ),
 
-          // Numerical Keypad Grid
-          SizedBox(
-            width: 260,
-            child: Column(
-              children: [
-                _buildKeypadRow(['1', '2', '3'], vaultProvider, isDark),
-                const SizedBox(height: 14),
-                _buildKeypadRow(['4', '5', '6'], vaultProvider, isDark),
-                const SizedBox(height: 14),
-                _buildKeypadRow(['7', '8', '9'], vaultProvider, isDark),
-                const SizedBox(height: 14),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          // Capsule Chips
+          ...vaultProvider.capsules.map((c) {
+            final isSelected = vaultProvider.selectedCapsule?.id == c.id;
+            return GestureDetector(
+              onTap: () => vaultProvider.selectCapsule(c),
+              child: Container(
+                margin: const EdgeInsets.only(right: 10),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                decoration: BoxDecoration(
+                  color: isSelected ? AppColors.romanceCard : Colors.transparent,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: isSelected ? AppColors.romanceRoseGold : AppColors.romanceBorder,
+                    width: isSelected ? 1.5 : 1.0,
+                  ),
+                ),
+                child: Row(
                   children: [
-                    _buildKeypadButton('C', isDark, onTap: () {
-                      HapticFeedback.lightImpact();
-                      vaultProvider.clearPin();
-                    }),
-                    _buildKeypadButton('0', isDark, onTap: () {
-                      HapticFeedback.lightImpact();
-                      vaultProvider.appendPinDigit('0');
-                    }),
-                    _buildKeypadButton('⌫', isDark, onTap: () {
-                      HapticFeedback.lightImpact();
-                      vaultProvider.deletePinDigit();
-                    }),
+                    Icon(
+                      c.isTimeLocked ? Icons.lock_clock_rounded : Icons.lock_rounded,
+                      size: 13,
+                      color: isSelected ? AppColors.romanceRoseGold : AppColors.romanceSoft,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      c.title,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                        color: isSelected ? AppColors.romanceInk : AppColors.romanceSoft,
+                      ),
+                    ),
                   ],
                 ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 20),
-          Text(
-            'Default couple PIN: 2512',
-            style: TextStyle(
-              fontSize: 10,
-              fontStyle: FontStyle.italic,
-              color: isDark ? AppColors.darkSoft : AppColors.lightSoft,
-            ),
-          ),
+              ),
+            );
+          }),
         ],
       ),
     );
   }
 
-  Widget _buildKeypadRow(
-    List<String> digits,
-    VaultProvider provider,
-    bool isDark,
-  ) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: digits.map((d) {
-        return _buildKeypadButton(d, isDark, onTap: () {
-          HapticFeedback.lightImpact();
-          provider.appendPinDigit(d);
-        });
-      }).toList(),
-    );
-  }
-
-  Widget _buildKeypadButton(
-    String label,
-    bool isDark, {
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 64,
-        height: 64,
-        decoration: BoxDecoration(
-          color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
-          shape: BoxShape.circle,
-          border: Border.all(
-            color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+  Widget _buildLockedCapsule(BuildContext context, EventCapsule capsule, VaultProvider vaultProvider) {
+    if (capsule.isTimeLocked) {
+      return Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: TimeLockCountdownWidget(
+            unlockAt: capsule.unlockAt!,
+            title: capsule.title,
+            onUnlocked: () => setState(() {}),
           ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.04),
-              blurRadius: 4,
-              offset: const Offset(0, 2),
-            ),
-          ],
         ),
-        alignment: Alignment.center,
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: isDark ? AppColors.darkInk : AppColors.lightInk,
-          ),
+      );
+    }
+
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: RomanceKeypad(
+          title: capsule.title,
+          subtitle: 'Enter 6-digit secret key to unlock this special capsule',
+          hint: capsule.passcodeHint,
+          enteredPin: vaultProvider.enteredPin,
+          isError: vaultProvider.isError,
+          pinLength: 6,
+          onDigit: (d) => vaultProvider.appendPinDigit(d),
+          onDelete: () => vaultProvider.deletePinDigit(),
+          onClear: () => vaultProvider.clearPin(),
         ),
       ),
     );
   }
 
-  // --- UNLOCKED CAPSULE ---
-  Widget _buildUnlockedVault(
+  Widget _buildUnlockedCapsule(
     BuildContext context,
+    EventCapsule capsule,
+    bool isOwner,
     VaultProvider vaultProvider,
-    bool isDark,
-    String spaceId,
   ) {
-    final vault = vaultProvider.vault;
-
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header Bar
+          // Unlocked Header with Status & Actions
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Row(
                 children: [
-                  const Text('🔓', style: TextStyle(fontSize: 18)),
-                  const SizedBox(width: 8),
-                  Text(
-                    'VAULT UNLOCKED',
-                    style: const TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1,
-                      color: AppColors.sage,
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppColors.romanceWine.withOpacity(0.4),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.romanceRoseGold.withOpacity(0.5)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.lock_open_rounded, size: 13, color: AppColors.romanceRoseGold),
+                        const SizedBox(width: 5),
+                        Text(
+                          isOwner ? 'YOUR CAPSULE ✦' : 'SECRET FOR YOU 🎁',
+                          style: const TextStyle(
+                            color: AppColors.romanceRoseGold,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.8,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
               ),
               Row(
                 children: [
+                  if (isOwner)
+                    IconButton(
+                      icon: const Icon(Icons.edit_note_rounded, color: AppColors.romanceRoseGold, size: 24),
+                      onPressed: () => _showAddCapsuleModal(context, existing: capsule),
+                    ),
                   IconButton(
-                    icon: const Icon(Icons.edit_outlined, size: 20),
-                    onPressed: () => _showEditVaultModal(context, vaultProvider, spaceId),
-                    tooltip: 'Edit Capsule',
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.lock, size: 20, color: AppColors.terra),
-                    onPressed: () {
-                      HapticFeedback.mediumImpact();
-                      vaultProvider.lockVault();
-                    },
-                    tooltip: 'Lock Vault',
+                    icon: const Icon(Icons.lock_rounded, color: AppColors.romanceSoft, size: 20),
+                    onPressed: () => vaultProvider.lockVault(),
                   ),
                 ],
               ),
@@ -292,224 +292,125 @@ class _VaultScreenState extends State<VaultScreen> {
           ),
           const SizedBox(height: 12),
 
-          // Confidential Media Area
-          if (vault.videoUrl != null && vault.videoUrl!.isNotEmpty)
+          // 1. Dedicated Event Video
+          if (capsule.videoUrl != null && capsule.videoUrl!.isNotEmpty)
             Container(
               margin: const EdgeInsets.only(bottom: 16),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(24),
-                border: Border.all(
-                  color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
-                ),
+                border: Border.all(color: AppColors.romanceRoseGold.withOpacity(0.35)),
               ),
               clipBehavior: Clip.antiAlias,
-              child: _buildVaultMediaPreview(vault.videoUrl!, vault.title, isDark),
+              child: VaultVideoThumbnail(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => FullScreenVideoPlayer(
+                        videoUrl: capsule.videoUrl!,
+                        title: capsule.title,
+                        subtitle: 'Confidential Event Film',
+                      ),
+                    ),
+                  );
+                },
+              ),
             ),
 
-          // Secret Note Card
+          // 2. Secret Sealed Love Letter Card
           Container(
-            padding: const EdgeInsets.all(20),
+            width: double.infinity,
+            margin: const EdgeInsets.only(bottom: 16),
+            padding: const EdgeInsets.all(22),
             decoration: BoxDecoration(
-              color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+              color: AppColors.romanceCard,
               borderRadius: BorderRadius.circular(24),
-              border: Border.all(
-                color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
-              ),
+              border: Border.all(color: AppColors.romanceBorder),
               boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.04),
-                  blurRadius: 10,
-                  offset: const Offset(0, 2),
-                ),
+                BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 12, offset: const Offset(0, 4)),
               ],
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  vault.title,
-                  style: TextStyle(
-                    fontFamily: 'serif',
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: isDark ? AppColors.darkInk : AppColors.lightInk,
-                  ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      capsule.title,
+                      style: const TextStyle(
+                        color: AppColors.romanceInk,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: AppColors.romanceWine,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        capsule.eventType,
+                        style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
                 ),
+                const SizedBox(height: 14),
+                const Divider(color: AppColors.romanceBorder, height: 1),
+                const SizedBox(height: 14),
                 Text(
-                  vault.subtitle,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: isDark ? AppColors.darkSoft : AppColors.lightSoft,
-                  ),
-                ),
-                const Divider(height: 24),
-                Text(
-                  vault.personalNote,
-                  style: TextStyle(
-                    fontFamily: 'serif',
-                    fontSize: 15,
-                    fontStyle: FontStyle.italic,
+                  capsule.personalNote,
+                  style: const TextStyle(
+                    color: AppColors.romanceInk,
+                    fontSize: 14,
                     height: 1.6,
-                    color: isDark ? AppColors.darkInk : AppColors.lightInk,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: Text(
+                    'With all my heart, ${capsule.creatorName}',
+                    style: const TextStyle(
+                      color: AppColors.romanceRoseGold,
+                      fontSize: 12,
+                      fontStyle: FontStyle.italic,
+                    ),
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 24),
 
-          // Lock Button
+          // 3. Interactive Scratch-to-Reveal Secret Card
+          if (capsule.scratchSecret != null && capsule.scratchSecret!.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: ScratchCardReveal(
+                secretMessage: capsule.scratchSecret!,
+              ),
+            ),
+
+          // 4. Lock Capsule Button
           SizedBox(
             width: double.infinity,
-            height: 46,
+            height: 48,
             child: OutlinedButton.icon(
+              icon: const Icon(Icons.lock_rounded, size: 16, color: AppColors.romanceRoseGold),
+              label: const Text('Lock Capsule & Return', style: TextStyle(color: AppColors.romanceRoseGold, fontWeight: FontWeight.bold)),
               style: OutlinedButton.styleFrom(
+                side: Border.all(color: AppColors.romanceRoseGold.withOpacity(0.5)),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                side: BorderSide(color: AppColors.terra.withOpacity(0.5)),
               ),
-              icon: const Icon(Icons.lock, size: 16, color: AppColors.terra),
-              label: const Text(
-                'Lock Vault & Return',
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.terra),
-              ),
-              onPressed: () {
-                HapticFeedback.mediumImpact();
-                vaultProvider.lockVault();
-              },
+              onPressed: () => vaultProvider.lockVault(),
             ),
           ),
+          const SizedBox(height: 24),
         ],
       ),
     );
   }
-
-  Widget _buildVaultMediaPreview(String mediaUrl, String title, bool isDark) {
-    final isVideo = mediaUrl.contains('.mp4') || mediaUrl.contains('.mov') || mediaUrl.contains('video/');
-
-    if (isVideo) {
-      return VaultVideoThumbnail(
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => FullScreenVideoPlayer(
-                videoUrl: mediaUrl,
-                title: title,
-                subtitle: 'Confidential Vault Film',
-              ),
-            ),
-          );
-        },
-      );
-    }
-
-    return AspectRatio(
-      aspectRatio: 16 / 9,
-      child: CachedNetworkImage(imageUrl: mediaUrl, fit: BoxFit.cover),
-    );
-  }
-
-  void _showEditVaultModal(
-    BuildContext context,
-    VaultProvider vaultProvider,
-    String spaceId,
-  ) {
-    final titleCtrl = TextEditingController(text: vaultProvider.vault.title);
-    final subtitleCtrl = TextEditingController(text: vaultProvider.vault.subtitle);
-    final noteCtrl = TextEditingController(text: vaultProvider.vault.personalNote);
-    final pinCtrl = TextEditingController(text: vaultProvider.vault.passcode);
-    String? mediaUrl = vaultProvider.vault.videoUrl;
-    bool isUploading = false;
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) {
-        final isDark = Theme.of(ctx).brightness == Brightness.dark;
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            return Padding(
-              padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-              child: Container(
-                constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.85),
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-                ),
-                child: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('Edit Sanctuary Capsule', style: TextStyle(fontFamily: 'serif', fontSize: 18, fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 12),
-                      TextField(controller: titleCtrl, decoration: const InputDecoration(labelText: 'Capsule Title')),
-                      const SizedBox(height: 10),
-                      TextField(controller: subtitleCtrl, decoration: const InputDecoration(labelText: 'Subtitle')),
-                      const SizedBox(height: 10),
-                      TextField(controller: noteCtrl, maxLines: 3, decoration: const InputDecoration(labelText: 'Secret Note / Message')),
-                      const SizedBox(height: 10),
-                      TextField(controller: pinCtrl, maxLength: 4, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: '4-Digit Passcode PIN')),
-                      const SizedBox(height: 10),
-
-                      // Media attachment button
-                      OutlinedButton.icon(
-                        icon: isUploading
-                            ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
-                            : const Icon(Icons.attach_file, size: 16),
-                        label: Text(mediaUrl != null && mediaUrl!.isNotEmpty ? 'Change Video / Photo 🎬' : 'Attach Video or Photo 🎬'),
-                        onPressed: () async {
-                          final picker = ImagePicker();
-                          final XFile? file = await picker.pickMedia();
-                          if (file != null) {
-                            setModalState(() => isUploading = true);
-                            try {
-                              final res = await MediaUploadService.uploadFile(File(file.path), folder: 'vault');
-                              setModalState(() {
-                                mediaUrl = res.url;
-                                isUploading = false;
-                              });
-                            } catch (_) {
-                              setModalState(() => isUploading = false);
-                            }
-                          }
-                        },
-                      ),
-                      const SizedBox(height: 16),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 44,
-                        child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.sage,
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                          ),
-                          onPressed: () {
-                            vaultProvider.updateVaultConfig(
-                              spaceId: spaceId,
-                              title: titleCtrl.text.trim(),
-                              subtitle: subtitleCtrl.text.trim(),
-                              passcode: pinCtrl.text.trim().isNotEmpty ? pinCtrl.text.trim() : '2512',
-                              videoUrl: mediaUrl,
-                              personalNote: noteCtrl.text.trim(),
-                            );
-                            Navigator.pop(ctx);
-                          },
-                          child: const Text('Save Capsule ✦', style: TextStyle(fontWeight: FontWeight.bold)),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
 }
-

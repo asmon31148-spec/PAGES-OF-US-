@@ -111,7 +111,6 @@ class _GoalTrackerModalState extends State<GoalTrackerModal> {
                           Text(
                             'Milestones & Dreams',
                             style: TextStyle(
-                              fontFamily: 'serif',
                               fontSize: 20,
                               fontWeight: FontWeight.bold,
                               color: isDark ? AppColors.darkInk : AppColors.lightInk,

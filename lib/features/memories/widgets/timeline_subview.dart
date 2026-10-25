@@ -85,7 +85,6 @@ class TimelineSubview extends StatelessWidget {
                 Text(
                   'No milestones recorded yet',
                   style: TextStyle(
-                    fontFamily: 'serif',
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                     color: isDark ? AppColors.darkInk : AppColors.lightInk,
@@ -180,7 +179,6 @@ class TimelineSubview extends StatelessWidget {
                 Text(
                   milestone.title,
                   style: TextStyle(
-                    fontFamily: 'serif',
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
                     color: isDark ? AppColors.darkInk : AppColors.lightInk,
@@ -246,7 +244,7 @@ class TimelineSubview extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Record a Timeline Milestone', style: TextStyle(fontFamily: 'serif', fontSize: 18, fontWeight: FontWeight.bold)),
+                const Text('Record a Timeline Milestone', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 12),
                 TextField(
                   controller: titleCtrl,

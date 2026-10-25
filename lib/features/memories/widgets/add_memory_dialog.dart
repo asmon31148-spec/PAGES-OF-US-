@@ -258,7 +258,6 @@ class _AddMemoryDialogState extends State<AddMemoryDialog> {
           Text(
             'What would you like to keep?',
             style: TextStyle(
-              fontFamily: 'serif',
               fontSize: 20,
               fontWeight: FontWeight.bold,
               color: isDark ? AppColors.darkInk : AppColors.lightInk,
@@ -395,7 +394,7 @@ class _AddMemoryDialogState extends State<AddMemoryDialog> {
                     : _selectedType == AddMemoryType.video
                         ? 'Video Moment'
                         : 'Voice Message',
-                style: const TextStyle(fontFamily: 'serif', fontSize: 16, fontWeight: FontWeight.bold),
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
               IconButton(
                 icon: const Icon(Icons.close, size: 20),

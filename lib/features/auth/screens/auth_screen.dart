@@ -138,7 +138,6 @@ class _AuthScreenState extends State<AuthScreen> {
                 Text(
                   'Pages of Us',
                   style: TextStyle(
-                    fontFamily: 'serif',
                     fontSize: 32,
                     fontWeight: FontWeight.bold,
                     color: isDark ? AppColors.darkInk : AppColors.lightInk,

@@ -26,4 +26,15 @@ class AppColors {
   static const Color emerald = Color(0xFF10B981);
   static const Color slate = Color(0xFF334155);
   static const Color forest = Color(0xFF2A3A31);
+
+  // Dark Romance Vault Palette
+  static const Color romanceBg = Color(0xFF0C0712); // Deep obsidian velvet plum
+  static const Color romanceSurface = Color(0xFF160E20); // Frosted velvet plum
+  static const Color romanceCard = Color(0xFF1E142B); // Rich midnight amethyst card
+  static const Color romanceBorder = Color(0x33E89A8A); // Hairline rose gold border
+  static const Color romanceWine = Color(0xFF801D38); // Bordeaux wine accent
+  static const Color romanceRoseGold = Color(0xFFE89A8A); // Shimmering rose gold
+  static const Color romanceGold = Color(0xFFD4AF37); // Royal metallic gold
+  static const Color romanceInk = Color(0xFFFBF7FA); // Soft alabaster ink
+  static const Color romanceSoft = Color(0xFFA092A8); // Velvet lavender smoke
 }

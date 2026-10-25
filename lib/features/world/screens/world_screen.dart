@@ -514,7 +514,6 @@ class _WorldScreenState extends State<WorldScreen> {
                 Text(
                   myTimeStr,
                   style: TextStyle(
-                    fontFamily: 'serif',
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                     color: isDark ? AppColors.darkInk : AppColors.lightInk,
@@ -564,7 +563,6 @@ class _WorldScreenState extends State<WorldScreen> {
                 Text(
                   partnerTimeStr,
                   style: TextStyle(
-                    fontFamily: 'serif',
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                     color: isDark ? AppColors.darkInk : AppColors.lightInk,
@@ -699,7 +697,7 @@ class _WorldScreenState extends State<WorldScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Where are you right now?', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, fontFamily: 'serif')),
+              const Text('Where are you right now?', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
               const SizedBox(height: 12),
               Wrap(
                 spacing: 8,
@@ -751,7 +749,7 @@ class _WorldScreenState extends State<WorldScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Text('Add Pinned Sanctuary Place', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, fontFamily: 'serif')),
+                    const Text('Add Pinned Sanctuary Place', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 12),
                     TextField(
                       controller: nameCtrl,

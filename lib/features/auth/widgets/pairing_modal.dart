@@ -67,7 +67,6 @@ class _PairingModalState extends State<PairingModal> {
               Text(
                 'Connect Your Partner',
                 style: TextStyle(
-                  fontFamily: 'serif',
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
                   color: isDark ? AppColors.darkInk : AppColors.lightInk,

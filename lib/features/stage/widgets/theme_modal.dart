@@ -60,7 +60,6 @@ class ThemeModal extends StatelessWidget {
                     Text(
                       'Sanctuary Appearance',
                       style: TextStyle(
-                        fontFamily: 'serif',
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
                         color: isDark ? AppColors.darkInk : AppColors.lightInk,

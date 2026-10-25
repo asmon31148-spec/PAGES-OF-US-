@@ -174,7 +174,7 @@ class _FullScreenVideoPlayerState extends State<FullScreenVideoPlayer> {
                         SizedBox(height: 16),
                         Text(
                           'Loading cinema...',
-                          style: TextStyle(color: Colors.white70, fontSize: 13, fontFamily: 'serif'),
+                          style: TextStyle(color: Colors.white70, fontSize: 13),
                         ),
                       ],
                     ),
@@ -233,7 +233,6 @@ class _FullScreenVideoPlayerState extends State<FullScreenVideoPlayer> {
                                         color: Colors.white,
                                         fontSize: 16,
                                         fontWeight: FontWeight.bold,
-                                        fontFamily: 'serif',
                                       ),
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,

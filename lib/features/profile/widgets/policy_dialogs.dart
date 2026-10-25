@@ -124,7 +124,6 @@ class PolicyDialogs {
               Text(
                 'Pages of Us',
                 style: TextStyle(
-                  fontFamily: 'serif',
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
                   color: isDark ? AppColors.darkInk : AppColors.lightInk,
@@ -209,7 +208,6 @@ class PolicyDialogs {
                   Text(
                     title,
                     style: TextStyle(
-                      fontFamily: 'serif',
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                       color: isDark ? AppColors.darkInk : AppColors.lightInk,
