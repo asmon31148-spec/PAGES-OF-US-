@@ -91,8 +91,35 @@ class MainNavigationScaffold extends StatefulWidget {
   State<MainNavigationScaffold> createState() => _MainNavigationScaffoldState();
 }
 
-class _MainNavigationScaffoldState extends State<MainNavigationScaffold> {
+class _MainNavigationScaffoldState extends State<MainNavigationScaffold> with WidgetsBindingObserver {
   int _currentIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive || state == AppLifecycleState.detached) {
+      if (mounted) {
+        final audioProvider = context.read<AudioProvider>();
+        // Atmosphere sounds strictly stop when leaving the app!
+        audioProvider.stopAtmosphereOnExit();
+        // Songs continue only if user enabled background playback
+        if (!audioProvider.allowBackgroundPlayback && audioProvider.isSongPlaying) {
+          audioProvider.pauseSong();
+        }
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

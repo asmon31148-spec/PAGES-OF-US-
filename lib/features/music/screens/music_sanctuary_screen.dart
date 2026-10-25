@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:file_picker/file_picker.dart';
 import '../../../providers/audio_provider.dart';
 import '../models/music_models.dart';
 import 'playlist_detail_screen.dart';
@@ -276,7 +277,70 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
+
+          // Background Playback Switch (outside app listening toggle)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: const Color(0xFF111E16),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: const Color(0xFF18281E)),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(10),
+                    color: audioProvider.allowBackgroundPlayback
+                        ? const Color(0xFFA3E635).withOpacity(0.2)
+                        : const Color(0xFF1E2F23),
+                  ),
+                  child: Center(
+                    child: Icon(
+                      Icons.headphones_rounded,
+                      color: audioProvider.allowBackgroundPlayback
+                          ? const Color(0xFFA3E635)
+                          : const Color(0xFF94A3B8),
+                      size: 20,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: const [
+                      Text(
+                        'Play outside app',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                      SizedBox(height: 1),
+                      Text(
+                        'Keep songs playing in background',
+                        style: TextStyle(fontSize: 10.5, color: Color(0xFF94A3B8)),
+                      ),
+                    ],
+                  ),
+                ),
+                Switch(
+                  value: audioProvider.allowBackgroundPlayback,
+                  onChanged: (_) => audioProvider.toggleBackgroundPlayback(),
+                  activeColor: const Color(0xFFA3E635),
+                  activeTrackColor: const Color(0xFF223627),
+                  inactiveThumbColor: const Color(0xFF64748B),
+                  inactiveTrackColor: const Color(0xFF1E2F23),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
 
           // 2. Listen Together Banner Card
           GestureDetector(
@@ -840,100 +904,247 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
     final titleCtrl = TextEditingController();
     final artistCtrl = TextEditingController();
     final urlCtrl = TextEditingController();
+    bool isPickingFile = false;
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => Padding(
-        padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
-        child: Container(
-          padding: const EdgeInsets.all(20),
-          decoration: const BoxDecoration(
-            color: Color(0xFF111E16),
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Add Song to Sanctuary',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setModalState) {
+          return Padding(
+            padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+            child: Container(
+              padding: const EdgeInsets.all(22),
+              decoration: const BoxDecoration(
+                color: Color(0xFF111E16),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
               ),
-              const SizedBox(height: 14),
-              TextField(
-                controller: titleCtrl,
-                style: const TextStyle(fontSize: 13, color: Colors.white),
-                decoration: InputDecoration(
-                  hintText: 'Song Title (e.g. Our Song)',
-                  hintStyle: const TextStyle(color: Color(0xFF64748B)),
-                  filled: true,
-                  fillColor: const Color(0xFF07100B),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
-                ),
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: artistCtrl,
-                style: const TextStyle(fontSize: 13, color: Colors.white),
-                decoration: InputDecoration(
-                  hintText: 'Artist Name',
-                  hintStyle: const TextStyle(color: Color(0xFF64748B)),
-                  filled: true,
-                  fillColor: const Color(0xFF07100B),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
-                ),
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: urlCtrl,
-                style: const TextStyle(fontSize: 13, color: Colors.white),
-                decoration: InputDecoration(
-                  hintText: 'Audio Stream URL (mp3/ogg/m4a)',
-                  hintStyle: const TextStyle(color: Color(0xFF64748B)),
-                  filled: true,
-                  fillColor: const Color(0xFF07100B),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
-                ),
-              ),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () {
-                    final title = titleCtrl.text.trim();
-                    final artist = artistCtrl.text.trim();
-                    final url = urlCtrl.text.trim();
-                    if (title.isNotEmpty) {
-                      context.read<AudioProvider>().addCustomSong(
-                            SongItem(
-                              id: 'custom_${DateTime.now().millisecondsSinceEpoch}',
-                              title: title,
-                              artist: artist.isEmpty ? 'Custom' : artist,
-                              durationSeconds: 180,
-                              audioUrl: url.isEmpty
-                                  ? 'https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3?filename=lofi-study-112191.mp3'
-                                  : url,
-                              coverColor: const Color(0xFF86EFAC),
-                              addedBy: 'You',
-                            ),
-                          );
-                      Navigator.pop(ctx);
-                    }
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFA3E635),
-                    foregroundColor: Colors.black,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Add Song to Sanctuary',
+                        style: TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                          letterSpacing: -0.3,
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: () => Navigator.pop(ctx),
+                        child: const Icon(Icons.close_rounded, color: Color(0xFF94A3B8), size: 22),
+                      ),
+                    ],
                   ),
-                  child: const Text('Add Song ✦', style: TextStyle(fontWeight: FontWeight.bold)),
-                ),
+                  const SizedBox(height: 16),
+
+                  // PRIMARY OPTION: Pick from Device Storage
+                  GestureDetector(
+                    onTap: isPickingFile
+                        ? null
+                        : () async {
+                            setModalState(() => isPickingFile = true);
+                            try {
+                              final result = await FilePicker.platform.pickFiles(
+                                type: FileType.custom,
+                                allowedExtensions: ['mp3', 'm4a', 'wav', 'aac', 'ogg', 'flac'],
+                              );
+                              if (result != null && result.files.isNotEmpty) {
+                                final file = result.files.first;
+                                final path = file.path;
+                                if (path != null) {
+                                  String cleanTitle = file.name;
+                                  final dot = cleanTitle.lastIndexOf('.');
+                                  if (dot > 0) cleanTitle = cleanTitle.substring(0, dot);
+                                  cleanTitle = cleanTitle.replaceAll('_', ' ').replaceAll('-', ' ');
+
+                                  final newSong = SongItem(
+                                    id: 'local_${DateTime.now().millisecondsSinceEpoch}',
+                                    title: cleanTitle,
+                                    artist: 'From your device',
+                                    durationSeconds: 180,
+                                    audioUrl: path,
+                                    coverColor: const Color(0xFFA3E635),
+                                    isLocal: true,
+                                    addedBy: 'You',
+                                  );
+
+                                  if (ctx.mounted) {
+                                    final provider = ctx.read<AudioProvider>();
+                                    provider.addCustomSong(newSong);
+                                    Navigator.pop(ctx);
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text('Added "$cleanTitle" to your sanctuary ✦'),
+                                        backgroundColor: const Color(0xFF15261C),
+                                      ),
+                                    );
+                                    // Start playing immediately!
+                                    provider.selectSong(provider.songs.length - 1);
+                                  }
+                                }
+                              }
+                            } catch (e) {
+                              debugPrint('File picker error: $e');
+                            } finally {
+                              if (ctx.mounted) {
+                                setModalState(() => isPickingFile = false);
+                              }
+                            }
+                          },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF16291C),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: const Color(0xFFA3E635).withOpacity(0.5), width: 1.2),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 44,
+                            height: 44,
+                            decoration: const BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Color(0xFFA3E635),
+                            ),
+                            child: Center(
+                              child: isPickingFile
+                                  ? const SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
+                                    )
+                                  : const Icon(Icons.folder_open_rounded, color: Colors.black, size: 22),
+                            ),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: const [
+                                Text(
+                                  'Choose from device storage',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                SizedBox(height: 2),
+                                Text(
+                                  'Select MP3, M4A, WAV, AAC from your phone',
+                                  style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const Icon(Icons.arrow_forward_ios_rounded, color: Color(0xFFA3E635), size: 14),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 18),
+                  Row(
+                    children: const [
+                      Expanded(child: Divider(color: Color(0xFF1E2F23))),
+                      Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 12),
+                        child: Text(
+                          'OR STREAM FROM URL',
+                          style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF64748B)),
+                        ),
+                      ),
+                      Expanded(child: Divider(color: Color(0xFF1E2F23))),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+
+                  TextField(
+                    controller: titleCtrl,
+                    style: const TextStyle(fontSize: 13, color: Colors.white),
+                    decoration: InputDecoration(
+                      hintText: 'Song Title (e.g. Our Sanctuary)',
+                      hintStyle: const TextStyle(color: Color(0xFF64748B)),
+                      filled: true,
+                      fillColor: const Color(0xFF07100B),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: artistCtrl,
+                    style: const TextStyle(fontSize: 13, color: Colors.white),
+                    decoration: InputDecoration(
+                      hintText: 'Artist Name',
+                      hintStyle: const TextStyle(color: Color(0xFF64748B)),
+                      filled: true,
+                      fillColor: const Color(0xFF07100B),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: urlCtrl,
+                    style: const TextStyle(fontSize: 13, color: Colors.white),
+                    decoration: InputDecoration(
+                      hintText: 'Audio Stream URL (mp3/ogg/m4a)',
+                      hintStyle: const TextStyle(color: Color(0xFF64748B)),
+                      filled: true,
+                      fillColor: const Color(0xFF07100B),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        final title = titleCtrl.text.trim();
+                        final artist = artistCtrl.text.trim();
+                        final url = urlCtrl.text.trim();
+                        if (title.isNotEmpty) {
+                          final newSong = SongItem(
+                            id: 'custom_${DateTime.now().millisecondsSinceEpoch}',
+                            title: title,
+                            artist: artist.isEmpty ? 'Custom' : artist,
+                            durationSeconds: 180,
+                            audioUrl: url.isEmpty
+                                ? 'https://raw.githubusercontent.com/rafaelreis-hotmart/Audio-Sample-files/master/sample.mp3'
+                                : url,
+                            coverColor: const Color(0xFF86EFAC),
+                            isLocal: false,
+                            addedBy: 'You',
+                          );
+                          ctx.read<AudioProvider>().addCustomSong(newSong);
+                          Navigator.pop(ctx);
+                          ctx.read<AudioProvider>().selectSong(ctx.read<AudioProvider>().songs.length - 1);
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFA3E635),
+                        foregroundColor: Colors.black,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      ),
+                      child: const Text('Add Stream ✦', style: TextStyle(fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
-        ),
+            ),
+          );
+        },
       ),
     );
   }

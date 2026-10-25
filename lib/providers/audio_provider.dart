@@ -12,24 +12,36 @@ class AudioProvider extends ChangeNotifier {
   final AudioPlayer _songPlayer = AudioPlayer();
   AudioPlayer? _crossfadePlayer;
 
+  Source _resolveSource(String path, {bool isLocal = false}) {
+    if (isLocal) {
+      return DeviceFileSource(path);
+    } else if (path.startsWith('audio/') || path.startsWith('assets/')) {
+      final assetPath = path.startsWith('assets/') ? path.substring(7) : path;
+      return AssetSource(assetPath);
+    } else if (path.startsWith('http://') || path.startsWith('https://')) {
+      return UrlSource(path);
+    } else {
+      return DeviceFileSource(path);
+    }
+  }
+
   final List<SongItem> _songs = [
     SongItem(
       id: 'song_1',
       title: 'Slow Morning',
-      artist: 'Aarav Mehta · from your phone',
+      artist: 'Sanctuary Beats · Built-in',
       durationSeconds: 222, // 3:42
-      audioUrl:
-          'https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3?filename=lofi-study-112191.mp3',
+      audioUrl: 'audio/lofi_sanctuary.mp3',
       coverColor: const Color(0xFF86EFAC),
-      addedBy: 'Aarav Mehta',
+      addedBy: 'Sanctuary',
     ),
     SongItem(
       id: 'song_2',
       title: 'Rainy Window',
-      artist: 'Lofi Hours',
+      artist: 'Aarav Mehta',
       durationSeconds: 178, // 2:58
       audioUrl:
-          'https://cdn.pixabay.com/download/audio/2022/03/15/audio_c8c8a73467.mp3?filename=rain-and-nostalgia-20328.mp3',
+          'https://raw.githubusercontent.com/rafaelreis-hotmart/Audio-Sample-files/master/sample.mp3',
       coverColor: const Color(0xFF2DD4BF),
       addedBy: 'Sam',
     ),
@@ -39,7 +51,7 @@ class AudioProvider extends ChangeNotifier {
       artist: 'Mira Das',
       durationSeconds: 250, // 4:10
       audioUrl:
-          'https://cdn.pixabay.com/download/audio/2022/01/18/audio_d0a13f69d2.mp3?filename=lofi-chill-medium-version-159456.mp3',
+          'https://raw.githubusercontent.com/rafaelreis-hotmart/Audio-Sample-files/master/sample2.mp3',
       coverColor: const Color(0xFFF97316),
       addedBy: 'You',
     ),
@@ -48,8 +60,7 @@ class AudioProvider extends ChangeNotifier {
       title: 'Paper Boats',
       artist: 'Aarav Mehta',
       durationSeconds: 195, // 3:15
-      audioUrl:
-          'https://cdn.pixabay.com/download/audio/2022/10/14/audio_9939f77c30.mp3?filename=chill-lofi-song-8444.mp3',
+      audioUrl: 'audio/breeze.mp3',
       coverColor: const Color(0xFF9CE658),
       addedBy: 'Aarav Mehta',
     ),
@@ -58,8 +69,7 @@ class AudioProvider extends ChangeNotifier {
       title: 'Calm Sanctuary',
       artist: 'Sanctuary Duo',
       durationSeconds: 210, // 3:30
-      audioUrl:
-          'https://cdn.pixabay.com/download/audio/2022/01/26/audio_d0c6ff1101.mp3?filename=peaceful-garden-healing-light-13788.mp3',
+      audioUrl: 'audio/rain.mp3',
       coverColor: const Color(0xFF34D399),
       addedBy: 'Sanctuary',
     ),
@@ -112,7 +122,7 @@ class AudioProvider extends ChangeNotifier {
       id: 'rain',
       title: 'Rain',
       icon: Icons.water_drop_outlined,
-      audioUrl: 'https://actions.google.com/sounds/v1/weather/rain_heavy.ogg',
+      audioUrl: 'audio/rain.mp3',
       iconColor: const Color(0xFF2DD4BF),
       volume: 0.70,
     ),
@@ -120,7 +130,7 @@ class AudioProvider extends ChangeNotifier {
       id: 'birds',
       title: 'Birds',
       icon: Icons.eco_outlined,
-      audioUrl: 'https://actions.google.com/sounds/v1/ambiences/daytime_forest_bonanza.ogg',
+      audioUrl: 'audio/birds.mp3',
       iconColor: const Color(0xFF86EFAC),
       volume: 0.30,
     ),
@@ -128,7 +138,7 @@ class AudioProvider extends ChangeNotifier {
       id: 'wind',
       title: 'Wind',
       icon: Icons.air_rounded,
-      audioUrl: 'https://actions.google.com/sounds/v1/weather/wind_strong_leaves.ogg',
+      audioUrl: 'audio/breeze.mp3',
       iconColor: const Color(0xFF38BDF8),
       volume: 0.20,
     ),
@@ -136,16 +146,16 @@ class AudioProvider extends ChangeNotifier {
       id: 'ocean',
       title: 'Ocean waves',
       icon: Icons.waves_rounded,
-      audioUrl: 'https://actions.google.com/sounds/v1/water/waves_crashing_on_rock_beach.ogg',
-      iconColor: const Color(0xFF1E293B),
+      audioUrl: 'audio/ocean.mp3',
+      iconColor: const Color(0xFF60A5FA),
       volume: 0.0,
     ),
     'fire': AtmosphereStem(
       id: 'fire',
       title: 'Fire crackle',
       icon: Icons.local_fire_department_outlined,
-      audioUrl: 'https://actions.google.com/sounds/v1/ambiences/campfire.ogg',
-      iconColor: const Color(0xFF1E293B),
+      audioUrl: 'audio/fireplace.mp3',
+      iconColor: const Color(0xFFFB923C),
       volume: 0.0,
     ),
   };
@@ -257,15 +267,20 @@ class AudioProvider extends ChangeNotifier {
 
   Future<void> resumeSong() async {
     try {
-      if (_songPosition == Duration.zero) {
-        await _songPlayer.play(UrlSource(currentSong.audioUrl));
+      if (_songPosition == Duration.zero ||
+          _songPlayer.state == PlayerState.stopped ||
+          _songPlayer.state == PlayerState.completed) {
+        final src = _resolveSource(currentSong.audioUrl, isLocal: currentSong.isLocal);
+        await _songPlayer.play(src);
       } else {
         await _songPlayer.resume();
       }
       _isSongPlaying = true;
       notifyListeners();
       _broadcastSync('PLAY', _songPosition.inSeconds);
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('resumeSong error: $e');
+    }
   }
 
   Future<void> pauseSong() async {
@@ -322,34 +337,40 @@ class AudioProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Smooth 1.8s crossfade between songs (fade-out old, fade-in new)
+  /// Smooth crossfade between songs (fade-out old, fade-in new)
   Future<void> _playCurrentSongWithCrossfade() async {
     try {
-      final targetUrl = currentSong.audioUrl;
+      final targetSource = _resolveSource(currentSong.audioUrl, isLocal: currentSong.isLocal);
 
-      // 1. Fade out current player
-      for (double v = 1.0; v >= 0.0; v -= 0.2) {
-        await _songPlayer.setVolume(v);
-        await Future.delayed(const Duration(milliseconds: 30));
+      // 1. Fade out current player smoothly if playing
+      if (_songPlayer.state == PlayerState.playing) {
+        for (double v = 1.0; v >= 0.0; v -= 0.25) {
+          await _songPlayer.setVolume(v);
+          await Future.delayed(const Duration(milliseconds: 20));
+        }
       }
       await _songPlayer.stop();
 
       // 2. Start at volume 0
       await _songPlayer.setVolume(0.0);
-      await _songPlayer.play(UrlSource(targetUrl));
+      await _songPlayer.play(targetSource);
       _isSongPlaying = true;
 
       // 3. Fade in smoothly
       for (double v = 0.1; v <= 1.0; v += 0.15) {
         await _songPlayer.setVolume(v);
-        await Future.delayed(const Duration(milliseconds: 40));
+        await Future.delayed(const Duration(milliseconds: 25));
       }
       await _songPlayer.setVolume(1.0);
-    } catch (_) {
-      // Fallback direct play
-      await _songPlayer.setVolume(1.0);
-      await _songPlayer.play(UrlSource(currentSong.audioUrl));
-      _isSongPlaying = true;
+    } catch (e) {
+      debugPrint('Crossfade error: $e, falling back to direct play');
+      try {
+        await _songPlayer.setVolume(1.0);
+        await _songPlayer.play(_resolveSource(currentSong.audioUrl, isLocal: currentSong.isLocal));
+        _isSongPlaying = true;
+      } catch (err) {
+        debugPrint('Direct play fallback error: $err');
+      }
     }
   }
 
@@ -393,6 +414,16 @@ class AudioProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  void addSongToPlaylist(String playlistId, String songId) {
+    final idx = _playlists.indexWhere((p) => p.id == playlistId);
+    if (idx != -1) {
+      if (!_playlists[idx].songIds.contains(songId)) {
+        _playlists[idx].songIds.add(songId);
+        notifyListeners();
+      }
+    }
+  }
+
   void removeSongFromPlaylist(String playlistId, String songId) {
     final pl = _playlists.firstWhere((p) => p.id == playlistId, orElse: () => _playlists.first);
     pl.songIds.remove(songId);
@@ -422,10 +453,16 @@ class AudioProvider extends ChangeNotifier {
       if (effectiveVolume > 0.01) {
         try {
           await player.setVolume(effectiveVolume);
-          await player.play(UrlSource(stem.audioUrl));
-        } catch (_) {}
+          if (player.state != PlayerState.playing) {
+            await player.play(_resolveSource(stem.audioUrl));
+          }
+        } catch (e) {
+          debugPrint('Error playing stem $stemId: $e');
+        }
       } else {
-        await player.stop();
+        if (player.state == PlayerState.playing) {
+          await player.pause();
+        }
       }
     }
   }
@@ -455,10 +492,12 @@ class AudioProvider extends ChangeNotifier {
       if (effective > 0.01) {
         player?.setVolume(effective);
         if (player?.state != PlayerState.playing) {
-          player?.play(UrlSource(stem.audioUrl));
+          player?.play(_resolveSource(stem.audioUrl));
         }
       } else {
-        player?.stop();
+        if (player?.state == PlayerState.playing) {
+          player?.pause();
+        }
       }
     }
   }
@@ -472,7 +511,16 @@ class AudioProvider extends ChangeNotifier {
         final stem = _atmosphereStems[stemId]!;
         final player = _stemPlayers[stemId]!;
         final effective = stem.volume * _masterAtmosphereVolume;
-        player.setVolume(effective);
+        if (effective > 0.01) {
+          player.setVolume(effective);
+          if (player.state != PlayerState.playing) {
+            player.play(_resolveSource(stem.audioUrl));
+          }
+        } else {
+          if (player.state == PlayerState.playing) {
+            player.pause();
+          }
+        }
       }
     }
   }
@@ -553,7 +601,7 @@ class AudioProvider extends ChangeNotifier {
 
           if (type == 'PLAY') {
             _isSongPlaying = true;
-            _songPlayer.play(UrlSource(currentSong.audioUrl));
+            _songPlayer.play(_resolveSource(currentSong.audioUrl, isLocal: currentSong.isLocal));
           } else if (type == 'PAUSE') {
             _isSongPlaying = false;
             _songPlayer.pause();

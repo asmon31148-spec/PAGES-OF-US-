@@ -154,15 +154,7 @@ class PlaylistDetailScreen extends StatelessWidget {
                             const SizedBox(width: 8),
                             _buildCircleIconButton(
                               icon: Icons.add_rounded,
-                              onTap: () {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Song added to playlist ✦'),
-                                    backgroundColor: Color(0xFFA3E635),
-                                    duration: Duration(seconds: 2),
-                                  ),
-                                );
-                              },
+                              onTap: () => _showAddSongToPlaylistDialog(context, audioProvider),
                             ),
                           ],
                         ),
@@ -314,6 +306,93 @@ class PlaylistDetailScreen extends StatelessWidget {
         ),
         child: Center(
           child: Icon(icon, color: Colors.white, size: 18),
+        ),
+      ),
+    );
+  }
+
+  void _showAddSongToPlaylistDialog(BuildContext context, AudioProvider provider) {
+    final availableSongs = provider.songs.where((s) => !playlist.songIds.contains(s.id)).toList();
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.all(22),
+        decoration: const BoxDecoration(
+          color: Color(0xFF111E16),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        child: SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Add to this Playlist',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                  ),
+                  GestureDetector(
+                    onTap: () => Navigator.pop(ctx),
+                    child: const Icon(Icons.close_rounded, color: Color(0xFF94A3B8), size: 20),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              if (availableSongs.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 24),
+                  child: Center(
+                    child: Text(
+                      'All sanctuary songs are already in this playlist ✦',
+                      style: TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
+                    ),
+                  ),
+                )
+              else
+                ListView.separated(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: availableSongs.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 8),
+                  itemBuilder: (_, i) {
+                    final song = availableSongs[i];
+                    return ListTile(
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      tileColor: const Color(0xFF07100B),
+                      leading: Container(
+                        width: 38,
+                        height: 38,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(10),
+                          color: song.coverColor,
+                        ),
+                        child: const Center(
+                          child: Icon(Icons.music_note_rounded, color: Colors.black87, size: 18),
+                        ),
+                      ),
+                      title: Text(song.title, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)),
+                      subtitle: Text(song.artist, style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 11)),
+                      trailing: const Icon(Icons.add_circle_outline_rounded, color: Color(0xFFA3E635), size: 22),
+                      onTap: () {
+                        provider.addSongToPlaylist(playlist.id, song.id);
+                        Navigator.pop(ctx);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Added "${song.title}" to ${playlist.title} ✦'),
+                            backgroundColor: const Color(0xFF15261C),
+                          ),
+                        );
+                      },
+                    );
+                  },
+                ),
+            ],
+          ),
         ),
       ),
     );
