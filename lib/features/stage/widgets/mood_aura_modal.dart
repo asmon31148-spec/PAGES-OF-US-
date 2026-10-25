@@ -42,7 +42,7 @@ class MoodAuraModal extends StatelessWidget {
               child: Container(
                 width: 36,
                 height: 4,
-                margin: const EdgeInsets.bottom(16),
+                margin: const EdgeInsets.only(bottom: 16),
                 decoration: BoxDecoration(
                   color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
                   borderRadius: BorderRadius.circular(2),

@@ -202,7 +202,7 @@ class _StageDailySyncCardState extends State<StageDailySyncCard> {
                   Expanded(
                     child: Text(
                       bothAnswered
-                          ? (partnerAnswer ?? 'Revealed!')
+                          ? partnerAnswer
                           : 'Waiting for ${partner?.nickname ?? "partner"}\'s answer to unseal...',
                       style: TextStyle(
                         fontSize: 12,

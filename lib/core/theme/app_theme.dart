@@ -14,7 +14,7 @@ class AppTheme {
         onSurface: AppColors.lightInk,
       ),
       fontFamily: 'serif',
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         color: AppColors.lightSurface,
         elevation: 0,
         shape: RoundedRectangleBorder(
@@ -49,7 +49,7 @@ class AppTheme {
         onSurface: AppColors.darkInk,
       ),
       fontFamily: 'serif',
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         color: AppColors.darkSurface,
         elevation: 0,
         shape: RoundedRectangleBorder(

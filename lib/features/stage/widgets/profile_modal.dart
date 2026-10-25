@@ -44,7 +44,6 @@ class _ProfileModalState extends State<ProfileModal> {
   Widget build(BuildContext context) {
     final isDark = context.watch<ThemeProvider>().isDark;
     final authProvider = context.watch<AuthProvider>();
-    final user = authProvider.user;
 
     return Padding(
       padding: EdgeInsets.only(
@@ -65,7 +64,7 @@ class _ProfileModalState extends State<ProfileModal> {
                 child: Container(
                   width: 36,
                   height: 4,
-                  margin: const EdgeInsets.bottom(16),
+                  margin: const EdgeInsets.only(bottom: 16),
                   decoration: BoxDecoration(
                     color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
                     borderRadius: BorderRadius.circular(2),
