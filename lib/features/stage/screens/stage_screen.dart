@@ -17,6 +17,7 @@ import '../widgets/anniversary_modal.dart';
 import '../widgets/profile_modal.dart';
 import '../widgets/goal_tracker_modal.dart';
 import '../../auth/widgets/pairing_modal.dart';
+import '../../../core/services/update_service.dart';
 
 class StageScreen extends StatefulWidget {
   final VoidCallback onGoToMemories;
@@ -40,6 +41,13 @@ class _StageScreenState extends State<StageScreen> {
               auth.partner?.id,
             );
       }
+
+      // Check for App Updates in background
+      Future.delayed(const Duration(milliseconds: 1500), () {
+        if (mounted) {
+          UpdateService.checkAndPrompt(context);
+        }
+      });
     });
   }
 

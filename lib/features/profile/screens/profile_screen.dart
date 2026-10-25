@@ -8,6 +8,8 @@ import '../../../core/theme/app_colors.dart';
 import '../../../providers/theme_provider.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../core/services/media_upload_service.dart';
+import '../../../core/services/update_service.dart';
+import '../../../core/widgets/update_dialog.dart';
 import '../widgets/policy_dialogs.dart';
 import 'support_bot_screen.dart';
 
@@ -703,6 +705,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ink: ink,
                       soft: soft,
                       onTap: () => PolicyDialogs.showAbout(context),
+                    ),
+                    Divider(height: 1, color: border, indent: 50),
+                    _buildSettingsTile(
+                      icon: Icons.system_update_rounded,
+                      title: 'Check for Updates',
+                      subtitle: 'Get latest features & fixes directly',
+                      ink: ink,
+                      soft: soft,
+                      onTap: () async {
+                        final update = await UpdateService.checkLatestRelease();
+                        if (!context.mounted) return;
+                        if (update != null) {
+                          showDialog(
+                            context: context,
+                            builder: (_) => UpdateDialog(updateInfo: update),
+                          );
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('You are on the latest version of Pages of Us ✨'),
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                        }
+                      },
                     ),
                   ],
                 ),
