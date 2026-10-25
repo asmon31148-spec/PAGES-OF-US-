@@ -24,4 +24,6 @@ class AppColors {
   static const Color rose = Color(0xFFB77E6B);
   static const Color gold = Color(0xFFE9C46A);
   static const Color emerald = Color(0xFF10B981);
+  static const Color slate = Color(0xFF334155);
+  static const Color forest = Color(0xFF2A3A31);
 }
