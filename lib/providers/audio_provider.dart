@@ -4,8 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../features/music/models/music_models.dart';
+import '../core/services/audio_handler.dart';
 
 class AudioProvider extends ChangeNotifier {
+  final SanctuaryAudioHandler? audioHandler;
+
   // -------------------------------------------------------------
   // 1. SONGS & PLAYLIST STATE
   // -------------------------------------------------------------
@@ -193,9 +196,39 @@ class AudioProvider extends ChangeNotifier {
   bool get isAtmospherePlaying => _isAtmospherePlaying;
   String get activePreset => _activePreset;
 
-  AudioProvider() {
+  AudioProvider({this.audioHandler}) {
+    _initHandlerCallbacks();
     _initSongListeners();
     _initAtmospherePlayers();
+  }
+
+  void _initHandlerCallbacks() {
+    if (audioHandler != null) {
+      audioHandler!.onPlayCallback = resumeSong;
+      audioHandler!.onPauseCallback = pauseSong;
+      audioHandler!.onSkipNextCallback = nextSong;
+      audioHandler!.onSkipPreviousCallback = prevSong;
+      audioHandler!.onSeekCallback = seekSong;
+    }
+  }
+
+  void _syncNotificationState() {
+    if (audioHandler == null) return;
+    if (_allowBackgroundPlayback || _isSongPlaying) {
+      audioHandler!.updateSong(
+        id: currentSong.id,
+        title: currentSong.title,
+        artist: currentSong.artist,
+        duration: _songDuration,
+      );
+      audioHandler!.updatePlaybackState(
+        isPlaying: _isSongPlaying,
+        position: _songPosition,
+        duration: _songDuration,
+      );
+    } else {
+      audioHandler!.clearNotification();
+    }
   }
 
   void _initSongListeners() {
@@ -216,14 +249,30 @@ class AudioProvider extends ChangeNotifier {
       ),
     );
 
+    // Strictly bind playing state to real player state!
+    _songPlayer.onPlayerStateChanged.listen((state) {
+      _isSongPlaying = state == PlayerState.playing;
+      _applyAtmosphereVolumes(); // Smart ducking!
+      _syncNotificationState(); // Status bar notification!
+      notifyListeners();
+    });
+
     _songPlayer.onPositionChanged.listen((pos) {
       _songPosition = pos;
+      if (audioHandler != null && _isSongPlaying) {
+        audioHandler!.updatePlaybackState(
+          isPlaying: _isSongPlaying,
+          position: pos,
+          duration: _songDuration,
+        );
+      }
       notifyListeners();
     });
 
     _songPlayer.onDurationChanged.listen((dur) {
       if (dur.inSeconds > 0) {
         _songDuration = dur;
+        _syncNotificationState();
         notifyListeners();
       }
     });
@@ -275,8 +324,7 @@ class AudioProvider extends ChangeNotifier {
       } else {
         await _songPlayer.resume();
       }
-      _isSongPlaying = true;
-      notifyListeners();
+      _syncNotificationState();
       _broadcastSync('PLAY', _songPosition.inSeconds);
     } catch (e) {
       debugPrint('resumeSong error: $e');
@@ -286,8 +334,7 @@ class AudioProvider extends ChangeNotifier {
   Future<void> pauseSong() async {
     try {
       await _songPlayer.pause();
-      _isSongPlaying = false;
-      notifyListeners();
+      _syncNotificationState();
       _broadcastSync('PAUSE', _songPosition.inSeconds);
     } catch (_) {}
   }
@@ -323,6 +370,13 @@ class AudioProvider extends ChangeNotifier {
   Future<void> seekSong(Duration position) async {
     await _songPlayer.seek(position);
     _songPosition = position;
+    if (audioHandler != null && _isSongPlaying) {
+      audioHandler!.updatePlaybackState(
+        isPlaying: _isSongPlaying,
+        position: position,
+        duration: _songDuration,
+      );
+    }
     notifyListeners();
     _broadcastSync('SEEK', position.inSeconds);
   }
@@ -334,6 +388,7 @@ class AudioProvider extends ChangeNotifier {
 
   void toggleBackgroundPlayback() {
     _allowBackgroundPlayback = !_allowBackgroundPlayback;
+    _syncNotificationState();
     notifyListeners();
   }
 
@@ -431,7 +486,7 @@ class AudioProvider extends ChangeNotifier {
   }
 
   // -------------------------------------------------------------
-  // ATMOSPHERE SOUNDSCAPES MULTI-STEM MIXER
+  // ATMOSPHERE SOUNDSCAPES MULTI-STEM MIXER & SMART DUCKING
   // -------------------------------------------------------------
   Future<void> toggleAtmospherePlay() async {
     if (_isAtmospherePlaying) {
@@ -441,30 +496,37 @@ class AudioProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> resumeAtmosphere() async {
-    _isAtmospherePlaying = true;
-    notifyListeners();
+  /// Smart Ducking: When a song is playing, atmosphere sound automatically ducks to 25% volume.
+  /// When song pauses, atmosphere sound smoothly returns to 100% of set volume.
+  void _applyAtmosphereVolumes() {
+    final duckFactor = (_isSongPlaying && _isAtmospherePlaying) ? 0.25 : 1.0;
 
     for (final stemId in _atmosphereStems.keys) {
       final stem = _atmosphereStems[stemId]!;
       final player = _stemPlayers[stemId]!;
-      final effectiveVolume = stem.volume * _masterAtmosphereVolume;
+      final effectiveVolume = stem.volume * _masterAtmosphereVolume * duckFactor;
 
-      if (effectiveVolume > 0.01) {
+      if (effectiveVolume > 0.01 && _isAtmospherePlaying) {
         try {
-          await player.setVolume(effectiveVolume);
+          player.setVolume(effectiveVolume);
           if (player.state != PlayerState.playing) {
-            await player.play(_resolveSource(stem.audioUrl));
+            player.play(_resolveSource(stem.audioUrl));
           }
         } catch (e) {
           debugPrint('Error playing stem $stemId: $e');
         }
       } else {
         if (player.state == PlayerState.playing) {
-          await player.pause();
+          player.pause();
         }
       }
     }
+  }
+
+  Future<void> resumeAtmosphere() async {
+    _isAtmospherePlaying = true;
+    notifyListeners();
+    _applyAtmosphereVolumes();
   }
 
   Future<void> pauseAtmosphere() async {
@@ -487,18 +549,7 @@ class AudioProvider extends ChangeNotifier {
     notifyListeners();
 
     if (_isAtmospherePlaying) {
-      final player = _stemPlayers[stemId];
-      final effective = stem.volume * _masterAtmosphereVolume;
-      if (effective > 0.01) {
-        player?.setVolume(effective);
-        if (player?.state != PlayerState.playing) {
-          player?.play(_resolveSource(stem.audioUrl));
-        }
-      } else {
-        if (player?.state == PlayerState.playing) {
-          player?.pause();
-        }
-      }
+      _applyAtmosphereVolumes();
     }
   }
 
@@ -507,21 +558,7 @@ class AudioProvider extends ChangeNotifier {
     notifyListeners();
 
     if (_isAtmospherePlaying) {
-      for (final stemId in _atmosphereStems.keys) {
-        final stem = _atmosphereStems[stemId]!;
-        final player = _stemPlayers[stemId]!;
-        final effective = stem.volume * _masterAtmosphereVolume;
-        if (effective > 0.01) {
-          player.setVolume(effective);
-          if (player.state != PlayerState.playing) {
-            player.play(_resolveSource(stem.audioUrl));
-          }
-        } else {
-          if (player.state == PlayerState.playing) {
-            player.pause();
-          }
-        }
-      }
+      _applyAtmosphereVolumes();
     }
   }
 
@@ -567,7 +604,7 @@ class AudioProvider extends ChangeNotifier {
     notifyListeners();
 
     if (_isAtmospherePlaying) {
-      resumeAtmosphere();
+      _applyAtmosphereVolumes();
     }
   }
 
@@ -684,6 +721,7 @@ class AudioProvider extends ChangeNotifier {
 
   @override
   void dispose() {
+    audioHandler?.clearNotification();
     _songPlayer.dispose();
     _crossfadePlayer?.dispose();
     for (final p in _stemPlayers.values) {

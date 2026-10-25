@@ -312,8 +312,8 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    children: const [
-                      Text(
+                    children: [
+                      const Text(
                         'Play outside app',
                         style: TextStyle(
                           fontSize: 13,
@@ -321,10 +321,17 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
                           color: Colors.white,
                         ),
                       ),
-                      SizedBox(height: 1),
+                      const SizedBox(height: 1),
                       Text(
-                        'Keep songs playing in background',
-                        style: TextStyle(fontSize: 10.5, color: Color(0xFF94A3B8)),
+                        audioProvider.allowBackgroundPlayback
+                            ? 'Plays in background with notification controls'
+                            : 'Music pauses when you exit app',
+                        style: TextStyle(
+                          fontSize: 10.5,
+                          color: audioProvider.allowBackgroundPlayback
+                              ? const Color(0xFFA3E635)
+                              : const Color(0xFF94A3B8),
+                        ),
                       ),
                     ],
                   ),

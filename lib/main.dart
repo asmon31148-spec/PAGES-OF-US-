@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:audio_service/audio_service.dart';
 import 'core/theme/app_theme.dart';
 import 'core/services/local_cache_service.dart';
+import 'core/services/audio_handler.dart';
 import 'data/services/supabase_service.dart';
 import 'providers/theme_provider.dart';
 import 'providers/auth_provider.dart';
@@ -34,13 +36,29 @@ void main() async {
   // 3. Initialize Supabase Realtime client
   await SupabaseService.init();
 
+  // 4. Initialize Background Audio Notification Handler
+  SanctuaryAudioHandler? audioHandler;
+  try {
+    audioHandler = await AudioService.init(
+      builder: () => SanctuaryAudioHandler(),
+      config: const AudioServiceConfig(
+        androidNotificationChannelId: 'com.pagesofus.app.music',
+        androidNotificationChannelName: 'Sanctuary Music',
+        androidNotificationOngoing: true,
+        androidStopForegroundOnPause: true,
+      ),
+    );
+  } catch (e) {
+    debugPrint('AudioService init error: $e');
+  }
+
   runApp(
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => StageProvider()),
-        ChangeNotifierProvider(create: (_) => AudioProvider()),
+        ChangeNotifierProvider(create: (_) => AudioProvider(audioHandler: audioHandler)),
         ChangeNotifierProvider(create: (_) => WorldProvider()),
         ChangeNotifierProvider(create: (_) => MemoriesProvider()),
         ChangeNotifierProvider(create: (_) => VaultProvider()),
