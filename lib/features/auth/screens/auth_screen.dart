@@ -17,6 +17,7 @@ class _AuthScreenState extends State<AuthScreen> {
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _nicknameController = TextEditingController();
   bool _isLoading = false;
+  bool _isGoogleLoading = false;
   String? _error;
 
   @override
@@ -25,6 +26,37 @@ class _AuthScreenState extends State<AuthScreen> {
     _passwordController.dispose();
     _nicknameController.dispose();
     super.dispose();
+  }
+
+  Future<void> _handleGoogleSignIn() async {
+    setState(() {
+      _isGoogleLoading = true;
+      _error = null;
+    });
+
+    try {
+      final authProvider = context.read<AuthProvider>();
+      final success = await authProvider.signInWithGoogle();
+      if (!success && mounted) {
+        if (authProvider.errorMessage != null) {
+          setState(() {
+            _error = authProvider.errorMessage;
+          });
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = e.toString().replaceFirst('Exception: ', '');
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isGoogleLoading = false;
+        });
+      }
+    }
   }
 
   Future<void> _submit() async {
@@ -288,14 +320,36 @@ class _AuthScreenState extends State<AuthScreen> {
                       ),
 
                       if (_error != null) ...[
-                        const SizedBox(height: 10),
-                        Text(
-                          _error!,
-                          style: const TextStyle(
-                            fontSize: 11,
-                            color: Colors.redAccent,
+                        const SizedBox(height: 12),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: Colors.redAccent.withOpacity(0.08),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: Colors.redAccent.withOpacity(0.3),
+                            ),
                           ),
-                          textAlign: TextAlign.center,
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Padding(
+                                padding: EdgeInsets.only(top: 2),
+                                child: Icon(Icons.info_outline, color: Colors.redAccent, size: 16),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  _error!,
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    color: Colors.redAccent,
+                                    height: 1.35,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ],
                       const SizedBox(height: 20),
@@ -372,10 +426,9 @@ class _AuthScreenState extends State<AuthScreen> {
                       SizedBox(
                         width: double.infinity,
                         child: OutlinedButton(
-                          onPressed: () async {
-                            final authProvider = context.read<AuthProvider>();
-                            await authProvider.signInWithGoogle();
-                          },
+                          onPressed: (_isLoading || _isGoogleLoading)
+                              ? null
+                              : _handleGoogleSignIn,
                           style: OutlinedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 12),
                             side: BorderSide(
@@ -387,22 +440,31 @@ class _AuthScreenState extends State<AuthScreen> {
                               borderRadius: BorderRadius.circular(16),
                             ),
                           ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Text('G ', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                              Text(
-                                'Continue with Google',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  color: isDark
-                                      ? AppColors.darkInk
-                                      : AppColors.lightInk,
+                          child: _isGoogleLoading
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: AppColors.sage,
+                                  ),
+                                )
+                              : Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const Text('G ', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                                    Text(
+                                      'Continue with Google',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                        color: isDark
+                                            ? AppColors.darkInk
+                                            : AppColors.lightInk,
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                              ),
-                            ],
-                          ),
                         ),
                       ),
                     ],

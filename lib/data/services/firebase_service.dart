@@ -45,14 +45,35 @@ class FirebaseService {
     return cred;
   }
 
+  static final GoogleSignIn _googleSignIn = GoogleSignIn(
+    scopes: [
+      'email',
+      'profile',
+    ],
+  );
+
   // Google Sign-In
-  // TODO: Wire up Google Sign In native tokens if configured in Firebase Console
   static Future<UserCredential?> signInWithGoogle() async {
     try {
-      final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
-      if (googleUser == null) return null; // Cancelled
+      // Disconnect previous session to allow fresh account selection
+      try {
+        await _googleSignIn.signOut();
+      } catch (_) {}
+
+      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+      if (googleUser == null) {
+        return null; // User cancelled account picker
+      }
 
       final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+
+      if (googleAuth.idToken == null && googleAuth.accessToken == null) {
+        throw Exception(
+          'Google Sign-In failed: No auth tokens returned from Google Play Services. '
+          'Please ensure the app SHA-1 fingerprint is added in Firebase Console.',
+        );
+      }
+
       final OAuthCredential credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
@@ -66,7 +87,11 @@ class FirebaseService {
           final profile = UserProfile(
             id: user.uid,
             email: user.email ?? '',
-            nickname: user.displayName ?? 'Partner',
+            nickname: (user.displayName != null && user.displayName!.trim().isNotEmpty)
+                ? user.displayName!.trim()
+                : (user.email != null && user.email!.contains('@')
+                    ? user.email!.split('@')[0]
+                    : 'Partner'),
             avatarUrl: user.photoURL,
             createdAt: DateTime.now().toIso8601String(),
           );
@@ -75,7 +100,22 @@ class FirebaseService {
       }
       return cred;
     } catch (e) {
-      // Keep wired up as was in legacy app
+      final msg = e.toString();
+      if (msg.contains('ApiException: 10') ||
+          msg.contains('DEVELOPER_ERROR') ||
+          msg.contains('10:')) {
+        throw Exception(
+          'Google Sign-In (Code 10): App SHA-1 fingerprint is not registered in Firebase Console. Please register your SHA-1 in Firebase Console -> Project Settings -> Your Android Apps.',
+        );
+      } else if (msg.contains('ApiException: 12500')) {
+        throw Exception(
+          'Google Sign-In (Code 12500): Please ensure Google sign-in is enabled in Firebase Console -> Authentication -> Sign-in method.',
+        );
+      } else if (msg.contains('network_error') || msg.contains('ApiException: 7')) {
+        throw Exception(
+          'Network error during Google Sign-In. Please check your internet connection.',
+        );
+      }
       rethrow;
     }
   }

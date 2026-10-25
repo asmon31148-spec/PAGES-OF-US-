@@ -135,14 +135,20 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
     try {
       final cred = await FirebaseService.signInWithGoogle();
-      if (cred?.user != null) {
-        await refreshUserData(cred!.user!.uid);
+      if (cred == null) {
+        // User cancelled account picker
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
+      if (cred.user != null) {
+        await refreshUserData(cred.user!.uid);
       }
       _isLoading = false;
       notifyListeners();
       return true;
     } catch (e) {
-      _errorMessage = e.toString();
+      _errorMessage = e.toString().replaceFirst('Exception: ', '');
       _isLoading = false;
       notifyListeners();
       return false;

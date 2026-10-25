@@ -46,9 +46,24 @@ android {
         multiDexEnabled true
     }
 
+    signingConfigs {
+        release {
+            if (file("pagesofus.jks").exists()) {
+                storeFile file("pagesofus.jks")
+                storePassword "pagesofus123"
+                keyAlias "pagesofus"
+                keyPassword "pagesofus123"
+            }
+        }
+    }
+
     buildTypes {
         release {
-            signingConfig signingConfigs.debug
+            if (file("pagesofus.jks").exists()) {
+                signingConfig signingConfigs.release
+            } else {
+                signingConfig signingConfigs.debug
+            }
             minifyEnabled false
             shrinkResources false
         }

@@ -16,12 +16,44 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup Java JDK 17
         uses: actions/setup-java@v5
         with:
           distribution: 'temurin'
           java-version: '17'
+
+      - name: Ensure Permanent Keystore & Extract Fingerprints
+        id: cert_fingerprints
+        run: |
+          mkdir -p android/app
+          if [ ! -f "android/app/pagesofus.jks" ]; then
+            echo "Generating permanent release keystore..."
+            keytool -genkeypair -v -keystore android/app/pagesofus.jks -storetype JKS \
+              -keyalg RSA -keysize 2048 -validity 10000 \
+              -alias pagesofus -storepass pagesofus123 -keypass pagesofus123 \
+              -dname "CN=PagesOfUs, OU=Mobile, O=PagesOfUs, L=SanFrancisco, S=CA, C=US"
+            
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add android/app/pagesofus.jks
+            git commit -m "chore: persist permanent release signing keystore [skip ci]" || true
+            git push origin ${{ github.ref_name }} || true
+          fi
+
+          echo "Extracting SHA fingerprints..."
+          CERT_INFO=$(keytool -list -v -keystore android/app/pagesofus.jks -alias pagesofus -storepass pagesofus123)
+          SHA1=$(echo "$CERT_INFO" | grep "SHA1:" | head -n 1 | awk '{print $2}')
+          SHA256=$(echo "$CERT_INFO" | grep "SHA256:" | head -n 1 | awk '{print $2}')
+          echo "sha1=$SHA1" >> $GITHUB_OUTPUT
+          echo "sha256=$SHA256" >> $GITHUB_OUTPUT
+          echo "=========================================================="
+          echo "PERMANENT RELEASE SHA-1:   $SHA1"
+          echo "PERMANENT RELEASE SHA-256: $SHA256"
+          echo "=========================================================="
 
       - name: Setup Flutter SDK
         uses: subosito/flutter-action@v2
@@ -74,7 +106,15 @@ jobs:
             
             - **Native Engine**: 100% Pure Flutter / Dart (Zero WebView latency)
             - **Application ID**: `com.pagesofus.app`
-            - **Included**: Instant 0ms local cache on boot, Native Home Screen Locket Widget, Ambient Sanctuary Music, Realtime Presence & Mood Aura.
+            - **Signing Certificate SHA-1**: `${{ steps.cert_fingerprints.outputs.sha1 }}`
+            - **Signing Certificate SHA-256**: `${{ steps.cert_fingerprints.outputs.sha256 }}`
+            
+            #### 🔑 Firebase Google Sign-In Setup
+            If Google Sign-In gives Code 10, add this SHA-1 to your Firebase Console:
+            1. Open [Firebase Console](https://console.firebase.google.com/project/soulmate-p1/settings/general) -> **Project Settings**
+            2. Scroll down to **Your apps** -> Select `com.pagesofus.app`
+            3. Click **Add fingerprint** and paste: `${{ steps.cert_fingerprints.outputs.sha1 }}`
+            4. Verify **Google** is enabled under **Authentication -> Sign-in method**
           files: |
             build/app/outputs/flutter-apk/PagesOfUs.apk
             build/app/outputs/flutter-apk/app-release.apk
