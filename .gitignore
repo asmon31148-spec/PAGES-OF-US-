@@ -1,25 +1,26 @@
-# Logs
-logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
+# Flutter / Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+build/
 
-node_modules
-dist
-dist-ssr
-*.local
+# Android build & local settings
+android/local.properties
+android/.gradle/
+android/app/build/
+android/build/
+*.apk
+*.aab
+
+# Environment secrets
+.env.local
 
 # Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-.idea
-.antigravity
+.idea/
+.vscode/
+.antigravity/
 .DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
+*.swp
+*.log
+_staging_backup/

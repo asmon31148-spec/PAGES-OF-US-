@@ -1,0 +1,6 @@
+package com.pagesofus.app
+
+import io.flutter.embedding.android.FlutterActivity
+
+class MainActivity: FlutterActivity() {
+}

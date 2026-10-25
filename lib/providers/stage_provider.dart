@@ -1,0 +1,250 @@
+import 'dart:async';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import '../data/models/mood_aura.dart';
+import '../data/models/daily_prompt.dart';
+import '../data/models/pinned_note.dart';
+import '../data/services/firebase_service.dart';
+import '../data/services/supabase_service.dart';
+import '../core/services/local_cache_service.dart';
+import '../core/services/widget_sync_service.dart';
+
+class TouchPoint {
+  final double x;
+  final double y;
+  final int timestamp;
+  TouchPoint({required this.x, required this.y, required this.timestamp});
+}
+
+class StageProvider extends ChangeNotifier {
+  String? _anniversaryDate;
+  MoodAura? _myMood;
+  MoodAura? _partnerMood;
+  DailyPrompt? _dailyPrompt;
+  Map<String, PinnedNote> _pinnedNotes = {};
+  bool _isPulsing = false;
+  final List<TouchPoint> _touchPoints = [];
+
+  StreamSubscription? _anniversarySub;
+  StreamSubscription? _moodSub;
+  StreamSubscription? _noteSub;
+
+  String? get anniversaryDate => _anniversaryDate;
+  MoodAura? get myMood => _myMood;
+  MoodAura? get partnerMood => _partnerMood;
+  DailyPrompt? get dailyPrompt => _dailyPrompt;
+  Map<String, PinnedNote> get pinnedNotes => _pinnedNotes;
+  bool get isPulsing => _isPulsing;
+  List<TouchPoint> get touchPoints => List.unmodifiable(_touchPoints);
+
+  int get daysTogether {
+    if (_anniversaryDate == null || _anniversaryDate!.isEmpty) return 1;
+    try {
+      final start = DateTime.parse(_anniversaryDate!);
+      final diff = DateTime.now().difference(start).inDays;
+      return diff > 0 ? diff : 1;
+    } catch (_) {
+      return 1;
+    }
+  }
+
+  StageProvider() {
+    // 1. INSTANT ZERO-LATENCY LOAD FROM LOCAL CACHE
+    _anniversaryDate = LocalCacheService.getCachedAnniversary();
+    final cachedMyMood = LocalCacheService.getCachedMyMood();
+    if (cachedMyMood != null) {
+      _myMood = MoodAura.fromJson(cachedMyMood);
+    }
+    final cachedPartnerMood = LocalCacheService.getCachedPartnerMood();
+    if (cachedPartnerMood != null) {
+      _partnerMood = MoodAura.fromJson(cachedPartnerMood);
+    }
+    final cachedPrompt = LocalCacheService.getCachedDailyPrompt();
+    if (cachedPrompt != null) {
+      _dailyPrompt = DailyPrompt.fromJson(cachedPrompt);
+    }
+    final cachedNotes = LocalCacheService.getCachedPinnedNotes();
+    if (cachedNotes != null) {
+      _pinnedNotes = cachedNotes.map(
+        (k, v) => MapEntry(k, PinnedNote.fromJson(Map<String, dynamic>.from(v as Map))),
+      );
+    }
+  }
+
+  void initSpaceListeners(String spaceId, String userId, String? partnerId) {
+    if (spaceId.isEmpty) return;
+
+    // 1. Listen to Anniversary
+    _anniversarySub?.cancel();
+    _anniversarySub = FirebaseService.streamFeatureDoc(spaceId, 'anniversary').listen((snap) {
+      if (snap.exists && snap.data() != null) {
+        final date = snap.data()!['anniversaryDate'] as String?;
+        if (date != null && date != _anniversaryDate) {
+          _anniversaryDate = date;
+          LocalCacheService.setCachedAnniversary(date);
+          _syncWidget(partnerId);
+          notifyListeners();
+        }
+      }
+    });
+
+    // 2. Listen to Mood Aura
+    _moodSub?.cancel();
+    _moodSub = FirebaseService.streamFeatureDoc(spaceId, 'mood_aura').listen((snap) {
+      if (snap.exists && snap.data() != null) {
+        final moods = snap.data()!['mood'] as Map<String, dynamic>? ?? {};
+        if (moods.containsKey(userId)) {
+          final myData = moods[userId] as Map<String, dynamic>?;
+          _myMood = myData != null ? MoodAura.fromJson(myData) : null;
+          LocalCacheService.setCachedMyMood(myData);
+        }
+        if (partnerId != null && moods.containsKey(partnerId)) {
+          final pData = moods[partnerId] as Map<String, dynamic>?;
+          _partnerMood = pData != null ? MoodAura.fromJson(pData) : null;
+          LocalCacheService.setCachedPartnerMood(pData);
+        }
+        notifyListeners();
+      }
+    });
+
+    // 3. Listen to Pinned Notes
+    _noteSub?.cancel();
+    _noteSub = FirebaseService.streamFeatureDoc(spaceId, 'pinned_note').listen((snap) {
+      if (snap.exists && snap.data() != null) {
+        final rawNotes = snap.data()!['notes'] as Map<String, dynamic>? ?? {};
+        _pinnedNotes = rawNotes.map(
+          (k, v) => MapEntry(k, PinnedNote.fromJson(Map<String, dynamic>.from(v as Map))),
+        );
+        LocalCacheService.setCachedPinnedNotes(rawNotes);
+        notifyListeners();
+      }
+    });
+
+    // 4. Supabase Realtime Broadcast for Live Touch & Pulses
+    SupabaseService.subscribeToSpaceEvents(
+      spaceId,
+      onPulse: (data) {
+        final sender = data['senderId'] as String?;
+        if (sender != userId) {
+          _triggerPulseEffect();
+        }
+      },
+      onMood: (data) {
+        final sender = data['senderId'] as String?;
+        if (sender != userId && data['mood'] != null) {
+          _partnerMood = MoodAura.fromJson(Map<String, dynamic>.from(data['mood'] as Map));
+          HapticFeedback.mediumImpact();
+          notifyListeners();
+        }
+      },
+      onTouchPad: (data) {
+        final sender = data['senderId'] as String?;
+        if (sender != userId) {
+          final x = (data['x'] as num?)?.toDouble() ?? 0.5;
+          final y = (data['y'] as num?)?.toDouble() ?? 0.5;
+          _touchPoints.add(TouchPoint(x: x, y: y, timestamp: DateTime.now().millisecondsSinceEpoch));
+          HapticFeedback.lightImpact();
+          notifyListeners();
+        }
+      },
+    );
+  }
+
+  void _triggerPulseEffect() {
+    _isPulsing = true;
+    HapticFeedback.vibrate();
+    notifyListeners();
+    Future.delayed(const Duration(milliseconds: 2000), () {
+      _isPulsing = false;
+      notifyListeners();
+    });
+  }
+
+  void _syncWidget(String? partnerId) {
+    WidgetSyncService.syncWidget(
+      partnerName: null,
+      partnerThought: null,
+      daysTogether: daysTogether,
+    );
+  }
+
+  Future<void> sendPulse(String spaceId, String userId, String nickname) async {
+    _triggerPulseEffect();
+    await SupabaseService.broadcastEvent(
+      spaceId: spaceId,
+      eventType: 'PULSE',
+      payload: {
+        'senderId': userId,
+        'senderNickname': nickname,
+        'timestamp': DateTime.now().millisecondsSinceEpoch,
+      },
+    );
+  }
+
+  Future<void> sendTouchPadEvent(String spaceId, String userId, double x, double y) async {
+    _touchPoints.add(TouchPoint(x: x, y: y, timestamp: DateTime.now().millisecondsSinceEpoch));
+    notifyListeners();
+    await SupabaseService.broadcastEvent(
+      spaceId: spaceId,
+      eventType: 'TOUCH_PAD_EVENT',
+      payload: {'senderId': userId, 'x': x, 'y': y},
+    );
+  }
+
+  Future<void> setAnniversary(String spaceId, String date) async {
+    _anniversaryDate = date;
+    await LocalCacheService.setCachedAnniversary(date);
+    await FirebaseService.saveFeatureDoc(spaceId, 'anniversary', {'anniversaryDate': date});
+    _syncWidget(null);
+    notifyListeners();
+  }
+
+  Future<void> setMyMood(String spaceId, String userId, MoodAura? mood) async {
+    _myMood = mood;
+    await LocalCacheService.setCachedMyMood(mood?.toJson());
+    notifyListeners();
+
+    await FirebaseService.saveFeatureDoc(spaceId, 'mood_aura', {
+      'mood': {
+        userId: mood?.toJson(),
+      }
+    });
+
+    await SupabaseService.broadcastEvent(
+      spaceId: spaceId,
+      eventType: 'MOOD_UPDATE',
+      payload: {
+        'senderId': userId,
+        'mood': mood?.toJson(),
+      },
+    );
+  }
+
+  Future<void> savePinnedNote(String spaceId, String userId, String nickname, String text) async {
+    final note = PinnedNote(
+      userId: userId,
+      authorNickname: nickname,
+      text: text,
+      updatedAt: DateTime.now().toIso8601String(),
+    );
+    _pinnedNotes[userId] = note;
+    await LocalCacheService.setCachedPinnedNotes(
+      _pinnedNotes.map((k, v) => MapEntry(k, v.toJson())),
+    );
+    notifyListeners();
+
+    await FirebaseService.saveFeatureDoc(spaceId, 'pinned_note', {
+      'notes': {
+        userId: note.toJson(),
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _anniversarySub?.cancel();
+    _moodSub?.cancel();
+    _noteSub?.cancel();
+    super.dispose();
+  }
+}

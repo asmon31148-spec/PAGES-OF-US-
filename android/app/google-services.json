@@ -12,12 +12,7 @@
           "package_name": "com.pagesofus.app"
         }
       },
-      "oauth_client": [
-        {
-          "client_id": "483748859484-18bpcak0pjv56j6aj7qcgg58hfstla77.apps.googleusercontent.com",
-          "client_type": 3
-        }
-      ],
+      "oauth_client": [],
       "api_key": [
         {
           "current_key": "AIzaSyBk1onHnhG8RarkI86a1z6WfHz_2uKP0Q0"
@@ -25,12 +20,7 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": [
-            {
-              "client_id": "483748859484-18bpcak0pjv56j6aj7qcgg58hfstla77.apps.googleusercontent.com",
-              "client_type": 3
-            }
-          ]
+          "other_platform_oauth_client": []
         }
       }
     }
