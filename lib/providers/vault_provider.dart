@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../data/models/event_capsule.dart';
 import '../data/models/vault_model.dart';
 import '../data/services/supabase_service.dart';
+import '../core/services/notification_service.dart';
 
 class VaultProvider extends ChangeNotifier {
   List<EventCapsule> _capsules = [];
@@ -196,6 +197,15 @@ class VaultProvider extends ChangeNotifier {
             _capsules = raw
                 .map((e) => EventCapsule.fromJson(Map<String, dynamic>.from(e as Map)))
                 .toList();
+            for (final c in _capsules) {
+              if (c.unlockAt != null && c.unlockAt!.isAfter(DateTime.now())) {
+                NotificationService.scheduleVaultUnlockNotification(
+                  capsuleId: c.id,
+                  title: c.title,
+                  unlockDateTime: c.unlockAt!,
+                );
+              }
+            }
             notifyListeners();
           }
         }
@@ -209,6 +219,15 @@ class VaultProvider extends ChangeNotifier {
     _isUnlocked = false;
     _enteredPin = '';
     notifyListeners();
+
+    if (capsule.unlockAt != null) {
+      await NotificationService.scheduleVaultUnlockNotification(
+        capsuleId: capsule.id,
+        title: capsule.title,
+        unlockDateTime: capsule.unlockAt!,
+      );
+    }
+
     await _syncCapsulesToCloud(spaceId);
   }
 
@@ -220,12 +239,24 @@ class VaultProvider extends ChangeNotifier {
         _selectedCapsule = updated;
       }
       notifyListeners();
+
+      if (updated.unlockAt != null) {
+        await NotificationService.scheduleVaultUnlockNotification(
+          capsuleId: updated.id,
+          title: updated.title,
+          unlockDateTime: updated.unlockAt!,
+        );
+      } else {
+        await NotificationService.cancelScheduledVaultNotification(updated.id);
+      }
+
       await _syncCapsulesToCloud(spaceId);
     }
   }
 
   Future<void> deleteEventCapsule(String capsuleId, String spaceId) async {
     _capsules.removeWhere((c) => c.id == capsuleId);
+    await NotificationService.cancelScheduledVaultNotification(capsuleId);
     if (_selectedCapsule?.id == capsuleId) {
       _selectedCapsule = _capsules.isNotEmpty ? _capsules.first : null;
       _isUnlocked = false;

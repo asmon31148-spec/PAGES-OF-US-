@@ -5,6 +5,7 @@ import 'package:audio_service/audio_service.dart';
 import 'core/theme/app_theme.dart';
 import 'core/services/local_cache_service.dart';
 import 'core/services/audio_handler.dart';
+import 'core/services/notification_service.dart';
 import 'data/services/supabase_service.dart';
 import 'providers/theme_provider.dart';
 import 'providers/auth_provider.dart';
@@ -50,6 +51,13 @@ void main() async {
     );
   } catch (e) {
     debugPrint('AudioService init error: $e');
+  }
+
+  // 5. Initialize Exact Scheduled & Push Notification Service
+  try {
+    await NotificationService.init();
+  } catch (e) {
+    debugPrint('NotificationService init error: $e');
   }
 
   runApp(
