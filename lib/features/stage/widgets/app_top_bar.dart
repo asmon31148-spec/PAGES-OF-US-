@@ -5,6 +5,7 @@ import '../../../providers/theme_provider.dart';
 import '../../../providers/audio_provider.dart';
 import '../../../providers/auth_provider.dart';
 import 'theme_modal.dart';
+import '../../music/screens/music_sanctuary_screen.dart';
 
 class AppTopBar extends StatelessWidget {
   final String title;
@@ -63,9 +64,16 @@ class AppTopBar extends StatelessWidget {
           // Actions Row
           Row(
             children: [
-              // Music & Atmosphere Toggle
+              // Music & Atmosphere Studio Screen
               GestureDetector(
-                onTap: () => audioProvider.toggleMusic(),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const MusicSanctuaryScreen(),
+                    ),
+                  );
+                },
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   decoration: BoxDecoration(
@@ -90,7 +98,7 @@ class AppTopBar extends StatelessWidget {
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        audioProvider.isPlaying ? 'Atmosphere' : 'Music',
+                        audioProvider.isPlaying ? 'Playing ♫' : 'Music',
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w500,
