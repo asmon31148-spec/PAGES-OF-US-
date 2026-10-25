@@ -8,6 +8,9 @@ import 'providers/theme_provider.dart';
 import 'providers/auth_provider.dart';
 import 'providers/stage_provider.dart';
 import 'providers/audio_provider.dart';
+import 'providers/world_provider.dart';
+import 'providers/memories_provider.dart';
+import 'providers/vault_provider.dart';
 import 'features/auth/screens/auth_screen.dart';
 import 'features/stage/screens/stage_screen.dart';
 import 'features/world/screens/world_screen.dart';
@@ -38,6 +41,9 @@ void main() async {
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => StageProvider()),
         ChangeNotifierProvider(create: (_) => AudioProvider()),
+        ChangeNotifierProvider(create: (_) => WorldProvider()),
+        ChangeNotifierProvider(create: (_) => MemoriesProvider()),
+        ChangeNotifierProvider(create: (_) => VaultProvider()),
       ],
       child: const PagesOfUsApp(),
     ),

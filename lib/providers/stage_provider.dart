@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../data/models/mood_aura.dart';
 import '../data/models/daily_prompt.dart';
 import '../data/models/pinned_note.dart';
+import '../data/models/couple_goal_item.dart';
 import '../data/services/firebase_service.dart';
 import '../data/services/supabase_service.dart';
 import '../core/services/local_cache_service.dart';
@@ -22,18 +23,21 @@ class StageProvider extends ChangeNotifier {
   MoodAura? _partnerMood;
   DailyPrompt? _dailyPrompt;
   Map<String, PinnedNote> _pinnedNotes = {};
+  List<CoupleGoalItem> _goals = [];
   bool _isPulsing = false;
   final List<TouchPoint> _touchPoints = [];
 
   StreamSubscription? _anniversarySub;
   StreamSubscription? _moodSub;
   StreamSubscription? _noteSub;
+  StreamSubscription? _goalsSub;
 
   String? get anniversaryDate => _anniversaryDate;
   MoodAura? get myMood => _myMood;
   MoodAura? get partnerMood => _partnerMood;
   DailyPrompt? get dailyPrompt => _dailyPrompt;
   Map<String, PinnedNote> get pinnedNotes => _pinnedNotes;
+  List<CoupleGoalItem> get goals => _goals;
   bool get isPulsing => _isPulsing;
   List<TouchPoint> get touchPoints => List.unmodifiable(_touchPoints);
 
@@ -119,6 +123,9 @@ class StageProvider extends ChangeNotifier {
         notifyListeners();
       }
     });
+
+    // 4. Fetch Goals
+    fetchGoals(spaceId);
 
     // 4. Supabase Realtime Broadcast for Live Touch & Pulses
     SupabaseService.subscribeToSpaceEvents(
@@ -240,11 +247,94 @@ class StageProvider extends ChangeNotifier {
     });
   }
 
+  static final List<CoupleGoalItem> defaultPresetGoals = [
+    CoupleGoalItem(id: 'preset_1', title: 'Met Each Other', icon: '🌸', category: 'firsts'),
+    CoupleGoalItem(id: 'preset_2', title: 'First Date', icon: '☕', category: 'firsts'),
+    CoupleGoalItem(id: 'preset_3', title: 'Kissed First Time', icon: '🕊️', category: 'firsts'),
+    CoupleGoalItem(id: 'preset_4', title: 'First Trip Together', icon: '✈️', category: 'firsts'),
+    CoupleGoalItem(id: 'preset_5', title: 'Said "I Love You"', icon: '💌', category: 'firsts'),
+    CoupleGoalItem(id: 'preset_6', title: 'Moved in Together', icon: '🏡', category: 'future'),
+    CoupleGoalItem(id: 'preset_7', title: 'Got Engaged', icon: '💍', category: 'future'),
+  ];
+
+  Future<void> fetchGoals(String spaceId) async {
+    final supabase = SupabaseService.client;
+    if (supabase != null) {
+      try {
+        final res = await supabase
+            .from('app_content')
+            .select('content')
+            .eq('id', 'couple_goals_$spaceId')
+            .maybeSingle();
+        if (res != null && res['content'] != null && res['content'] is List) {
+          final list = res['content'] as List;
+          if (list.isNotEmpty) {
+            _goals = list
+                .map((e) => CoupleGoalItem.fromJson(Map<String, dynamic>.from(e as Map)))
+                .toList();
+            notifyListeners();
+            return;
+          }
+        }
+      } catch (_) {}
+    }
+    if (_goals.isEmpty) {
+      _goals = List.from(defaultPresetGoals);
+      notifyListeners();
+    }
+  }
+
+  Future<void> toggleGoal(String spaceId, String goalId, bool isCompleted, String? nickname) async {
+    final idx = _goals.indexWhere((g) => g.id == goalId);
+    if (idx != -1) {
+      _goals[idx] = _goals[idx].copyWith(
+        isCompleted: isCompleted,
+        completedDate: isCompleted ? DateTime.now().toIso8601String().split('T')[0] : null,
+        completedBy: isCompleted ? nickname : null,
+      );
+      notifyListeners();
+      _syncGoalsToCloud(spaceId);
+    }
+  }
+
+  Future<void> addGoal(String spaceId, CoupleGoalItem goal) async {
+    _goals.add(goal);
+    notifyListeners();
+    _syncGoalsToCloud(spaceId);
+  }
+
+  Future<void> deleteGoal(String spaceId, String goalId) async {
+    _goals.removeWhere((g) => g.id == goalId);
+    notifyListeners();
+    _syncGoalsToCloud(spaceId);
+  }
+
+  Future<void> _syncGoalsToCloud(String spaceId) async {
+    final jsonList = _goals.map((g) => g.toJson()).toList();
+    final supabase = SupabaseService.client;
+    if (supabase != null) {
+      try {
+        await supabase.from('app_content').upsert({
+          'id': 'couple_goals_$spaceId',
+          'content': jsonList,
+          'updated_at': DateTime.now().toIso8601String(),
+        });
+      } catch (_) {}
+    }
+    try {
+      await FirebaseService.saveFeatureDoc(spaceId, 'couple_goals', {
+        'goals': jsonList,
+        'updatedAt': DateTime.now().toIso8601String(),
+      });
+    } catch (_) {}
+  }
+
   @override
   void dispose() {
     _anniversarySub?.cancel();
     _moodSub?.cancel();
     _noteSub?.cancel();
+    _goalsSub?.cancel();
     super.dispose();
   }
 }

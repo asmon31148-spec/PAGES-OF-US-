@@ -15,6 +15,7 @@ import '../widgets/stage_memory_hero_card.dart';
 import '../widgets/mood_aura_modal.dart';
 import '../widgets/anniversary_modal.dart';
 import '../widgets/profile_modal.dart';
+import '../widgets/goal_tracker_modal.dart';
 import '../../auth/widgets/pairing_modal.dart';
 
 class StageScreen extends StatefulWidget {
@@ -142,90 +143,93 @@ class _StageScreenState extends State<StageScreen> {
                       ),
 
                       // 3. Goals & Milestones Teaser Banner
-                      Container(
-                        margin: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 6),
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: isDark
-                              ? AppColors.darkSurface
-                              : AppColors.lightSurface,
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
+                      GestureDetector(
+                        onTap: () => GoalTrackerModal.show(context),
+                        child: Container(
+                          margin: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 6),
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
                             color: isDark
-                                ? AppColors.darkBorder
-                                : AppColors.lightBorder,
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 36,
-                              height: 36,
-                              decoration: BoxDecoration(
-                                color: AppColors.terra.withOpacity(0.12),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              alignment: Alignment.center,
-                              child: const Text('🎯',
-                                  style: TextStyle(fontSize: 18)),
+                                ? AppColors.darkSurface
+                                : AppColors.lightSurface,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: isDark
+                                  ? AppColors.darkBorder
+                                  : AppColors.lightBorder,
                             ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      const Text(
-                                        'MILESTONES & DREAMS',
-                                        style: TextStyle(
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.bold,
-                                          color: AppColors.terra,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 6),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 6, vertical: 1),
-                                        decoration: BoxDecoration(
-                                          color:
-                                              AppColors.sage.withOpacity(0.1),
-                                          borderRadius:
-                                              BorderRadius.circular(8),
-                                        ),
-                                        child: Text(
-                                          'Day ${stageProvider.daysTogether}',
-                                          style: const TextStyle(
-                                            fontSize: 9,
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 36,
+                                height: 36,
+                                decoration: BoxDecoration(
+                                  color: AppColors.terra.withOpacity(0.12),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                alignment: Alignment.center,
+                                child: const Text('🎯',
+                                    style: TextStyle(fontSize: 18)),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        const Text(
+                                          'MILESTONES & DREAMS',
+                                          style: TextStyle(
+                                            fontSize: 10,
                                             fontWeight: FontWeight.bold,
-                                            color: AppColors.sage,
+                                            color: AppColors.terra,
                                           ),
                                         ),
-                                      ),
-                                    ],
-                                  ),
-                                  Text(
-                                    'Celebrate couple firsts & set new dreams ✦',
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      color: isDark
-                                          ? AppColors.darkInk
-                                          : AppColors.lightInk,
+                                        const SizedBox(width: 6),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 6, vertical: 1),
+                                          decoration: BoxDecoration(
+                                            color:
+                                                AppColors.sage.withOpacity(0.1),
+                                            borderRadius:
+                                                BorderRadius.circular(8),
+                                          ),
+                                          child: Text(
+                                            'Day ${stageProvider.daysTogether}',
+                                            style: const TextStyle(
+                                              fontSize: 9,
+                                              fontWeight: FontWeight.bold,
+                                              color: AppColors.sage,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                  ),
-                                ],
+                                    Text(
+                                      'Celebrate couple firsts & set new dreams ✦',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: isDark
+                                            ? AppColors.darkInk
+                                            : AppColors.lightInk,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ),
-                            Icon(
-                              Icons.chevron_right,
-                              size: 18,
-                              color: isDark
-                                  ? AppColors.darkSoft
-                                  : AppColors.lightSoft,
-                            ),
-                          ],
+                              Icon(
+                                Icons.chevron_right,
+                                size: 18,
+                                color: isDark
+                                    ? AppColors.darkSoft
+                                    : AppColors.lightSoft,
+                              ),
+                            ],
+                          ),
                         ),
                       ),
 

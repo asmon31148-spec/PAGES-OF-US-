@@ -4,6 +4,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../providers/theme_provider.dart';
 import '../../../providers/audio_provider.dart';
 import '../../../providers/auth_provider.dart';
+import 'theme_modal.dart';
 
 class AppTopBar extends StatelessWidget {
   final String title;
@@ -105,6 +106,7 @@ class AppTopBar extends StatelessWidget {
               // Light / Dark Theme Switcher
               GestureDetector(
                 onTap: () => themeProvider.toggleDarkLight(),
+                onLongPress: () => ThemeModal.show(context),
                 child: Container(
                   width: 34,
                   height: 34,
