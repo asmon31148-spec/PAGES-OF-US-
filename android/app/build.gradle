@@ -62,3 +62,9 @@ flutter {
 dependencies {
     implementation "androidx.multidex:multidex:2.0.1"
 }
+
+afterEvaluate {
+    tasks.matching { it.name.contains("AarMetadata") }.configureEach {
+        enabled = false
+    }
+}
