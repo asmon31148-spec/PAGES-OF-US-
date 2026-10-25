@@ -18,6 +18,7 @@ class _AuthScreenState extends State<AuthScreen> {
   final TextEditingController _nicknameController = TextEditingController();
   bool _isLoading = false;
   bool _isGoogleLoading = false;
+  bool _obscurePassword = true;
   String? _error;
 
   @override
@@ -295,7 +296,7 @@ class _AuthScreenState extends State<AuthScreen> {
                       // Password input
                       TextField(
                         controller: _passwordController,
-                        obscureText: true,
+                        obscureText: _obscurePassword,
                         style: TextStyle(
                           fontSize: 13,
                           color: isDark ? AppColors.darkInk : AppColors.lightInk,
@@ -311,6 +312,21 @@ class _AuthScreenState extends State<AuthScreen> {
                           contentPadding: const EdgeInsets.symmetric(
                             horizontal: 16,
                             vertical: 12,
+                          ),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _obscurePassword
+                                  ? Icons.visibility_off_outlined
+                                  : Icons.visibility_outlined,
+                              size: 18,
+                              color: isDark ? AppColors.darkSoft : AppColors.lightSoft,
+                            ),
+                            tooltip: _obscurePassword ? 'Show password' : 'Hide password',
+                            onPressed: () {
+                              setState(() {
+                                _obscurePassword = !_obscurePassword;
+                              });
+                            },
                           ),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(16),
