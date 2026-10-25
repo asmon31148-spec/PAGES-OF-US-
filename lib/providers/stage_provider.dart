@@ -26,6 +26,8 @@ class StageProvider extends ChangeNotifier {
   List<CoupleGoalItem> _goals = [];
   bool _isPulsing = false;
   final List<TouchPoint> _touchPoints = [];
+  TouchPoint? _partnerTouchPoint;
+  Timer? _partnerTouchDecayTimer;
 
   StreamSubscription? _anniversarySub;
   StreamSubscription? _moodSub;
@@ -40,6 +42,8 @@ class StageProvider extends ChangeNotifier {
   List<CoupleGoalItem> get goals => _goals;
   bool get isPulsing => _isPulsing;
   List<TouchPoint> get touchPoints => List.unmodifiable(_touchPoints);
+  TouchPoint? get partnerTouchPoint => _partnerTouchPoint;
+  bool get isPartnerTouching => _partnerTouchPoint != null;
 
   int get daysTogether {
     if (_anniversaryDate == null || _anniversaryDate!.isEmpty) return 1;
@@ -147,11 +151,27 @@ class StageProvider extends ChangeNotifier {
       onTouchPad: (data) {
         final sender = data['senderId'] as String?;
         if (sender != userId) {
-          final x = (data['x'] as num?)?.toDouble() ?? 0.5;
-          final y = (data['y'] as num?)?.toDouble() ?? 0.5;
-          _touchPoints.add(TouchPoint(x: x, y: y, timestamp: DateTime.now().millisecondsSinceEpoch));
-          HapticFeedback.lightImpact();
-          notifyListeners();
+          final isTouching = data['isTouching'] as bool? ?? true;
+          if (isTouching) {
+            final x = (data['x'] as num?)?.toDouble() ?? 0.5;
+            final y = (data['y'] as num?)?.toDouble() ?? 0.5;
+            _partnerTouchPoint = TouchPoint(x: x, y: y, timestamp: DateTime.now().millisecondsSinceEpoch);
+            _touchPoints.clear();
+            _touchPoints.add(_partnerTouchPoint!);
+            HapticFeedback.lightImpact();
+            _partnerTouchDecayTimer?.cancel();
+            _partnerTouchDecayTimer = Timer(const Duration(milliseconds: 2500), () {
+              _partnerTouchPoint = null;
+              _touchPoints.clear();
+              notifyListeners();
+            });
+            notifyListeners();
+          } else {
+            _partnerTouchPoint = null;
+            _touchPoints.clear();
+            _partnerTouchDecayTimer?.cancel();
+            notifyListeners();
+          }
         }
       },
     );
@@ -188,13 +208,11 @@ class StageProvider extends ChangeNotifier {
     );
   }
 
-  Future<void> sendTouchPadEvent(String spaceId, String userId, double x, double y) async {
-    _touchPoints.add(TouchPoint(x: x, y: y, timestamp: DateTime.now().millisecondsSinceEpoch));
-    notifyListeners();
+  Future<void> sendTouchPadEvent(String spaceId, String userId, double x, double y, {bool isTouching = true}) async {
     await SupabaseService.broadcastEvent(
       spaceId: spaceId,
       eventType: 'TOUCH_PAD_EVENT',
-      payload: {'senderId': userId, 'x': x, 'y': y},
+      payload: {'senderId': userId, 'x': x, 'y': y, 'isTouching': isTouching},
     );
   }
 
@@ -331,6 +349,7 @@ class StageProvider extends ChangeNotifier {
 
   @override
   void dispose() {
+    _partnerTouchDecayTimer?.cancel();
     _anniversarySub?.cancel();
     _moodSub?.cancel();
     _noteSub?.cancel();

@@ -7,6 +7,8 @@ import 'package:video_player/video_player.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/services/media_upload_service.dart';
+import '../../../core/widgets/full_screen_video_player.dart';
+import '../widgets/vault_video_thumbnail.dart';
 import '../../../providers/theme_provider.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../providers/vault_provider.dart';
@@ -385,35 +387,19 @@ class _VaultScreenState extends State<VaultScreen> {
     final isVideo = mediaUrl.contains('.mp4') || mediaUrl.contains('.mov') || mediaUrl.contains('video/');
 
     if (isVideo) {
-      return GestureDetector(
+      return VaultVideoThumbnail(
         onTap: () {
-          showModalBottomSheet(
-            context: context,
-            isScrollControlled: true,
-            backgroundColor: Colors.black,
-            builder: (_) => _VaultVideoModal(videoUrl: mediaUrl, title: title),
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => FullScreenVideoPlayer(
+                videoUrl: mediaUrl,
+                title: title,
+                subtitle: 'Confidential Vault Film',
+              ),
+            ),
           );
         },
-        child: AspectRatio(
-          aspectRatio: 16 / 9,
-          child: Container(
-            color: Colors.black87,
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                const Icon(Icons.videocam, size: 48, color: Colors.white24),
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: AppColors.terra.withOpacity(0.85),
-                  ),
-                  child: const Icon(Icons.play_arrow, color: Colors.white, size: 36),
-                ),
-              ],
-            ),
-          ),
-        ),
       );
     }
 
@@ -527,67 +513,3 @@ class _VaultScreenState extends State<VaultScreen> {
   }
 }
 
-class _VaultVideoModal extends StatefulWidget {
-  final String videoUrl;
-  final String title;
-
-  const _VaultVideoModal({required this.videoUrl, required this.title});
-
-  @override
-  State<_VaultVideoModal> createState() => _VaultVideoModalState();
-}
-
-class _VaultVideoModalState extends State<_VaultVideoModal> {
-  late VideoPlayerController _controller;
-  bool _isInitialized = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = VideoPlayerController.networkUrl(Uri.parse(widget.videoUrl))
-      ..initialize().then((_) {
-        setState(() => _isInitialized = true);
-        _controller.play();
-      });
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return SafeArea(
-      child: Container(
-        height: MediaQuery.of(context).size.height * 0.8,
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(widget.title, style: const TextStyle(color: Colors.white, fontSize: 16, fontFamily: 'serif')),
-                IconButton(
-                  icon: const Icon(Icons.close, color: Colors.white),
-                  onPressed: () => Navigator.pop(context),
-                ),
-              ],
-            ),
-            Expanded(
-              child: Center(
-                child: _isInitialized
-                    ? AspectRatio(
-                        aspectRatio: _controller.value.aspectRatio,
-                        child: VideoPlayer(_controller),
-                      )
-                    : const CircularProgressIndicator(color: AppColors.terra),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}

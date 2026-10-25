@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 160" width="300" height="160" role="img" aria-label="Cute animated film strip character placeholder for a video thumbnail">
+<defs>
+<linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+<stop offset="0" stop-color="#A8E68F"/>
+<stop offset="0.24" stop-color="#3E8A66"/>
+<stop offset="0.58" stop-color="#10201B"/>
+<stop offset="0.78" stop-color="#0B1512"/>
+<stop offset="1" stop-color="#D9772A"/>
+</linearGradient>
+</defs>
+<rect width="300" height="160" fill="url(#bg)"/>
+<circle cx="150" cy="74" r="62" fill="#ffffff" fill-opacity="0.05"/>
+<circle cx="150" cy="74" r="44" fill="#ffffff" fill-opacity="0.06"/>
+<ellipse cx="150" cy="124" rx="30" ry="4" fill="#000000" fill-opacity="0.35"/>
+<g id="character">
+<rect x="108" y="36" width="84" height="70" rx="16" fill="#F7EBD3"/>
+<g fill="#10201B">
+<rect x="119" y="43" width="7" height="6" rx="1.5"/>
+<rect x="133" y="43" width="7" height="6" rx="1.5"/>
+<rect x="147" y="43" width="7" height="6" rx="1.5"/>
+<rect x="161" y="43" width="7" height="6" rx="1.5"/>
+<rect x="175" y="43" width="7" height="6" rx="1.5"/>
+<rect x="119" y="93" width="7" height="6" rx="1.5"/>
+<rect x="133" y="93" width="7" height="6" rx="1.5"/>
+<rect x="147" y="93" width="7" height="6" rx="1.5"/>
+<rect x="161" y="93" width="7" height="6" rx="1.5"/>
+<rect x="175" y="93" width="7" height="6" rx="1.5"/>
+<circle cx="137" cy="71" r="4.5"/>
+<circle cx="163" cy="71" r="4.5"/>
+</g>
+<ellipse cx="125" cy="80" rx="6" ry="3.5" fill="#F2A27A"/>
+<ellipse cx="175" cy="80" rx="6" ry="3.5" fill="#F2A27A"/>
+<path d="M144 79 Q150 86 156 79" fill="none" stroke="#10201B" stroke-width="2.5" stroke-linecap="round"/>
+<g>
+<circle cx="192" cy="100" r="16" fill="#EE8A3E"/>
+<path d="M187 92 L199 100 L187 108Z" fill="#ffffff"/>
+</g>
+</g>
+<g transform="translate(84 50)"><path d="M0 -8L2.5 -2.5L8 0L2.5 2.5L0 8L-2.5 2.5L-8 0L-2.5 -2.5Z" fill="#F7EBD3"/></g>
+<g transform="translate(222 44)"><path d="M0 -8L2.5 -2.5L8 0L2.5 2.5L0 8L-2.5 2.5L-8 0L-2.5 -2.5Z" fill="#A8E68F"/></g>
+<g transform="translate(68 100)"><path d="M0 -6L2 -2L6 0L2 2L0 6L-2 2L-6 0L-2 -2Z" fill="#10201B"/></g>
+<g transform="translate(236 96)"><path d="M0 -6L2 -2L6 0L2 2L0 6L-2 2L-6 0L-2 -2Z" fill="#F7EBD3"/></g>
+<text x="150" y="150" text-anchor="middle" font-size="11" fill="#D6EBDD" font-family="Georgia, serif">Getting your preview</text>
+<circle cx="212" cy="147" r="1.6" fill="#D6EBDD"/>
+<circle cx="218" cy="147" r="1.6" fill="#D6EBDD"/>
+<circle cx="224" cy="147" r="1.6" fill="#D6EBDD"/>
+</svg>

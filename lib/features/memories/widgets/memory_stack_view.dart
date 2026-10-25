@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:video_player/video_player.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/full_screen_video_player.dart';
 import '../../../providers/theme_provider.dart';
 import '../../../providers/memories_provider.dart';
 import '../../../providers/audio_provider.dart';
@@ -268,43 +269,7 @@ class MemoryStackView extends StatelessWidget {
             ),
 
           if (memory.mediaType == 'video' && memory.mediaUrl.isNotEmpty)
-            GestureDetector(
-              onTap: () => _openVideoPlayer(context, memory.mediaUrl, memory.title),
-              child: AspectRatio(
-                aspectRatio: 16 / 9,
-                child: Container(
-                  color: Colors.black87,
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      const Icon(Icons.videocam, size: 48, color: Colors.white24),
-                      Container(
-                        width: 56,
-                        height: 56,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: AppColors.terra.withOpacity(0.85),
-                          boxShadow: const [BoxShadow(color: Colors.black45, blurRadius: 8)],
-                        ),
-                        child: const Icon(Icons.play_arrow, color: Colors.white, size: 32),
-                      ),
-                      Positioned(
-                        bottom: 8,
-                        right: 8,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: Colors.black54,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: const Text('VIDEO 🎬', style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
+            _buildMemoryVideoThumbnail(context, memory, isDark),
 
           // 2. Pure Voice Note Area (if no photo/video)
           if (memory.mediaType == 'audio')
@@ -500,98 +465,153 @@ class MemoryStackView extends StatelessWidget {
     );
   }
 
-  void _openVideoPlayer(BuildContext context, String videoUrl, String title) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.black,
-      builder: (_) => _VideoPlayerModal(videoUrl: videoUrl, title: title),
+  Widget _buildMemoryVideoThumbnail(BuildContext context, MemoryItem memory, bool isDark) {
+    final thumbnailUrl = _getVideoThumbnail(memory.mediaUrl);
+
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => FullScreenVideoPlayer(
+              videoUrl: memory.mediaUrl,
+              title: memory.title.isNotEmpty ? memory.title : 'Our Memory',
+              subtitle: memory.caption.isNotEmpty ? memory.caption : 'Preserved Moment',
+            ),
+          ),
+        );
+      },
+      child: AspectRatio(
+        aspectRatio: 16 / 9,
+        child: ClipRRect(
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          child: Stack(
+            fit: StackFit.expand,
+            alignment: Alignment.center,
+            children: [
+              // 1. If Cloudinary video thumbnail available
+              if (thumbnailUrl.isNotEmpty)
+                CachedNetworkImage(
+                  imageUrl: thumbnailUrl,
+                  fit: BoxFit.cover,
+                  placeholder: (_, __) => _buildFilmFallback(memory, isDark),
+                  errorWidget: (_, __, ___) => _buildFilmFallback(memory, isDark),
+                )
+              else
+                _buildFilmFallback(memory, isDark),
+
+              // Soft vignette overlay
+              Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.black.withOpacity(0.15),
+                      Colors.black.withOpacity(0.4),
+                    ],
+                  ),
+                ),
+              ),
+
+              // Glowing Play Button
+              Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: AppColors.terra.withOpacity(0.9),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.terra.withOpacity(0.5),
+                      blurRadius: 14,
+                      spreadRadius: 2,
+                    ),
+                    const BoxShadow(
+                      color: Colors.black45,
+                      blurRadius: 8,
+                      offset: Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: const Icon(
+                  Icons.play_arrow_rounded,
+                  color: Colors.white,
+                  size: 34,
+                ),
+              ),
+
+              // Video Badge
+              Positioned(
+                bottom: 10,
+                right: 12,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.65),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.white24, width: 0.8),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.videocam_rounded, size: 12, color: AppColors.terra),
+                      SizedBox(width: 4),
+                      Text(
+                        'VIDEO 🎬',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 9,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
-}
 
-class _VideoPlayerModal extends StatefulWidget {
-  final String videoUrl;
-  final String title;
-
-  const _VideoPlayerModal({required this.videoUrl, required this.title});
-
-  @override
-  State<_VideoPlayerModal> createState() => _VideoPlayerModalState();
-}
-
-class _VideoPlayerModalState extends State<_VideoPlayerModal> {
-  late VideoPlayerController _controller;
-  bool _isInitialized = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = VideoPlayerController.networkUrl(Uri.parse(widget.videoUrl))
-      ..initialize().then((_) {
-        setState(() => _isInitialized = true);
-        _controller.play();
-      });
+  String _getVideoThumbnail(String url) {
+    if (url.contains('cloudinary.com') || url.contains('/video/upload/')) {
+      return url.replaceAll(RegExp(r'\.(mp4|mov|avi|wmv|webm|mkv)$', caseSensitive: false), '.jpg');
+    }
+    return '';
   }
 
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return SafeArea(
-      child: Container(
-        height: MediaQuery.of(context).size.height * 0.8,
-        padding: const EdgeInsets.all(16),
+  Widget _buildFilmFallback(MemoryItem memory, bool isDark) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: isDark
+              ? [const Color(0xFF10201B), const Color(0xFF1F382B), const Color(0xFF0D1612)]
+              : [const Color(0xFF2C3E35), const Color(0xFF1A2620), const Color(0xFF3B2F25)],
+        ),
+      ),
+      child: Center(
         child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(widget.title, style: const TextStyle(color: Colors.white, fontSize: 16, fontFamily: 'serif')),
-                IconButton(
-                  icon: const Icon(Icons.close, color: Colors.white),
-                  onPressed: () => Navigator.pop(context),
-                ),
-              ],
+            Icon(
+              Icons.movie_creation_outlined,
+              size: 40,
+              color: Colors.white.withOpacity(0.35),
             ),
-            Expanded(
-              child: Center(
-                child: _isInitialized
-                    ? AspectRatio(
-                        aspectRatio: _controller.value.aspectRatio,
-                        child: Stack(
-                          alignment: Alignment.center,
-                          children: [
-                            VideoPlayer(_controller),
-                            GestureDetector(
-                              onTap: () {
-                                setState(() {
-                                  _controller.value.isPlaying
-                                      ? _controller.pause()
-                                      : _controller.play();
-                                });
-                              },
-                              child: AnimatedOpacity(
-                                opacity: _controller.value.isPlaying ? 0.0 : 1.0,
-                                duration: const Duration(milliseconds: 200),
-                                child: Container(
-                                  padding: const EdgeInsets.all(16),
-                                  decoration: const BoxDecoration(
-                                    color: Colors.black54,
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: const Icon(Icons.play_arrow, color: Colors.white, size: 40),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      )
-                    : const CircularProgressIndicator(color: AppColors.terra),
+            const SizedBox(height: 6),
+            Text(
+              memory.title.isNotEmpty ? memory.title : 'Memory Film',
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.75),
+                fontSize: 12,
+                fontFamily: 'serif',
+                fontWeight: FontWeight.bold,
               ),
             ),
           ],
