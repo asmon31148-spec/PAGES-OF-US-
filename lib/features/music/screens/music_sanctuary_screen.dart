@@ -356,7 +356,7 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
 
           ListView.separated(
             shrinkWrap: true,
-            physics: const NeverScrollableScrollException(),
+            physics: const NeverScrollableScrollPhysics(),
             itemCount: songs.length,
             separatorBuilder: (_, __) => const SizedBox(height: 8),
             itemBuilder: (ctx, i) {
@@ -473,7 +473,7 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
           const SizedBox(height: 16),
           ListView.separated(
             shrinkWrap: true,
-            physics: const NeverScrollableScrollException(),
+            physics: const NeverScrollableScrollPhysics(),
             itemCount: playlists.length,
             separatorBuilder: (_, __) => const SizedBox(height: 10),
             itemBuilder: (ctx, i) {
@@ -720,7 +720,7 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
           // Stem Sliders List
           ListView.separated(
             shrinkWrap: true,
-            physics: const NeverScrollableScrollException(),
+            physics: const NeverScrollableScrollPhysics(),
             itemCount: stems.length,
             separatorBuilder: (_, __) => const SizedBox(height: 8),
             itemBuilder: (ctx, i) {

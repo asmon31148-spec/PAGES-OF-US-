@@ -194,7 +194,7 @@ class PlaylistDetailScreen extends StatelessWidget {
                         // Song list with dismissible swipe to remove
                         ListView.separated(
                           shrinkWrap: true,
-                          physics: const NeverScrollableScrollException(),
+                          physics: const NeverScrollableScrollPhysics(),
                           itemCount: playlistSongs.length,
                           separatorBuilder: (_, __) => const SizedBox(height: 8),
                           itemBuilder: (ctx, i) {
