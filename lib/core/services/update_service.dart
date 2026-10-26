@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../widgets/update_dialog.dart';
 
 class UpdateInfo {
@@ -21,11 +22,36 @@ class UpdateInfo {
 }
 
 class UpdateService {
-  static const String currentVersion = '1.0.0';
+  static const String currentVersion = '1.0.1';
   static const String githubRepo = 'asmon31148-spec/PAGES-OF-US-';
 
-  /// Quietly checks GitHub releases for a newer APK version
+  /// Checks Firestore remote config and GitHub releases for a newer APK version
   static Future<UpdateInfo?> checkLatestRelease() async {
+    // 1. First Priority: Firebase Firestore remote config document ('app_config/update')
+    try {
+      final doc = await FirebaseFirestore.instance.collection('app_config').doc('update').get();
+      if (doc.exists && doc.data() != null) {
+        final data = doc.data()!;
+        final latestVersion = data['version']?.toString() ?? '';
+        final cleanVersion = latestVersion.replaceAll(RegExp(r'[^0-9.]'), '');
+        if (_isNewerVersion(cleanVersion, currentVersion)) {
+          final body = data['changelog']?.toString() ?? 'A new update is available for Pages of Us.';
+          final apkUrl = data['apk_url']?.toString() ?? '';
+          final sizeBytes = (data['size_bytes'] as num?)?.toInt() ?? 0;
+
+          if (apkUrl.isNotEmpty) {
+            return UpdateInfo(
+              version: latestVersion.startsWith('v') ? latestVersion : 'v$latestVersion',
+              changelog: body,
+              apkDownloadUrl: apkUrl,
+              apkSizeBytes: sizeBytes,
+            );
+          }
+        }
+      }
+    } catch (_) {}
+
+    // 2. Second Priority: GitHub Releases public API
     try {
       final url = Uri.parse('https://api.github.com/repos/$githubRepo/releases/latest');
       final response = await http.get(
