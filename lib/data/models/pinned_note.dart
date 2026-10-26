@@ -4,6 +4,8 @@ class PinnedNote {
   final String text;
   final String updatedAt;
 
+  String get content => text;
+
   PinnedNote({
     required this.userId,
     required this.authorNickname,
