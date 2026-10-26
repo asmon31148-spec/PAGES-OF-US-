@@ -137,7 +137,9 @@ class _WorldScreenState extends State<WorldScreen> {
                             ),
                             children: [
                               TileLayer(
-                                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                                urlTemplate: isDark
+                                    ? 'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png'
+                                    : 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                                 userAgentPackageName: 'com.pagesofus.app',
                               ),
 
@@ -697,7 +699,14 @@ class _WorldScreenState extends State<WorldScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Where are you right now?', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              Text(
+                'Where are you right now?',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: isDark ? AppColors.darkInk : AppColors.lightInk,
+                ),
+              ),
               const SizedBox(height: 12),
               Wrap(
                 spacing: 8,
@@ -749,7 +758,14 @@ class _WorldScreenState extends State<WorldScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Text('Add Pinned Sanctuary Place', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                    Text(
+                      'Add Pinned Sanctuary Place',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? AppColors.darkInk : AppColors.lightInk,
+                      ),
+                    ),
                     const SizedBox(height: 12),
                     TextField(
                       controller: nameCtrl,
@@ -807,23 +823,26 @@ class _WorldScreenState extends State<WorldScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) {
+        final isDark = ctx.watch<ThemeProvider>().isDark;
         return StatefulBuilder(
           builder: (context, setModalState) {
             return Container(
               padding: const EdgeInsets.all(20),
               height: 400,
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              decoration: BoxDecoration(
+                color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
               ),
               child: Column(
                 children: [
                   TextField(
                     controller: searchCtrl,
+                    style: TextStyle(color: isDark ? AppColors.darkInk : AppColors.lightInk),
                     decoration: InputDecoration(
                       hintText: 'Search city, landmark or address...',
+                      hintStyle: TextStyle(color: isDark ? AppColors.darkSoft : AppColors.lightSoft),
                       suffixIcon: IconButton(
-                        icon: const Icon(Icons.search),
+                        icon: Icon(Icons.search, color: isDark ? AppColors.darkSoft : AppColors.lightSoft),
                         onPressed: () async {
                           setModalState(() => isSearching = true);
                           final res = await context.read<WorldProvider>().searchPlaces(searchCtrl.text);
@@ -842,7 +861,15 @@ class _WorldScreenState extends State<WorldScreen> {
                       itemBuilder: (context, idx) {
                         final item = results[idx];
                         return ListTile(
-                          title: Text(item['display_name'] ?? '', maxLines: 2, overflow: TextOverflow.ellipsis),
+                          title: Text(
+                            item['display_name'] ?? '',
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: isDark ? AppColors.darkInk : AppColors.lightInk,
+                            ),
+                          ),
                           onTap: () {
                             final lat = double.tryParse(item['lat'] ?? '');
                             final lon = double.tryParse(item['lon'] ?? '');

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
 import '../../../providers/audio_provider.dart';
@@ -19,8 +20,16 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF07100B),
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark,
+        systemNavigationBarColor: Color(0xFF07100B),
+        systemNavigationBarIconBrightness: Brightness.light,
+      ),
+      child: Scaffold(
+        backgroundColor: const Color(0xFF07100B),
       body: Stack(
         children: [
           // Ambient Warm Glow top-right (matching reference screenshots)
@@ -124,8 +133,9 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
           ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildTabPill(String title, int index) {
     final isSelected = _activeTabIndex == index;

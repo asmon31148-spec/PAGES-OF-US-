@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../../providers/audio_provider.dart';
 import '../models/music_models.dart';
@@ -14,8 +15,16 @@ class PlaylistDetailScreen extends StatelessWidget {
     final allSongs = audioProvider.songs;
     final playlistSongs = allSongs.where((s) => playlist.songIds.contains(s.id)).toList();
 
-    return Scaffold(
-      backgroundColor: const Color(0xFF07100B),
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark,
+        systemNavigationBarColor: Color(0xFF07100B),
+        systemNavigationBarIconBrightness: Brightness.light,
+      ),
+      child: Scaffold(
+        backgroundColor: const Color(0xFF07100B),
       body: Stack(
         children: [
           // Ambient Warm/Amber Radial Glow top right
@@ -290,8 +299,9 @@ class PlaylistDetailScreen extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildCircleIconButton({required IconData icon, required VoidCallback onTap}) {
     return GestureDetector(

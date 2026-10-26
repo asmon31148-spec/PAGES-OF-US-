@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:audio_service/audio_service.dart';
 import 'core/theme/app_theme.dart';
+import 'core/theme/app_colors.dart';
 import 'core/services/local_cache_service.dart';
 import 'core/services/audio_handler.dart';
 import 'core/services/notification_service.dart';
@@ -149,6 +151,20 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold> with Wi
 
   @override
   Widget build(BuildContext context) {
+    final isDark = context.watch<ThemeProvider>().isDark;
+    final isVaultTab = _currentIndex == 3;
+    final isDarkScreen = isVaultTab || isDark;
+
+    final systemOverlay = SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: isDarkScreen ? Brightness.light : Brightness.dark,
+      statusBarBrightness: isDarkScreen ? Brightness.dark : Brightness.light,
+      systemNavigationBarColor: isVaultTab
+          ? const Color(0xFF130F1A)
+          : (isDark ? AppColors.darkSurface : AppColors.lightSurface),
+      systemNavigationBarIconBrightness: isDarkScreen ? Brightness.light : Brightness.dark,
+    );
+
     final screens = [
       StageScreen(
         onGoToMemories: () => setState(() => _currentIndex = 2),
@@ -159,14 +175,17 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold> with Wi
       const VaultScreen(),
     ];
 
-    return Scaffold(
-      body: IndexedStack(
-        index: _currentIndex,
-        children: screens,
-      ),
-      bottomNavigationBar: CustomBottomNav(
-        currentIndex: _currentIndex,
-        onTabSelected: (index) => setState(() => _currentIndex = index),
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: systemOverlay,
+      child: Scaffold(
+        body: IndexedStack(
+          index: _currentIndex,
+          children: screens,
+        ),
+        bottomNavigationBar: CustomBottomNav(
+          currentIndex: _currentIndex,
+          onTabSelected: (index) => setState(() => _currentIndex = index),
+        ),
       ),
     );
   }

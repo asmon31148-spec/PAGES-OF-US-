@@ -106,9 +106,16 @@ class ThemeModal extends StatelessWidget {
                         ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
-                          children: const [
-                            Text('☀️ ', style: TextStyle(fontSize: 12)),
-                            Text('Light Mode', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                          children: [
+                            const Text('☀️ ', style: TextStyle(fontSize: 12)),
+                            Text(
+                              'Light Mode',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: !isDark ? AppColors.lightInk : (isDark ? AppColors.darkSoft : AppColors.lightSoft),
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -136,9 +143,16 @@ class ThemeModal extends StatelessWidget {
                         ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
-                          children: const [
-                            Text('🌙 ', style: TextStyle(fontSize: 12)),
-                            Text('Dark Mode', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                          children: [
+                            const Text('🌙 ', style: TextStyle(fontSize: 12)),
+                            Text(
+                              'Dark Mode',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: isDark ? AppColors.darkInk : (isDark ? AppColors.darkSoft : AppColors.lightSoft),
+                              ),
+                            ),
                           ],
                         ),
                       ),

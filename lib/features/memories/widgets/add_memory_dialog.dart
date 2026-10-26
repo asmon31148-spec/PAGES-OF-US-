@@ -394,7 +394,11 @@ class _AddMemoryDialogState extends State<AddMemoryDialog> {
                     : _selectedType == AddMemoryType.video
                         ? 'Video Moment'
                         : 'Voice Message',
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: isDark ? AppColors.darkInk : AppColors.lightInk,
+                ),
               ),
               IconButton(
                 icon: const Icon(Icons.close, size: 20),

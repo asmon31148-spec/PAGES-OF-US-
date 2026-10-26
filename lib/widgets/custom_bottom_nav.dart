@@ -16,6 +16,7 @@ class CustomBottomNav extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = context.watch<ThemeProvider>().isDark;
+    final isVault = currentIndex == 3;
 
     final tabs = [
       {'label': 'Stage', 'icon': Icons.home_rounded},
@@ -27,10 +28,14 @@ class CustomBottomNav extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+        color: isVault
+            ? const Color(0xFF130F1A)
+            : (isDark ? AppColors.darkSurface : AppColors.lightSurface),
         border: Border(
           top: BorderSide(
-            color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+            color: isVault
+                ? const Color(0x33E89A8A)
+                : (isDark ? AppColors.darkBorder : AppColors.lightBorder),
             width: 1,
           ),
         ),
@@ -43,6 +48,24 @@ class CustomBottomNav extends StatelessWidget {
             final isSelected = currentIndex == index;
             final tab = tabs[index];
 
+            Color iconColor;
+            Color textColor;
+            Color dotColor;
+
+            if (isVault) {
+              iconColor = isSelected ? const Color(0xFFD4AF37) : AppColors.romanceSoft;
+              textColor = isSelected ? Colors.white : AppColors.romanceSoft;
+              dotColor = isSelected ? const Color(0xFFD4AF37) : Colors.transparent;
+            } else {
+              iconColor = isSelected
+                  ? AppColors.terra
+                  : (isDark ? AppColors.darkSoft : AppColors.lightSoft);
+              textColor = isSelected
+                  ? (isDark ? AppColors.darkInk : AppColors.lightInk)
+                  : (isDark ? AppColors.darkSoft : AppColors.lightSoft);
+              dotColor = isSelected ? AppColors.terra : Colors.transparent;
+            }
+
             return GestureDetector(
               onTap: () => onTabSelected(index),
               behavior: HitTestBehavior.opaque,
@@ -52,9 +75,7 @@ class CustomBottomNav extends StatelessWidget {
                   Icon(
                     tab['icon'] as IconData,
                     size: 22,
-                    color: isSelected
-                        ? AppColors.terra
-                        : (isDark ? AppColors.darkSoft : AppColors.lightSoft),
+                    color: iconColor,
                   ),
                   const SizedBox(height: 2),
                   Text(
@@ -62,9 +83,7 @@ class CustomBottomNav extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                      color: isSelected
-                          ? (isDark ? AppColors.darkInk : AppColors.lightInk)
-                          : (isDark ? AppColors.darkSoft : AppColors.lightSoft),
+                      color: textColor,
                     ),
                   ),
                   const SizedBox(height: 3),
@@ -73,7 +92,7 @@ class CustomBottomNav extends StatelessWidget {
                     height: 4,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: isSelected ? AppColors.terra : Colors.transparent,
+                      color: dotColor,
                     ),
                   ),
                 ],

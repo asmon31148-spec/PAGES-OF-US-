@@ -363,17 +363,32 @@ class _LetterboxSubviewState extends State<LetterboxSubview> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Seal a Love Letter in Letterbox', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    Text(
+                      'Seal a Love Letter in Letterbox',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? AppColors.darkInk : AppColors.lightInk,
+                      ),
+                    ),
                     const SizedBox(height: 12),
                     TextField(
                       controller: titleCtrl,
-                      decoration: const InputDecoration(labelText: 'Letter Title (e.g. When you miss home)'),
+                      style: TextStyle(color: isDark ? AppColors.darkInk : AppColors.lightInk),
+                      decoration: InputDecoration(
+                        labelText: 'Letter Title (e.g. When you miss home)',
+                        labelStyle: TextStyle(color: isDark ? AppColors.darkSoft : AppColors.lightSoft),
+                      ),
                     ),
                     const SizedBox(height: 10),
                     DropdownButtonFormField<String>(
                       value: category,
-                      decoration: const InputDecoration(labelText: 'Envelope Prompt / Occasion'),
-                      items: categories.map((c) => DropdownMenuItem(value: c, child: Text(c, style: const TextStyle(fontSize: 12)))).toList(),
+                      dropdownColor: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+                      decoration: InputDecoration(
+                        labelText: 'Envelope Prompt / Occasion',
+                        labelStyle: TextStyle(color: isDark ? AppColors.darkSoft : AppColors.lightSoft),
+                      ),
+                      items: categories.map((c) => DropdownMenuItem(value: c, child: Text(c, style: TextStyle(fontSize: 12, color: isDark ? AppColors.darkInk : AppColors.lightInk)))).toList(),
                       onChanged: (val) {
                         if (val != null) setModalState(() => category = val);
                       },
@@ -382,13 +397,26 @@ class _LetterboxSubviewState extends State<LetterboxSubview> {
                     TextField(
                       controller: bodyCtrl,
                       maxLines: 4,
-                      decoration: const InputDecoration(labelText: 'Your Letter', hintText: 'Write whatever is in your heart...'),
+                      style: TextStyle(color: isDark ? AppColors.darkInk : AppColors.lightInk),
+                      decoration: InputDecoration(
+                        labelText: 'Your Letter',
+                        labelStyle: TextStyle(color: isDark ? AppColors.darkSoft : AppColors.lightSoft),
+                        hintText: 'Write whatever is in your heart...',
+                        hintStyle: TextStyle(color: isDark ? AppColors.darkSoft : AppColors.lightSoft),
+                      ),
                     ),
                     const SizedBox(height: 10),
                     // Seal color
                     Row(
                       children: [
-                        const Text('Seal: ', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                        Text(
+                          'Seal: ',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: isDark ? AppColors.darkInk : AppColors.lightInk,
+                          ),
+                        ),
                         const SizedBox(width: 8),
                         ...[
                           {'id': 'green', 'color': AppColors.sage},

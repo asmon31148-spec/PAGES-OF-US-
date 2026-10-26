@@ -41,8 +41,16 @@ class _ListenTogetherScreenState extends State<ListenTogetherScreen> {
     final dur = audioProvider.songDuration;
     final progress = dur.inMilliseconds > 0 ? (pos.inMilliseconds / dur.inMilliseconds).clamp(0.0, 1.0) : 0.0;
 
-    return Scaffold(
-      backgroundColor: const Color(0xFF07100B),
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark,
+        systemNavigationBarColor: Color(0xFF07100B),
+        systemNavigationBarIconBrightness: Brightness.light,
+      ),
+      child: Scaffold(
+        backgroundColor: const Color(0xFF07100B),
       body: Stack(
         children: [
           // Ambient Warm Glow top-right
@@ -436,8 +444,9 @@ class _ListenTogetherScreenState extends State<ListenTogetherScreen> {
           ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildAvatarCircle(String label, Color bg, Color textColor) {
     return Container(

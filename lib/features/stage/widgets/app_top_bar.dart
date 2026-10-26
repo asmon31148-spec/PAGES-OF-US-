@@ -8,15 +8,25 @@ import 'theme_modal.dart';
 import '../../music/screens/music_sanctuary_screen.dart';
 
 class AppTopBar extends StatelessWidget {
-  final String title;
+  final String? title;
   final String? subtitle;
   final VoidCallback? onOpenProfile;
+  final String? overrideTitle;
+  final String? overrideSubtitle;
+  final VoidCallback? onAvatarTap;
+  final bool showThemeToggle;
+  final bool forceDark;
 
   const AppTopBar({
     super.key,
-    required this.title,
+    this.title,
     this.subtitle,
     this.onOpenProfile,
+    this.overrideTitle,
+    this.overrideSubtitle,
+    this.onAvatarTap,
+    this.showThemeToggle = true,
+    this.forceDark = false,
   });
 
   @override
@@ -25,7 +35,11 @@ class AppTopBar extends StatelessWidget {
     final audioProvider = context.watch<AudioProvider>();
     final authProvider = context.watch<AuthProvider>();
     final user = authProvider.user;
-    final isDark = themeProvider.isDark;
+
+    final effectiveTitle = overrideTitle ?? title ?? 'Pages of Us';
+    final effectiveSubtitle = overrideSubtitle ?? subtitle;
+    final effectiveProfileTap = onOpenProfile ?? onAvatarTap;
+    final isDark = forceDark || themeProvider.isDark;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
@@ -39,19 +53,23 @@ class AppTopBar extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  title,
+                  effectiveTitle,
                   style: TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
-                    color: isDark ? AppColors.darkInk : AppColors.lightInk,
+                    color: forceDark
+                        ? AppColors.romanceInk
+                        : (isDark ? AppColors.darkInk : AppColors.lightInk),
                   ),
                 ),
-                if (subtitle != null)
+                if (effectiveSubtitle != null)
                   Text(
-                    subtitle!,
+                    effectiveSubtitle,
                     style: TextStyle(
                       fontSize: 11,
-                      color: isDark ? AppColors.darkSoft : AppColors.lightSoft,
+                      color: forceDark
+                          ? AppColors.romanceSoft
+                          : (isDark ? AppColors.darkSoft : AppColors.lightSoft),
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -76,12 +94,16 @@ class AppTopBar extends StatelessWidget {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   decoration: BoxDecoration(
-                    color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+                    color: forceDark
+                        ? AppColors.romanceSurface
+                        : (isDark ? AppColors.darkSurface : AppColors.lightSurface),
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
                       color: audioProvider.isPlaying
                           ? AppColors.terra
-                          : (isDark ? AppColors.darkBorder : AppColors.lightBorder),
+                          : (forceDark
+                              ? AppColors.romanceBorder
+                              : (isDark ? AppColors.darkBorder : AppColors.lightBorder)),
                       width: 1,
                     ),
                   ),
@@ -101,56 +123,64 @@ class AppTopBar extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w500,
-                          color: isDark ? AppColors.darkInk : AppColors.lightInk,
+                          color: forceDark
+                              ? AppColors.romanceInk
+                              : (isDark ? AppColors.darkInk : AppColors.lightInk),
                         ),
                       ),
                     ],
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
 
-              // Light / Dark Theme Switcher
-              GestureDetector(
-                onTap: () => themeProvider.toggleDarkLight(),
-                onLongPress: () => ThemeModal.show(context),
-                child: Container(
-                  width: 34,
-                  height: 34,
-                  decoration: BoxDecoration(
-                    color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
-                      width: 1,
+              // Light / Dark Theme Switcher (Only shown on Stage, Memories, World - NOT in Vault or Music)
+              if (showThemeToggle) ...[
+                const SizedBox(width: 8),
+                GestureDetector(
+                  onTap: () => themeProvider.toggleDarkLight(),
+                  onLongPress: () => ThemeModal.show(context),
+                  child: Container(
+                    width: 34,
+                    height: 34,
+                    decoration: BoxDecoration(
+                      color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                        width: 1,
+                      ),
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      isDark ? '☀️' : '🌙',
+                      style: const TextStyle(fontSize: 14),
                     ),
                   ),
-                  alignment: Alignment.center,
-                  child: Text(
-                    isDark ? '☀️' : '🌙',
-                    style: const TextStyle(fontSize: 14),
-                  ),
                 ),
-              ),
+              ],
               const SizedBox(width: 8),
 
               // Profile Avatar Pill
               GestureDetector(
-                onTap: onOpenProfile,
+                onTap: effectiveProfileTap,
                 child: Container(
                   width: 34,
                   height: 34,
                   padding: const EdgeInsets.all(2),
-                  decoration: const BoxDecoration(
+                  decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     gradient: LinearGradient(
-                      colors: [AppColors.sageLight, AppColors.rose],
+                      colors: forceDark
+                          ? [AppColors.romanceRoseGold, AppColors.romanceWine]
+                          : [AppColors.sageLight, AppColors.rose],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
                   ),
                   child: CircleAvatar(
-                    backgroundColor: isDark ? AppColors.darkCard : AppColors.lightSurface,
+                    backgroundColor: forceDark
+                        ? AppColors.romanceCard
+                        : (isDark ? AppColors.darkCard : AppColors.lightSurface),
                     backgroundImage: user?.avatarUrl != null ? NetworkImage(user!.avatarUrl!) : null,
                     child: user?.avatarUrl == null
                         ? Text(
@@ -160,7 +190,9 @@ class AppTopBar extends StatelessWidget {
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.bold,
-                              color: isDark ? AppColors.darkInk : AppColors.lightInk,
+                              color: forceDark
+                                  ? AppColors.romanceInk
+                                  : (isDark ? AppColors.darkInk : AppColors.lightInk),
                             ),
                           )
                         : null,

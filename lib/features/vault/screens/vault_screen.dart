@@ -297,11 +297,13 @@ class _VaultScreenState extends State<VaultScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 1. Top Bar
+            // 1. Top Bar (Vault has NO day/night mood toggle; permanently luxury dark)
             AppTopBar(
               onAvatarTap: _openProfileModal,
               overrideTitle: 'Our Vaults',
               overrideSubtitle: '$allCount vaults · $lockedCount locked',
+              showThemeToggle: false,
+              forceDark: true,
             ),
 
             // 2. Filter Chips Row (Matching Image 1)

@@ -244,22 +244,41 @@ class TimelineSubview extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Record a Timeline Milestone', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                Text(
+                  'Record a Timeline Milestone',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: isDark ? AppColors.darkInk : AppColors.lightInk,
+                  ),
+                ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: titleCtrl,
-                  decoration: const InputDecoration(labelText: 'Milestone Title (e.g. Moved into our flat)'),
+                  style: TextStyle(color: isDark ? AppColors.darkInk : AppColors.lightInk),
+                  decoration: InputDecoration(
+                    labelText: 'Milestone Title (e.g. Moved into our flat)',
+                    labelStyle: TextStyle(color: isDark ? AppColors.darkSoft : AppColors.lightSoft),
+                  ),
                 ),
                 const SizedBox(height: 10),
                 TextField(
                   controller: dateCtrl,
-                  decoration: const InputDecoration(labelText: 'Date (YYYY-MM-DD)'),
+                  style: TextStyle(color: isDark ? AppColors.darkInk : AppColors.lightInk),
+                  decoration: InputDecoration(
+                    labelText: 'Date (YYYY-MM-DD)',
+                    labelStyle: TextStyle(color: isDark ? AppColors.darkSoft : AppColors.lightSoft),
+                  ),
                 ),
                 const SizedBox(height: 10),
                 TextField(
                   controller: storyCtrl,
                   maxLines: 3,
-                  decoration: const InputDecoration(labelText: 'The Story (Optional)'),
+                  style: TextStyle(color: isDark ? AppColors.darkInk : AppColors.lightInk),
+                  decoration: InputDecoration(
+                    labelText: 'The Story (Optional)',
+                    labelStyle: TextStyle(color: isDark ? AppColors.darkSoft : AppColors.lightSoft),
+                  ),
                 ),
                 const SizedBox(height: 16),
                 SizedBox(
