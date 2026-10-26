@@ -511,30 +511,33 @@ class MemoryStackView extends StatelessWidget {
                 ),
               ),
 
-              // Glowing Play Button
-              Container(
-                width: 56,
-                height: 56,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: AppColors.terra.withOpacity(0.9),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.terra.withOpacity(0.5),
-                      blurRadius: 14,
-                      spreadRadius: 2,
+              // Sleek, Luxury Play Button (properly centered, not stretched by Stack)
+              Center(
+                child: Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.black.withOpacity(0.55),
+                    border: Border.all(
+                      color: Colors.white.withOpacity(0.4),
+                      width: 1.2,
                     ),
-                    const BoxShadow(
-                      color: Colors.black45,
-                      blurRadius: 8,
-                      offset: Offset(0, 3),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.45),
+                        blurRadius: 14,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: const Center(
+                    child: Icon(
+                      Icons.play_arrow_rounded,
+                      color: Colors.white,
+                      size: 28,
                     ),
-                  ],
-                ),
-                child: const Icon(
-                  Icons.play_arrow_rounded,
-                  color: Colors.white,
-                  size: 34,
+                  ),
                 ),
               ),
 
@@ -576,7 +579,11 @@ class MemoryStackView extends StatelessWidget {
 
   String _getVideoThumbnail(String url) {
     if (url.contains('cloudinary.com') || url.contains('/video/upload/')) {
-      return url.replaceAll(RegExp(r'\.(mp4|mov|avi|wmv|webm|mkv)$', caseSensitive: false), '.jpg');
+      String thumb = url.replaceAll(RegExp(r'\.(mp4|mov|avi|wmv|webm|mkv)$', caseSensitive: false), '.jpg');
+      if (thumb.contains('/video/upload/')) {
+        thumb = thumb.replaceAll('/video/upload/', '/video/upload/so_1,f_auto,q_auto/');
+      }
+      return thumb;
     }
     return '';
   }

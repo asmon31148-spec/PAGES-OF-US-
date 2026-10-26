@@ -475,19 +475,32 @@ class _VaultScreenState extends State<VaultScreen> {
               ),
             ),
 
-            // Center Visual (Emblem OR Cover Image)
+            // Center Visual (Emblem OR Cover Image OR Video Thumbnail)
             Center(
-              child: vault.coverImageUrl != null && vault.coverImageUrl!.isNotEmpty
-                  ? ClipRRect(
-                      borderRadius: BorderRadius.circular(14),
-                      child: CachedNetworkImage(
-                        imageUrl: vault.coverImageUrl!,
-                        width: 76,
-                        height: 76,
-                        fit: BoxFit.cover,
-                      ),
-                    )
-                  : VaultEmblem(shape: vault.emblemShape, size: 56),
+              child: () {
+                String? imageToShow = vault.coverImageUrl;
+                if ((imageToShow == null || imageToShow.isEmpty) && vault.videoUrl != null && vault.videoUrl!.isNotEmpty) {
+                  if (vault.videoUrl!.contains('cloudinary.com') || vault.videoUrl!.contains('/video/upload/')) {
+                    imageToShow = vault.videoUrl!.replaceAll(RegExp(r'\.(mp4|mov|avi|wmv|webm|mkv)$', caseSensitive: false), '.jpg');
+                    if (imageToShow.contains('/video/upload/')) {
+                      imageToShow = imageToShow.replaceAll('/video/upload/', '/video/upload/so_1,f_auto,q_auto/');
+                    }
+                  }
+                }
+
+                if (imageToShow != null && imageToShow.isNotEmpty) {
+                  return ClipRRect(
+                    borderRadius: BorderRadius.circular(14),
+                    child: CachedNetworkImage(
+                      imageUrl: imageToShow,
+                      width: 76,
+                      height: 76,
+                      fit: BoxFit.cover,
+                    ),
+                  );
+                }
+                return VaultEmblem(shape: vault.emblemShape, size: 56);
+              }(),
             ),
 
             // Bottom Text: Title & Creator/Memories

@@ -331,13 +331,45 @@ class _VaultDetailScreenState extends State<VaultDetailScreen> {
   Widget _buildHeroVisual() {
     // If video is present, allow video playback
     if (_vault.videoUrl != null && _vault.videoUrl!.isNotEmpty) {
+      String videoThumb = _vault.coverImageUrl ?? '';
+      if (videoThumb.isEmpty && (_vault.videoUrl!.contains('cloudinary.com') || _vault.videoUrl!.contains('/video/upload/'))) {
+        videoThumb = _vault.videoUrl!.replaceAll(RegExp(r'\.(mp4|mov|avi|wmv|webm|mkv)$', caseSensitive: false), '.jpg');
+        if (videoThumb.contains('/video/upload/')) {
+          videoThumb = videoThumb.replaceAll('/video/upload/', '/video/upload/so_1,f_auto,q_auto/');
+        }
+      }
+
       return Stack(
         fit: StackFit.expand,
         children: [
-          _vault.coverImageUrl != null
-              ? CachedNetworkImage(imageUrl: _vault.coverImageUrl!, fit: BoxFit.cover)
-              : Container(color: Colors.black45),
-          Container(color: Colors.black38),
+          videoThumb.isNotEmpty
+              ? CachedNetworkImage(
+                  imageUrl: videoThumb,
+                  fit: BoxFit.cover,
+                  placeholder: (_, __) => Container(color: Colors.black54),
+                  errorWidget: (_, __, ___) => Container(color: Colors.black54),
+                )
+              : Container(
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [Color(0xFF221626), Color(0xFF16101B)],
+                    ),
+                  ),
+                ),
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.black.withOpacity(0.15),
+                  Colors.black.withOpacity(0.4),
+                ],
+              ),
+            ),
+          ),
           Center(
             child: GestureDetector(
               onTap: () {
@@ -352,22 +384,32 @@ class _VaultDetailScreenState extends State<VaultDetailScreen> {
                 );
               },
               child: Container(
-                width: 60,
-                height: 60,
+                width: 48,
+                height: 48,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFD4AF37),
                   shape: BoxShape.circle,
+                  color: Colors.black.withOpacity(0.55),
+                  border: Border.all(
+                    color: Colors.white.withOpacity(0.45),
+                    width: 1.2,
+                  ),
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFFD4AF37).withOpacity(0.5),
-                      blurRadius: 16,
+                      color: Colors.black.withOpacity(0.45),
+                      blurRadius: 14,
+                      offset: const Offset(0, 4),
                     ),
                   ],
                 ),
-                child: const Icon(Icons.play_arrow_rounded, color: Colors.black, size: 36),
+                child: const Center(
+                  child: Icon(Icons.play_arrow_rounded, color: Colors.white, size: 28),
+                ),
               ),
             ),
           ),
+        ],
+      );
+    }
         ],
       );
     }
