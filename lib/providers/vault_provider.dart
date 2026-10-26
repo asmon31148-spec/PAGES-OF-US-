@@ -2,159 +2,193 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../data/models/vault_item.dart';
 import '../data/models/event_capsule.dart';
-import '../data/models/vault_model.dart';
 import '../data/services/supabase_service.dart';
 import '../core/services/notification_service.dart';
 
 class VaultProvider extends ChangeNotifier {
-  List<EventCapsule> _capsules = [];
-  EventCapsule? _selectedCapsule;
-  bool _isUnlocked = false;
-  String _enteredPin = '';
-  bool _isError = false;
-  bool _shouldTriggerConfetti = false;
+  List<VaultItem> _vaults = [];
+  VaultItem? _selectedVault;
+  String _activeFilter = 'all'; // 'all', 'mine', 'partner'
+  final Set<String> _unlockedVaultIds = {};
 
   final AudioPlayer _vaultAudio = AudioPlayer();
   bool _isAudioPlaying = false;
+  String? _currentPlayingTrack;
 
-  List<EventCapsule> get capsules => List.unmodifiable(_capsules);
-  EventCapsule? get selectedCapsule => _selectedCapsule ?? (_capsules.isNotEmpty ? _capsules.first : null);
-  bool get isUnlocked => _isUnlocked;
-  String get enteredPin => _enteredPin;
-  bool get isError => _isError;
-  bool get shouldTriggerConfetti => _shouldTriggerConfetti;
+  List<VaultItem> get vaults => List.unmodifiable(_vaults);
+  VaultItem? get selectedVault => _selectedVault ?? (_vaults.isNotEmpty ? _vaults.first : null);
+  String get activeFilter => _activeFilter;
+  Set<String> get unlockedVaultIds => Set.unmodifiable(_unlockedVaultIds);
+  bool get isAudioPlaying => _isAudioPlaying;
 
-  // Compatibility getter with legacy VaultModel
-  VaultModel get vault {
-    final c = selectedCapsule;
-    if (c == null) return VaultModel();
-    return VaultModel(
-      isLocked: !_isUnlocked,
-      passcode: c.passcode,
-      title: c.title,
-      subtitle: c.eventType,
-      videoUrl: c.videoUrl,
-      personalNote: c.personalNote,
+  // Compatibility with existing capsule references
+  List<EventCapsule> get capsules => _vaults.map((v) => EventCapsule(
+    id: v.id,
+    creatorId: v.creatorId,
+    creatorName: v.creatorName,
+    title: v.title,
+    eventType: v.accessMode,
+    passcode: v.pinCode ?? '',
+    personalNote: v.letter,
+    videoUrl: v.videoUrl,
+    ambientTrack: v.backgroundSong,
+    unlockAt: v.specialDate,
+    createdAt: v.createdAt,
+  )).toList();
+
+  EventCapsule? get selectedCapsule {
+    final v = selectedVault;
+    if (v == null) return null;
+    return EventCapsule(
+      id: v.id,
+      creatorId: v.creatorId,
+      creatorName: v.creatorName,
+      title: v.title,
+      eventType: v.accessMode,
+      passcode: v.pinCode ?? '',
+      personalNote: v.letter,
+      videoUrl: v.videoUrl,
+      ambientTrack: v.backgroundSong,
+      unlockAt: v.specialDate,
+      createdAt: v.createdAt,
     );
   }
 
-  void selectCapsule(EventCapsule capsule) {
-    if (_selectedCapsule?.id != capsule.id) {
-      _selectedCapsule = capsule;
-      _isUnlocked = false;
-      _enteredPin = '';
-      _isError = false;
-      _stopVaultMusic();
+  bool get shouldTriggerConfetti => false;
+  void resetConfettiTrigger() {}
+
+  void setFilter(String filter) {
+    if (_activeFilter != filter) {
+      _activeFilter = filter;
       notifyListeners();
     }
   }
 
-  void appendPinDigit(String digit) {
-    if (_enteredPin.length < 6) {
-      _enteredPin += digit;
-      _isError = false;
-      notifyListeners();
-
-      if (_enteredPin.length == 6) {
-        verifyPin();
-      }
+  List<VaultItem> getFilteredVaults(String currentUserId) {
+    switch (_activeFilter) {
+      case 'mine':
+        return _vaults.where((v) => v.creatorId == currentUserId || v.creatorId.isEmpty).toList();
+      case 'partner':
+        return _vaults.where((v) => v.creatorId.isNotEmpty && v.creatorId != currentUserId).toList();
+      case 'all':
+      default:
+        return _vaults;
     }
   }
 
-  void deletePinDigit() {
-    if (_enteredPin.isNotEmpty) {
-      _enteredPin = _enteredPin.substring(0, _enteredPin.length - 1);
-      _isError = false;
-      notifyListeners();
-    }
-  }
-
-  void clearPin() {
-    _enteredPin = '';
-    _isError = false;
+  void selectVault(VaultItem vault) {
+    _selectedVault = vault;
     notifyListeners();
   }
 
-  bool verifyPin() {
-    final target = selectedCapsule;
-    if (target == null) return false;
+  bool isVaultLocked(VaultItem vault, String currentUserId) {
+    return vault.isLockedFor(currentUserId, _unlockedVaultIds);
+  }
 
-    // Check if entered pin matches 6-digit passcode
-    if (_enteredPin == target.passcode) {
-      _isUnlocked = true;
-      _isError = false;
-      _enteredPin = '';
-      _shouldTriggerConfetti = true;
-      _playVaultMusic(target.ambientTrack);
+  bool unlockWithPin(VaultItem vault, String pin) {
+    if (vault.pinCode != null && vault.pinCode == pin.trim()) {
+      _unlockedVaultIds.add(vault.id);
       notifyListeners();
       return true;
-    } else {
-      _isError = true;
-      _enteredPin = '';
-      notifyListeners();
-      return false;
     }
+    return false;
   }
 
-  void resetConfettiTrigger() {
-    _shouldTriggerConfetti = false;
-  }
-
-  void lockVault() {
-    _isUnlocked = false;
-    _enteredPin = '';
-    _stopVaultMusic();
+  void lockVault(String vaultId) {
+    _unlockedVaultIds.remove(vaultId);
+    stopVaultMusic();
     notifyListeners();
   }
 
-  Future<void> _playVaultMusic(String? track) async {
+  // --- Smooth Background Audio Player with Fade-in & Fade-out ---
+
+  Future<void> startVaultMusic(String? track) async {
+    if (track == null || track.isEmpty || track == 'none') {
+      await stopVaultMusic();
+      return;
+    }
+
+    if (_isAudioPlaying && _currentPlayingTrack == track) return;
+
     try {
       await _vaultAudio.stop();
-      await _vaultAudio.setReleaseMode(ReleaseMode.loop);
-      await _vaultAudio.setVolume(0.35);
+      _currentPlayingTrack = track;
+      _isAudioPlaying = true;
 
-      if (track == null || track.isEmpty || track == 'lofi_sanctuary') {
-        await _vaultAudio.play(AssetSource('audio/lofi_sanctuary.mp3'));
-      } else if (track.startsWith('http')) {
+      // Start at 0 volume for smooth fade-in
+      await _vaultAudio.setVolume(0.0);
+      await _vaultAudio.setReleaseMode(ReleaseMode.loop);
+
+      if (track.startsWith('http')) {
         await _vaultAudio.play(UrlSource(track));
+      } else if (track == 'lofi_sanctuary' || track.startsWith('lofi')) {
+        await _vaultAudio.play(AssetSource('audio/lofi_sanctuary.mp3'));
       } else {
         await _vaultAudio.play(AssetSource('audio/$track.mp3'));
       }
-      _isAudioPlaying = true;
+
+      // Smooth volume fade in over 600ms
+      for (double vol = 0.05; vol <= 0.35; vol += 0.05) {
+        await Future.delayed(const Duration(milliseconds: 75));
+        if (!_isAudioPlaying) break;
+        await _vaultAudio.setVolume(vol);
+      }
+      notifyListeners();
     } catch (_) {}
   }
 
-  Future<void> _stopVaultMusic() async {
+  Future<void> stopVaultMusic() async {
+    if (!_isAudioPlaying) return;
     try {
-      if (_isAudioPlaying) {
-        await _vaultAudio.stop();
-        _isAudioPlaying = false;
+      // Smooth fade out over 300ms
+      for (double vol = 0.30; vol >= 0.0; vol -= 0.10) {
+        await Future.delayed(const Duration(milliseconds: 50));
+        await _vaultAudio.setVolume(vol > 0 ? vol : 0.0);
       }
-    } catch (_) {}
+      await _vaultAudio.stop();
+      _isAudioPlaying = false;
+      _currentPlayingTrack = null;
+      notifyListeners();
+    } catch (_) {
+      _isAudioPlaying = false;
+    }
   }
+
+  // --- Real-time Sync & Persistence ---
 
   Future<void> initVaultSync(String spaceId) async {
-    final vaultDocId = 'vault_capsules_$spaceId';
+    final vaultDocId = 'vaults_$spaceId';
 
     // 1. Supabase fetch
     try {
       final supabase = SupabaseService.client;
       if (supabase != null) {
-        final res = await supabase
+        // First try the new 'vaults_$spaceId' key
+        var res = await supabase
             .from('app_content')
             .select('content')
             .eq('id', vaultDocId)
             .maybeSingle();
 
+        // Fallback to legacy key if not found
+        if (res == null || res['content'] == null) {
+          res = await supabase
+              .from('app_content')
+              .select('content')
+              .eq('id', 'vault_capsules_$spaceId')
+              .maybeSingle();
+        }
+
         if (res != null && res['content'] != null) {
           final rawList = res['content'];
-          if (rawList is List) {
-            _capsules = rawList
-                .map((e) => EventCapsule.fromJson(Map<String, dynamic>.from(e as Map)))
+          if (rawList is List && rawList.isNotEmpty) {
+            _vaults = rawList
+                .map((e) => VaultItem.fromJson(Map<String, dynamic>.from(e as Map)))
                 .toList();
-            if (_capsules.isNotEmpty && _selectedCapsule == null) {
-              _selectedCapsule = _capsules.first;
+            if (_vaults.isNotEmpty && _selectedVault == null) {
+              _selectedVault = _vaults.first;
             }
             notifyListeners();
           }
@@ -162,47 +196,65 @@ class VaultProvider extends ChangeNotifier {
       }
     } catch (_) {}
 
-    // 2. Fallback initial seed if empty
-    if (_capsules.isEmpty) {
-      _capsules = [
-        EventCapsule(
-          id: 'initial_vault_capsule',
+    // 2. Initial Default Seeds if empty
+    if (_vaults.isEmpty) {
+      _vaults = [
+        VaultItem(
+          id: 'vault_paris_seed',
           creatorId: '',
           creatorName: 'You',
-          title: 'Just for us',
-          eventType: 'special',
-          passcode: '251200',
-          passcodeHint: 'Our special 6-digit key 🗝️',
-          personalNote: '“No matter how many places we go, this is still my favorite view.”',
-          createdAt: DateTime.now(),
+          title: 'Our First Paris Trip',
+          emblemShape: 'circle',
+          colorValue: 0xFF541525, // Wine
+          specialDate: DateTime.now().add(const Duration(days: 49)),
+          accessMode: 'timer',
+          letter: 'No matter how many places we wander through, this city and this view with you remains my absolute favorite memory in this universe.',
+          photoUrls: [],
+          backgroundSong: 'lofi_sanctuary',
+          createdAt: DateTime.now().subtract(const Duration(days: 12)),
+        ),
+        VaultItem(
+          id: 'vault_midnight_seed',
+          creatorId: 'partner',
+          creatorName: 'Partner',
+          title: 'The Midnight Letters',
+          emblemShape: 'arch',
+          colorValue: 0xFF162238, // Midnight Navy
+          accessMode: 'pin',
+          pinCode: '1234',
+          letter: 'Every quiet night I think of the moments we promised each other under the stars.',
+          photoUrls: [],
+          createdAt: DateTime.now().subtract(const Duration(days: 5)),
         ),
       ];
-      _selectedCapsule = _capsules.first;
+      _selectedVault = _vaults.first;
       notifyListeners();
     }
 
-    // 3. Firestore Realtime Listener
+    // 3. Firestore Realtime Sync Listener
     try {
       FirebaseFirestore.instance
           .collection('spaces')
           .doc(spaceId)
           .collection('features')
-          .doc('vault_capsules')
+          .doc('vaults')
           .snapshots()
           .listen((snap) {
         if (snap.exists && snap.data() != null) {
           final data = snap.data()!;
-          if (data['capsules'] != null && data['capsules'] is List) {
-            final raw = data['capsules'] as List;
-            _capsules = raw
-                .map((e) => EventCapsule.fromJson(Map<String, dynamic>.from(e as Map)))
+          if (data['vaults'] != null && data['vaults'] is List) {
+            final raw = data['vaults'] as List;
+            _vaults = raw
+                .map((e) => VaultItem.fromJson(Map<String, dynamic>.from(e as Map)))
                 .toList();
-            for (final c in _capsules) {
-              if (c.unlockAt != null && c.unlockAt!.isAfter(DateTime.now())) {
+            
+            // Check scheduled notifications for locked timers
+            for (final v in _vaults) {
+              if (v.accessMode == 'timer' && v.specialDate != null && v.specialDate!.isAfter(DateTime.now())) {
                 NotificationService.scheduleVaultUnlockNotification(
-                  capsuleId: c.id,
-                  title: c.title,
-                  unlockDateTime: c.unlockAt!,
+                  capsuleId: v.id,
+                  title: v.title,
+                  unlockDateTime: v.specialDate!,
                 );
               }
             }
@@ -213,64 +265,66 @@ class VaultProvider extends ChangeNotifier {
     } catch (_) {}
   }
 
-  Future<void> addEventCapsule(EventCapsule capsule, String spaceId) async {
-    _capsules.insert(0, capsule);
-    _selectedCapsule = capsule;
-    _isUnlocked = false;
-    _enteredPin = '';
+  Future<void> createVault(VaultItem item, String spaceId) async {
+    _vaults.insert(0, item);
+    _selectedVault = item;
     notifyListeners();
 
-    if (capsule.unlockAt != null) {
+    if (item.accessMode == 'timer' && item.specialDate != null && item.specialDate!.isAfter(DateTime.now())) {
       await NotificationService.scheduleVaultUnlockNotification(
-        capsuleId: capsule.id,
-        title: capsule.title,
-        unlockDateTime: capsule.unlockAt!,
+        capsuleId: item.id,
+        title: item.title,
+        unlockDateTime: item.specialDate!,
       );
     }
 
-    await _syncCapsulesToCloud(spaceId);
+    await _syncVaultsToCloud(spaceId);
   }
 
-  Future<void> updateEventCapsule(EventCapsule updated, String spaceId) async {
-    final idx = _capsules.indexWhere((c) => c.id == updated.id);
+  Future<void> updateVault(VaultItem updated, String spaceId) async {
+    final idx = _vaults.indexWhere((v) => v.id == updated.id);
     if (idx != -1) {
-      _capsules[idx] = updated;
-      if (_selectedCapsule?.id == updated.id) {
-        _selectedCapsule = updated;
+      _vaults[idx] = updated;
+      if (_selectedVault?.id == updated.id) {
+        _selectedVault = updated;
       }
       notifyListeners();
 
-      if (updated.unlockAt != null) {
+      if (updated.accessMode == 'timer' && updated.specialDate != null && updated.specialDate!.isAfter(DateTime.now())) {
         await NotificationService.scheduleVaultUnlockNotification(
           capsuleId: updated.id,
           title: updated.title,
-          unlockDateTime: updated.unlockAt!,
+          unlockDateTime: updated.specialDate!,
         );
       } else {
         await NotificationService.cancelScheduledVaultNotification(updated.id);
       }
 
-      await _syncCapsulesToCloud(spaceId);
+      await _syncVaultsToCloud(spaceId);
     }
   }
 
-  Future<void> deleteEventCapsule(String capsuleId, String spaceId) async {
-    _capsules.removeWhere((c) => c.id == capsuleId);
-    await NotificationService.cancelScheduledVaultNotification(capsuleId);
-    if (_selectedCapsule?.id == capsuleId) {
-      _selectedCapsule = _capsules.isNotEmpty ? _capsules.first : null;
-      _isUnlocked = false;
-      _stopVaultMusic();
+  /// Real permanent hard delete from both Firestore and Supabase databases
+  Future<void> deleteVault(String vaultId, String spaceId) async {
+    _vaults.removeWhere((v) => v.id == vaultId);
+    _unlockedVaultIds.remove(vaultId);
+    await NotificationService.cancelScheduledVaultNotification(vaultId);
+
+    if (_selectedVault?.id == vaultId) {
+      _selectedVault = _vaults.isNotEmpty ? _vaults.first : null;
+      await stopVaultMusic();
     }
     notifyListeners();
-    await _syncCapsulesToCloud(spaceId);
+
+    // Sync permanently to Cloud
+    await _syncVaultsToCloud(spaceId);
   }
 
-  Future<void> _syncCapsulesToCloud(String spaceId) async {
-    final jsonList = _capsules.map((c) => c.toJson()).toList();
-    final vaultDocId = 'vault_capsules_$spaceId';
+  Future<void> _syncVaultsToCloud(String spaceId) async {
+    final jsonList = _vaults.map((v) => v.toJson()).toList();
+    final vaultDocId = 'vaults_$spaceId';
 
-    // Supabase
+    // 1. Supabase permanent hard update / save
     try {
       final supabase = SupabaseService.client;
       if (supabase != null) {
@@ -282,18 +336,61 @@ class VaultProvider extends ChangeNotifier {
       }
     } catch (_) {}
 
-    // Firestore
+    // 2. Firestore permanent sync
     try {
       await FirebaseFirestore.instance
           .collection('spaces')
           .doc(spaceId)
           .collection('features')
-          .doc('vault_capsules')
+          .doc('vaults')
           .set({
-        'capsules': jsonList,
+        'vaults': jsonList,
         'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
     } catch (_) {}
+  }
+
+  // Backward compatibility methods
+  Future<void> addEventCapsule(EventCapsule capsule, String spaceId) async {
+    final item = VaultItem(
+      id: capsule.id,
+      creatorId: capsule.creatorId,
+      creatorName: capsule.creatorName,
+      title: capsule.title,
+      colorValue: 0xFF541525,
+      emblemShape: 'circle',
+      accessMode: capsule.passcode.isNotEmpty ? 'pin' : (capsule.unlockAt != null ? 'timer' : 'open'),
+      pinCode: capsule.passcode.isNotEmpty ? capsule.passcode : null,
+      specialDate: capsule.unlockAt,
+      letter: capsule.personalNote,
+      videoUrl: capsule.videoUrl,
+      backgroundSong: capsule.ambientTrack,
+      createdAt: capsule.createdAt,
+    );
+    await createVault(item, spaceId);
+  }
+
+  Future<void> updateEventCapsule(EventCapsule capsule, String spaceId) async {
+    final item = VaultItem(
+      id: capsule.id,
+      creatorId: capsule.creatorId,
+      creatorName: capsule.creatorName,
+      title: capsule.title,
+      colorValue: 0xFF541525,
+      emblemShape: 'circle',
+      accessMode: capsule.passcode.isNotEmpty ? 'pin' : (capsule.unlockAt != null ? 'timer' : 'open'),
+      pinCode: capsule.passcode.isNotEmpty ? capsule.passcode : null,
+      specialDate: capsule.unlockAt,
+      letter: capsule.personalNote,
+      videoUrl: capsule.videoUrl,
+      backgroundSong: capsule.ambientTrack,
+      createdAt: capsule.createdAt,
+    );
+    await updateVault(item, spaceId);
+  }
+
+  Future<void> deleteEventCapsule(String capsuleId, String spaceId) async {
+    await deleteVault(capsuleId, spaceId);
   }
 
   @override

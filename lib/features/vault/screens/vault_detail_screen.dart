@@ -1,0 +1,565 @@
+import 'dart:async';
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:audioplayers/audioplayers.dart';
+
+import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/full_screen_video_player.dart';
+import '../../../data/models/vault_item.dart';
+import '../../../providers/vault_provider.dart';
+import '../widgets/vault_emblem.dart';
+import 'new_vault_screen.dart';
+
+class VaultDetailScreen extends StatefulWidget {
+  final VaultItem vault;
+  final String spaceId;
+  final String currentUserId;
+  final String userNickname;
+  final String partnerNickname;
+
+  const VaultDetailScreen({
+    super.key,
+    required this.vault,
+    required this.spaceId,
+    required this.currentUserId,
+    required this.userNickname,
+    required this.partnerNickname,
+  });
+
+  @override
+  State<VaultDetailScreen> createState() => _VaultDetailScreenState();
+}
+
+class _VaultDetailScreenState extends State<VaultDetailScreen> {
+  late VaultItem _vault;
+  final PageController _photoPageController = PageController();
+  int _currentPhotoIndex = 0;
+
+  // Voice note player
+  final AudioPlayer _voicePlayer = AudioPlayer();
+  bool _isVoicePlaying = false;
+  Duration _voicePosition = Duration.zero;
+  Duration _voiceDuration = Duration.zero;
+  StreamSubscription? _posSub;
+  StreamSubscription? _durSub;
+  StreamSubscription? _stateSub;
+
+  bool _isMusicMuted = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _vault = widget.vault;
+
+    // Start background music smoothly on entering vault
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final vp = context.read<VaultProvider>();
+      vp.startVaultMusic(_vault.backgroundSong);
+    });
+
+    _initVoicePlayer();
+  }
+
+  void _initVoicePlayer() {
+    if (_vault.voiceNoteUrl == null || _vault.voiceNoteUrl!.isEmpty) return;
+
+    _posSub = _voicePlayer.onPositionChanged.listen((pos) {
+      if (mounted) setState(() => _voicePosition = pos);
+    });
+
+    _durSub = _voicePlayer.onDurationChanged.listen((dur) {
+      if (mounted) setState(() => _voiceDuration = dur);
+    });
+
+    _stateSub = _voicePlayer.onPlayerStateChanged.listen((state) {
+      if (mounted) {
+        setState(() => _isVoicePlaying = state == PlayerState.playing);
+        // If voice memo completed, resume background music
+        if (state == PlayerState.completed) {
+          context.read<VaultProvider>().startVaultMusic(_vault.backgroundSong);
+        }
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _photoPageController.dispose();
+    _posSub?.cancel();
+    _durSub?.cancel();
+    _stateSub?.cancel();
+    _voicePlayer.dispose();
+
+    // Background music is stopped when exiting this screen
+    // (Handled also in onWillPop / back arrow)
+    super.dispose();
+  }
+
+  Future<void> _handleBack() async {
+    await context.read<VaultProvider>().stopVaultMusic();
+    if (mounted) Navigator.pop(context);
+  }
+
+  Future<void> _toggleVoicePlay() async {
+    if (_vault.voiceNoteUrl == null) return;
+
+    if (_isVoicePlaying) {
+      await _voicePlayer.pause();
+      // Resume background music
+      if (!_isMusicMuted && mounted) {
+        context.read<VaultProvider>().startVaultMusic(_vault.backgroundSong);
+      }
+    } else {
+      // Lower or pause background music so voice memo is crystal clear
+      await context.read<VaultProvider>().stopVaultMusic();
+      await _voicePlayer.play(UrlSource(_vault.voiceNoteUrl!));
+    }
+  }
+
+  void _toggleMuteMusic() {
+    final vp = context.read<VaultProvider>();
+    if (_isMusicMuted) {
+      vp.startVaultMusic(_vault.backgroundSong);
+      setState(() => _isMusicMuted = false);
+    } else {
+      vp.stopVaultMusic();
+      setState(() => _isMusicMuted = true);
+    }
+  }
+
+  void _navigateToEdit() async {
+    final updated = await Navigator.push<dynamic>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => NewVaultScreen(
+          initialVault: _vault,
+          spaceId: widget.spaceId,
+          currentUserId: widget.currentUserId,
+          userNickname: widget.userNickname,
+          partnerNickname: widget.partnerNickname,
+        ),
+      ),
+    );
+
+    if (updated == 'deleted') {
+      if (mounted) {
+        await context.read<VaultProvider>().stopVaultMusic();
+        Navigator.pop(context);
+      }
+    } else if (updated is VaultItem) {
+      setState(() => _vault = updated);
+      if (mounted) {
+        context.read<VaultProvider>().startVaultMusic(_vault.backgroundSong);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isCreator = _vault.creatorId.isEmpty || _vault.creatorId == widget.currentUserId;
+    final vp = context.watch<VaultProvider>();
+
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) {
+          _handleBack();
+        }
+      },
+      child: Scaffold(
+        backgroundColor: const Color(0xFF0D0B12),
+        appBar: AppBar(
+          backgroundColor: const Color(0xFF0D0B12),
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
+            onPressed: _handleBack,
+          ),
+          actions: [
+            // Background Music Indicator & Mute toggle
+            if (_vault.backgroundSong != null && _vault.backgroundSong != 'none')
+              IconButton(
+                icon: Icon(
+                  _isMusicMuted || !vp.isAudioPlaying ? Icons.volume_off_rounded : Icons.volume_up_rounded,
+                  color: const Color(0xFFD4AF37),
+                  size: 20,
+                ),
+                tooltip: _isMusicMuted ? 'Play background music' : 'Mute music',
+                onPressed: _toggleMuteMusic,
+              ),
+
+            // Edit button (ONLY for the creator of this vault!)
+            if (isCreator)
+              TextButton.icon(
+                onPressed: _navigateToEdit,
+                icon: const Icon(Icons.edit_outlined, color: Color(0xFFD4AF37), size: 16),
+                label: const Text(
+                  'Edit vault',
+                  style: TextStyle(
+                    color: Color(0xFFD4AF37),
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+            const SizedBox(width: 8),
+          ],
+        ),
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // 1. Hero Card (Matching Image 3)
+              _buildHeroCard(),
+              const SizedBox(height: 24),
+
+              // 2. The Letter Section
+              if (_vault.letter.isNotEmpty) ...[
+                _buildSectionHeader('THE LETTER'),
+                const SizedBox(height: 10),
+                _buildLetterCard(),
+                const SizedBox(height: 26),
+              ],
+
+              // 3. Photos Horizontal Carousel (Polaroid Style)
+              if (_vault.photoUrls.isNotEmpty) ...[
+                _buildSectionHeader('PHOTOS (${_vault.photoUrls.length})'),
+                const SizedBox(height: 10),
+                _buildPhotoCarousel(),
+                const SizedBox(height: 26),
+              ],
+
+              // 4. Voice Note Player
+              if (_vault.voiceNoteUrl != null && _vault.voiceNoteUrl!.isNotEmpty) ...[
+                _buildSectionHeader('VOICE MEMO'),
+                const SizedBox(height: 10),
+                _buildVoiceNoteCard(),
+                const SizedBox(height: 26),
+              ],
+
+              const SizedBox(height: 40),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSectionHeader(String title) {
+    return Text(
+      title,
+      style: TextStyle(
+        color: Colors.white.withOpacity(0.5),
+        fontSize: 11,
+        fontWeight: FontWeight.w700,
+        letterSpacing: 1.2,
+      ),
+    );
+  }
+
+  Widget _buildHeroCard() {
+    String subtitle = DateFormat('MMMM d, yyyy').format(_vault.createdAt);
+    if (_vault.accessMode == 'timer' && _vault.specialDate != null) {
+      final days = _vault.daysRemaining;
+      subtitle = '${DateFormat("MMMM d, yyyy").format(_vault.specialDate!)} · ${days > 0 ? "$days days to go" : "Opened"}';
+    }
+
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: Color(_vault.colorValue),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: const Color(0xFFD4AF37).withOpacity(0.4),
+          width: 1.2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Color(_vault.colorValue).withOpacity(0.4),
+            blurRadius: 24,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Visual Area: Video player thumbnail OR Cover Image OR Emblem
+          ClipRRect(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(23)),
+            child: AspectRatio(
+              aspectRatio: 16 / 10,
+              child: _buildHeroVisual(),
+            ),
+          ),
+
+          // Titles & Metadata
+          Padding(
+            padding: const EdgeInsets.all(18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _vault.title,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.2,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.7),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeroVisual() {
+    // If video is present, allow video playback
+    if (_vault.videoUrl != null && _vault.videoUrl!.isNotEmpty) {
+      return Stack(
+        fit: StackFit.expand,
+        children: [
+          _vault.coverImageUrl != null
+              ? CachedNetworkImage(imageUrl: _vault.coverImageUrl!, fit: BoxFit.cover)
+              : Container(color: Colors.black45),
+          Container(color: Colors.black38),
+          Center(
+            child: GestureDetector(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => FullScreenVideoPlayer(
+                      videoUrl: _vault.videoUrl!,
+                      title: _vault.title,
+                    ),
+                  ),
+                );
+              },
+              child: Container(
+                width: 60,
+                height: 60,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFD4AF37),
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFFD4AF37).withOpacity(0.5),
+                      blurRadius: 16,
+                    ),
+                  ],
+                ),
+                child: const Icon(Icons.play_arrow_rounded, color: Colors.black, size: 36),
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
+    // If cover image is present
+    if (_vault.coverImageUrl != null && _vault.coverImageUrl!.isNotEmpty) {
+      return CachedNetworkImage(
+        imageUrl: _vault.coverImageUrl!,
+        fit: BoxFit.cover,
+      );
+    }
+
+    // Default: Center Emblem with golden ambiance
+    return Container(
+      decoration: BoxDecoration(
+        gradient: RadialGradient(
+          center: Alignment.center,
+          radius: 0.8,
+          colors: [
+            Colors.white.withOpacity(0.08),
+            Colors.transparent,
+          ],
+        ),
+      ),
+      child: Center(
+        child: VaultEmblem(shape: _vault.emblemShape, size: 90),
+      ),
+    );
+  }
+
+  Widget _buildLetterCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: const Color(0xFF16141F),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.white12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.format_quote_rounded, color: Color(0xFFD4AF37), size: 28),
+          const SizedBox(height: 8),
+          Text(
+            _vault.letter,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 15,
+              height: 1.6,
+              fontWeight: FontWeight.w400,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Align(
+            alignment: Alignment.centerRight,
+            child: Text(
+              '— Written by ${_vault.creatorName}, ${DateFormat("MMMM yyyy").format(_vault.createdAt)}',
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.5),
+                fontSize: 12,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPhotoCarousel() {
+    return Column(
+      children: [
+        SizedBox(
+          height: 240,
+          child: PageView.builder(
+            controller: _photoPageController,
+            itemCount: _vault.photoUrls.length,
+            onPageChanged: (idx) => setState(() => _currentPhotoIndex = idx),
+            itemBuilder: (context, index) {
+              final photoUrl = _vault.photoUrls[index];
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF16141F),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.white12),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(15),
+                    child: CachedNetworkImage(
+                      imageUrl: photoUrl,
+                      fit: BoxFit.cover,
+                      placeholder: (_, __) => const Center(
+                        child: CircularProgressIndicator(color: Color(0xFFD4AF37)),
+                      ),
+                      errorWidget: (_, __, ___) => const Center(
+                        child: Icon(Icons.broken_image_rounded, color: Colors.white24, size: 40),
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+        if (_vault.photoUrls.length > 1) ...[
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(_vault.photoUrls.length, (idx) {
+              final isCurrent = idx == _currentPhotoIndex;
+              return Container(
+                margin: const EdgeInsets.symmetric(horizontal: 3),
+                width: isCurrent ? 16 : 6,
+                height: 6,
+                decoration: BoxDecoration(
+                  color: isCurrent ? const Color(0xFFD4AF37) : Colors.white24,
+                  borderRadius: BorderRadius.circular(3),
+                ),
+              );
+            }),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildVoiceNoteCard() {
+    final posStr = '${_voicePosition.inMinutes}:${(_voicePosition.inSeconds % 60).toString().padLeft(2, '0')}';
+    final durSec = _voiceDuration.inSeconds > 0
+        ? _voiceDuration.inSeconds
+        : (_vault.voiceNoteDurationSeconds ?? 30);
+    final durStr = '${durSec ~/ 60}:${(durSec % 60).toString().padLeft(2, '0')}';
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: const Color(0xFF16141F),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white12),
+      ),
+      child: Row(
+        children: [
+          GestureDetector(
+            onTap: _toggleVoicePlay,
+            child: Container(
+              width: 44,
+              height: 44,
+              decoration: const BoxDecoration(
+                color: Color(0xFFD4AF37),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                _isVoicePlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                color: Colors.black,
+                size: 26,
+              ),
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      _isVoicePlaying ? 'Playing voice note...' : 'Voice note from ${_vault.creatorName}',
+                      style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
+                    ),
+                    Text(
+                      _isVoicePlaying ? posStr : durStr,
+                      style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                LinearProgressIndicator(
+                  value: _voiceDuration.inMilliseconds > 0
+                      ? (_voicePosition.inMilliseconds / _voiceDuration.inMilliseconds).clamp(0.0, 1.0)
+                      : 0.0,
+                  backgroundColor: Colors.white12,
+                  color: const Color(0xFFD4AF37),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
