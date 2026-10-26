@@ -274,12 +274,31 @@ class MemoriesProvider extends ChangeNotifier {
       notifyListeners();
 
       await _voicePlayer.stop();
-      await _voicePlayer.play(UrlSource(url));
+
+      Source source;
+      final cleanUrl = url.trim();
+      if (cleanUrl.startsWith('http://') || cleanUrl.startsWith('https://')) {
+        source = UrlSource(cleanUrl);
+      } else if (cleanUrl.startsWith('assets/')) {
+        source = AssetSource(cleanUrl);
+      } else {
+        source = DeviceFileSource(cleanUrl.replaceFirst('file://', ''));
+      }
+
+      await _voicePlayer.play(source);
     } catch (_) {
       ambientAudio?.restoreFromMedia();
       _playingVoiceId = null;
       notifyListeners();
     }
+  }
+
+  Future<void> seekVoiceWhisper(Duration target) async {
+    try {
+      await _voicePlayer.seek(target);
+      _voicePosition = target;
+      notifyListeners();
+    } catch (_) {}
   }
 
   Future<void> stopVoiceWhisper({AudioProvider? ambientAudio}) async {

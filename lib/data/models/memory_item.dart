@@ -39,31 +39,44 @@ class MemoryItem {
     final mUrl = json['media_url']?.toString() ?? '';
     final thumb = json['thumbnail_url']?.toString();
 
-    final isVideo = mUrl.contains('.mp4') ||
+    final isAudio = (mUrl.isEmpty && (thumb != null && thumb.isNotEmpty)) ||
+        mUrl.contains('.m4a') ||
+        mUrl.contains('.mp3') ||
+        mUrl.contains('.wav') ||
+        mUrl.contains('.aac') ||
+        mUrl.contains('audio/') ||
+        mUrl.contains('vault_voice') ||
+        mUrl.contains('memories_voice');
+
+    final isVideo = !isAudio && (mUrl.contains('.mp4') ||
         mUrl.contains('.mov') ||
         mUrl.contains('.webm') ||
-        mUrl.contains('video/');
-    final isAudioOnly = (mUrl.isEmpty) && (thumb != null && thumb.isNotEmpty);
+        mUrl.contains('video/'));
 
-    final mediaType = isAudioOnly
+    final mediaType = isAudio
         ? 'audio'
         : isVideo
             ? 'video'
             : 'photo';
 
+    String? resolvedVoiceUrl;
+    if (isAudio) {
+      resolvedVoiceUrl = (thumb != null && thumb.isNotEmpty) ? thumb : mUrl;
+    } else if (thumb != null && (thumb.startsWith('http') || thumb.startsWith('data:audio') || thumb.contains('.m4a') || thumb.contains('.mp3'))) {
+      resolvedVoiceUrl = thumb;
+    }
+
     return MemoryItem(
       id: json['id']?.toString() ?? '',
       title: json['title']?.toString() ??
-          (isAudioOnly
+          (isAudio
               ? 'Voice Whisper'
               : isVideo
                   ? 'Video Moment'
                   : 'Photo Moment'),
       caption: json['caption']?.toString() ?? '',
-      mediaUrl: mUrl,
-      voiceUrl: thumb != null && (thumb.startsWith('http') || thumb.startsWith('data:audio'))
-          ? thumb
-          : null,
+      mediaUrl: isAudio ? '' : mUrl,
+      voiceUrl: resolvedVoiceUrl,
       mediaType: mediaType,
       createdAt: json['created_at']?.toString() ?? '',
       rawDate: json['created_at']?.toString(),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:video_player/video_player.dart';
+import 'voice_whisper_player_card.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/full_screen_video_player.dart';
 import '../../../providers/theme_provider.dart';
@@ -270,64 +271,13 @@ class MemoryStackView extends StatelessWidget {
           if (memory.mediaType == 'video' && memory.mediaUrl.isNotEmpty)
             _buildMemoryVideoThumbnail(context, memory, isDark),
 
-          // 2. Pure Voice Note Area (if no photo/video)
+          // 2. Interactive WhatsApp / Instagram-style Voice Message Player
           if (memory.mediaType == 'audio')
-            Container(
-              padding: const EdgeInsets.all(20),
-              color: isDark ? AppColors.darkCard : AppColors.lightCard,
-              child: Row(
-                children: [
-                  GestureDetector(
-                    onTap: () {
-                      if (memory.voiceUrl != null) {
-                        memoriesProvider.playVoiceWhisper(
-                          memory.id,
-                          memory.voiceUrl!,
-                          ambientAudio: audioProvider,
-                        );
-                      }
-                    },
-                    child: Container(
-                      width: 48,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: AppColors.sage,
-                      ),
-                      child: Icon(
-                        isPlayingThisWhisper ? Icons.pause : Icons.play_arrow,
-                        color: Colors.white,
-                        size: 26,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'VOICE WHISPER MESSAGE',
-                          style: TextStyle(
-                            fontSize: 9,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 1,
-                            color: AppColors.terra,
-                          ),
-                        ),
-                        Text(
-                          memory.title,
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            color: isDark ? AppColors.darkInk : AppColors.lightInk,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
+            VoiceWhisperPlayerCard(
+              memory: memory,
+              isDark: isDark,
+              memoriesProvider: memoriesProvider,
+              audioProvider: audioProvider,
             ),
 
           // 3. Card Details & Captions
@@ -407,8 +357,8 @@ class MemoryStackView extends StatelessWidget {
                           const SizedBox(width: 8),
                           Text(
                             isPlayingThisWhisper
-                                ? 'Playing Voice Whisper...'
-                                : 'Listen Voice Whisper 🎙️',
+                                ? 'Playing Voice Note (${memoriesProvider.voicePosition.inSeconds}s / ${memoriesProvider.voiceDuration.inSeconds > 0 ? memoriesProvider.voiceDuration.inSeconds : 30}s)...'
+                                : 'Play Voice Whisper 🎙️',
                             style: const TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.bold,
