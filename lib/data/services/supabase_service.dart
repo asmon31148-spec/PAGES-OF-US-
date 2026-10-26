@@ -26,6 +26,9 @@ class SupabaseService {
     required Function(Map<String, dynamic> data) onPulse,
     required Function(Map<String, dynamic> data) onMood,
     required Function(Map<String, dynamic> data) onTouchPad,
+    Function(Map<String, dynamic> data)? onDrawStroke,
+    Function(Map<String, dynamic> data)? onClearDrawing,
+    Function(Map<String, dynamic> data)? onTouchCountSync,
   }) {
     if (_client == null || spaceId.isEmpty) return;
 
@@ -47,6 +50,27 @@ class SupabaseService {
         event: 'TOUCH_PAD_EVENT',
         callback: (payload) => onTouchPad(payload),
       );
+
+      if (onDrawStroke != null) {
+        _channel!.onBroadcast(
+          event: 'DRAW_STROKE',
+          callback: (payload) => onDrawStroke(payload),
+        );
+      }
+
+      if (onClearDrawing != null) {
+        _channel!.onBroadcast(
+          event: 'CLEAR_DRAWING',
+          callback: (payload) => onClearDrawing(payload),
+        );
+      }
+
+      if (onTouchCountSync != null) {
+        _channel!.onBroadcast(
+          event: 'TOUCH_COUNT_SYNC',
+          callback: (payload) => onTouchCountSync(payload),
+        );
+      }
 
       _channel!.subscribe();
     } catch (_) {}

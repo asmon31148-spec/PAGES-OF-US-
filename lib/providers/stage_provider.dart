@@ -5,10 +5,12 @@ import '../data/models/mood_aura.dart';
 import '../data/models/daily_prompt.dart';
 import '../data/models/pinned_note.dart';
 import '../data/models/couple_goal_item.dart';
+import '../data/models/drawing_stroke.dart';
 import '../data/services/firebase_service.dart';
 import '../data/services/supabase_service.dart';
 import '../core/services/local_cache_service.dart';
 import '../core/services/widget_sync_service.dart';
+import '../core/services/notification_service.dart';
 
 class TouchPoint {
   final double x;
@@ -29,6 +31,15 @@ class StageProvider extends ChangeNotifier {
   TouchPoint? _partnerTouchPoint;
   Timer? _partnerTouchDecayTimer;
 
+  // Live Drawing Strokes
+  final List<DrawingStroke> _drawingStrokes = [];
+
+  // Daily & Weekly Touch Metrics
+  int _myDailyTouches = 0;
+  int _partnerDailyTouches = 0;
+  int _weeklyTouches = 0;
+  String _lastTouchDate = '';
+
   StreamSubscription? _anniversarySub;
   StreamSubscription? _moodSub;
   StreamSubscription? _noteSub;
@@ -44,6 +55,11 @@ class StageProvider extends ChangeNotifier {
   List<TouchPoint> get touchPoints => List.unmodifiable(_touchPoints);
   TouchPoint? get partnerTouchPoint => _partnerTouchPoint;
   bool get isPartnerTouching => _partnerTouchPoint != null;
+
+  List<DrawingStroke> get drawingStrokes => List.unmodifiable(_drawingStrokes);
+  int get myDailyTouches => _myDailyTouches;
+  int get partnerDailyTouches => _partnerDailyTouches;
+  int get weeklyTouches => _weeklyTouches;
 
   int get daysTogether {
     if (_anniversaryDate == null || _anniversaryDate!.isEmpty) return 1;
@@ -77,6 +93,29 @@ class StageProvider extends ChangeNotifier {
         (k, v) => MapEntry(k, PinnedNote.fromJson(Map<String, dynamic>.from(v as Map))),
       );
     }
+    _loadTouchMetrics();
+  }
+
+  void _loadTouchMetrics() {
+    try {
+      final prefs = LocalCacheService.prefs;
+      final todayStr = DateTime.now().toIso8601String().split('T').first;
+      _lastTouchDate = prefs.getString('touch_last_date') ?? todayStr;
+
+      if (_lastTouchDate != todayStr) {
+        // New calendar day! Reset daily touches automatically after midnight
+        _myDailyTouches = 0;
+        _partnerDailyTouches = 0;
+        _lastTouchDate = todayStr;
+        prefs.setString('touch_last_date', todayStr);
+        prefs.setInt('touch_my_daily', 0);
+        prefs.setInt('touch_partner_daily', 0);
+      } else {
+        _myDailyTouches = prefs.getInt('touch_my_daily') ?? 0;
+        _partnerDailyTouches = prefs.getInt('touch_partner_daily') ?? 0;
+      }
+      _weeklyTouches = prefs.getInt('touch_weekly_total') ?? (_myDailyTouches + _partnerDailyTouches);
+    } catch (_) {}
   }
 
   void initSpaceListeners(String spaceId, String userId, String? partnerId) {
@@ -174,6 +213,34 @@ class StageProvider extends ChangeNotifier {
           }
         }
       },
+      onDrawStroke: (data) {
+        final sender = data['senderId'] as String?;
+        if (sender != userId && data['stroke'] != null) {
+          final stroke = DrawingStroke.fromJson(
+            Map<String, dynamic>.from(data['stroke'] as Map),
+            isPartner: true,
+          );
+          _drawingStrokes.add(stroke);
+          notifyListeners();
+        }
+      },
+      onClearDrawing: (data) {
+        final sender = data['senderId'] as String?;
+        if (sender != userId) {
+          _drawingStrokes.clear();
+          notifyListeners();
+        }
+      },
+      onTouchCountSync: (data) {
+        final sender = data['senderId'] as String?;
+        if (sender != userId && data['count'] != null) {
+          _partnerDailyTouches = (data['count'] as num).toInt();
+          try {
+            LocalCacheService.prefs.setInt('touch_partner_daily', _partnerDailyTouches);
+          } catch (_) {}
+          notifyListeners();
+        }
+      },
     );
   }
 
@@ -216,6 +283,65 @@ class StageProvider extends ChangeNotifier {
       spaceId: spaceId,
       eventType: 'TOUCH_PAD_EVENT',
       payload: {'senderId': userId, 'x': x, 'y': y, 'isTouching': isTouching},
+    );
+  }
+
+  Future<void> incrementMyTouch(String spaceId, String userId, String partnerNickname) async {
+    final todayStr = DateTime.now().toIso8601String().split('T').first;
+    if (_lastTouchDate != todayStr) {
+      _myDailyTouches = 0;
+      _partnerDailyTouches = 0;
+      _lastTouchDate = todayStr;
+    }
+
+    _myDailyTouches++;
+    _weeklyTouches++;
+
+    try {
+      final prefs = LocalCacheService.prefs;
+      prefs.setString('touch_last_date', todayStr);
+      prefs.setInt('touch_my_daily', _myDailyTouches);
+      prefs.setInt('touch_weekly_total', _weeklyTouches);
+    } catch (_) {}
+
+    notifyListeners();
+
+    // Broadcast count to partner
+    await SupabaseService.broadcastEvent(
+      spaceId: spaceId,
+      eventType: 'TOUCH_COUNT_SYNC',
+      payload: {'senderId': userId, 'count': _myDailyTouches, 'date': todayStr},
+    );
+
+    // Schedule weekly reminder notification
+    await NotificationService.scheduleWeeklyMissYouNotification(
+      weeklyTouches: _weeklyTouches,
+      partnerNickname: partnerNickname,
+    );
+  }
+
+  Future<void> addDrawingStroke(DrawingStroke stroke, String spaceId, String userId) async {
+    _drawingStrokes.add(stroke);
+    notifyListeners();
+
+    await SupabaseService.broadcastEvent(
+      spaceId: spaceId,
+      eventType: 'DRAW_STROKE',
+      payload: {
+        'senderId': userId,
+        'stroke': stroke.toJson(),
+      },
+    );
+  }
+
+  Future<void> clearDrawing(String spaceId, String userId) async {
+    _drawingStrokes.clear();
+    notifyListeners();
+
+    await SupabaseService.broadcastEvent(
+      spaceId: spaceId,
+      eventType: 'CLEAR_DRAWING',
+      payload: {'senderId': userId},
     );
   }
 

@@ -171,4 +171,36 @@ class NotificationService {
 
     await _localNotifications.show(id, title, body, details, payload: payload);
   }
+
+  static Future<void> scheduleWeeklyMissYouNotification({
+    required int weeklyTouches,
+    required String partnerNickname,
+  }) async {
+    try {
+      final now = tz.TZDateTime.now(tz.local);
+      var scheduled = tz.TZDateTime(tz.local, now.year, now.month, now.day, 20, 0);
+      while (scheduled.weekday != DateTime.sunday || scheduled.isBefore(now)) {
+        scheduled = scheduled.add(const Duration(days: 1));
+      }
+
+      const androidDetails = AndroidNotificationDetails(
+        partnerChannelId,
+        partnerChannelName,
+        importance: Importance.high,
+        priority: Priority.high,
+      );
+
+      await _localNotifications.zonedSchedule(
+        777777,
+        'Weekly Touch Summary ❤️',
+        'You and $partnerNickname shared $weeklyTouches touches this week! Send a touch to say you miss them.',
+        scheduled,
+        const NotificationDetails(android: androidDetails),
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+        matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
+      );
+    } catch (_) {}
+  }
 }
