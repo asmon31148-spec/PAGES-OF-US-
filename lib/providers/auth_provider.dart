@@ -14,6 +14,7 @@ class AuthProvider extends ChangeNotifier {
   String? _errorMessage;
 
   StreamSubscription<User?>? _authSub;
+  StreamSubscription? _spaceSub;
 
   UserProfile? get user => _user;
   SpaceModel? get space => _space;
@@ -46,6 +47,7 @@ class AuthProvider extends ChangeNotifier {
   void _initAuthListener() {
     _authSub = FirebaseService.authStateChanges.listen((firebaseUser) async {
       if (firebaseUser == null) {
+        _spaceSub?.cancel();
         _user = null;
         _space = null;
         _partner = null;
@@ -53,6 +55,32 @@ class AuthProvider extends ChangeNotifier {
         notifyListeners();
       } else {
         await refreshUserData(firebaseUser.uid);
+      }
+    });
+  }
+
+  void _listenToSpace(String spaceId, String currentUid) {
+    if (spaceId.isEmpty) return;
+    _spaceSub?.cancel();
+    _spaceSub = FirebaseService.streamSpace(spaceId).listen((doc) async {
+      if (doc.exists && doc.data() != null) {
+        final updatedSpace = SpaceModel.fromJson(doc.data()!);
+        _space = updatedSpace;
+        await LocalCacheService.setCachedSpace(updatedSpace.toJson());
+
+        // Check if partner exists in members
+        final partnerId = updatedSpace.members.firstWhere(
+          (m) => m != currentUid,
+          orElse: () => '',
+        );
+        if (partnerId.isNotEmpty && (_partner == null || _partner!.id != partnerId)) {
+          final partnerData = await FirebaseService.getUserProfile(partnerId);
+          if (partnerData != null) {
+            _partner = partnerData;
+            await LocalCacheService.setCachedPartner(partnerData.toJson());
+          }
+        }
+        notifyListeners();
       }
     });
   }
@@ -65,6 +93,7 @@ class AuthProvider extends ChangeNotifier {
         await LocalCacheService.setCachedUser(profile.toJson());
 
         if (profile.spaceId != null && profile.spaceId!.isNotEmpty) {
+          _listenToSpace(profile.spaceId!, uid);
           final spaceData = await FirebaseService.getSpace(profile.spaceId!);
           if (spaceData != null) {
             _space = spaceData;
@@ -165,6 +194,7 @@ class AuthProvider extends ChangeNotifier {
       _user = _user!.copyWith(spaceId: newSpace.id);
       await LocalCacheService.setCachedSpace(newSpace.toJson());
       await LocalCacheService.setCachedUser(_user!.toJson());
+      _listenToSpace(newSpace.id, _user!.id);
     } catch (_) {}
     _isLoading = false;
     notifyListeners();
@@ -181,6 +211,7 @@ class AuthProvider extends ChangeNotifier {
         _user = _user!.copyWith(spaceId: joinedSpace.id);
         await LocalCacheService.setCachedSpace(joinedSpace.toJson());
         await LocalCacheService.setCachedUser(_user!.toJson());
+        _listenToSpace(joinedSpace.id, _user!.id);
 
         // Refresh partner
         final partnerId = joinedSpace.members.firstWhere(
@@ -218,11 +249,13 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> signOut() async {
+    _spaceSub?.cancel();
     await FirebaseService.signOut();
   }
 
   @override
   void dispose() {
+    _spaceSub?.cancel();
     _authSub?.cancel();
     super.dispose();
   }

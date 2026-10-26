@@ -92,7 +92,7 @@ class _MemoriesScreenState extends State<MemoriesScreen> {
                 },
                 child: SingleChildScrollView(
                   physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.only(bottom: 80),
+                  padding: const EdgeInsets.only(bottom: 120),
                   child: _selectedSegment == 0
                       ? MemoryStackView(spaceId: spaceId)
                       : _selectedSegment == 1

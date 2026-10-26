@@ -43,6 +43,7 @@ class StageProvider extends ChangeNotifier {
   StreamSubscription? _anniversarySub;
   StreamSubscription? _moodSub;
   StreamSubscription? _noteSub;
+  StreamSubscription? _dailyPromptSub;
   StreamSubscription? _goalsSub;
 
   String? get anniversaryDate => _anniversaryDate;
@@ -149,6 +150,17 @@ class StageProvider extends ChangeNotifier {
           final pData = moods[partnerId] as Map<String, dynamic>?;
           _partnerMood = pData != null ? MoodAura.fromJson(pData) : null;
           LocalCacheService.setCachedPartnerMood(pData);
+        } else {
+          // Resilient fallback: find partner entry if partnerId is null or differing
+          final partnerEntry = moods.entries.firstWhere(
+            (e) => e.key != userId,
+            orElse: () => const MapEntry('', null),
+          );
+          if (partnerEntry.key.isNotEmpty && partnerEntry.value != null) {
+            final pData = Map<String, dynamic>.from(partnerEntry.value as Map);
+            _partnerMood = MoodAura.fromJson(pData);
+            LocalCacheService.setCachedPartnerMood(pData);
+          }
         }
         notifyListeners();
       }
@@ -167,10 +179,20 @@ class StageProvider extends ChangeNotifier {
       }
     });
 
-    // 4. Fetch Goals
+    // 4. Listen to Daily Blind Prompt
+    _dailyPromptSub?.cancel();
+    _dailyPromptSub = FirebaseService.streamFeatureDoc(spaceId, 'daily_prompt').listen((snap) {
+      if (snap.exists && snap.data() != null) {
+        _dailyPrompt = DailyPrompt.fromJson(snap.data()!);
+        LocalCacheService.setCachedDailyPrompt(snap.data()!);
+        notifyListeners();
+      }
+    });
+
+    // 5. Fetch Goals
     fetchGoals(spaceId);
 
-    // 4. Supabase Realtime Broadcast for Live Touch & Pulses
+    // 6. Supabase Realtime Broadcast for Live Touch, Pulses & Prompts
     SupabaseService.subscribeToSpaceEvents(
       spaceId,
       onPulse: (data) {
@@ -238,6 +260,26 @@ class StageProvider extends ChangeNotifier {
           try {
             LocalCacheService.prefs.setInt('touch_partner_daily', _partnerDailyTouches);
           } catch (_) {}
+          notifyListeners();
+        }
+      },
+      onDailyPrompt: (data) {
+        final promptData = data['dailyPrompt'] as Map<String, dynamic>?;
+        if (promptData != null) {
+          _dailyPrompt = DailyPrompt.fromJson(promptData);
+          LocalCacheService.setCachedDailyPrompt(promptData);
+          notifyListeners();
+        }
+      },
+      onPinnedNote: (data) {
+        final sender = data['senderId'] as String?;
+        if (sender != userId && data['notes'] != null) {
+          final rawNotes = Map<String, dynamic>.from(data['notes'] as Map);
+          _pinnedNotes = rawNotes.map(
+            (k, v) => MapEntry(k, PinnedNote.fromJson(Map<String, dynamic>.from(v as Map))),
+          );
+          LocalCacheService.setCachedPinnedNotes(rawNotes);
+          _syncWidget(partnerId);
           notifyListeners();
         }
       },
@@ -374,6 +416,49 @@ class StageProvider extends ChangeNotifier {
     );
   }
 
+  Future<void> saveDailyPromptAnswer(String spaceId, String userId, String answer) async {
+    final currentPrompt = _dailyPrompt ?? DailyPrompt(
+      id: DateTime.now().toIso8601String().split('T').first,
+      prompt: 'What was the sweetest little thought you had about us today?',
+      category: 'Soft Affection',
+      vibeTag: 'Gentle Whisper',
+      answers: {},
+      reveals: {},
+      careChecks: {},
+    );
+
+    final updatedAnswers = Map<String, String>.from(currentPrompt.answers);
+    updatedAnswers[userId] = answer;
+
+    final updatedPrompt = DailyPrompt(
+      id: currentPrompt.id.isNotEmpty ? currentPrompt.id : DateTime.now().toIso8601String().split('T').first,
+      prompt: currentPrompt.prompt,
+      category: currentPrompt.category,
+      vibeTag: currentPrompt.vibeTag,
+      answers: updatedAnswers,
+      reveals: currentPrompt.reveals,
+      careChecks: currentPrompt.careChecks,
+    );
+
+    _dailyPrompt = updatedPrompt;
+    await LocalCacheService.setCachedDailyPrompt(updatedPrompt.toJson());
+    notifyListeners();
+
+    // 1. Dual save: Firestore & Supabase app_content
+    await FirebaseService.saveFeatureDoc(spaceId, 'daily_prompt', updatedPrompt.toJson());
+    await SupabaseService.upsertAppContent('daily_prompt_$spaceId', updatedPrompt.toJson());
+
+    // 2. Realtime broadcast to partner
+    await SupabaseService.broadcastEvent(
+      spaceId: spaceId,
+      eventType: 'DAILY_PROMPT_UPDATE',
+      payload: {
+        'senderId': userId,
+        'dailyPrompt': updatedPrompt.toJson(),
+      },
+    );
+  }
+
   Future<void> savePinnedNote(String spaceId, String userId, String nickname, String text) async {
     final note = PinnedNote(
       userId: userId,
@@ -382,16 +467,25 @@ class StageProvider extends ChangeNotifier {
       updatedAt: DateTime.now().toIso8601String(),
     );
     _pinnedNotes[userId] = note;
-    await LocalCacheService.setCachedPinnedNotes(
-      _pinnedNotes.map((k, v) => MapEntry(k, v.toJson())),
-    );
+    final allNotesJson = _pinnedNotes.map((k, v) => MapEntry(k, v.toJson()));
+    await LocalCacheService.setCachedPinnedNotes(allNotesJson);
+    _syncWidget(null);
     notifyListeners();
 
     await FirebaseService.saveFeatureDoc(spaceId, 'pinned_note', {
-      'notes': {
-        userId: note.toJson(),
-      }
+      'notes': allNotesJson,
     });
+    await SupabaseService.upsertAppContent('pinned_note_$spaceId', {
+      'notes': allNotesJson,
+    });
+    await SupabaseService.broadcastEvent(
+      spaceId: spaceId,
+      eventType: 'PINNED_NOTE_CHANGED',
+      payload: {
+        'senderId': userId,
+        'notes': allNotesJson,
+      },
+    );
   }
 
   static final List<CoupleGoalItem> defaultPresetGoals = [
@@ -482,6 +576,7 @@ class StageProvider extends ChangeNotifier {
     _anniversarySub?.cancel();
     _moodSub?.cancel();
     _noteSub?.cancel();
+    _dailyPromptSub?.cancel();
     _goalsSub?.cancel();
     super.dispose();
   }

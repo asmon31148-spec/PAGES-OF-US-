@@ -32,7 +32,17 @@ class _StagePinnedCorkboardState extends State<StagePinnedCorkboard> {
     final space = authProvider.space;
 
     final myNote = user != null ? stageProvider.pinnedNotes[user.id]?.text : null;
-    final partnerNote = partner != null ? stageProvider.pinnedNotes[partner.id]?.text : null;
+    final partnerEntry = stageProvider.pinnedNotes.entries.firstWhere(
+      (e) => e.key != user?.id,
+      orElse: () => const MapEntry('', null),
+    );
+    final partnerNote = (partner != null && stageProvider.pinnedNotes.containsKey(partner.id))
+        ? stageProvider.pinnedNotes[partner.id]?.text
+        : (partnerEntry.value != null ? partnerEntry.value?.text : null);
+    final partnerDisplayName = partner?.nickname ??
+        (partnerEntry.value?.authorNickname.isNotEmpty == true
+            ? partnerEntry.value!.authorNickname
+            : 'Partner');
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -200,8 +210,8 @@ class _StagePinnedCorkboardState extends State<StagePinnedCorkboard> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          partner != null ? 'From ${partner.nickname}' : 'From Partner',
-                          style: TextStyle(
+                          'From $partnerDisplayName',
+                          style: const TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.bold,
                             color: AppColors.terra,

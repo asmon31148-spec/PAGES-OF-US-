@@ -106,7 +106,7 @@ class TimelineSubview extends StatelessWidget {
           ListView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 40),
             itemCount: sortedYears.length,
             itemBuilder: (context, yearIndex) {
               final year = sortedYears[yearIndex];

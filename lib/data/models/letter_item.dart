@@ -36,7 +36,15 @@ class LetterItem {
   }) {
     final authorStr = json['author']?.toString() ?? '';
     final isMine = currentUserId != null && authorStr.contains(currentUserId);
-    final authorName = isMine ? 'You' : (partnerNickname ?? 'Partner');
+    String parsedAuthor = '';
+    if (authorStr.contains(':::')) {
+      parsedAuthor = authorStr.split(':::').first.trim();
+    }
+    final authorName = isMine
+        ? 'You'
+        : (partnerNickname != null && partnerNickname.isNotEmpty
+            ? partnerNickname
+            : (parsedAuthor.isNotEmpty ? parsedAuthor : 'Partner'));
 
     final envelope = json['envelope_color']?.toString() ?? 'green:For a quiet day';
     final parts = envelope.split(':');

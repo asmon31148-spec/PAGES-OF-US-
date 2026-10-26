@@ -29,6 +29,8 @@ class SupabaseService {
     Function(Map<String, dynamic> data)? onDrawStroke,
     Function(Map<String, dynamic> data)? onClearDrawing,
     Function(Map<String, dynamic> data)? onTouchCountSync,
+    Function(Map<String, dynamic> data)? onDailyPrompt,
+    Function(Map<String, dynamic> data)? onPinnedNote,
   }) {
     if (_client == null || spaceId.isEmpty) return;
 
@@ -69,6 +71,20 @@ class SupabaseService {
         _channel!.onBroadcast(
           event: 'TOUCH_COUNT_SYNC',
           callback: (payload) => onTouchCountSync(payload),
+        );
+      }
+
+      if (onDailyPrompt != null) {
+        _channel!.onBroadcast(
+          event: 'DAILY_PROMPT_UPDATE',
+          callback: (payload) => onDailyPrompt(payload),
+        );
+      }
+
+      if (onPinnedNote != null) {
+        _channel!.onBroadcast(
+          event: 'PINNED_NOTE_CHANGED',
+          callback: (payload) => onPinnedNote(payload),
         );
       }
 

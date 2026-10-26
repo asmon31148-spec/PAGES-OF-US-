@@ -205,6 +205,10 @@ class FirebaseService {
   }
 
   // Feature Documents (Anniversary, Moods, Pinned Notes)
+  static Stream<DocumentSnapshot<Map<String, dynamic>>> streamSpace(String spaceId) {
+    return firestore.collection('spaces').doc(spaceId).snapshots();
+  }
+
   static Stream<DocumentSnapshot<Map<String, dynamic>>> streamFeatureDoc(
     String spaceId,
     String featureName,

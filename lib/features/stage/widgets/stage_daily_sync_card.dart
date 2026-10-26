@@ -36,8 +36,18 @@ class _StageDailySyncCardState extends State<StageDailySyncCard> {
 
     final myAnswer = user != null ? stageProvider.dailyPrompt?.answers[user.id] : null;
     final partnerId = partner?.id;
-    final partnerAnswer =
-        partnerId != null ? stageProvider.dailyPrompt?.answers[partnerId] : null;
+    String? partnerAnswer;
+    if (partnerId != null && stageProvider.dailyPrompt?.answers[partnerId] != null) {
+      partnerAnswer = stageProvider.dailyPrompt?.answers[partnerId];
+    } else if (user != null && stageProvider.dailyPrompt?.answers != null) {
+      final otherEntry = stageProvider.dailyPrompt!.answers.entries.firstWhere(
+        (e) => e.key != user.id,
+        orElse: () => const MapEntry('', ''),
+      );
+      if (otherEntry.key.isNotEmpty && otherEntry.value.isNotEmpty) {
+        partnerAnswer = otherEntry.value;
+      }
+    }
 
     final bothAnswered = myAnswer != null && partnerAnswer != null;
 
@@ -129,9 +139,33 @@ class _StageDailySyncCardState extends State<StageDailySyncCard> {
                 onPressed: _isSubmitting || _answerController.text.trim().isEmpty
                     ? null
                     : () async {
+                        final spaceId = authProvider.space?.id ?? user?.spaceId ?? '';
+                        final userId = user?.id ?? '';
+                        final text = _answerController.text.trim();
+                        if (spaceId.isEmpty || userId.isEmpty || text.isEmpty) return;
+
                         setState(() => _isSubmitting = true);
-                        // Save answer
-                        setState(() => _isSubmitting = false);
+                        try {
+                          await stageProvider.saveDailyPromptAnswer(spaceId, userId, text);
+                          _answerController.clear();
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Answer sealed in envelope 💌'),
+                                duration: Duration(seconds: 2),
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                          }
+                        } catch (e) {
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Failed to seal answer: $e')),
+                            );
+                          }
+                        } finally {
+                          if (mounted) setState(() => _isSubmitting = false);
+                        }
                       },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.sage,
@@ -142,7 +176,13 @@ class _StageDailySyncCardState extends State<StageDailySyncCard> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                child: const Text('Seal in Envelope 💌', style: TextStyle(fontSize: 12)),
+                child: _isSubmitting
+                    ? const SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      )
+                    : const Text('Seal in Envelope 💌', style: TextStyle(fontSize: 12)),
               ),
             ),
           ] else ...[

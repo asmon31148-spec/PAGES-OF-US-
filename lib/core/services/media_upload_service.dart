@@ -25,7 +25,7 @@ class UploadResult {
 class MediaUploadService {
   static const String cloudinaryCloudName = 'i8bn5qmo';
   static const String cloudinaryUploadPreset = 'pages_of_us_preset';
-  static const String mediaBucketName = 'pages_of_us';
+  static const String mediaBucketName = 'pages-media';
 
   /// Uploads media file (photo, video, audio) to Cloudinary or falls back to Supabase Storage
   static Future<UploadResult> uploadFile(

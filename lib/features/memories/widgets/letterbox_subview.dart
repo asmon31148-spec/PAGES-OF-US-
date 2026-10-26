@@ -103,7 +103,7 @@ class _LetterboxSubviewState extends State<LetterboxSubview> {
           ListView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 40),
             itemCount: letters.length,
             itemBuilder: (context, index) {
               final letter = letters[index];

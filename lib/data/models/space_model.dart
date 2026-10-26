@@ -16,12 +16,20 @@ class SpaceModel {
   });
 
   factory SpaceModel.fromJson(Map<String, dynamic> json) {
+    final rawMembers = (json['members'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [];
+    if (rawMembers.isEmpty) {
+      final creator = json['creator_id'] as String?;
+      final partner = json['partner_id'] as String? ?? json['partnerId'] as String?;
+      if (creator != null && creator.isNotEmpty) rawMembers.add(creator);
+      if (partner != null && partner.isNotEmpty && !rawMembers.contains(partner)) rawMembers.add(partner);
+    }
+
     return SpaceModel(
       id: json['id'] as String? ?? '',
-      name: json['name'] as String? ?? 'Our Sanctuary',
+      name: json['name'] as String? ?? json['space_name'] as String? ?? 'Our Sanctuary',
       pairCode: json['pairCode'] as String? ?? json['pair_code'] as String? ?? '',
       partnerId: json['partnerId'] as String? ?? json['partner_id'] as String?,
-      members: (json['members'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
+      members: rawMembers,
       createdAt: json['createdAt'] as String? ?? json['created_at'] as String?,
     );
   }
