@@ -32,16 +32,14 @@ class _StagePinnedCorkboardState extends State<StagePinnedCorkboard> {
     final space = authProvider.space;
 
     final myNote = user != null ? stageProvider.pinnedNotes[user.id]?.text : null;
-    final partnerEntry = stageProvider.pinnedNotes.entries.firstWhere(
-      (e) => e.key != user?.id,
-      orElse: () => const MapEntry('', null),
-    );
+    final otherNotes = stageProvider.pinnedNotes.entries.where((e) => e.key != user?.id);
+    final partnerEntry = otherNotes.isNotEmpty ? otherNotes.first : null;
     final partnerNote = (partner != null && stageProvider.pinnedNotes.containsKey(partner.id))
         ? stageProvider.pinnedNotes[partner.id]?.text
-        : (partnerEntry.value != null ? partnerEntry.value?.text : null);
+        : partnerEntry?.value.text;
     final partnerDisplayName = partner?.nickname ??
-        (partnerEntry.value?.authorNickname.isNotEmpty == true
-            ? partnerEntry.value!.authorNickname
+        (partnerEntry?.value.authorNickname.isNotEmpty == true
+            ? partnerEntry!.value.authorNickname
             : 'Partner');
 
     return Container(

@@ -194,23 +194,25 @@ class _StageMemoryHeroCardState extends State<StageMemoryHeroCard> {
 
     // 5. LIVE TETHER & LOCATION UPDATE (From World)
     final partnerWeather = world.partnerWeather;
+    final partnerLocation = world.getUserLocation(partner?.id);
+    final cityName = partnerLocation?.city ?? partnerLocation?.placeName ?? 'Distance';
     if (partnerWeather != null) {
       items.add(SpotlightItem(
         tag: 'LIVE TETHER',
         tagIcon: Icons.location_on_rounded,
         tagColor: const Color(0xFF64B5F6),
-        title: '$partnerName in ${partnerWeather.cityName}',
-        subtitle: '${partnerWeather.temp.round()}°C · ${partnerWeather.condition} · Connected together across distance',
+        title: '$partnerName in $cityName',
+        subtitle: '${partnerWeather.temperature.round()}°C · ${partnerWeather.condition} · Connected together across distance',
         badgeText: 'Open World Map ✦',
         onTap: () => widget.onSelectTab?.call(1), // Switch to World tab
       ));
-    } else if (partner != null && partner.status.isNotEmpty) {
+    } else if (partner != null && partner.thought != null && partner.thought!.isNotEmpty) {
       items.add(SpotlightItem(
-        tag: 'PARTNER STATUS',
-        tagIcon: Icons.sparkles,
+        tag: 'PARTNER THOUGHT',
+        tagIcon: Icons.auto_awesome,
         tagColor: const Color(0xFF64B5F6),
         title: partnerName,
-        subtitle: '“${partner.status}” · Connected in sanctuary',
+        subtitle: '“${partner.thought}” · Connected in sanctuary',
         badgeText: 'Tethered ✦',
         onTap: () => widget.onSelectTab?.call(1),
       ));

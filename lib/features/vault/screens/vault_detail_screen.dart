@@ -410,9 +410,6 @@ class _VaultDetailScreenState extends State<VaultDetailScreen> {
         ],
       );
     }
-        ],
-      );
-    }
 
     // If cover image is present
     if (_vault.coverImageUrl != null && _vault.coverImageUrl!.isNotEmpty) {
