@@ -150,7 +150,10 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold> with Wi
   @override
   Widget build(BuildContext context) {
     final screens = [
-      StageScreen(onGoToMemories: () => setState(() => _currentIndex = 2)),
+      StageScreen(
+        onGoToMemories: () => setState(() => _currentIndex = 2),
+        onSelectTab: (index) => setState(() => _currentIndex = index),
+      ),
       const WorldScreen(),
       const MemoriesScreen(),
       const VaultScreen(),

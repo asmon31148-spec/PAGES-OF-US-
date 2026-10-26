@@ -1,16 +1,292 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/full_screen_video_player.dart';
+import '../../../data/models/memory_item.dart';
+import '../../../data/models/vault_item.dart';
 import '../../../providers/theme_provider.dart';
+import '../../../providers/auth_provider.dart';
+import '../../../providers/stage_provider.dart';
+import '../../../providers/vault_provider.dart';
+import '../../../providers/memories_provider.dart';
+import '../../../providers/world_provider.dart';
+import '../widgets/goal_tracker_modal.dart';
 
-class StageMemoryHeroCard extends StatelessWidget {
+class SpotlightItem {
+  final String tag;
+  final IconData tagIcon;
+  final Color tagColor;
+  final String title;
+  final String subtitle;
+  final String badgeText;
+  final String? imageUrl;
+  final Widget? customVisual;
+  final VoidCallback onTap;
+
+  SpotlightItem({
+    required this.tag,
+    required this.tagIcon,
+    required this.tagColor,
+    required this.title,
+    required this.subtitle,
+    required this.badgeText,
+    this.imageUrl,
+    this.customVisual,
+    required this.onTap,
+  });
+}
+
+class StageMemoryHeroCard extends StatefulWidget {
   final VoidCallback onGoToMemories;
+  final ValueChanged<int>? onSelectTab;
 
-  const StageMemoryHeroCard({super.key, required this.onGoToMemories});
+  const StageMemoryHeroCard({
+    super.key,
+    required this.onGoToMemories,
+    this.onSelectTab,
+  });
+
+  @override
+  State<StageMemoryHeroCard> createState() => _StageMemoryHeroCardState();
+}
+
+class _StageMemoryHeroCardState extends State<StageMemoryHeroCard> {
+  late PageController _pageController;
+  Timer? _autoTransitionTimer;
+  int _currentIndex = 0;
+  bool _isUserHolding = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController();
+    _startAutoTransition();
+  }
+
+  void _startAutoTransition() {
+    _autoTransitionTimer?.cancel();
+    // Non-stop, smooth 6.5s interval transition across app features
+    _autoTransitionTimer = Timer.periodic(const Duration(milliseconds: 6500), (timer) {
+      if (!_isUserHolding && mounted && _pageController.hasClients) {
+        _pageController.nextPage(
+          duration: const Duration(milliseconds: 700),
+          curve: Curves.easeInOutCubic,
+        );
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _autoTransitionTimer?.cancel();
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  List<SpotlightItem> _buildSpotlightFeed({
+    required BuildContext context,
+    required AuthProvider auth,
+    required StageProvider stage,
+    required VaultProvider vault,
+    required MemoriesProvider memories,
+    required WorldProvider world,
+  }) {
+    final List<SpotlightItem> items = [];
+    final partner = auth.partner;
+    final partnerName = partner?.nickname ?? 'Partner';
+
+    // 1. VAULT UPDATE / TIMER (From Vaults)
+    final timerVaults = vault.vaults.where((v) => v.accessMode == 'timer' && v.specialDate != null).toList();
+    if (timerVaults.isNotEmpty) {
+      final v = timerVaults.first;
+      final days = v.daysRemaining;
+      items.add(SpotlightItem(
+        tag: 'VAULT COUNTDOWN',
+        tagIcon: Icons.hourglass_top_rounded,
+        tagColor: const Color(0xFFD4AF37),
+        title: v.title,
+        subtitle: days > 0
+            ? 'Sealed by ${v.creatorName} · Opens automatically in $days days 🗝️'
+            : 'Unlocks today in Our Vaults!',
+        badgeText: 'Tap to view Vault ✦',
+        imageUrl: v.coverImageUrl,
+        onTap: () => widget.onSelectTab?.call(3), // Switch to Vault tab
+      ));
+    } else if (vault.vaults.isNotEmpty) {
+      final v = vault.vaults.first;
+      items.add(SpotlightItem(
+        tag: 'OUR VAULTS',
+        tagIcon: Icons.lock_outline_rounded,
+        tagColor: const Color(0xFFD4AF37),
+        title: v.title,
+        subtitle: 'Preserved by ${v.creatorName} · ${v.totalMemoriesCount} memories sealed inside',
+        badgeText: 'Open Vault 🗝️',
+        imageUrl: v.coverImageUrl,
+        onTap: () => widget.onSelectTab?.call(3),
+      ));
+    }
+
+    // 2. VIDEO SPOTLIGHT (From Memories)
+    final videoMems = memories.memories.where((m) => m.mediaType == 'video' && m.mediaUrl.isNotEmpty).toList();
+    if (videoMems.isNotEmpty) {
+      final vid = videoMems.first;
+      String thumb = vid.mediaUrl.replaceAll(RegExp(r'\.(mp4|mov|avi|wmv|webm|mkv)$', caseSensitive: false), '.jpg');
+      if (thumb.contains('/video/upload/')) {
+        thumb = thumb.replaceAll('/video/upload/', '/video/upload/so_1,f_auto,q_auto/');
+      }
+
+      items.add(SpotlightItem(
+        tag: 'VIDEO MEMORY REEL',
+        tagIcon: Icons.videocam_rounded,
+        tagColor: const Color(0xFFE57373),
+        title: vid.title.isNotEmpty ? vid.title : 'Our Cinema Moment',
+        subtitle: vid.caption.isNotEmpty ? vid.caption : 'A moving memory preserved together in time',
+        badgeText: 'Watch Video ▶',
+        imageUrl: thumb,
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => FullScreenVideoPlayer(
+                videoUrl: vid.mediaUrl,
+                title: vid.title.isNotEmpty ? vid.title : 'Our Memory',
+                subtitle: vid.caption,
+              ),
+            ),
+          );
+        },
+      ));
+    }
+
+    // 3. PHOTO MEMORY SLIDE (From Memories)
+    final photoMems = memories.memories.where((m) => m.mediaType == 'photo' && m.mediaUrl.isNotEmpty).toList();
+    if (photoMems.isNotEmpty) {
+      final photo = photoMems.first;
+      items.add(SpotlightItem(
+        tag: 'CAPTURED MOMENT',
+        tagIcon: Icons.photo_camera_back_rounded,
+        tagColor: AppColors.rose,
+        title: photo.title.isNotEmpty ? photo.title : 'Treasured Memory',
+        subtitle: photo.caption.isNotEmpty ? photo.caption : '“Every little memory with you is my favorite view.”',
+        badgeText: 'Open Gallery ✦',
+        imageUrl: photo.mediaUrl,
+        onTap: widget.onGoToMemories,
+      ));
+    }
+
+    // 4. VOICE WHISPER HIGHLIGHT (From Memories)
+    final voiceMems = memories.memories.where((m) => m.mediaType == 'audio' || (m.voiceUrl != null && m.voiceUrl!.isNotEmpty)).toList();
+    if (voiceMems.isNotEmpty) {
+      final voice = voiceMems.first;
+      items.add(SpotlightItem(
+        tag: 'VOICE WHISPER',
+        tagIcon: Icons.graphic_eq_rounded,
+        tagColor: const Color(0xFF81C784),
+        title: voice.title.isNotEmpty ? voice.title : 'Audio Whisper',
+        subtitle: 'Listen to the voice note preserved by ${voice.authorName}',
+        badgeText: 'Listen Now 🎙️',
+        onTap: widget.onGoToMemories,
+      ));
+    }
+
+    // 5. LIVE TETHER & LOCATION UPDATE (From World)
+    final partnerWeather = world.partnerWeather;
+    if (partnerWeather != null) {
+      items.add(SpotlightItem(
+        tag: 'LIVE TETHER',
+        tagIcon: Icons.location_on_rounded,
+        tagColor: const Color(0xFF64B5F6),
+        title: '$partnerName in ${partnerWeather.cityName}',
+        subtitle: '${partnerWeather.temp.round()}°C · ${partnerWeather.condition} · Connected together across distance',
+        badgeText: 'Open World Map ✦',
+        onTap: () => widget.onSelectTab?.call(1), // Switch to World tab
+      ));
+    } else if (partner != null && partner.status.isNotEmpty) {
+      items.add(SpotlightItem(
+        tag: 'PARTNER STATUS',
+        tagIcon: Icons.sparkles,
+        tagColor: const Color(0xFF64B5F6),
+        title: partnerName,
+        subtitle: '“${partner.status}” · Connected in sanctuary',
+        badgeText: 'Tethered ✦',
+        onTap: () => widget.onSelectTab?.call(1),
+      ));
+    }
+
+    // 6. PINNED NOTE (From Stage Corkboard)
+    final notes = stage.pinnedNotes.values.where((n) => n.text.isNotEmpty).toList();
+    if (notes.isNotEmpty) {
+      final note = notes.first;
+      items.add(SpotlightItem(
+        tag: 'PINNED CORKBOARD NOTE',
+        tagIcon: Icons.push_pin_rounded,
+        tagColor: const Color(0xFFFFB74D),
+        title: '“${note.text}”',
+        subtitle: 'A sweet reminder pinned on the sanctuary corkboard',
+        badgeText: 'Read Note 📌',
+        onTap: widget.onGoToMemories,
+      ));
+    }
+
+    // 7. GOAL & DREAM IN PROGRESS (From Goals)
+    if (stage.goals.isNotEmpty) {
+      final goal = stage.goals.first;
+      items.add(SpotlightItem(
+        tag: 'DREAM IN PROGRESS',
+        tagIcon: Icons.stars_rounded,
+        tagColor: const Color(0xFFBA68C8),
+        title: goal.title,
+        subtitle: goal.category.isNotEmpty ? '${goal.category} · A future we are building together' : 'A special milestone dream for two',
+        badgeText: 'View Goals 🎯',
+        onTap: () => GoalTrackerModal.show(context),
+      ));
+    }
+
+    // 8. Fallback / Default Romance Slides if empty
+    if (items.isEmpty) {
+      items.add(SpotlightItem(
+        tag: 'SANCTUARY REEL',
+        tagIcon: Icons.favorite_rounded,
+        tagColor: AppColors.rose,
+        title: '“No matter how many places we go, this is still my favorite view.”',
+        subtitle: 'A living diary of your photos, vaults, voice notes & milestones',
+        badgeText: 'Add Moments ✦',
+        onTap: widget.onGoToMemories,
+      ));
+      items.add(SpotlightItem(
+        tag: 'VAULT TIMER',
+        tagIcon: Icons.hourglass_top_rounded,
+        tagColor: const Color(0xFFD4AF37),
+        title: 'Our First Milestone Vault',
+        subtitle: 'Lock confidential films, letters & secrets for special dates',
+        badgeText: 'Create Vault 🗝️',
+        onTap: () => widget.onSelectTab?.call(3),
+      ));
+    }
+
+    return items;
+  }
 
   @override
   Widget build(BuildContext context) {
     final isDark = context.watch<ThemeProvider>().isDark;
+    final auth = context.watch<AuthProvider>();
+    final stage = context.watch<StageProvider>();
+    final vault = context.watch<VaultProvider>();
+    final memories = context.watch<MemoriesProvider>();
+    final world = context.watch<WorldProvider>();
+
+    final feed = _buildSpotlightFeed(
+      context: context,
+      auth: auth,
+      stage: stage,
+      vault: vault,
+      memories: memories,
+      world: world,
+    );
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -25,29 +301,41 @@ class StageMemoryHeroCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Header Row: Active Category Tag & "All Memories →"
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
                 decoration: BoxDecoration(
-                  color: AppColors.rose.withOpacity(0.12),
+                  color: (feed.isNotEmpty ? feed[_currentIndex % feed.length].tagColor : AppColors.rose).withOpacity(0.14),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Text(
-                  'SHARED MOMENT SPOTLIGHT',
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.rose,
-                    letterSpacing: 0.5,
-                  ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      feed.isNotEmpty ? feed[_currentIndex % feed.length].tagIcon : Icons.auto_awesome_rounded,
+                      size: 11,
+                      color: feed.isNotEmpty ? feed[_currentIndex % feed.length].tagColor : AppColors.rose,
+                    ),
+                    const SizedBox(width: 5),
+                    Text(
+                      feed.isNotEmpty ? feed[_currentIndex % feed.length].tag : 'SANCTUARY REEL',
+                      style: TextStyle(
+                        fontSize: 9.5,
+                        fontWeight: FontWeight.bold,
+                        color: feed.isNotEmpty ? feed[_currentIndex % feed.length].tagColor : AppColors.rose,
+                        letterSpacing: 0.6,
+                      ),
+                    ),
+                  ],
                 ),
               ),
               GestureDetector(
-                onTap: onGoToMemories,
+                onTap: widget.onGoToMemories,
                 child: const Text(
-                  'All Memories →',
+                  'Explore All →',
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.bold,
@@ -59,90 +347,177 @@ class StageMemoryHeroCard extends StatelessWidget {
           ),
           const SizedBox(height: 12),
 
-          // Story Card Container
-          Container(
-            height: 160,
-            width: double.infinity,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(18),
-              gradient: LinearGradient(
-                colors: isDark
-                    ? [const Color(0xFF2A3D34), const Color(0xFF1B2822)]
-                    : [const Color(0xFFF7F4EE), const Color(0xFFEBE6DC)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
+          // Story-style mini progress ticks at top of the card
+          if (feed.length > 1) ...[
+            Row(
+              children: List.generate(feed.length, (idx) {
+                final isCurrent = (_currentIndex % feed.length) == idx;
+                return Expanded(
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 2),
+                    height: 2.5,
+                    decoration: BoxDecoration(
+                      color: isCurrent
+                          ? (feed[idx].tagColor)
+                          : (isDark ? Colors.white12 : Colors.black12),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                );
+              }),
             ),
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '“No matter how many places we go, this is still my favorite view.”',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontStyle: FontStyle.italic,
-                        color: isDark ? AppColors.darkInk : AppColors.lightInk,
-                        height: 1.4,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'A quiet memory from our journey ✦',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: isDark ? AppColors.darkSoft : AppColors.lightSoft,
-                      ),
-                    ),
-                  ],
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: isDark ? AppColors.darkSurface : Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.favorite, size: 12, color: AppColors.rose),
-                          const SizedBox(width: 4),
-                          Text(
-                            'Treasured',
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                              color: isDark ? AppColors.darkInk : AppColors.lightInk,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    ElevatedButton(
-                      onPressed: onGoToMemories,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.sage,
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                      child: const Text('Open Gallery', style: TextStyle(fontSize: 11)),
-                    ),
-                  ],
-                ),
-              ],
+            const SizedBox(height: 10),
+          ],
+
+          // Living Reel Card Carousel (Hold to Pause, Tap to Action)
+          GestureDetector(
+            onLongPressStart: (_) => setState(() => _isUserHolding = true),
+            onLongPressEnd: (_) => setState(() => _isUserHolding = false),
+            child: SizedBox(
+              height: 165,
+              child: PageView.builder(
+                controller: _pageController,
+                itemCount: 10000, // Infinite smooth loop
+                onPageChanged: (page) {
+                  setState(() => _currentIndex = page % feed.length);
+                },
+                itemBuilder: (context, rawIndex) {
+                  final item = feed[rawIndex % feed.length];
+                  return _buildSpotlightCard(item, isDark);
+                },
+              ),
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildSpotlightCard(SpotlightItem item, bool isDark) {
+    return GestureDetector(
+      onTap: item.onTap,
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 2),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(18),
+          color: isDark ? const Color(0xFF161F1A) : const Color(0xFFEBE6DC),
+          border: Border.all(
+            color: item.tagColor.withOpacity(0.35),
+            width: 1.0,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: item.tagColor.withOpacity(0.12),
+              blurRadius: 16,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            // Background Image if available (Photos / Video / Vault cover)
+            if (item.imageUrl != null && item.imageUrl!.isNotEmpty)
+              ClipRRect(
+                borderRadius: BorderRadius.circular(17),
+                child: CachedNetworkImage(
+                  imageUrl: item.imageUrl!,
+                  fit: BoxFit.cover,
+                  placeholder: (_, __) => Container(color: Colors.black26),
+                  errorWidget: (_, __, ___) => Container(color: Colors.black26),
+                ),
+              ),
+
+            // Soft luxury gradient vignette so text is always 100% readable
+            Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(17),
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.black.withOpacity(0.25),
+                    Colors.black.withOpacity(0.72),
+                  ],
+                ),
+              ),
+            ),
+
+            // Text & Action Content
+            Padding(
+              padding: const EdgeInsets.all(15),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        item.title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                          height: 1.3,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        item.subtitle,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          color: Colors.white.withOpacity(0.8),
+                          height: 1.3,
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  // Bottom Action Row
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4.5),
+                        decoration: BoxDecoration(
+                          color: Colors.black54,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.white24, width: 0.8),
+                        ),
+                        child: Text(
+                          item.badgeText,
+                          style: TextStyle(
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.bold,
+                            color: item.tagColor,
+                          ),
+                        ),
+                      ),
+                      Container(
+                        width: 28,
+                        height: 28,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: item.tagColor.withOpacity(0.85),
+                        ),
+                        child: const Icon(
+                          Icons.arrow_forward_rounded,
+                          color: Colors.black,
+                          size: 16,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

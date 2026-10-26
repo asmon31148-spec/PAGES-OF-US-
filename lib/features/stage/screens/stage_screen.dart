@@ -21,8 +21,13 @@ import '../../../core/services/update_service.dart';
 
 class StageScreen extends StatefulWidget {
   final VoidCallback onGoToMemories;
+  final ValueChanged<int>? onSelectTab;
 
-  const StageScreen({super.key, required this.onGoToMemories});
+  const StageScreen({
+    super.key,
+    required this.onGoToMemories,
+    this.onSelectTab,
+  });
 
   @override
   State<StageScreen> createState() => _StageScreenState();
@@ -241,9 +246,10 @@ class _StageScreenState extends State<StageScreen> {
                         ),
                       ),
 
-                      // 4. Memory Spotlight Hero Deck
+                      // 4. Memory Spotlight Hero Deck (Living Sanctuary Reel)
                       StageMemoryHeroCard(
                         onGoToMemories: widget.onGoToMemories,
+                        onSelectTab: widget.onSelectTab,
                       ),
 
                       // 5. Daily Sync Blind Envelope Connection
