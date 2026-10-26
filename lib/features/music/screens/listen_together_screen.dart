@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../../providers/audio_provider.dart';
 import '../../../providers/auth_provider.dart';
+import '../widgets/music_interactive_scrubber.dart';
 
 class ListenTogetherScreen extends StatefulWidget {
   const ListenTogetherScreen({super.key});
@@ -254,31 +255,13 @@ class _ListenTogetherScreenState extends State<ListenTogetherScreen> {
                               ),
                               const SizedBox(height: 16),
 
-                              // Progress bar
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(4),
-                                child: LinearProgressIndicator(
-                                  value: progress,
-                                  backgroundColor: const Color(0xFF1E2F23),
-                                  valueColor: const AlwaysStoppedAnimation(Color(0xFFA3E635)),
-                                  minHeight: 4,
-                                ),
+                              // Smooth Interactive Music Scrubber (Finger dragging to any sec)
+                              MusicInteractiveScrubber(
+                                position: pos,
+                                duration: dur,
+                                onSeek: (target) => audioProvider.seekSong(target),
                               ),
-                              const SizedBox(height: 6),
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    _formatDuration(pos),
-                                    style: const TextStyle(fontSize: 10, color: Color(0xFF94A3B8)),
-                                  ),
-                                  Text(
-                                    _formatDuration(dur),
-                                    style: const TextStyle(fontSize: 10, color: Color(0xFF94A3B8)),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 12),
+                              const SizedBox(height: 10),
 
                               // Transport controls
                               Row(
