@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../providers/theme_provider.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../providers/stage_provider.dart';
+import 'blind_prompt_studio_modal.dart';
 
 class StageDailySyncCard extends StatefulWidget {
   const StageDailySyncCard({super.key});
@@ -29,6 +31,7 @@ class _StageDailySyncCardState extends State<StageDailySyncCard> {
     final stageProvider = context.watch<StageProvider>();
     final user = authProvider.user;
     final partner = authProvider.partner;
+    final partnerNickname = partner?.nickname ?? 'Partner';
 
     final prompt = stageProvider.dailyPrompt?.prompt ??
         'What was the sweetest little thought you had about us today?';
@@ -50,6 +53,7 @@ class _StageDailySyncCardState extends State<StageDailySyncCard> {
     }
 
     final bothAnswered = myAnswer != null && partnerAnswer != null;
+    final canSubmit = !_isSubmitting && _answerController.text.trim().isNotEmpty;
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -64,7 +68,7 @@ class _StageDailySyncCardState extends State<StageDailySyncCard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header Badge
+          // Header Row with Vibe Tag + Studio & History Buttons
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -84,13 +88,75 @@ class _StageDailySyncCardState extends State<StageDailySyncCard> {
                   ),
                 ),
               ),
-              const Text(
-                'Blind Prompt ✦',
-                style: TextStyle(
-                  fontSize: 10,
-                  color: AppColors.sageLight,
-                  fontWeight: FontWeight.w500,
-                ),
+
+              // Action Buttons: History & AI Studio
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // History Archive Button
+                  GestureDetector(
+                    onTap: () {
+                      HapticFeedback.lightImpact();
+                      BlindPromptStudioModal.show(context);
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: isDark ? Colors.white10 : Colors.black.withOpacity(0.05),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.history_rounded,
+                            size: 13,
+                            color: isDark ? Colors.white70 : Colors.black54,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            'History',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: isDark ? Colors.white70 : Colors.black54,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+
+                  // AI Engine Studio Button
+                  GestureDetector(
+                    onTap: () {
+                      HapticFeedback.lightImpact();
+                      BlindPromptStudioModal.show(context);
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: AppColors.terra.withOpacity(0.14),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: AppColors.terra.withOpacity(0.3)),
+                      ),
+                      child: Row(
+                        children: const [
+                          Icon(Icons.auto_awesome, size: 12, color: AppColors.terra),
+                          SizedBox(width: 4),
+                          Text(
+                            'Studio ✦',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.terra,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -113,6 +179,10 @@ class _StageDailySyncCardState extends State<StageDailySyncCard> {
             TextField(
               controller: _answerController,
               maxLines: 2,
+              onChanged: (_) {
+                // Instantly re-evaluates button state as user types!
+                setState(() {});
+              },
               style: TextStyle(
                 fontSize: 13,
                 color: isDark ? AppColors.darkInk : AppColors.lightInk,
@@ -136,9 +206,9 @@ class _StageDailySyncCardState extends State<StageDailySyncCard> {
             Align(
               alignment: Alignment.centerRight,
               child: ElevatedButton(
-                onPressed: _isSubmitting || _answerController.text.trim().isEmpty
-                    ? null
-                    : () async {
+                onPressed: canSubmit
+                    ? () async {
+                        HapticFeedback.mediumImpact();
                         final spaceId = authProvider.space?.id ?? user?.spaceId ?? '';
                         final userId = user?.id ?? '';
                         final text = _answerController.text.trim();
@@ -166,14 +236,15 @@ class _StageDailySyncCardState extends State<StageDailySyncCard> {
                         } finally {
                           if (mounted) setState(() => _isSubmitting = false);
                         }
-                      },
+                      }
+                    : null,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.sage,
+                  backgroundColor: canSubmit ? AppColors.terra : AppColors.terra.withOpacity(0.3),
                   foregroundColor: Colors.white,
-                  elevation: 0,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  elevation: canSubmit ? 2 : 0,
+                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(14),
                   ),
                 ),
                 child: _isSubmitting
@@ -182,10 +253,45 @@ class _StageDailySyncCardState extends State<StageDailySyncCard> {
                         height: 14,
                         child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                       )
-                    : const Text('Seal in Envelope 💌', style: TextStyle(fontSize: 12)),
+                    : Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: const [
+                          Text('Seal in Envelope', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                          SizedBox(width: 4),
+                          Text('💌', style: TextStyle(fontSize: 12)),
+                        ],
+                      ),
               ),
             ),
           ] else ...[
+            // Both Answered: Unsealed Celebration
+            if (bothAnswered) ...[
+              Container(
+                margin: const EdgeInsets.only(bottom: 10),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppColors.sage.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: const [
+                    Text('✨', style: TextStyle(fontSize: 12)),
+                    SizedBox(width: 5),
+                    Text(
+                      'ENVELOPE UNSEALED TOGETHER 💌',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.sage,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+
             // My Answer Card
             Container(
               padding: const EdgeInsets.all(12),
@@ -236,25 +342,61 @@ class _StageDailySyncCardState extends State<StageDailySyncCard> {
               ),
               child: Row(
                 children: [
-                  const Text('🔒', style: TextStyle(fontSize: 14)),
+                  Text(bothAnswered ? '💌' : '🔒', style: const TextStyle(fontSize: 14)),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: Text(
-                      bothAnswered
-                          ? partnerAnswer
-                          : 'Waiting for ${partner?.nickname ?? "partner"}\'s answer to unseal...',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: bothAnswered
-                            ? (isDark ? AppColors.darkInk : AppColors.lightInk)
-                            : (isDark ? AppColors.darkSoft : AppColors.lightSoft),
-                        fontStyle: bothAnswered ? FontStyle.italic : FontStyle.normal,
-                      ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (bothAnswered) ...[
+                          Text(
+                            '$partnerNickname answered:',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: isDark ? AppColors.darkSoft : AppColors.lightSoft,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                        ],
+                        Text(
+                          bothAnswered
+                              ? partnerAnswer!
+                              : 'Waiting for $partnerNickname\'s answer to unseal...',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: bothAnswered
+                                ? (isDark ? AppColors.darkInk : AppColors.lightInk)
+                                : (isDark ? AppColors.darkSoft : AppColors.lightSoft),
+                            fontStyle: bothAnswered ? FontStyle.italic : FontStyle.normal,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
               ),
             ),
+
+            // Ask New Question Shortcut if both answered
+            if (bothAnswered) ...[
+              const SizedBox(height: 12),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton.icon(
+                  onPressed: () => BlindPromptStudioModal.show(context),
+                  icon: const Icon(Icons.auto_awesome, size: 14, color: AppColors.terra),
+                  label: const Text(
+                    'Ask New Question ✦',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.terra,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ],
         ],
       ),

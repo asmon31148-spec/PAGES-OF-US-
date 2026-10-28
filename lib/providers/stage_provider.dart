@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../data/models/mood_aura.dart';
 import '../data/models/daily_prompt.dart';
 import '../data/models/pinned_note.dart';
@@ -24,6 +25,7 @@ class StageProvider extends ChangeNotifier {
   MoodAura? _myMood;
   MoodAura? _partnerMood;
   DailyPrompt? _dailyPrompt;
+  List<PromptHistoryItem> _promptHistory = [];
   Map<String, PinnedNote> _pinnedNotes = {};
   List<CoupleGoalItem> _goals = [];
   bool _isPulsing = false;
@@ -44,6 +46,7 @@ class StageProvider extends ChangeNotifier {
   StreamSubscription? _moodSub;
   StreamSubscription? _noteSub;
   StreamSubscription? _dailyPromptSub;
+  StreamSubscription? _promptHistorySub;
   StreamSubscription? _goalsSub;
   StreamSubscription? _pulseSub;
   StreamSubscription? _touchStatsSub;
@@ -60,6 +63,7 @@ class StageProvider extends ChangeNotifier {
   MoodAura? get myMood => _myMood;
   MoodAura? get partnerMood => _partnerMood;
   DailyPrompt? get dailyPrompt => _dailyPrompt;
+  List<PromptHistoryItem> get promptHistory => List.unmodifiable(_promptHistory);
   Map<String, PinnedNote> get pinnedNotes => _pinnedNotes;
   List<CoupleGoalItem> get goals => _goals;
   bool get isPulsing => _isPulsing;
@@ -217,6 +221,20 @@ class StageProvider extends ChangeNotifier {
         _dailyPrompt = DailyPrompt.fromJson(snap.data()!);
         LocalCacheService.setCachedDailyPrompt(snap.data()!);
         notifyListeners();
+      }
+    });
+
+    // 4b. Listen to Prompt History
+    _promptHistorySub?.cancel();
+    _promptHistorySub = FirebaseService.streamFeatureDoc(spaceId, 'prompt_history').listen((snap) {
+      if (snap.exists && snap.data() != null) {
+        final list = snap.data()!['history'] as List?;
+        if (list != null) {
+          _promptHistory = list
+              .map((e) => PromptHistoryItem.fromJson(Map<String, dynamic>.from(e as Map)))
+              .toList();
+          notifyListeners();
+        }
       }
     });
 
@@ -543,6 +561,77 @@ class StageProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> setCustomDailyPrompt({
+    required String spaceId,
+    required String question,
+    required String vibeTag,
+    required String category,
+  }) async {
+    // If current prompt has answers, archive to history first
+    if (_dailyPrompt != null && _dailyPrompt!.answers.isNotEmpty) {
+      final historyItem = PromptHistoryItem(
+        id: _dailyPrompt!.id,
+        question: _dailyPrompt!.prompt,
+        vibeTag: _dailyPrompt!.vibeTag,
+        category: _dailyPrompt!.category,
+        answers: _dailyPrompt!.answers,
+        date: DateTime.now().toIso8601String().split('T').first,
+      );
+      _archivePromptHistory(spaceId, historyItem);
+    }
+
+    final newPrompt = DailyPrompt(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      prompt: question,
+      category: category,
+      vibeTag: vibeTag,
+      answers: {},
+      reveals: {},
+      careChecks: {},
+      createdAt: DateTime.now().toIso8601String(),
+      isCustom: true,
+    );
+
+    _dailyPrompt = newPrompt;
+    await LocalCacheService.setCachedDailyPrompt(newPrompt.toJson());
+    notifyListeners();
+
+    // 1. Dual save: Firestore & Supabase app_content
+    await FirebaseService.saveFeatureDoc(spaceId, 'daily_prompt', newPrompt.toJson());
+    await SupabaseService.upsertAppContent('daily_prompt_$spaceId', newPrompt.toJson());
+
+    // 2. Broadcast to partner
+    await SupabaseService.broadcastEvent(
+      spaceId: spaceId,
+      eventType: 'DAILY_PROMPT_UPDATE',
+      payload: {
+        'dailyPrompt': newPrompt.toJson(),
+      },
+    );
+  }
+
+  Future<void> _archivePromptHistory(String spaceId, PromptHistoryItem item) async {
+    final existingIdx = _promptHistory.indexWhere((h) => h.id == item.id || h.question == item.question);
+    if (existingIdx == -1) {
+      _promptHistory.insert(0, item);
+    } else {
+      _promptHistory[existingIdx] = item;
+    }
+    notifyListeners();
+
+    try {
+      await FirebaseFirestore.instance
+          .collection('spaces')
+          .doc(spaceId)
+          .collection('features')
+          .doc('prompt_history')
+          .set({
+        'history': _promptHistory.map((h) => h.toJson()).toList(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+    } catch (_) {}
+  }
+
   Future<void> saveDailyPromptAnswer(String spaceId, String userId, String answer) async {
     final currentPrompt = _dailyPrompt ?? DailyPrompt(
       id: DateTime.now().toIso8601String().split('T').first,
@@ -570,6 +659,19 @@ class StageProvider extends ChangeNotifier {
     _dailyPrompt = updatedPrompt;
     await LocalCacheService.setCachedDailyPrompt(updatedPrompt.toJson());
     notifyListeners();
+
+    // If both partners have now answered, auto-archive to history!
+    if (updatedAnswers.length > 1) {
+      final historyItem = PromptHistoryItem(
+        id: updatedPrompt.id,
+        question: updatedPrompt.prompt,
+        vibeTag: updatedPrompt.vibeTag,
+        category: updatedPrompt.category,
+        answers: updatedAnswers,
+        date: DateTime.now().toIso8601String().split('T').first,
+      );
+      _archivePromptHistory(spaceId, historyItem);
+    }
 
     await FirebaseService.saveNestedFeatureField(
       spaceId,
@@ -702,6 +804,7 @@ class StageProvider extends ChangeNotifier {
     _moodSub?.cancel();
     _noteSub?.cancel();
     _dailyPromptSub?.cancel();
+    _promptHistorySub?.cancel();
     _goalsSub?.cancel();
     _pulseSub?.cancel();
     _touchStatsSub?.cancel();
