@@ -75,9 +75,10 @@ class _TouchSanctuaryScreenState extends State<TouchSanctuaryScreen>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       final auth = context.read<AuthProvider>();
-      if (auth.space != null && auth.user != null) {
+      final effectiveSpaceId = auth.space?.id ?? auth.user?.spaceId;
+      if (effectiveSpaceId != null && effectiveSpaceId.isNotEmpty && auth.user != null) {
         context.read<StageProvider>().initSpaceListeners(
-              auth.space!.id,
+              effectiveSpaceId,
               auth.user!.id,
               auth.partner?.id,
             );
@@ -146,6 +147,7 @@ class _TouchSanctuaryScreenState extends State<TouchSanctuaryScreen>
     final user = authProvider.user;
     final space = authProvider.space;
     final partner = authProvider.partner;
+    final effectiveSpaceId = space?.id ?? user?.spaceId ?? '';
     final partnerNickname = partner?.nickname?.isNotEmpty == true ? partner!.nickname! : 'Partner';
 
     final partnerTouch = stageProvider.partnerTouchPoint;
@@ -190,7 +192,7 @@ class _TouchSanctuaryScreenState extends State<TouchSanctuaryScreen>
                       return _buildFullScreenThumbKiss(
                         padSize: padSize,
                         stageProvider: stageProvider,
-                        spaceId: space?.id ?? '',
+                        spaceId: effectiveSpaceId,
                         userId: user?.id ?? '',
                         partnerTouch: partnerTouch,
                         isPartnerTouching: isPartnerTouching,
@@ -201,7 +203,7 @@ class _TouchSanctuaryScreenState extends State<TouchSanctuaryScreen>
                       return _buildFullScreenGlowTrace(
                         padSize: padSize,
                         stageProvider: stageProvider,
-                        spaceId: space?.id ?? '',
+                        spaceId: effectiveSpaceId,
                         userId: user?.id ?? '',
                         partnerNickname: partnerNickname,
                       );
@@ -210,7 +212,7 @@ class _TouchSanctuaryScreenState extends State<TouchSanctuaryScreen>
                       return _buildFullScreenHeartPulse(
                         padSize: padSize,
                         stageProvider: stageProvider,
-                        spaceId: space?.id ?? '',
+                        spaceId: effectiveSpaceId,
                         userId: user?.id ?? '',
                         partnerNickname: partnerNickname,
                       );
@@ -241,7 +243,7 @@ class _TouchSanctuaryScreenState extends State<TouchSanctuaryScreen>
                 child: SafeArea(
                   child: _buildGlowToolBar(
                     stageProvider: stageProvider,
-                    spaceId: space?.id ?? '',
+                    spaceId: effectiveSpaceId,
                     userId: user?.id ?? '',
                   ),
                 ),
