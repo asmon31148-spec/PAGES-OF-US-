@@ -22,6 +22,7 @@ class SupabaseService {
   static RealtimeChannel? _channel;
   static String? _currentSpaceId;
   static final List<Function(Map<String, dynamic> data)> _locationCallbacks = [];
+  static final List<Function(Map<String, dynamic> data)> _vaultCallbacks = [];
 
   static void addLocationListener(Function(Map<String, dynamic> data) callback) {
     if (!_locationCallbacks.contains(callback)) {
@@ -31,6 +32,16 @@ class SupabaseService {
 
   static void removeLocationListener(Function(Map<String, dynamic> data) callback) {
     _locationCallbacks.remove(callback);
+  }
+
+  static void addVaultListener(Function(Map<String, dynamic> data) callback) {
+    if (!_vaultCallbacks.contains(callback)) {
+      _vaultCallbacks.add(callback);
+    }
+  }
+
+  static void removeVaultListener(Function(Map<String, dynamic> data) callback) {
+    _vaultCallbacks.remove(callback);
   }
 
   static void subscribeToSpaceEvents(
@@ -79,6 +90,17 @@ class SupabaseService {
         event: 'LOCATION_UPDATE',
         callback: (payload) {
           for (final cb in List<Function(Map<String, dynamic> data)>.from(_locationCallbacks)) {
+            try {
+              cb(payload);
+            } catch (_) {}
+          }
+        },
+      );
+
+      _channel!.onBroadcast(
+        event: 'VAULTS_UPDATE',
+        callback: (payload) {
+          for (final cb in List<Function(Map<String, dynamic> data)>.from(_vaultCallbacks)) {
             try {
               cb(payload);
             } catch (_) {}
@@ -144,6 +166,16 @@ class SupabaseService {
           event: 'LOCATION_UPDATE',
           callback: (payload) {
             for (final cb in List<Function(Map<String, dynamic> data)>.from(_locationCallbacks)) {
+              try {
+                cb(payload);
+              } catch (_) {}
+            }
+          },
+        );
+        _channel!.onBroadcast(
+          event: 'VAULTS_UPDATE',
+          callback: (payload) {
+            for (final cb in List<Function(Map<String, dynamic> data)>.from(_vaultCallbacks)) {
               try {
                 cb(payload);
               } catch (_) {}

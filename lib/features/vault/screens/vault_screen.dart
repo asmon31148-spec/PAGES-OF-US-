@@ -25,11 +25,22 @@ class _VaultScreenState extends State<VaultScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final spaceId = context.read<AuthProvider>().space?.id;
-      if (spaceId != null) {
-        context.read<VaultProvider>().initVaultSync(spaceId);
-      }
+      _syncVaults();
     });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _syncVaults();
+  }
+
+  void _syncVaults() {
+    final auth = context.read<AuthProvider>();
+    final spaceId = auth.space?.id ?? auth.user?.spaceId;
+    if (spaceId != null && spaceId.isNotEmpty) {
+      context.read<VaultProvider>().initVaultSync(spaceId);
+    }
   }
 
   void _openProfileModal() {
@@ -43,9 +54,9 @@ class _VaultScreenState extends State<VaultScreen> {
 
   void _navigateToNewVault() {
     final auth = context.read<AuthProvider>();
-    final space = auth.space;
+    final spaceId = auth.space?.id ?? auth.user?.spaceId;
     final user = auth.user;
-    if (space == null || user == null) return;
+    if (spaceId == null || spaceId.isEmpty || user == null) return;
 
     final partnerNickname = auth.partner?.nickname ?? 'Partner';
 
@@ -53,7 +64,7 @@ class _VaultScreenState extends State<VaultScreen> {
       context,
       MaterialPageRoute(
         builder: (_) => NewVaultScreen(
-          spaceId: space.id,
+          spaceId: spaceId,
           currentUserId: user.id,
           userNickname: user.nickname,
           partnerNickname: partnerNickname,
@@ -280,7 +291,7 @@ class _VaultScreenState extends State<VaultScreen> {
     final currentUserId = user?.id ?? '';
     final userNickname = user?.nickname ?? 'You';
     final partnerNickname = partner?.nickname ?? 'Partner';
-    final spaceId = space?.id ?? '';
+    final spaceId = space?.id ?? user?.spaceId ?? '';
 
     final vaults = vaultProvider.vaults;
     final filteredVaults = vaultProvider.getFilteredVaults(currentUserId);

@@ -165,6 +165,9 @@ class VaultProvider extends ChangeNotifier {
     if (_activeSpaceId == spaceId && _vaultSub != null) return;
     _activeSpaceId = spaceId;
 
+    // 0. Register Supabase Realtime Listener (0-50ms peer updates)
+    SupabaseService.addVaultListener(_handleSupabaseVaultsUpdate);
+
     final vaultDocId = 'vaults_$spaceId';
 
     // 1. Supabase fetch
@@ -272,6 +275,19 @@ class VaultProvider extends ChangeNotifier {
     } catch (_) {}
   }
 
+  void _handleSupabaseVaultsUpdate(Map<String, dynamic> data) {
+    if (data['vaults'] != null && data['vaults'] is List) {
+      final raw = data['vaults'] as List;
+      _vaults = raw
+          .map((e) => VaultItem.fromJson(Map<String, dynamic>.from(e as Map)))
+          .toList();
+      if (_vaults.isNotEmpty && _selectedVault == null) {
+        _selectedVault = _vaults.first;
+      }
+      notifyListeners();
+    }
+  }
+
   Future<void> createVault(VaultItem item, String spaceId) async {
     _vaults.insert(0, item);
     _selectedVault = item;
@@ -355,6 +371,15 @@ class VaultProvider extends ChangeNotifier {
         'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
     } catch (_) {}
+
+    // 3. Supabase Realtime broadcast (0-50ms instant sync to partner)
+    try {
+      await SupabaseService.broadcastEvent(
+        spaceId: spaceId,
+        eventType: 'VAULTS_UPDATE',
+        payload: {'vaults': jsonList},
+      );
+    } catch (_) {}
   }
 
   // Backward compatibility methods
@@ -404,6 +429,7 @@ class VaultProvider extends ChangeNotifier {
   void dispose() {
     _vaultSub?.cancel();
     _vaultAudio.dispose();
+    SupabaseService.removeVaultListener(_handleSupabaseVaultsUpdate);
     super.dispose();
   }
 }
