@@ -358,8 +358,9 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildMapCard({
     required bool isDark,
