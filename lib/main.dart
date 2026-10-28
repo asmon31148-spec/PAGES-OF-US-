@@ -21,6 +21,7 @@ import 'features/stage/screens/stage_screen.dart';
 import 'features/world/screens/world_screen.dart';
 import 'features/memories/screens/memories_screen.dart';
 import 'features/vault/screens/vault_screen.dart';
+import 'features/splash/screens/splash_screen.dart';
 import 'widgets/custom_bottom_nav.dart';
 
 void main() async {
@@ -91,7 +92,7 @@ class PagesOfUsApp extends StatelessWidget {
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),
       themeMode: themeProvider.isDark ? ThemeMode.dark : ThemeMode.light,
-      home: const AuthGate(),
+      home: const SplashScreen(),
     );
   }
 }

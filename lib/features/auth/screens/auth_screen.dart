@@ -111,26 +111,20 @@ class _AuthScreenState extends State<AuthScreen> {
               children: [
                 // Top Brand Crest
                 Container(
-                  width: 72,
-                  height: 72,
+                  width: 80,
+                  height: 80,
                   decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: const LinearGradient(
-                      colors: [AppColors.sage, AppColors.rose],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
+                    borderRadius: BorderRadius.circular(22),
                     boxShadow: [
                       BoxShadow(
-                        color: AppColors.terra.withOpacity(0.3),
+                        color: const Color(0xFFFECB92).withOpacity(0.5),
                         blurRadius: 20,
-                        spreadRadius: 4,
+                        spreadRadius: 3,
                       ),
                     ],
                   ),
-                  child: const Center(
-                    child: Text('✦', style: TextStyle(fontSize: 32, color: Colors.white)),
-                  ),
+                  clipBehavior: Clip.antiAlias,
+                  child: Image.asset('assets/icon.png', fit: BoxFit.cover),
                 ),
                 const SizedBox(height: 20),
 
