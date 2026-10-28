@@ -417,7 +417,7 @@ class StageProvider extends ChangeNotifier {
           final sender = data['senderId'] as String?;
           if (sender != null && sender != userId) {
             NotificationService.showPartnerAnsweredDailyQuestionNotification(
-              partnerNickname: partnerNickname ?? 'Partner',
+              partnerNickname: 'Partner',
             );
           }
 
@@ -425,7 +425,7 @@ class StageProvider extends ChangeNotifier {
           final hasUserAnswered = _dailyPrompt?.answers[userId]?.isNotEmpty ?? false;
           NotificationService.scheduleDailyQuestionPendingReminder(
             hasUserAnswered: hasUserAnswered,
-            partnerNickname: partnerNickname ?? 'Partner',
+            partnerNickname: 'Partner',
           );
 
           notifyListeners();
@@ -444,7 +444,7 @@ class StageProvider extends ChangeNotifier {
         final sender = data['senderId'] as String?;
         if (sender != userId) {
           NotificationService.showListenTogetherInviteNotification(
-            partnerNickname: data['senderNickname'] ?? (partnerNickname ?? 'Partner'),
+            partnerNickname: data['senderNickname'] ?? 'Partner',
             songTitle: data['songTitle'] ?? 'Music',
             artist: data['artist'] ?? '',
           );

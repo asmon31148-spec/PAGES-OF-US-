@@ -24,39 +24,6 @@ class VaultProvider extends ChangeNotifier {
   Set<String> get unlockedVaultIds => Set.unmodifiable(_unlockedVaultIds);
   bool get isAudioPlaying => _isAudioPlaying;
 
-  // Compatibility with existing capsule references
-  List<EventCapsule> get capsules => _vaults.map((v) => EventCapsule(
-    id: v.id,
-    creatorId: v.creatorId,
-    creatorName: v.creatorName,
-    title: v.title,
-    eventType: v.accessMode,
-    passcode: v.pinCode ?? '',
-    personalNote: v.letter,
-    videoUrl: v.videoUrl,
-    ambientTrack: v.backgroundSong,
-    unlockAt: v.specialDate,
-    createdAt: v.createdAt,
-  )).toList();
-
-  EventCapsule? get selectedCapsule {
-    final v = selectedVault;
-    if (v == null) return null;
-    return EventCapsule(
-      id: v.id,
-      creatorId: v.creatorId,
-      creatorName: v.creatorName,
-      title: v.title,
-      eventType: v.accessMode,
-      passcode: v.pinCode ?? '',
-      personalNote: v.letter,
-      videoUrl: v.videoUrl,
-      ambientTrack: v.backgroundSong,
-      unlockAt: v.specialDate,
-      createdAt: v.createdAt,
-    );
-  }
-
   bool get shouldTriggerConfetti => false;
   void resetConfettiTrigger() {}
 

@@ -230,6 +230,7 @@ class _StageMemoryHeroCardState extends State<StageMemoryHeroCard> {
         subtitle: 'A sweet reminder pinned on the sanctuary corkboard',
         badgeText: 'Read Note 📌',
         onTap: () {
+          final isDark = Theme.of(context).brightness == Brightness.dark;
           showDialog(
             context: context,
             builder: (ctx) => AlertDialog(

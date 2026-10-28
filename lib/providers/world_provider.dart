@@ -267,7 +267,7 @@ class WorldProvider extends ChangeNotifier {
         NotificationService.showPartnerArrivedPlaceNotification(
           partnerNickname: pLoc.nickname.isNotEmpty ? pLoc.nickname : 'Your Partner',
           placeName: place.name,
-          placeTag: place.tag,
+          placeTag: place.icon,
         );
         break;
       }
