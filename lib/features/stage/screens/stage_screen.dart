@@ -269,11 +269,11 @@ class _StageScreenState extends State<StageScreen> {
                         onSelectTab: widget.onSelectTab,
                       ),
 
-                      // 5. Daily Sync Blind Envelope Connection
-                      const StageDailySyncCard(),
-
-                      // 6. Pinned Corkboard Notes
+                      // 5. Pinned Corkboard Notes
                       const StagePinnedCorkboard(),
+
+                      // 6. Daily Sync Blind Envelope Connection (Question & Answer)
+                      const StageDailySyncCard(),
                       const SizedBox(height: 16),
                     ],
                   ),
