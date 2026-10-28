@@ -193,9 +193,13 @@ class VaultProvider extends ChangeNotifier {
         if (res != null && res['content'] != null) {
           final rawList = res['content'];
           if (rawList is List && rawList.isNotEmpty) {
-            _vaults = rawList
+            final loaded = rawList
                 .map((e) => VaultItem.fromJson(Map<String, dynamic>.from(e as Map)))
                 .toList();
+            _vaults = loaded.where((v) => v.id != 'vault_midnight_seed' && v.title.toLowerCase().trim() != 'the midnight letters').toList();
+            if (loaded.length != _vaults.length) {
+              _syncVaultsToCloud(spaceId);
+            }
             if (_vaults.isNotEmpty && _selectedVault == null) {
               _selectedVault = _vaults.first;
             }
@@ -205,7 +209,7 @@ class VaultProvider extends ChangeNotifier {
       }
     } catch (_) {}
 
-    // 2. Initial Default Seeds if empty
+    // 2. Initial Default Seeds if empty (No dummy partner templates)
     if (_vaults.isEmpty) {
       _vaults = [
         VaultItem(
@@ -221,19 +225,6 @@ class VaultProvider extends ChangeNotifier {
           photoUrls: [],
           backgroundSong: 'lofi_sanctuary',
           createdAt: DateTime.now().subtract(const Duration(days: 12)),
-        ),
-        VaultItem(
-          id: 'vault_midnight_seed',
-          creatorId: 'partner',
-          creatorName: 'Partner',
-          title: 'The Midnight Letters',
-          emblemShape: 'arch',
-          colorValue: 0xFF162238, // Midnight Navy
-          accessMode: 'pin',
-          pinCode: '1234',
-          letter: 'Every quiet night I think of the moments we promised each other under the stars.',
-          photoUrls: [],
-          createdAt: DateTime.now().subtract(const Duration(days: 5)),
         ),
       ];
       _selectedVault = _vaults.first;
@@ -254,9 +245,22 @@ class VaultProvider extends ChangeNotifier {
           final data = snap.data()!;
           if (data['vaults'] != null && data['vaults'] is List) {
             final raw = data['vaults'] as List;
-            _vaults = raw
+            final loaded = raw
                 .map((e) => VaultItem.fromJson(Map<String, dynamic>.from(e as Map)))
                 .toList();
+
+            bool removedMidnight = false;
+            _vaults = loaded.where((v) {
+              if (v.id == 'vault_midnight_seed' || v.title.toLowerCase().trim() == 'the midnight letters') {
+                removedMidnight = true;
+                return false;
+              }
+              return true;
+            }).toList();
+
+            if (removedMidnight) {
+              _syncVaultsToCloud(spaceId);
+            }
             
             // Check scheduled notifications for locked timers
             for (final v in _vaults) {
@@ -278,9 +282,23 @@ class VaultProvider extends ChangeNotifier {
   void _handleSupabaseVaultsUpdate(Map<String, dynamic> data) {
     if (data['vaults'] != null && data['vaults'] is List) {
       final raw = data['vaults'] as List;
-      _vaults = raw
+      final loaded = raw
           .map((e) => VaultItem.fromJson(Map<String, dynamic>.from(e as Map)))
           .toList();
+
+      bool removedMidnight = false;
+      _vaults = loaded.where((v) {
+        if (v.id == 'vault_midnight_seed' || v.title.toLowerCase().trim() == 'the midnight letters') {
+          removedMidnight = true;
+          return false;
+        }
+        return true;
+      }).toList();
+
+      if (removedMidnight && _activeSpaceId != null) {
+        _syncVaultsToCloud(_activeSpaceId!);
+      }
+
       if (_vaults.isNotEmpty && _selectedVault == null) {
         _selectedVault = _vaults.first;
       }

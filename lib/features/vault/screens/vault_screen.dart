@@ -369,6 +369,7 @@ class _VaultScreenState extends State<VaultScreen> {
                     currentUserId: currentUserId,
                     partnerNickname: partnerNickname,
                     onTap: () => _onVaultTapped(vault, currentUserId, partnerNickname, spaceId, userNickname),
+                    onLongPress: () => _confirmDeleteVaultFromGrid(vault, spaceId),
                   );
                 },
               ),
@@ -411,7 +412,51 @@ class _VaultScreenState extends State<VaultScreen> {
     );
   }
 
-  // --- Vault Grid Card (Matching Image 1) ---
+  // --- Delete Confirmation Modal ---
+
+  Future<void> _confirmDeleteVaultFromGrid(VaultItem vault, String spaceId) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF16141F),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Delete Vault?', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        content: Text(
+          'Are you sure you want to permanently delete "${vault.title}"? This will remove the vault and its memories for both partners.',
+          style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 13.5, height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel', style: TextStyle(color: Colors.white54)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFE57373),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete Permanently'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      await context.read<VaultProvider>().deleteVault(vault.id, spaceId);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('"${vault.title}" deleted.'),
+            backgroundColor: const Color(0xFF1F1B2C),
+          ),
+        );
+      }
+    }
+  }
+
+  // --- Vault Grid Card ---
 
   Widget _buildVaultCard({
     required VaultItem vault,
@@ -419,6 +464,7 @@ class _VaultScreenState extends State<VaultScreen> {
     required String currentUserId,
     required String partnerNickname,
     required VoidCallback onTap,
+    required VoidCallback onLongPress,
   }) {
     final isOwner = vault.creatorId.isEmpty || vault.creatorId == currentUserId;
     final creatorLabel = isOwner ? 'By You' : 'By $partnerNickname';
@@ -439,8 +485,11 @@ class _VaultScreenState extends State<VaultScreen> {
       badgeIcon = Icons.photo_library_outlined;
     }
 
+    final hasCoverImage = vault.coverImageUrl != null && vault.coverImageUrl!.isNotEmpty;
+
     return GestureDetector(
       onTap: onTap,
+      onLongPress: onLongPress,
       child: Container(
         decoration: BoxDecoration(
           color: Color(vault.colorValue),
@@ -451,83 +500,112 @@ class _VaultScreenState extends State<VaultScreen> {
           ),
           boxShadow: [
             BoxShadow(
-              color: Color(vault.colorValue).withOpacity(0.4),
-              blurRadius: 14,
-              offset: const Offset(0, 6),
+              color: Colors.black.withOpacity(0.35),
+              blurRadius: 12,
+              offset: const Offset(0, 5),
             ),
           ],
         ),
-        child: Stack(
+        clipBehavior: Clip.antiAlias, // Clean corners for image
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Top Right Badge
-            Positioned(
-              top: 10,
-              right: 10,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3.5),
-                decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.45),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: Colors.white10),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(badgeIcon, size: 9.5, color: const Color(0xFFD4AF37)),
-                    const SizedBox(width: 3.5),
-                    Text(
-                      badgeText,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 9,
-                        fontWeight: FontWeight.w500,
+            // Upper Box: Covers whole upper area up to title and date
+            Expanded(
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  if (hasCoverImage)
+                    CachedNetworkImage(
+                      imageUrl: vault.coverImageUrl!,
+                      fit: BoxFit.cover,
+                      placeholder: (_, __) => Container(
+                        color: Color(vault.colorValue),
+                        child: const Center(
+                          child: CircularProgressIndicator(
+                            strokeWidth: 1.5,
+                            color: Color(0xFFD4AF37),
+                          ),
+                        ),
+                      ),
+                      errorWidget: (_, __, ___) => Container(
+                        color: Color(vault.colorValue),
+                        child: Center(
+                          child: VaultEmblem(shape: vault.emblemShape, size: 52),
+                        ),
+                      ),
+                    )
+                  else
+                    Container(
+                      color: Color(vault.colorValue),
+                      child: Center(
+                        child: VaultEmblem(shape: vault.emblemShape, size: 52),
                       ),
                     ),
-                  ],
-                ),
+
+                  // Top gradient shadow for badge clarity
+                  Positioned(
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    height: 42,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.black.withOpacity(0.48),
+                            Colors.transparent,
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  // Top Right Badge
+                  Positioned(
+                    top: 9,
+                    right: 9,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3.5),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.65),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.white12),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(badgeIcon, size: 9.5, color: const Color(0xFFD4AF37)),
+                          const SizedBox(width: 3.5),
+                          Text(
+                            badgeText,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 9,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
 
-            // Center Visual (Emblem OR Cover Image OR Video Thumbnail)
-            Center(
-              child: () {
-                String? imageToShow = vault.coverImageUrl;
-                if ((imageToShow == null || imageToShow.isEmpty) && vault.videoUrl != null && vault.videoUrl!.isNotEmpty) {
-                  if (vault.videoUrl!.contains('cloudinary.com') || vault.videoUrl!.contains('/video/upload/')) {
-                    imageToShow = vault.videoUrl!.replaceAll(RegExp(r'\.(mp4|mov|avi|wmv|webm|mkv)$', caseSensitive: false), '.jpg');
-                    if (imageToShow.contains('/video/upload/')) {
-                      imageToShow = imageToShow.replaceAll('/video/upload/', '/video/upload/so_1,f_auto,q_auto/');
-                    }
-                  }
-                }
-
-                if (imageToShow != null && imageToShow.isNotEmpty) {
-                  return ClipRRect(
-                    borderRadius: BorderRadius.circular(14),
-                    child: CachedNetworkImage(
-                      imageUrl: imageToShow,
-                      width: 76,
-                      height: 76,
-                      fit: BoxFit.cover,
-                    ),
-                  );
-                }
-                return VaultEmblem(shape: vault.emblemShape, size: 56);
-              }(),
-            ),
-
-            // Bottom Text: Title & Creator/Memories
-            Positioned(
-              left: 12,
-              right: 12,
-              bottom: 12,
+            // Bottom Section: Title & Date (No overlap with image)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              color: const Color(0xFF14121A),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
                     vault.title,
-                    maxLines: 2,
+                    maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       color: Colors.white,
@@ -539,7 +617,7 @@ class _VaultScreenState extends State<VaultScreen> {
                   ),
                   const SizedBox(height: 3),
                   Text(
-                    '$creatorLabel · ${vault.totalMemoriesCount} memories',
+                    '${DateFormat("dd/MM/yyyy").format(vault.specialDate ?? vault.createdAt)} · $creatorLabel',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(

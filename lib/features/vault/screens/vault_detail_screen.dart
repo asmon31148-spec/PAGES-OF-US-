@@ -129,6 +129,50 @@ class _VaultDetailScreenState extends State<VaultDetailScreen> {
     }
   }
 
+  Future<void> _confirmDeleteVault() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF16141F),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Delete Vault?', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        content: Text(
+          'Are you sure you want to permanently delete "${_vault.title}"? This cannot be undone.',
+          style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 13.5, height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel', style: TextStyle(color: Colors.white54)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFE57373),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete Permanently'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      await context.read<VaultProvider>().stopVaultMusic();
+      await context.read<VaultProvider>().deleteVault(_vault.id, widget.spaceId);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('"${_vault.title}" deleted.'),
+            backgroundColor: const Color(0xFF1F1B2C),
+          ),
+        );
+        Navigator.pop(context, 'deleted');
+      }
+    }
+  }
+
   void _navigateToEdit() async {
     final updated = await Navigator.push<dynamic>(
       context,
@@ -158,7 +202,6 @@ class _VaultDetailScreenState extends State<VaultDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isCreator = _vault.creatorId.isEmpty || _vault.creatorId == widget.currentUserId;
     final vp = context.watch<VaultProvider>();
 
     return PopScope(
@@ -190,21 +233,27 @@ class _VaultDetailScreenState extends State<VaultDetailScreen> {
                 onPressed: _toggleMuteMusic,
               ),
 
-            // Edit button (ONLY for the creator of this vault!)
-            if (isCreator)
-              TextButton.icon(
-                onPressed: _navigateToEdit,
-                icon: const Icon(Icons.edit_outlined, color: Color(0xFFD4AF37), size: 16),
-                label: const Text(
-                  'Edit vault',
-                  style: TextStyle(
-                    color: Color(0xFFD4AF37),
-                    fontWeight: FontWeight.w600,
-                    fontSize: 13,
-                  ),
+            // Edit button (available for both partners)
+            TextButton.icon(
+              onPressed: _navigateToEdit,
+              icon: const Icon(Icons.edit_outlined, color: Color(0xFFD4AF37), size: 16),
+              label: const Text(
+                'Edit',
+                style: TextStyle(
+                  color: Color(0xFFD4AF37),
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
                 ),
               ),
-            const SizedBox(width: 8),
+            ),
+
+            // Delete button
+            IconButton(
+              icon: const Icon(Icons.delete_outline_rounded, color: Color(0xFFE57373), size: 20),
+              tooltip: 'Delete vault',
+              onPressed: _confirmDeleteVault,
+            ),
+            const SizedBox(width: 4),
           ],
         ),
         body: SingleChildScrollView(
@@ -224,7 +273,15 @@ class _VaultDetailScreenState extends State<VaultDetailScreen> {
                 const SizedBox(height: 26),
               ],
 
-              // 3. Photos Horizontal Carousel (Polaroid Style)
+              // 3. Dedicated Video Memory (when cover photo is on Hero Card)
+              if (_vault.videoUrl != null && _vault.videoUrl!.isNotEmpty && (_vault.coverImageUrl != null && _vault.coverImageUrl!.isNotEmpty)) ...[
+                _buildSectionHeader('VIDEO MEMORY 🎬'),
+                const SizedBox(height: 10),
+                _buildVideoMemoryCard(),
+                const SizedBox(height: 26),
+              ],
+
+              // 4. Photos Horizontal Carousel (Polaroid Style)
               if (_vault.photoUrls.isNotEmpty) ...[
                 _buildSectionHeader('PHOTOS (${_vault.photoUrls.length})'),
                 const SizedBox(height: 10),
@@ -232,7 +289,7 @@ class _VaultDetailScreenState extends State<VaultDetailScreen> {
                 const SizedBox(height: 26),
               ],
 
-              // 4. Voice Note Player
+              // 5. Voice Note Player
               if (_vault.voiceNoteUrl != null && _vault.voiceNoteUrl!.isNotEmpty) ...[
                 _buildSectionHeader('VOICE MEMO'),
                 const SizedBox(height: 10),
@@ -329,10 +386,30 @@ class _VaultDetailScreenState extends State<VaultDetailScreen> {
   }
 
   Widget _buildHeroVisual() {
-    // If video is present, allow video playback
+    // 1. If cover image is present, display it cleanly in all its glory (NEVER overlay video play icon!)
+    if (_vault.coverImageUrl != null && _vault.coverImageUrl!.isNotEmpty) {
+      return CachedNetworkImage(
+        imageUrl: _vault.coverImageUrl!,
+        fit: BoxFit.cover,
+        placeholder: (_, __) => Container(
+          color: Color(_vault.colorValue),
+          child: const Center(
+            child: CircularProgressIndicator(strokeWidth: 1.5, color: Color(0xFFD4AF37)),
+          ),
+        ),
+        errorWidget: (_, __, ___) => Container(
+          color: Color(_vault.colorValue),
+          child: Center(
+            child: VaultEmblem(shape: _vault.emblemShape, size: 70),
+          ),
+        ),
+      );
+    }
+
+    // 2. If NO cover image is present, but video is present, display video player preview
     if (_vault.videoUrl != null && _vault.videoUrl!.isNotEmpty) {
-      String videoThumb = _vault.coverImageUrl ?? '';
-      if (videoThumb.isEmpty && (_vault.videoUrl!.contains('cloudinary.com') || _vault.videoUrl!.contains('/video/upload/'))) {
+      String videoThumb = '';
+      if (_vault.videoUrl!.contains('cloudinary.com') || _vault.videoUrl!.contains('/video/upload/')) {
         videoThumb = _vault.videoUrl!.replaceAll(RegExp(r'\.(mp4|mov|avi|wmv|webm|mkv)$', caseSensitive: false), '.jpg');
         if (videoThumb.contains('/video/upload/')) {
           videoThumb = videoThumb.replaceAll('/video/upload/', '/video/upload/so_1,f_auto,q_auto/');
@@ -411,15 +488,7 @@ class _VaultDetailScreenState extends State<VaultDetailScreen> {
       );
     }
 
-    // If cover image is present
-    if (_vault.coverImageUrl != null && _vault.coverImageUrl!.isNotEmpty) {
-      return CachedNetworkImage(
-        imageUrl: _vault.coverImageUrl!,
-        fit: BoxFit.cover,
-      );
-    }
-
-    // Default: Center Emblem with golden ambiance
+    // 3. Default: Center Emblem with golden ambiance
     return Container(
       decoration: BoxDecoration(
         gradient: RadialGradient(
@@ -433,6 +502,140 @@ class _VaultDetailScreenState extends State<VaultDetailScreen> {
       ),
       child: Center(
         child: VaultEmblem(shape: _vault.emblemShape, size: 90),
+      ),
+    );
+  }
+
+  Widget _buildVideoMemoryCard() {
+    String videoThumb = '';
+    if (_vault.videoUrl!.contains('cloudinary.com') || _vault.videoUrl!.contains('/video/upload/')) {
+      videoThumb = _vault.videoUrl!.replaceAll(RegExp(r'\.(mp4|mov|avi|wmv|webm|mkv)$', caseSensitive: false), '.jpg');
+      if (videoThumb.contains('/video/upload/')) {
+        videoThumb = videoThumb.replaceAll('/video/upload/', '/video/upload/so_1,f_auto,q_auto/');
+      }
+    }
+
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => FullScreenVideoPlayer(
+              videoUrl: _vault.videoUrl!,
+              title: _vault.title,
+            ),
+          ),
+        );
+      },
+      child: Container(
+        height: 180,
+        width: double.infinity,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: const Color(0xFFD4AF37).withOpacity(0.35),
+            width: 1.1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.35),
+              blurRadius: 14,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            if (videoThumb.isNotEmpty)
+              CachedNetworkImage(
+                imageUrl: videoThumb,
+                fit: BoxFit.cover,
+                placeholder: (_, __) => Container(color: const Color(0xFF161420)),
+                errorWidget: (_, __, ___) => Container(
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [Color(0xFF221626), Color(0xFF14101A)],
+                    ),
+                  ),
+                ),
+              )
+            else
+              Container(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [Color(0xFF221626), Color(0xFF14101A)],
+                  ),
+                ),
+              ),
+
+            // Ambient dark vignette
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.black.withOpacity(0.2),
+                    Colors.black.withOpacity(0.6),
+                  ],
+                ),
+              ),
+            ),
+
+            // Center Play Button
+            Center(
+              child: Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.black.withOpacity(0.6),
+                  border: Border.all(
+                    color: const Color(0xFFD4AF37).withOpacity(0.8),
+                    width: 1.4,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.5),
+                      blurRadius: 12,
+                    ),
+                  ],
+                ),
+                child: const Icon(
+                  Icons.play_arrow_rounded,
+                  color: Color(0xFFD4AF37),
+                  size: 30,
+                ),
+              ),
+            ),
+
+            // Bottom pill
+            Positioned(
+              left: 14,
+              bottom: 12,
+              child: Row(
+                children: [
+                  const Icon(Icons.videocam_rounded, color: Colors.white70, size: 14),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Tap to play video',
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.85),
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
