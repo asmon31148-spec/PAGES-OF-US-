@@ -6,6 +6,7 @@ import '../../../providers/audio_provider.dart';
 import '../../../providers/auth_provider.dart';
 import 'theme_modal.dart';
 import '../../music/screens/music_sanctuary_screen.dart';
+import '../screens/touch_sanctuary_screen.dart';
 
 class AppTopBar extends StatelessWidget {
   final String? title;
@@ -81,6 +82,56 @@ class AppTopBar extends StatelessWidget {
           // Actions Row
           Row(
             children: [
+              // Touch & Draw Studio Isolated Full-Screen Menu Button
+              GestureDetector(
+                onTap: () {
+                  HapticFeedback.lightImpact();
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const TouchSanctuaryScreen(),
+                    ),
+                  );
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  margin: const EdgeInsets.only(right: 8),
+                  decoration: BoxDecoration(
+                    color: forceDark
+                        ? AppColors.romanceSurface
+                        : (isDark ? AppColors.darkSurface : AppColors.lightSurface),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: forceDark
+                          ? AppColors.romanceBorder
+                          : (isDark ? AppColors.darkBorder : AppColors.lightBorder),
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.fingerprint_rounded,
+                        size: 13,
+                        color: AppColors.terra,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Touch',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          color: forceDark
+                              ? AppColors.romanceInk
+                              : (isDark ? AppColors.darkInk : AppColors.lightInk),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
               // Music & Atmosphere Studio Screen
               GestureDetector(
                 onTap: () {
