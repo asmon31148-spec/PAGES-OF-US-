@@ -365,7 +365,8 @@ class StageProvider extends ChangeNotifier {
           final list = (data['strokes'] as List)
               .map((e) => DrawingStroke.fromJson(Map<String, dynamic>.from(e as Map)))
               .toList();
-          _drawingStrokes = list;
+          _drawingStrokes.clear();
+          _drawingStrokes.addAll(list);
           notifyListeners();
         }
       },
