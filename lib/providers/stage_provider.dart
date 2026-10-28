@@ -421,6 +421,16 @@ class StageProvider extends ChangeNotifier {
           notifyListeners();
         }
       },
+      onListenInvite: (data) {
+        final sender = data['senderId'] as String?;
+        if (sender != userId) {
+          NotificationService.showListenTogetherInviteNotification(
+            partnerNickname: data['senderNickname'] ?? (partnerNickname ?? 'Partner'),
+            songTitle: data['songTitle'] ?? 'Music',
+            artist: data['artist'] ?? '',
+          );
+        }
+      },
     );
   }
 

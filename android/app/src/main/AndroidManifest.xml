@@ -56,6 +56,17 @@
             android:name="flutterEmbedding"
             android:value="2" />
 
+        <!-- Firebase Cloud Messaging Default Notification Icon, Color & Channel -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@mipmap/ic_launcher" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_color"
+            android:resource="@color/notification_color" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="com.pagesofus.app.partner" />
+
         <!-- Audio Service Foreground Media Playback -->
         <service android:name="com.ryanheise.audioservice.AudioService"
             android:foregroundServiceType="mediaPlayback"

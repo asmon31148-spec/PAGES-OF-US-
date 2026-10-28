@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:audio_service/audio_service.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/app_colors.dart';
@@ -22,7 +23,15 @@ import 'features/world/screens/world_screen.dart';
 import 'features/memories/screens/memories_screen.dart';
 import 'features/vault/screens/vault_screen.dart';
 import 'features/splash/screens/splash_screen.dart';
+import 'features/music/screens/listen_together_screen.dart';
 import 'widgets/custom_bottom_nav.dart';
+
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  try {
+    await Firebase.initializeApp();
+  } catch (_) {}
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -33,6 +42,7 @@ void main() async {
   // 2. Initialize Firebase Core
   try {
     await Firebase.initializeApp();
+    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
   } catch (_) {
     // Allows offline launch with cached state
   }
@@ -124,15 +134,35 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold> with Wi
   int _currentIndex = 0;
   String? _syncedSpaceId;
   String? _syncedPartnerId;
+  StreamSubscription? _notifSub;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+
+    // Deep-linking from notification taps
+    _notifSub = NotificationService.selectNotificationStream.stream.listen((payload) {
+      if (!mounted || payload == null) return;
+      if (payload == 'tab_0' || payload == 'daily_sync' || payload == 'pairing_success' || payload == 'couple_goals') {
+        setState(() => _currentIndex = 0);
+      } else if (payload == 'tab_1' || payload == 'partner_weather') {
+        setState(() => _currentIndex = 1);
+      } else if (payload == 'tab_2' || payload.startsWith('memory_') || payload.startsWith('letter_')) {
+        setState(() => _currentIndex = 2);
+      } else if (payload == 'tab_3' || payload.startsWith('vault_')) {
+        setState(() => _currentIndex = 3);
+      } else if (payload == 'listen_together') {
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const ListenTogetherScreen()),
+        );
+      }
+    });
   }
 
   @override
   void dispose() {
+    _notifSub?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }

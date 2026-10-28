@@ -5,6 +5,7 @@ import '../data/models/user_profile.dart';
 import '../data/models/space_model.dart';
 import '../data/services/firebase_service.dart';
 import '../core/services/local_cache_service.dart';
+import '../core/services/notification_service.dart';
 
 class AuthProvider extends ChangeNotifier {
   UserProfile? _user;
@@ -76,8 +77,15 @@ class AuthProvider extends ChangeNotifier {
         if (partnerId.isNotEmpty && (_partner == null || _partner!.id != partnerId)) {
           final partnerData = await FirebaseService.getUserProfile(partnerId);
           if (partnerData != null) {
+            final wasUnpaired = _partner == null;
             _partner = partnerData;
             await LocalCacheService.setCachedPartner(partnerData.toJson());
+            if (wasUnpaired) {
+              // 1st: Pairing Successful notification
+              NotificationService.showPairingSuccessNotification(
+                partnerNickname: partnerData.nickname,
+              );
+            }
           }
         }
         notifyListeners();
@@ -87,6 +95,7 @@ class AuthProvider extends ChangeNotifier {
 
   Future<void> refreshUserData(String uid) async {
     try {
+      NotificationService.syncDeviceToken(uid);
       final profile = await FirebaseService.getUserProfile(uid);
       if (profile != null) {
         _user = profile;
@@ -223,6 +232,10 @@ class AuthProvider extends ChangeNotifier {
           if (partnerData != null) {
             _partner = partnerData;
             await LocalCacheService.setCachedPartner(partnerData.toJson());
+            // 1st: Pairing Successful notification
+            NotificationService.showPairingSuccessNotification(
+              partnerNickname: partnerData.nickname,
+            );
           }
         }
         _isLoading = false;

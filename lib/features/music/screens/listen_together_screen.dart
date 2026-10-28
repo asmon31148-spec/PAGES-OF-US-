@@ -16,9 +16,14 @@ class _ListenTogetherScreenState extends State<ListenTogetherScreen> {
   @override
   void initState() {
     super.initState();
-    final space = context.read<AuthProvider>().space;
+    final auth = context.read<AuthProvider>();
+    final space = auth.space;
     if (space != null) {
-      context.read<AudioProvider>().startListenTogether(space.id);
+      context.read<AudioProvider>().startListenTogether(
+            space.id,
+            userId: auth.user?.id,
+            nickname: auth.user?.nickname,
+          );
     }
   }
 

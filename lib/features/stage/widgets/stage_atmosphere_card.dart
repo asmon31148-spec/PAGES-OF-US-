@@ -39,12 +39,12 @@ class _StageAtmosphereCardState extends State<StageAtmosphereCard> {
     if (_isLoading) {
       return Container(
         height: 64,
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+        margin: const EdgeInsets.symmetric(vertical: 6),
         decoration: BoxDecoration(
           color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+          border: Border(
+            top: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+            bottom: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
           ),
         ),
         alignment: Alignment.center,
@@ -66,13 +66,13 @@ class _StageAtmosphereCardState extends State<StageAtmosphereCard> {
         );
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      margin: const EdgeInsets.symmetric(vertical: 6),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+        border: Border(
+          top: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+          bottom: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
         ),
       ),
       child: Row(

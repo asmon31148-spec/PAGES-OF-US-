@@ -170,18 +170,24 @@ class _StageScreenState extends State<StageScreen> {
                       GestureDetector(
                         onTap: () => GoalTrackerModal.show(context),
                         child: Container(
-                          margin: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 6),
-                          padding: const EdgeInsets.all(12),
+                          margin: const EdgeInsets.symmetric(vertical: 6),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 12),
                           decoration: BoxDecoration(
                             color: isDark
                                 ? AppColors.darkSurface
                                 : AppColors.lightSurface,
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                              color: isDark
-                                  ? AppColors.darkBorder
-                                  : AppColors.lightBorder,
+                            border: Border(
+                              top: BorderSide(
+                                color: isDark
+                                    ? AppColors.darkBorder
+                                    : AppColors.lightBorder,
+                              ),
+                              bottom: BorderSide(
+                                color: isDark
+                                    ? AppColors.darkBorder
+                                    : AppColors.lightBorder,
+                              ),
                             ),
                           ),
                           child: Row(

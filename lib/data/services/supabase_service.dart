@@ -34,6 +34,7 @@ class SupabaseService {
   static Function(Map<String, dynamic> data)? _onTouchCountSync;
   static Function(Map<String, dynamic> data)? _onDailyPrompt;
   static Function(Map<String, dynamic> data)? _onPinnedNote;
+  static Function(Map<String, dynamic> data)? _onListenInvite;
 
   static void addLocationListener(Function(Map<String, dynamic> data) callback) {
     if (!_locationCallbacks.contains(callback)) {
@@ -140,6 +141,11 @@ class SupabaseService {
       callback: (payload) => _onPinnedNote?.call(payload),
     );
 
+    ch.onBroadcast(
+      event: 'LISTEN_INVITE',
+      callback: (payload) => _onListenInvite?.call(payload),
+    );
+
     ch.subscribe((status, [error]) {
       if (status == RealtimeSubscribeStatus.channelError || status == RealtimeSubscribeStatus.closed) {
         Future.delayed(const Duration(milliseconds: 1500), () {
@@ -167,6 +173,7 @@ class SupabaseService {
     Function(Map<String, dynamic> data)? onTouchCountSync,
     Function(Map<String, dynamic> data)? onDailyPrompt,
     Function(Map<String, dynamic> data)? onPinnedNote,
+    Function(Map<String, dynamic> data)? onListenInvite,
   }) {
     if (_client == null || spaceId.isEmpty) return;
 
@@ -179,6 +186,7 @@ class SupabaseService {
     _onTouchCountSync = onTouchCountSync;
     _onDailyPrompt = onDailyPrompt;
     _onPinnedNote = onPinnedNote;
+    _onListenInvite = onListenInvite;
 
     try {
       _ensureChannel(spaceId);

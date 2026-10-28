@@ -7,6 +7,7 @@ import '../features/music/models/music_models.dart';
 import '../core/services/audio_handler.dart';
 import '../core/services/local_cache_service.dart';
 import '../data/services/firebase_service.dart';
+import '../data/services/supabase_service.dart';
 
 class AudioProvider extends ChangeNotifier {
   final SanctuaryAudioHandler? audioHandler;
@@ -737,7 +738,7 @@ class AudioProvider extends ChangeNotifier {
   // -------------------------------------------------------------
   // LISTEN TOGETHER (REALTIME SUPABASE BROADCAST)
   // -------------------------------------------------------------
-  void startListenTogether(String spaceId) {
+  void startListenTogether(String spaceId, {String? userId, String? nickname}) {
     _isListenTogetherActive = true;
     _syncSpaceId = spaceId;
     notifyListeners();
@@ -745,6 +746,18 @@ class AudioProvider extends ChangeNotifier {
     try {
       final supabase = Supabase.instance.client;
       _syncChannel = supabase.channel('music_sync_$spaceId');
+
+      // 5th: Broadcast listen together invitation to partner
+      SupabaseService.broadcastEvent(
+        spaceId: spaceId,
+        eventType: 'LISTEN_INVITE',
+        payload: {
+          'senderId': userId ?? '',
+          'senderNickname': nickname ?? 'Your Partner',
+          'songTitle': currentSong.title,
+          'artist': currentSong.artist,
+        },
+      );
       _syncChannel!.onBroadcast(
         event: 'playback_update',
         callback: (payload) {

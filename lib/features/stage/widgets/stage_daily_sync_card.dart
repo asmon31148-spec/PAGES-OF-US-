@@ -92,13 +92,13 @@ class _StageDailySyncCardState extends State<StageDailySyncCard> {
     final canSubmit = !_isSubmitting && _answerController.text.trim().isNotEmpty;
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.symmetric(vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       decoration: BoxDecoration(
         color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+        border: Border(
+          top: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+          bottom: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
         ),
       ),
       child: Column(
@@ -106,24 +106,28 @@ class _StageDailySyncCardState extends State<StageDailySyncCard> {
         children: [
           // Header Row with Vibe Tag + Studio & History Buttons
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppColors.terra.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  vibeTag.toUpperCase(),
-                  style: const TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.terra,
-                    letterSpacing: 0.5,
+              Flexible(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.terra.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    vibeTag.toUpperCase(),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.terra,
+                      letterSpacing: 0.4,
+                    ),
                   ),
                 ),
               ),
+              const SizedBox(width: 8),
 
               // Action Buttons: AI Studio, Custom +, History
               Row(
@@ -139,10 +143,11 @@ class _StageDailySyncCardState extends State<StageDailySyncCard> {
                       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
                       decoration: BoxDecoration(
                         color: AppColors.terra.withOpacity(0.14),
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(8),
                         border: Border.all(color: AppColors.terra.withOpacity(0.3)),
                       ),
                       child: Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: const [
                           Icon(Icons.auto_awesome, size: 11, color: AppColors.terra),
                           SizedBox(width: 3),
@@ -170,9 +175,10 @@ class _StageDailySyncCardState extends State<StageDailySyncCard> {
                       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
                       decoration: BoxDecoration(
                         color: isDark ? Colors.white10 : Colors.black.withOpacity(0.05),
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(8),
                       ),
                       child: Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(
                             Icons.add_rounded,
@@ -204,16 +210,17 @@ class _StageDailySyncCardState extends State<StageDailySyncCard> {
                       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
                       decoration: BoxDecoration(
                         color: isDark ? Colors.white10 : Colors.black.withOpacity(0.05),
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(8),
                       ),
                       child: Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(
                             Icons.history_rounded,
                             size: 12,
                             color: isDark ? Colors.white70 : Colors.black54,
                           ),
-                          const SizedBox(width: 2),
+                          const SizedBox(width: 3),
                           Text(
                             'History',
                             style: TextStyle(

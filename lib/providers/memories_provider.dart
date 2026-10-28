@@ -303,6 +303,17 @@ class MemoriesProvider extends ChangeNotifier {
                 partnerNickname: partnerNickname,
               ))
           .toList();
+
+      // 2nd: Schedule weekly random old memories recap
+      if (_memories.isNotEmpty) {
+        final randomItem = _memories[Random().nextInt(_memories.length)];
+        NotificationService.scheduleWeeklyMemoryRecap(
+          memoryId: randomItem.id,
+          memoryTitle: randomItem.title,
+          memoryCaption: randomItem.caption,
+        );
+      }
+
       notifyListeners();
     } catch (_) {}
   }
@@ -567,6 +578,20 @@ class MemoriesProvider extends ChangeNotifier {
       final supabase = SupabaseService.client;
       if (supabase != null) {
         await supabase.from('letters').insert(newLetter.toJson(spaceId: spaceId));
+        // 4th: Broadcast new letter event to partner
+        try {
+          final ch = supabase.channel('letters_$spaceId');
+          await ch.sendBroadcastMessage(
+            event: 'NEW_LETTER',
+            payload: {
+              'senderId': author,
+              'type': 'letter',
+              'title': title,
+              'caption': body.length > 50 ? '${body.substring(0, 50)}...' : body,
+              'id': newId,
+            },
+          );
+        } catch (_) {}
       }
     } catch (_) {}
   }
