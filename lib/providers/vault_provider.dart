@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:audioplayers/audioplayers.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_firestore/cloud_firestore.dart' hide Source;
 import '../data/models/vault_item.dart';
 import '../data/models/event_capsule.dart';
 import '../data/services/supabase_service.dart';

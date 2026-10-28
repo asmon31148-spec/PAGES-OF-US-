@@ -662,7 +662,7 @@ class _TimelineSubviewState extends State<TimelineSubview> {
                               Row(
                                 children: [
                                   IconButton.filled(
-                                    style: IconButton.filled(
+                                    style: IconButton.styleFrom(
                                       backgroundColor: branchColor,
                                       foregroundColor: Colors.white,
                                     ),
