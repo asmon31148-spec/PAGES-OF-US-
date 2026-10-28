@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -25,9 +26,11 @@ class WorldScreen extends StatefulWidget {
   State<WorldScreen> createState() => _WorldScreenState();
 }
 
-class _WorldScreenState extends State<WorldScreen> {
+class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin {
   final MapController _mapController = MapController();
+  AnimationController? _mapAnimationController;
   bool _isMapReady = false;
+  bool _isFullScreenMap = false;
   MapBasemapStyle _mapStyle = MapBasemapStyle.dark;
 
   @override
@@ -36,6 +39,12 @@ class _WorldScreenState extends State<WorldScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _startLiveWorldTracking();
     });
+  }
+
+  @override
+  void dispose() {
+    _mapAnimationController?.dispose();
+    super.dispose();
   }
 
   void _startLiveWorldTracking() {
@@ -142,398 +151,77 @@ class _WorldScreenState extends State<WorldScreen> {
             ? LatLng(partnerLoc.lat, partnerLoc.lng)
             : const LatLng(22.5726, 88.3639);
 
-    return Scaffold(
-      backgroundColor: isDark ? AppColors.darkBg : AppColors.lightBg,
-      body: SafeArea(
-        child: Column(
-          children: [
-            // Top Bar
-            AppTopBar(
-              title: 'Our World',
-              subtitle: 'Realtime tether & presence',
-              onOpenProfile: () => ProfileModal.show(context),
-            ),
-
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.only(bottom: 24),
-                child: Column(
+    return PopScope(
+      canPop: !_isFullScreenMap,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        if (_isFullScreenMap) {
+          setState(() => _isFullScreenMap = false);
+        }
+      },
+      child: Scaffold(
+        backgroundColor: isDark ? AppColors.darkBg : AppColors.lightBg,
+        body: SafeArea(
+          child: _isFullScreenMap
+              ? _buildMapCard(
+                  isDark: isDark,
+                  myLoc: myLoc,
+                  partnerLoc: partnerLoc,
+                  distanceKm: distanceKm,
+                  user: user,
+                  partner: partner,
+                  worldProvider: worldProvider,
+                  defaultCenter: defaultCenter,
+                  isFullScreen: true,
+                )
+              : Column(
                   children: [
-                    // 1. Dual World Clocks Header Card
-                    _buildDualClocksCard(
-                      isDark: isDark,
-                      userNickname: user?.nickname ?? 'You',
-                      partnerNickname: partner?.nickname ?? 'Partner',
-                      myLoc: myLoc,
-                      partnerLoc: partnerLoc,
-                      now: worldProvider.now,
+                    // Top Bar
+                    AppTopBar(
+                      title: 'Our World',
+                      subtitle: 'Realtime tether & presence',
+                      onOpenProfile: () => ProfileModal.show(context),
                     ),
 
-                    // 2. Live Tether Distance Banner
-                    _buildDistanceBanner(
-                      isDark: isDark,
-                      distanceKm: distanceKm,
-                      myLoc: myLoc,
-                      partnerLoc: partnerLoc,
-                      partnerNickname: partner?.nickname ?? 'Partner',
-                    ),
-
-                    // 3. Interactive FlutterMap Card
-                    Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      height: 390,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(28),
-                        border: Border.all(
-                          color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.08),
-                            blurRadius: 16,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      clipBehavior: Clip.antiAlias,
-                      child: Stack(
-                        children: [
-                          FlutterMap(
-                            mapController: _mapController,
-                            options: MapOptions(
-                              initialCenter: defaultCenter,
-                              initialZoom: 14.0,
-                              maxZoom: 18.0,
-                              minZoom: 3.0,
-                              onMapReady: () {
-                                _isMapReady = true;
-                                _fitMapBounds(myLoc, partnerLoc);
-                              },
+                    Expanded(
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.only(bottom: 24),
+                        child: Column(
+                          children: [
+                            // 1. Dual World Clocks Header Card
+                            _buildDualClocksCard(
+                              isDark: isDark,
+                              userNickname: user?.nickname ?? 'You',
+                              partnerNickname: partner?.nickname ?? 'Partner',
+                              myLoc: myLoc,
+                              partnerLoc: partnerLoc,
+                              now: worldProvider.now,
                             ),
-                            children: [
-                              // Clean, verified tile layer without watermark
-                              TileLayer(
-                                urlTemplate: _getTileUrl(_mapStyle),
-                                userAgentPackageName: 'com.pagesofus.app',
-                                maxZoom: 18.0,
-                                maxNativeZoom: _getMaxNativeZoom(_mapStyle),
-                              ),
 
-                              // Polyline tether between user & partner
-                              if (myLoc != null &&
-                                  partnerLoc != null &&
-                                  (myLoc.lat != 0.0 || myLoc.lng != 0.0) &&
-                                  (partnerLoc.lat != 0.0 || partnerLoc.lng != 0.0))
-                                PolylineLayer(
-                                  polylines: [
-                                    Polyline(
-                                      points: [
-                                        LatLng(myLoc.lat, myLoc.lng),
-                                        LatLng(partnerLoc.lat, partnerLoc.lng),
-                                      ],
-                                      color: AppColors.terra.withOpacity(0.85),
-                                      strokeWidth: 3.5,
-                                    ),
-                                  ],
-                                ),
-
-                              // Floating Midpoint Distance Badge along the Tether Line
-                              if (myLoc != null &&
-                                  partnerLoc != null &&
-                                  distanceKm != null &&
-                                  (myLoc.lat != 0.0 || myLoc.lng != 0.0) &&
-                                  (partnerLoc.lat != 0.0 || partnerLoc.lng != 0.0))
-                                MarkerLayer(
-                                  markers: [
-                                    Marker(
-                                      point: LatLng(
-                                        (myLoc.lat + partnerLoc.lat) / 2,
-                                        (myLoc.lng + partnerLoc.lng) / 2,
-                                      ),
-                                      width: 140,
-                                      height: 32,
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-                                        decoration: BoxDecoration(
-                                          color: (isDark ? const Color(0xFF191823) : Colors.white).withOpacity(0.92),
-                                          borderRadius: BorderRadius.circular(16),
-                                          border: Border.all(color: AppColors.terra, width: 1.2),
-                                          boxShadow: const [
-                                            BoxShadow(color: Colors.black26, blurRadius: 4, offset: Offset(0, 2)),
-                                          ],
-                                        ),
-                                        child: Row(
-                                          mainAxisAlignment: MainAxisAlignment.center,
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            const Text('♥ ', style: TextStyle(color: AppColors.terra, fontSize: 10)),
-                                            Text(
-                                              distanceKm < 1.0
-                                                  ? '${(distanceKm * 1000).round()} m'
-                                                  : '${distanceKm.toStringAsFixed(1)} km',
-                                              style: TextStyle(
-                                                fontSize: 11,
-                                                fontWeight: FontWeight.bold,
-                                                color: isDark ? Colors.white : AppColors.lightInk,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-
-                              // Accuracy circles (Meter-precise GPS rings)
-                              CircleLayer(
-                                circles: [
-                                  // My accuracy ring
-                                  if (myLoc != null &&
-                                      myLoc.isSharingEnabled &&
-                                      myLoc.accuracy != null &&
-                                      myLoc.accuracy! > 0)
-                                    CircleMarker(
-                                      point: LatLng(myLoc.lat, myLoc.lng),
-                                      radius: myLoc.accuracy!.clamp(5.0, 150.0),
-                                      useRadiusInMeter: true,
-                                      color: AppColors.sage.withOpacity(0.12),
-                                      borderColor: AppColors.sage.withOpacity(0.45),
-                                      borderStrokeWidth: 1.2,
-                                    ),
-
-                                  // Partner accuracy ring
-                                  if (partnerLoc != null &&
-                                      partnerLoc.isSharingEnabled &&
-                                      partnerLoc.accuracy != null &&
-                                      partnerLoc.accuracy! > 0)
-                                    CircleMarker(
-                                      point: LatLng(partnerLoc.lat, partnerLoc.lng),
-                                      radius: partnerLoc.accuracy!.clamp(5.0, 150.0),
-                                      useRadiusInMeter: true,
-                                      color: AppColors.terra.withOpacity(0.12),
-                                      borderColor: AppColors.terra.withOpacity(0.45),
-                                      borderStrokeWidth: 1.2,
-                                    ),
-
-                                  // Pinned Places Geofence Circles
-                                  ...worldProvider.pinnedPlaces.map((p) {
-                                    return CircleMarker(
-                                      point: LatLng(p.lat, p.lng),
-                                      radius: p.radiusMeters,
-                                      useRadiusInMeter: true,
-                                      color: AppColors.sage.withOpacity(0.15),
-                                      borderColor: AppColors.sage,
-                                      borderStrokeWidth: 1.5,
-                                    );
-                                  }),
-                                ],
-                              ),
-
-                              // Markers Layer
-                              MarkerLayer(
-                                markers: [
-                                  // Pinned Places
-                                  ...worldProvider.pinnedPlaces.map((p) {
-                                    return Marker(
-                                      point: LatLng(p.lat, p.lng),
-                                      width: 40,
-                                      height: 40,
-                                      child: Container(
-                                        decoration: BoxDecoration(
-                                          color: isDark ? AppColors.darkSurface : Colors.white,
-                                          shape: BoxShape.circle,
-                                          boxShadow: const [
-                                            BoxShadow(color: Colors.black26, blurRadius: 4),
-                                          ],
-                                          border: Border.all(color: AppColors.sage, width: 2),
-                                        ),
-                                        alignment: Alignment.center,
-                                        child: Text(p.icon, style: const TextStyle(fontSize: 18)),
-                                      ),
-                                    );
-                                  }),
-
-                                  // User Marker
-                                  if (myLoc != null && (myLoc.lat != 0.0 || myLoc.lng != 0.0))
-                                    Marker(
-                                      point: LatLng(myLoc.lat, myLoc.lng),
-                                      width: 60,
-                                      height: 60,
-                                      child: _buildAvatarMarker(
-                                        name: user?.nickname ?? 'You',
-                                        avatarUrl: myLoc.avatarUrl ?? user?.avatarUrl,
-                                        isMe: true,
-                                        isDark: isDark,
-                                        customLabel: myLoc.customLabel,
-                                      ),
-                                    ),
-
-                                  // Partner Marker
-                                  if (partnerLoc != null && (partnerLoc.lat != 0.0 || partnerLoc.lng != 0.0))
-                                    Marker(
-                                      point: LatLng(partnerLoc.lat, partnerLoc.lng),
-                                      width: 60,
-                                      height: 60,
-                                      child: _buildAvatarMarker(
-                                        name: partner?.nickname ?? 'Partner',
-                                        avatarUrl: partnerLoc.avatarUrl ?? partner?.avatarUrl,
-                                        isMe: false,
-                                        isDark: isDark,
-                                        customLabel: partnerLoc.customLabel,
-                                      ),
-                                    ),
-                                ],
-                              ),
-                            ],
-                          ),
-
-                          // Top-Left Live Status Pill
-                          Positioned(
-                            top: 12,
-                            left: 12,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                              decoration: BoxDecoration(
-                                color: (isDark ? const Color(0xFF191823) : Colors.white).withOpacity(0.92),
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(
-                                  color: isDark ? Colors.white12 : Colors.black12,
-                                ),
-                                boxShadow: const [
-                                  BoxShadow(color: Colors.black12, blurRadius: 4),
-                                ],
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Container(
-                                    width: 8,
-                                    height: 8,
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      color: worldProvider.gpsStatus.contains('Live')
-                                          ? AppColors.sage
-                                          : (worldProvider.isLoading ? Colors.orangeAccent : Colors.grey),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    worldProvider.gpsStatus,
-                                    style: TextStyle(
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.bold,
-                                      color: isDark ? Colors.white70 : Colors.black87,
-                                    ),
-                                  ),
-                                ],
-                              ),
+                            // 2. Live Tether Distance Banner
+                            _buildDistanceBanner(
+                              isDark: isDark,
+                              distanceKm: distanceKm,
+                              myLoc: myLoc,
+                              partnerLoc: partnerLoc,
+                              partnerNickname: partner?.nickname ?? 'Partner',
                             ),
-                          ),
 
-                          // Top-Right Basemap Style Switcher
-                          Positioned(
-                            top: 12,
-                            right: 12,
-                            child: GestureDetector(
-                              onTap: () {
-                                setState(() {
-                                  if (_mapStyle == MapBasemapStyle.dark) {
-                                    _mapStyle = MapBasemapStyle.streets;
-                                  } else if (_mapStyle == MapBasemapStyle.streets) {
-                                    _mapStyle = MapBasemapStyle.satellite;
-                                  } else {
-                                    _mapStyle = MapBasemapStyle.dark;
-                                  }
-                                });
-                              },
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                                decoration: BoxDecoration(
-                                  color: (isDark ? const Color(0xFF191823) : Colors.white).withOpacity(0.92),
-                                  borderRadius: BorderRadius.circular(16),
-                                  border: Border.all(
-                                    color: isDark ? Colors.white12 : Colors.black12,
-                                  ),
-                                  boxShadow: const [
-                                    BoxShadow(color: Colors.black12, blurRadius: 4),
-                                  ],
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text(
-                                      _mapStyle == MapBasemapStyle.dark
-                                          ? '🌙 Dark'
-                                          : (_mapStyle == MapBasemapStyle.streets ? '🗺️ Street' : '🛰️ Satellite'),
-                                      style: TextStyle(
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.bold,
-                                        color: isDark ? Colors.white70 : Colors.black87,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
+                            // 3. Interactive FlutterMap Card (Full-screen toggleable, no big accuracy circles)
+                            _buildMapCard(
+                              isDark: isDark,
+                              myLoc: myLoc,
+                              partnerLoc: partnerLoc,
+                              distanceKm: distanceKm,
+                              user: user,
+                              partner: partner,
+                              worldProvider: worldProvider,
+                              defaultCenter: defaultCenter,
+                              isFullScreen: false,
                             ),
-                          ),
 
-                          // Floating Map Controls (Fit bounds & Center me / partner)
-                          Positioned(
-                            right: 12,
-                            bottom: 12,
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                // Fit Both
-                                FloatingActionButton.small(
-                                  heroTag: 'recenter_map',
-                                  backgroundColor: isDark ? AppColors.darkSurface : Colors.white,
-                                  foregroundColor: isDark ? AppColors.darkInk : AppColors.lightInk,
-                                  onPressed: () => _fitMapBounds(myLoc, partnerLoc),
-                                  tooltip: 'Fit Both',
-                                  child: const Icon(Icons.crop_free, size: 18),
-                                ),
-                                const SizedBox(height: 8),
-
-                                // Center Partner
-                                if (partnerLoc != null) ...[
-                                  FloatingActionButton.small(
-                                    heroTag: 'zoom_partner',
-                                    backgroundColor: AppColors.terra,
-                                    foregroundColor: Colors.white,
-                                    onPressed: () {
-                                      _mapController.move(LatLng(partnerLoc.lat, partnerLoc.lng), 15.5);
-                                    },
-                                    tooltip: 'Center Partner',
-                                    child: const Icon(Icons.favorite, size: 16),
-                                  ),
-                                  const SizedBox(height: 8),
-                                ],
-
-                                // Center Me
-                                FloatingActionButton.small(
-                                  heroTag: 'zoom_me',
-                                  backgroundColor: AppColors.sage,
-                                  foregroundColor: Colors.white,
-                                  onPressed: () {
-                                    if (myLoc != null) {
-                                      _mapController.move(LatLng(myLoc.lat, myLoc.lng), 15.5);
-                                    } else {
-                                      _startLiveWorldTracking();
-                                    }
-                                  },
-                                  tooltip: 'Center Me',
-                                  child: const Icon(Icons.my_location, size: 18),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    // 4. Quick Action Grid
-                    Padding(
+                            // 4. Quick Action Grid
+                            Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                       child: Row(
                         children: [
@@ -673,6 +361,449 @@ class _WorldScreenState extends State<WorldScreen> {
     );
   }
 
+  Widget _buildMapCard({
+    required bool isDark,
+    required UserLocationData? myLoc,
+    required UserLocationData? partnerLoc,
+    required double? distanceKm,
+    required dynamic user,
+    required dynamic partner,
+    required WorldProvider worldProvider,
+    required LatLng defaultCenter,
+    required bool isFullScreen,
+  }) {
+    return Container(
+      margin: isFullScreen
+          ? EdgeInsets.zero
+          : const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      height: isFullScreen ? double.infinity : 390,
+      width: double.infinity,
+      decoration: BoxDecoration(
+        borderRadius: isFullScreen ? BorderRadius.zero : BorderRadius.circular(28),
+        border: isFullScreen
+            ? null
+            : Border.all(
+                color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+              ),
+        boxShadow: isFullScreen
+            ? null
+            : [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.08),
+                  blurRadius: 16,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Stack(
+        children: [
+          FlutterMap(
+            mapController: _mapController,
+            options: MapOptions(
+              initialCenter: defaultCenter,
+              initialZoom: 14.0,
+              maxZoom: 18.0,
+              minZoom: 3.0,
+              onMapReady: () {
+                _isMapReady = true;
+                _fitMapBounds(myLoc, partnerLoc);
+              },
+            ),
+            children: [
+              // Clean verified tile layer
+              TileLayer(
+                urlTemplate: _getTileUrl(_mapStyle),
+                userAgentPackageName: 'com.pagesofus.app',
+                maxZoom: 18.0,
+                maxNativeZoom: _getMaxNativeZoom(_mapStyle),
+              ),
+
+              // Polyline tether between user & partner
+              if (myLoc != null &&
+                  partnerLoc != null &&
+                  (myLoc.lat != 0.0 || myLoc.lng != 0.0) &&
+                  (partnerLoc.lat != 0.0 || partnerLoc.lng != 0.0))
+                PolylineLayer(
+                  polylines: [
+                    Polyline(
+                      points: [
+                        LatLng(myLoc.lat, myLoc.lng),
+                        LatLng(partnerLoc.lat, partnerLoc.lng),
+                      ],
+                      color: AppColors.terra.withOpacity(0.85),
+                      strokeWidth: 3.5,
+                    ),
+                  ],
+                ),
+
+              // Floating Midpoint Distance Badge along the Tether Line
+              if (myLoc != null &&
+                  partnerLoc != null &&
+                  distanceKm != null &&
+                  (myLoc.lat != 0.0 || myLoc.lng != 0.0) &&
+                  (partnerLoc.lat != 0.0 || partnerLoc.lng != 0.0))
+                MarkerLayer(
+                  markers: [
+                    Marker(
+                      point: LatLng(
+                        (myLoc.lat + partnerLoc.lat) / 2,
+                        (myLoc.lng + partnerLoc.lng) / 2,
+                      ),
+                      width: 140,
+                      height: 32,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: (isDark ? const Color(0xFF191823) : Colors.white).withOpacity(0.92),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: AppColors.terra, width: 1.2),
+                          boxShadow: const [
+                            BoxShadow(color: Colors.black26, blurRadius: 4, offset: Offset(0, 2)),
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Text('♥ ', style: TextStyle(color: AppColors.terra, fontSize: 10)),
+                            Text(
+                              distanceKm < 1.0
+                                  ? '${(distanceKm * 1000).round()} m'
+                                  : '${distanceKm.toStringAsFixed(1)} km',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: isDark ? Colors.white : AppColors.lightInk,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+
+              // Pinned Places Geofence Circles only (NO huge accuracy circles)
+              if (worldProvider.pinnedPlaces.isNotEmpty)
+                CircleLayer(
+                  circles: [
+                    ...worldProvider.pinnedPlaces.map((p) {
+                      return CircleMarker(
+                        point: LatLng(p.lat, p.lng),
+                        radius: p.radiusMeters,
+                        useRadiusInMeter: true,
+                        color: AppColors.sage.withOpacity(0.15),
+                        borderColor: AppColors.sage,
+                        borderStrokeWidth: 1.5,
+                      );
+                    }),
+                  ],
+                ),
+
+              // Markers Layer
+              MarkerLayer(
+                markers: [
+                  // Pinned Places
+                  ...worldProvider.pinnedPlaces.map((p) {
+                    return Marker(
+                      point: LatLng(p.lat, p.lng),
+                      width: 40,
+                      height: 40,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: isDark ? AppColors.darkSurface : Colors.white,
+                          shape: BoxShape.circle,
+                          boxShadow: const [
+                            BoxShadow(color: Colors.black26, blurRadius: 4),
+                          ],
+                          border: Border.all(color: AppColors.sage, width: 2),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(p.icon, style: const TextStyle(fontSize: 18)),
+                      ),
+                    );
+                  }),
+
+                  // User Marker
+                  if (myLoc != null && (myLoc.lat != 0.0 || myLoc.lng != 0.0))
+                    Marker(
+                      point: LatLng(myLoc.lat, myLoc.lng),
+                      width: 60,
+                      height: 60,
+                      child: _buildAvatarMarker(
+                        name: user?.nickname ?? 'You',
+                        avatarUrl: myLoc.avatarUrl ?? user?.avatarUrl,
+                        isMe: true,
+                        isDark: isDark,
+                        customLabel: myLoc.customLabel,
+                      ),
+                    ),
+
+                  // Partner Marker
+                  if (partnerLoc != null && (partnerLoc.lat != 0.0 || partnerLoc.lng != 0.0))
+                    Marker(
+                      point: LatLng(partnerLoc.lat, partnerLoc.lng),
+                      width: 60,
+                      height: 60,
+                      child: _buildAvatarMarker(
+                        name: partner?.nickname ?? 'Partner',
+                        avatarUrl: partnerLoc.avatarUrl ?? partner?.avatarUrl,
+                        isMe: false,
+                        isDark: isDark,
+                        customLabel: partnerLoc.customLabel,
+                      ),
+                    ),
+                ],
+              ),
+            ],
+          ),
+
+          // Exit Full Screen button (Visible when in full screen)
+          if (isFullScreen)
+            Positioned(
+              top: 14,
+              left: 14,
+              child: Material(
+                color: (isDark ? const Color(0xFF191823) : Colors.white).withOpacity(0.92),
+                shape: const CircleBorder(),
+                elevation: 4,
+                child: InkWell(
+                  customBorder: const CircleBorder(),
+                  onTap: () {
+                    HapticFeedback.lightImpact();
+                    setState(() => _isFullScreenMap = false);
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(10),
+                    child: Icon(
+                      Icons.arrow_back_rounded,
+                      size: 20,
+                      color: isDark ? AppColors.darkInk : AppColors.lightInk,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+          // Top Live Status Pill
+          Positioned(
+            top: 14,
+            left: isFullScreen ? 62 : 12,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: (isDark ? const Color(0xFF191823) : Colors.white).withOpacity(0.92),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: isDark ? Colors.white12 : Colors.black12,
+                ),
+                boxShadow: const [
+                  BoxShadow(color: Colors.black12, blurRadius: 4),
+                ],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: worldProvider.gpsStatus.contains('Live')
+                          ? AppColors.sage
+                          : (worldProvider.isLoading ? Colors.orangeAccent : Colors.grey),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    worldProvider.gpsStatus,
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? Colors.white70 : Colors.black87,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // Top-Right Basemap Style Switcher
+          Positioned(
+            top: 14,
+            right: 12,
+            child: GestureDetector(
+              onTap: () {
+                setState(() {
+                  if (_mapStyle == MapBasemapStyle.dark) {
+                    _mapStyle = MapBasemapStyle.streets;
+                  } else if (_mapStyle == MapBasemapStyle.streets) {
+                    _mapStyle = MapBasemapStyle.satellite;
+                  } else {
+                    _mapStyle = MapBasemapStyle.dark;
+                  }
+                });
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: (isDark ? const Color(0xFF191823) : Colors.white).withOpacity(0.92),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: isDark ? Colors.white12 : Colors.black12,
+                  ),
+                  boxShadow: const [
+                    BoxShadow(color: Colors.black12, blurRadius: 4),
+                  ],
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      _mapStyle == MapBasemapStyle.dark
+                          ? '🌙 Dark'
+                          : (_mapStyle == MapBasemapStyle.streets ? '🗺️ Street' : '🛰️ Satellite'),
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? Colors.white70 : Colors.black87,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          // Floating Map Controls (Right side: Fullscreen toggle, Partner locator, Me locator)
+          Positioned(
+            right: 12,
+            bottom: isFullScreen ? 24 : 12,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // 1. Full Screen Toggle Button
+                FloatingActionButton.small(
+                  heroTag: 'map_fullscreen_toggle',
+                  backgroundColor: isDark ? AppColors.darkSurface : Colors.white,
+                  foregroundColor: isDark ? AppColors.darkInk : AppColors.lightInk,
+                  onPressed: () {
+                    HapticFeedback.lightImpact();
+                    setState(() => _isFullScreenMap = !_isFullScreenMap);
+                  },
+                  tooltip: isFullScreen ? 'Exit Full Screen' : 'Full Screen Map',
+                  child: Icon(
+                    isFullScreen ? Icons.fullscreen_exit_rounded : Icons.fullscreen_rounded,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(height: 8),
+
+                // 2. Locate Partner Button
+                FloatingActionButton.small(
+                  heroTag: 'zoom_partner',
+                  backgroundColor: AppColors.terra,
+                  foregroundColor: Colors.white,
+                  onPressed: () {
+                    if (partnerLoc != null && (partnerLoc.lat != 0.0 || partnerLoc.lng != 0.0)) {
+                      _animatedMapMove(LatLng(partnerLoc.lat, partnerLoc.lng), 16.0);
+                      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Centered on ${partner?.nickname ?? "Partner"}'),
+                          duration: const Duration(seconds: 2),
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
+                    } else {
+                      HapticFeedback.mediumImpact();
+                      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('${partner?.nickname ?? "Partner"} has not shared location yet'),
+                          duration: const Duration(seconds: 2),
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
+                    }
+                  },
+                  tooltip: 'Locate ${partner?.nickname ?? "Partner"}',
+                  child: const Icon(Icons.person_pin_circle_rounded, size: 20),
+                ),
+                const SizedBox(height: 8),
+
+                // 3. Locate Me Button
+                FloatingActionButton.small(
+                  heroTag: 'zoom_me',
+                  backgroundColor: AppColors.sage,
+                  foregroundColor: Colors.white,
+                  onPressed: () {
+                    if (myLoc != null && (myLoc.lat != 0.0 || myLoc.lng != 0.0)) {
+                      _animatedMapMove(LatLng(myLoc.lat, myLoc.lng), 16.0);
+                      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Centered on your location'),
+                          duration: Duration(seconds: 2),
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
+                    } else {
+                      _startLiveWorldTracking();
+                    }
+                  },
+                  tooltip: 'Center on Me',
+                  child: const Icon(Icons.my_location_rounded, size: 18),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _animatedMapMove(LatLng destLocation, double destZoom) {
+    if (!_isMapReady) return;
+    HapticFeedback.lightImpact();
+
+    _mapAnimationController?.stop();
+    _mapAnimationController?.dispose();
+
+    final latTween = Tween<double>(
+      begin: _mapController.camera.center.latitude,
+      end: destLocation.latitude,
+    );
+    final lngTween = Tween<double>(
+      begin: _mapController.camera.center.longitude,
+      end: destLocation.longitude,
+    );
+    final zoomTween = Tween<double>(
+      begin: _mapController.camera.zoom,
+      end: destZoom,
+    );
+
+    _mapAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 650),
+      vsync: this,
+    );
+
+    final animation = CurvedAnimation(
+      parent: _mapAnimationController!,
+      curve: Curves.easeInOutCubic,
+    );
+
+    _mapAnimationController!.addListener(() {
+      _mapController.move(
+        LatLng(latTween.evaluate(animation), lngTween.evaluate(animation)),
+        zoomTween.evaluate(animation),
+      );
+    });
+
+    _mapAnimationController!.forward();
+  }
+
   void _fitMapBounds(UserLocationData? myLoc, UserLocationData? partnerLoc) {
     if (!_isMapReady) return;
 
@@ -682,7 +813,7 @@ class _WorldScreenState extends State<WorldScreen> {
 
       // If both are very close (same building/room), zoom comfortably
       if (latDiff < 0.0003 && lngDiff < 0.0003) {
-        _mapController.move(LatLng(myLoc.lat, myLoc.lng), 16.0);
+        _animatedMapMove(LatLng(myLoc.lat, myLoc.lng), 16.0);
       } else {
         final bounds = LatLngBounds(
           LatLng(myLoc.lat, myLoc.lng),
@@ -693,9 +824,9 @@ class _WorldScreenState extends State<WorldScreen> {
         );
       }
     } else if (myLoc != null) {
-      _mapController.move(LatLng(myLoc.lat, myLoc.lng), 15.0);
+      _animatedMapMove(LatLng(myLoc.lat, myLoc.lng), 15.0);
     } else if (partnerLoc != null) {
-      _mapController.move(LatLng(partnerLoc.lat, partnerLoc.lng), 15.0);
+      _animatedMapMove(LatLng(partnerLoc.lat, partnerLoc.lng), 15.0);
     }
   }
 
