@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/models/memory_item.dart';
 import '../../../providers/memories_provider.dart';
@@ -23,14 +25,16 @@ class VoiceWhisperPlayerCard extends StatefulWidget {
 }
 
 class _VoiceWhisperPlayerCardState extends State<VoiceWhisperPlayerCard> {
-  // 32-bar natural speech waveform heights
+  // 36-bar realistic human speech pitch waveform curve (Instagram / WhatsApp style)
   static const List<double> _waveformHeights = [
-    8, 14, 24, 16, 10, 20, 32, 38, 28, 18, 26, 36, 42, 30, 20, 12,
-    18, 28, 34, 24, 16, 22, 32, 26, 18, 12, 20, 30, 22, 16, 10, 6,
+    8, 12, 22, 16, 10, 18, 28, 36, 26, 16, 22, 34, 40, 28, 18, 12,
+    16, 26, 32, 22, 14, 20, 30, 24, 16, 10, 18, 28, 20, 14, 22, 16,
+    12, 20, 14, 8,
   ];
 
   bool _isDragging = false;
   double _dragFraction = 0.0;
+  final GlobalKey _waveformKey = GlobalKey();
 
   String _resolveAudioUrl() {
     if (widget.memory.voiceUrl != null && widget.memory.voiceUrl!.isNotEmpty) {
@@ -39,22 +43,37 @@ class _VoiceWhisperPlayerCardState extends State<VoiceWhisperPlayerCard> {
     return widget.memory.mediaUrl;
   }
 
-  void _handlePlayToggle() {
+  void _handlePlayToggle(MemoriesProvider provider) {
     final url = _resolveAudioUrl();
     if (url.isEmpty) return;
 
-    widget.memoriesProvider.playVoiceWhisper(
+    HapticFeedback.lightImpact();
+    provider.playVoiceWhisper(
       widget.memory.id,
       url,
       ambientAudio: widget.audioProvider,
     );
   }
 
-  void _seekToFraction(double fraction) {
-    final dur = widget.memoriesProvider.voiceDuration;
-    if (dur.inMilliseconds > 0) {
-      final targetMs = (fraction * dur.inMilliseconds).toInt();
-      widget.memoriesProvider.seekVoiceWhisper(Duration(milliseconds: targetMs));
+  void _seekToFraction(MemoriesProvider provider, double fraction) {
+    Duration dur = provider.voiceDuration;
+    if (dur.inMilliseconds == 0) {
+      dur = const Duration(seconds: 15);
+    }
+    final targetMs = (fraction * dur.inMilliseconds).toInt();
+    provider.seekVoiceWhisper(Duration(milliseconds: targetMs));
+  }
+
+  void _updateDragPosition(Offset localPosition, MemoriesProvider provider) {
+    final RenderBox? renderBox = _waveformKey.currentContext?.findRenderObject() as RenderBox?;
+    if (renderBox != null) {
+      final width = renderBox.size.width;
+      if (width > 0) {
+        final fraction = (localPosition.dx / width).clamp(0.0, 1.0);
+        setState(() {
+          _dragFraction = fraction;
+        });
+      }
     }
   }
 
@@ -66,17 +85,21 @@ class _VoiceWhisperPlayerCardState extends State<VoiceWhisperPlayerCard> {
 
   @override
   Widget build(BuildContext context) {
-    final isPlaying = widget.memoriesProvider.playingVoiceId == widget.memory.id &&
-        widget.memoriesProvider.isVoicePlaying;
+    final memoriesProvider = context.watch<MemoriesProvider>();
+    final isPlaying = memoriesProvider.playingVoiceId == widget.memory.id &&
+        memoriesProvider.isVoicePlaying;
 
-    final position = widget.memoriesProvider.playingVoiceId == widget.memory.id
-        ? widget.memoriesProvider.voicePosition
+    final position = memoriesProvider.playingVoiceId == widget.memory.id
+        ? memoriesProvider.voicePosition
         : Duration.zero;
 
-    final duration = widget.memoriesProvider.playingVoiceId == widget.memory.id &&
-            widget.memoriesProvider.voiceDuration.inMilliseconds > 0
-        ? widget.memoriesProvider.voiceDuration
-        : const Duration(seconds: 30); // Default estimate if not played yet
+    Duration duration = Duration.zero;
+    if (memoriesProvider.playingVoiceId == widget.memory.id &&
+        memoriesProvider.voiceDuration.inMilliseconds > 0) {
+      duration = memoriesProvider.voiceDuration;
+    } else {
+      duration = const Duration(seconds: 15); // Default visual estimation
+    }
 
     final double progressFraction = _isDragging
         ? _dragFraction
@@ -84,15 +107,17 @@ class _VoiceWhisperPlayerCardState extends State<VoiceWhisperPlayerCard> {
             ? (position.inMilliseconds / duration.inMilliseconds).clamp(0.0, 1.0)
             : 0.0);
 
-    final cardBg = widget.isDark ? const Color(0xFF161C19) : const Color(0xFFF2F4F2);
+    final cardBg = widget.isDark ? const Color(0xFF141C18) : const Color(0xFFF3F5F3);
     final activeColor = AppColors.terra;
-    final inactiveColor = widget.isDark ? Colors.white.withOpacity(0.18) : Colors.black.withOpacity(0.15);
+    final inactiveColor = widget.isDark
+        ? Colors.white.withOpacity(0.18)
+        : Colors.black.withOpacity(0.16);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       decoration: BoxDecoration(
         color: cardBg,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
         border: Border(
           bottom: BorderSide(
             color: widget.isDark ? Colors.white10 : Colors.black12,
@@ -103,19 +128,24 @@ class _VoiceWhisperPlayerCardState extends State<VoiceWhisperPlayerCard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header Row
+          // Header Badge Row
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3.5),
                 decoration: BoxDecoration(
-                  color: activeColor.withOpacity(0.15),
+                  color: activeColor.withOpacity(0.14),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.graphic_eq_rounded, size: 12, color: activeColor),
+                    Icon(
+                      isPlaying ? Icons.graphic_eq_rounded : Icons.mic_rounded,
+                      size: 13,
+                      color: activeColor,
+                    ),
                     const SizedBox(width: 4),
                     Text(
                       'VOICE NOTE',
@@ -129,28 +159,41 @@ class _VoiceWhisperPlayerCardState extends State<VoiceWhisperPlayerCard> {
                   ],
                 ),
               ),
-              const SizedBox(width: 8),
               if (isPlaying)
-                Text(
-                  'Playing...',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontStyle: FontStyle.italic,
-                    color: activeColor,
-                    fontWeight: FontWeight.w500,
-                  ),
+                Row(
+                  children: [
+                    Container(
+                      width: 6,
+                      height: 6,
+                      decoration: BoxDecoration(
+                        color: activeColor,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 5),
+                    Text(
+                      'Playing whisper...',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontStyle: FontStyle.italic,
+                        color: activeColor,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
                 ),
             ],
           ),
           const SizedBox(height: 14),
 
-          // Main WhatsApp/Instagram-style player row
+          // Main WhatsApp / Instagram style player row
           Row(
             children: [
               // Play/Pause button
               GestureDetector(
-                onTap: _handlePlayToggle,
-                child: Container(
+                onTap: () => _handlePlayToggle(memoriesProvider),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
                   width: 46,
                   height: 46,
                   decoration: BoxDecoration(
@@ -158,8 +201,9 @@ class _VoiceWhisperPlayerCardState extends State<VoiceWhisperPlayerCard> {
                     color: activeColor,
                     boxShadow: [
                       BoxShadow(
-                        color: activeColor.withOpacity(0.4),
-                        blurRadius: 10,
+                        color: activeColor.withOpacity(isPlaying ? 0.45 : 0.25),
+                        blurRadius: isPlaying ? 12 : 6,
+                        spreadRadius: isPlaying ? 1.5 : 0,
                         offset: const Offset(0, 3),
                       ),
                     ],
@@ -175,69 +219,106 @@ class _VoiceWhisperPlayerCardState extends State<VoiceWhisperPlayerCard> {
               ),
               const SizedBox(width: 14),
 
-              // Interactive Waveform & Timestamps
+              // Interactive Waveform & Smooth Timestamps
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Waveform scrubber
+                    // Waveform scrubber container
                     GestureDetector(
                       behavior: HitTestBehavior.opaque,
                       onHorizontalDragStart: (details) {
-                        setState(() {
-                          _isDragging = true;
-                        });
+                        setState(() => _isDragging = true);
+                        _updateDragPosition(details.localPosition, memoriesProvider);
                       },
                       onHorizontalDragUpdate: (details) {
-                        final box = context.findRenderObject() as RenderBox?;
-                        if (box != null) {
-                          // calculate fraction based on waveform width
-                          final localX = details.localPosition.dx;
-                          final fraction = (localX / 200).clamp(0.0, 1.0);
-                          setState(() {
-                            _dragFraction = fraction;
-                          });
-                        }
+                        _updateDragPosition(details.localPosition, memoriesProvider);
                       },
                       onHorizontalDragEnd: (details) {
-                        setState(() {
-                          _isDragging = false;
-                        });
-                        _seekToFraction(_dragFraction);
+                        setState(() => _isDragging = false);
+                        _seekToFraction(memoriesProvider, _dragFraction);
+                        HapticFeedback.selectionClick();
                       },
                       onTapDown: (details) {
-                        final box = context.findRenderObject() as RenderBox?;
-                        if (box != null) {
-                          final localX = details.localPosition.dx;
-                          final fraction = (localX / 200).clamp(0.0, 1.0);
-                          _seekToFraction(fraction);
+                        final RenderBox? renderBox = _waveformKey.currentContext?.findRenderObject() as RenderBox?;
+                        if (renderBox != null) {
+                          final fraction = (details.localPosition.dx / renderBox.size.width).clamp(0.0, 1.0);
+                          _seekToFraction(memoriesProvider, fraction);
+                          HapticFeedback.selectionClick();
                         }
                       },
-                      child: SizedBox(
-                        height: 44,
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: List.generate(_waveformHeights.length, (idx) {
-                            final barFraction = (idx + 1) / _waveformHeights.length;
-                            final isPlayed = barFraction <= progressFraction;
+                      child: Container(
+                        key: _waveformKey,
+                        height: 46,
+                        alignment: Alignment.center,
+                        child: LayoutBuilder(
+                          builder: (context, constraints) {
+                            final totalWidth = constraints.maxWidth;
+                            final thumbX = (progressFraction * totalWidth).clamp(0.0, totalWidth);
 
-                            return AnimatedContainer(
-                              duration: const Duration(milliseconds: 120),
-                              width: 3.2,
-                              height: _waveformHeights[idx],
-                              decoration: BoxDecoration(
-                                color: isPlayed ? activeColor : inactiveColor,
-                                borderRadius: BorderRadius.circular(2),
-                              ),
+                            return Stack(
+                              alignment: Alignment.centerLeft,
+                              clipBehavior: Clip.none,
+                              children: [
+                                // Pitch Waveform Bars
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: List.generate(_waveformHeights.length, (idx) {
+                                    final barFraction = (idx + 0.5) / _waveformHeights.length;
+                                    final isPlayed = barFraction <= progressFraction;
+
+                                    return AnimatedContainer(
+                                      duration: const Duration(milliseconds: 60),
+                                      width: 3.2,
+                                      height: _waveformHeights[idx],
+                                      decoration: BoxDecoration(
+                                        color: isPlayed ? activeColor : inactiveColor,
+                                        borderRadius: BorderRadius.circular(3),
+                                        boxShadow: isPlayed && isPlaying
+                                            ? [
+                                                BoxShadow(
+                                                  color: activeColor.withOpacity(0.35),
+                                                  blurRadius: 3,
+                                                  spreadRadius: 0.5,
+                                                ),
+                                              ]
+                                            : null,
+                                      ),
+                                    );
+                                  }),
+                                ),
+
+                                // Active WhatsApp-style Scrubber Thumb Dot
+                                if (progressFraction > 0.01)
+                                  Positioned(
+                                    left: thumbX - 4,
+                                    child: Container(
+                                      width: 8,
+                                      height: 8,
+                                      decoration: BoxDecoration(
+                                        color: activeColor,
+                                        shape: BoxShape.circle,
+                                        border: Border.all(color: Colors.white, width: 1.5),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: activeColor.withOpacity(0.5),
+                                            blurRadius: 4,
+                                            spreadRadius: 1,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                              ],
                             );
-                          }),
+                          },
                         ),
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 3),
 
-                    // Timestamp row (current / total or remaining)
+                    // WhatsApp Timestamps row: Running Time (left) / Total Duration (right)
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -245,8 +326,10 @@ class _VoiceWhisperPlayerCardState extends State<VoiceWhisperPlayerCard> {
                           _formatDuration(position),
                           style: TextStyle(
                             fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: widget.isDark ? Colors.white70 : Colors.black87,
+                            fontWeight: FontWeight.bold,
+                            color: isPlaying
+                                ? activeColor
+                                : (widget.isDark ? Colors.white70 : Colors.black87),
                             letterSpacing: 0.3,
                           ),
                         ),

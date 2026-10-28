@@ -51,13 +51,23 @@ class MemoriesProvider extends ChangeNotifier {
   }
 
   void _initVoicePlayerListeners() {
-    _voicePosSub = _voicePlayer.onPositionChanged.listen((pos) {
+    _voicePosSub = _voicePlayer.onPositionChanged.listen((pos) async {
       _voicePosition = pos;
+      if (_voiceDuration.inMilliseconds == 0 || _voiceDuration == const Duration(seconds: 30)) {
+        try {
+          final d = await _voicePlayer.getDuration();
+          if (d != null && d.inMilliseconds > 0) {
+            _voiceDuration = d;
+          }
+        } catch (_) {}
+      }
       notifyListeners();
     });
     _voiceDurSub = _voicePlayer.onDurationChanged.listen((dur) {
-      _voiceDuration = dur;
-      notifyListeners();
+      if (dur.inMilliseconds > 0) {
+        _voiceDuration = dur;
+        notifyListeners();
+      }
     });
     _voiceStateSub = _voicePlayer.onPlayerStateChanged.listen((state) {
       _playerState = state;
@@ -324,6 +334,13 @@ class MemoriesProvider extends ChangeNotifier {
       }
 
       await _voicePlayer.play(source);
+      try {
+        final d = await _voicePlayer.getDuration();
+        if (d != null && d.inMilliseconds > 0) {
+          _voiceDuration = d;
+          notifyListeners();
+        }
+      } catch (_) {}
     } catch (_) {
       ambientAudio?.restoreFromMedia();
       _playingVoiceId = null;
