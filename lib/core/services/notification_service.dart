@@ -63,7 +63,7 @@ class NotificationService {
         const AndroidNotificationChannel(
           vaultChannelId,
           vaultChannelName,
-          description: 'Midnight time-lock capsule unlocks and secret surprises',
+          description: 'Midnight time-lock vault unlocks and secret surprises',
           importance: Importance.max,
           enableVibration: true,
           showBadge: true,
@@ -365,18 +365,18 @@ class NotificationService {
 
     if (lower.contains('birthday') || lower.contains('bday')) {
       notifTitle = '🎂 Happy Birthday, my love! ✨';
-      notifBody = 'Your secret birthday capsule "$title" is now waiting for you! Open the vault to reveal your surprise 🎁💖';
+      notifBody = 'Your secret birthday vault "$title" is now waiting for you! Open it to reveal your surprise 🎁💖';
     } else if (lower.contains('meet') || lower.contains('anniversary') || lower.contains('first date')) {
       notifTitle = '🥂 Happy Meet Day & Anniversary! 💫';
-      notifBody = 'Our special celebration capsule "$title" is finally unlocked! Step inside the vault to relive our magic ✨';
+      notifBody = 'Our special celebration vault "$title" is finally unlocked! Step inside to relive our magic ✨';
     } else if (lower.contains('valentine') || lower.contains('vday')) {
       notifTitle = '🌹 Happy Valentine’s Day, sweetheart! ❤️';
       notifBody = 'A treasure box of love "$title" has unlocked for you! Enter your 6-digit key to see your surprise 💌';
     } else if (lower.contains('christmas') || lower.contains('new year')) {
       notifTitle = '🎄 Warm Holiday Wishes, my heart! ✨';
-      notifBody = 'Your holiday capsule "$title" has unlocked. Open the vault to celebrate together ❄️💖';
+      notifBody = 'Your holiday vault "$title" has unlocked. Open it to celebrate together ❄️💖';
     } else {
-      notifTitle = '🗝️ Your Secret Vault Capsule is Ready!';
+      notifTitle = '🗝️ Your Secret Vault is Ready!';
       notifBody = 'The countdown for "$title" has ended. It\'s patiently waiting for you — open the vault to reveal it ✨';
     }
 

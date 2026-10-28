@@ -91,7 +91,7 @@ class _TimeLockCountdownWidgetState extends State<TimeLockCountdownWidget> {
           ),
           const SizedBox(height: 6),
           const Text(
-            'TIME-LOCKED SPECIAL CAPSULE',
+            'TIME-LOCKED SPECIAL VAULT',
             style: TextStyle(
               color: AppColors.romanceGold,
               fontSize: 10,
