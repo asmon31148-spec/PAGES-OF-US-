@@ -45,6 +45,16 @@ class StageProvider extends ChangeNotifier {
   StreamSubscription? _noteSub;
   StreamSubscription? _dailyPromptSub;
   StreamSubscription? _goalsSub;
+  StreamSubscription? _pulseSub;
+  StreamSubscription? _touchStatsSub;
+  String? _activeSpaceId;
+  String? _activeUserId;
+  String? _activePartnerId;
+  int _lastPulseTimestamp = 0;
+  Timer? _drawingSaveDebounce;
+
+  String? get activeSpaceId => _activeSpaceId;
+  String? get activePartnerId => _activePartnerId;
 
   String? get anniversaryDate => _anniversaryDate;
   MoodAura? get myMood => _myMood;
@@ -122,6 +132,15 @@ class StageProvider extends ChangeNotifier {
   void initSpaceListeners(String spaceId, String userId, String? partnerId) {
     if (spaceId.isEmpty) return;
 
+    final isSameSpace = _activeSpaceId == spaceId &&
+        _activeUserId == userId &&
+        _activePartnerId == partnerId;
+    if (isSameSpace && _anniversarySub != null) return;
+
+    _activeSpaceId = spaceId;
+    _activeUserId = userId;
+    _activePartnerId = partnerId;
+
     // 1. Listen to Anniversary
     _anniversarySub?.cancel();
     _anniversarySub = FirebaseService.streamFeatureDoc(spaceId, 'anniversary').listen((snap) {
@@ -136,46 +155,58 @@ class StageProvider extends ChangeNotifier {
       }
     });
 
-    // 2. Listen to Mood Aura
+    // 2. Listen to Mood Aura (Partitioned multi-device safe merge)
     _moodSub?.cancel();
     _moodSub = FirebaseService.streamFeatureDoc(spaceId, 'mood_aura').listen((snap) {
       if (snap.exists && snap.data() != null) {
-        final moods = snap.data()!['mood'] as Map<String, dynamic>? ?? {};
-        if (moods.containsKey(userId)) {
-          final myData = moods[userId] as Map<String, dynamic>?;
-          _myMood = myData != null ? MoodAura.fromJson(myData) : null;
+        final data = snap.data()!;
+        final moods = data['mood'] is Map ? Map<String, dynamic>.from(data['mood'] as Map) : data;
+
+        if (moods.containsKey(userId) && moods[userId] is Map) {
+          final myData = Map<String, dynamic>.from(moods[userId] as Map);
+          _myMood = MoodAura.fromJson(myData);
           LocalCacheService.setCachedMyMood(myData);
         }
-        if (partnerId != null && moods.containsKey(partnerId)) {
-          final pData = moods[partnerId] as Map<String, dynamic>?;
-          _partnerMood = pData != null ? MoodAura.fromJson(pData) : null;
+
+        if (partnerId != null && moods.containsKey(partnerId) && moods[partnerId] is Map) {
+          final pData = Map<String, dynamic>.from(moods[partnerId] as Map);
+          _partnerMood = MoodAura.fromJson(pData);
           LocalCacheService.setCachedPartnerMood(pData);
         } else {
-          // Resilient fallback: find partner entry if partnerId is null or differing
-          final partnerEntry = moods.entries.firstWhere(
-            (e) => e.key != userId,
-            orElse: () => const MapEntry('', null),
-          );
-          if (partnerEntry.key.isNotEmpty && partnerEntry.value != null) {
-            final pData = Map<String, dynamic>.from(partnerEntry.value as Map);
-            _partnerMood = MoodAura.fromJson(pData);
-            LocalCacheService.setCachedPartnerMood(pData);
+          // Dynamic partner lookup
+          for (final entry in moods.entries) {
+            if (entry.key != userId && entry.key != 'updatedAt' && entry.value is Map) {
+              final pData = Map<String, dynamic>.from(entry.value as Map);
+              _partnerMood = MoodAura.fromJson(pData);
+              LocalCacheService.setCachedPartnerMood(pData);
+              break;
+            }
           }
         }
         notifyListeners();
       }
     });
 
-    // 3. Listen to Pinned Notes
+    // 3. Listen to Pinned Notes (Partitioned multi-device safe merge)
     _noteSub?.cancel();
     _noteSub = FirebaseService.streamFeatureDoc(spaceId, 'pinned_note').listen((snap) {
       if (snap.exists && snap.data() != null) {
-        final rawNotes = snap.data()!['notes'] as Map<String, dynamic>? ?? {};
-        _pinnedNotes = rawNotes.map(
-          (k, v) => MapEntry(k, PinnedNote.fromJson(Map<String, dynamic>.from(v as Map))),
-        );
-        LocalCacheService.setCachedPinnedNotes(rawNotes);
-        notifyListeners();
+        final data = snap.data()!;
+        final rawNotes = data['notes'] is Map ? Map<String, dynamic>.from(data['notes'] as Map) : data;
+        final updatedMap = <String, PinnedNote>{};
+        rawNotes.forEach((k, v) {
+          if (k != 'updatedAt' && v is Map) {
+            try {
+              updatedMap[k] = PinnedNote.fromJson(Map<String, dynamic>.from(v));
+            } catch (_) {}
+          }
+        });
+        if (updatedMap.isNotEmpty) {
+          _pinnedNotes = updatedMap;
+          LocalCacheService.setCachedPinnedNotes(rawNotes);
+          _syncWidget(partnerId);
+          notifyListeners();
+        }
       }
     });
 
@@ -189,15 +220,79 @@ class StageProvider extends ChangeNotifier {
       }
     });
 
-    // 5. Fetch Goals
+    // 5. Goals Live Listener
+    _goalsSub?.cancel();
+    _goalsSub = FirebaseService.streamFeatureDoc(spaceId, 'couple_goals').listen((snap) {
+      if (snap.exists && snap.data() != null) {
+        final list = snap.data()!['goals'] as List?;
+        if (list != null && list.isNotEmpty) {
+          _goals = list
+              .map((e) => CoupleGoalItem.fromJson(Map<String, dynamic>.from(e as Map)))
+              .toList();
+          notifyListeners();
+        }
+      }
+    });
     fetchGoals(spaceId);
 
-    // 6. Supabase Realtime Broadcast for Live Touch, Pulses & Prompts
+    // 6. Dual Pulse Live Listener (Guaranteed delivery if socket packet dropped)
+    _pulseSub?.cancel();
+    _pulseSub = FirebaseService.streamFeatureDoc(spaceId, 'live_pulse').listen((snap) {
+      if (snap.exists && snap.data() != null) {
+        final data = snap.data()!;
+        final sender = data['senderId'] as String?;
+        final ts = (data['timestamp'] as num?)?.toInt() ?? 0;
+        final now = DateTime.now().millisecondsSinceEpoch;
+        if (sender != userId && (now - ts).abs() < 5000 && ts != _lastPulseTimestamp) {
+          _lastPulseTimestamp = ts;
+          _triggerPulseEffect();
+        }
+      }
+    });
+
+    // 7. Touch Stats Listener (Daily counts)
+    _touchStatsSub?.cancel();
+    _touchStatsSub = FirebaseService.streamFeatureDoc(spaceId, 'touch_stats').listen((snap) {
+      if (snap.exists && snap.data() != null) {
+        final data = snap.data()!;
+        final touches = data['touches'] as Map<String, dynamic>? ?? {};
+        if (partnerId != null && touches.containsKey(partnerId)) {
+          _partnerDailyTouches = (touches[partnerId] as num).toInt();
+        } else {
+          for (final entry in touches.entries) {
+            if (entry.key != userId && entry.value is num) {
+              _partnerDailyTouches = (entry.value as num).toInt();
+              break;
+            }
+          }
+        }
+        _weeklyTouches = _myDailyTouches + _partnerDailyTouches;
+        notifyListeners();
+      }
+    });
+
+    // 8. Fetch Cached Drawing Canvas
+    SupabaseService.getAppContent('drawing_$spaceId').then((content) {
+      if (content != null && content['strokes'] is List) {
+        final list = content['strokes'] as List;
+        _drawingStrokes.clear();
+        for (final s in list) {
+          if (s is Map) {
+            _drawingStrokes.add(DrawingStroke.fromJson(Map<String, dynamic>.from(s)));
+          }
+        }
+        notifyListeners();
+      }
+    });
+
+    // 9. Supabase Realtime Broadcast for Live Touch, Pulses & Drawings
     SupabaseService.subscribeToSpaceEvents(
       spaceId,
       onPulse: (data) {
         final sender = data['senderId'] as String?;
-        if (sender != userId) {
+        final ts = (data['timestamp'] as num?)?.toInt() ?? 0;
+        if (sender != userId && ts != _lastPulseTimestamp) {
+          _lastPulseTimestamp = ts;
           _triggerPulseEffect();
         }
       },
@@ -257,6 +352,7 @@ class StageProvider extends ChangeNotifier {
         final sender = data['senderId'] as String?;
         if (sender != userId && data['count'] != null) {
           _partnerDailyTouches = (data['count'] as num).toInt();
+          _weeklyTouches = _myDailyTouches + _partnerDailyTouches;
           try {
             LocalCacheService.prefs.setInt('touch_partner_daily', _partnerDailyTouches);
           } catch (_) {}
@@ -273,16 +369,15 @@ class StageProvider extends ChangeNotifier {
       },
       onPinnedNote: (data) {
         final sender = data['senderId'] as String?;
-        if (sender != userId && data['notes'] != null) {
-          final rawNotes = Map<String, dynamic>.from(data['notes'] as Map);
-          _pinnedNotes = rawNotes.map(
-            (k, v) => MapEntry(k, PinnedNote.fromJson(Map<String, dynamic>.from(v as Map))),
-          );
-          LocalCacheService.setCachedPinnedNotes(rawNotes);
+        if (sender != userId && data['note'] != null) {
+          final note = PinnedNote.fromJson(Map<String, dynamic>.from(data['note'] as Map));
+          _pinnedNotes[note.userId] = note;
           _syncWidget(partnerId);
           notifyListeners();
         }
       },
+    );
+  }
     );
   }
 
@@ -308,16 +403,29 @@ class StageProvider extends ChangeNotifier {
   }
 
   Future<void> sendPulse(String spaceId, String userId, String nickname) async {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    _lastPulseTimestamp = now;
     _triggerPulseEffect();
+
+    // 1. Instant WebSocket broadcast
     await SupabaseService.broadcastEvent(
       spaceId: spaceId,
       eventType: 'PULSE',
       payload: {
         'senderId': userId,
         'senderNickname': nickname,
-        'timestamp': DateTime.now().millisecondsSinceEpoch,
+        'timestamp': now,
       },
     );
+
+    // 2. Dual Firestore live pulse (100% delivery guarantee)
+    try {
+      await FirebaseService.saveFeatureDoc(spaceId, 'live_pulse', {
+        'senderId': userId,
+        'senderNickname': nickname,
+        'timestamp': now,
+      });
+    } catch (_) {}
   }
 
   Future<void> sendTouchPadEvent(String spaceId, String userId, double x, double y, {bool isTouching = true}) async {
@@ -348,11 +456,19 @@ class StageProvider extends ChangeNotifier {
 
     notifyListeners();
 
-    // Broadcast count to partner
+    // 1. Broadcast count to partner
     await SupabaseService.broadcastEvent(
       spaceId: spaceId,
       eventType: 'TOUCH_COUNT_SYNC',
       payload: {'senderId': userId, 'count': _myDailyTouches, 'date': todayStr},
+    );
+
+    // 2. Dual Firestore sync for persistent touches
+    await FirebaseService.saveNestedFeatureField(
+      spaceId,
+      'touch_stats',
+      'touches.$userId',
+      _myDailyTouches,
     );
 
     // Schedule weekly reminder notification
@@ -374,6 +490,17 @@ class StageProvider extends ChangeNotifier {
         'stroke': stroke.toJson(),
       },
     );
+
+    // Debounced canvas save (max 80 strokes)
+    _drawingSaveDebounce?.cancel();
+    _drawingSaveDebounce = Timer(const Duration(milliseconds: 1500), () {
+      final toSave = _drawingStrokes.length > 80
+          ? _drawingStrokes.sublist(_drawingStrokes.length - 80)
+          : _drawingStrokes;
+      SupabaseService.upsertAppContent('drawing_$spaceId', {
+        'strokes': toSave.map((s) => s.toJson()).toList(),
+      });
+    });
   }
 
   Future<void> clearDrawing(String spaceId, String userId) async {
@@ -385,6 +512,8 @@ class StageProvider extends ChangeNotifier {
       eventType: 'CLEAR_DRAWING',
       payload: {'senderId': userId},
     );
+
+    await SupabaseService.upsertAppContent('drawing_$spaceId', {'strokes': []});
   }
 
   Future<void> setAnniversary(String spaceId, String date) async {
@@ -400,20 +529,18 @@ class StageProvider extends ChangeNotifier {
     await LocalCacheService.setCachedMyMood(mood?.toJson());
     notifyListeners();
 
-    await FirebaseService.saveFeatureDoc(spaceId, 'mood_aura', {
-      'mood': {
-        userId: mood?.toJson(),
-      }
-    });
-
-    await SupabaseService.broadcastEvent(
-      spaceId: spaceId,
-      eventType: 'MOOD_UPDATE',
-      payload: {
-        'senderId': userId,
-        'mood': mood?.toJson(),
-      },
-    );
+    if (mood != null) {
+      await FirebaseService.saveUserFeatureField(spaceId, 'mood_aura', userId, mood.toJson());
+      await SupabaseService.upsertAppContent('mood_${spaceId}_$userId', mood.toJson());
+      await SupabaseService.broadcastEvent(
+        spaceId: spaceId,
+        eventType: 'MOOD_UPDATE',
+        payload: {
+          'senderId': userId,
+          'mood': mood.toJson(),
+        },
+      );
+    }
   }
 
   Future<void> saveDailyPromptAnswer(String spaceId, String userId, String answer) async {
@@ -444,11 +571,14 @@ class StageProvider extends ChangeNotifier {
     await LocalCacheService.setCachedDailyPrompt(updatedPrompt.toJson());
     notifyListeners();
 
-    // 1. Dual save: Firestore & Supabase app_content
-    await FirebaseService.saveFeatureDoc(spaceId, 'daily_prompt', updatedPrompt.toJson());
+    await FirebaseService.saveNestedFeatureField(
+      spaceId,
+      'daily_prompt',
+      'answers.$userId',
+      answer,
+      rootDefaults: updatedPrompt.toJson(),
+    );
     await SupabaseService.upsertAppContent('daily_prompt_$spaceId', updatedPrompt.toJson());
-
-    // 2. Realtime broadcast to partner
     await SupabaseService.broadcastEvent(
       spaceId: spaceId,
       eventType: 'DAILY_PROMPT_UPDATE',
@@ -467,23 +597,17 @@ class StageProvider extends ChangeNotifier {
       updatedAt: DateTime.now().toIso8601String(),
     );
     _pinnedNotes[userId] = note;
-    final allNotesJson = _pinnedNotes.map((k, v) => MapEntry(k, v.toJson()));
-    await LocalCacheService.setCachedPinnedNotes(allNotesJson);
     _syncWidget(null);
     notifyListeners();
 
-    await FirebaseService.saveFeatureDoc(spaceId, 'pinned_note', {
-      'notes': allNotesJson,
-    });
-    await SupabaseService.upsertAppContent('pinned_note_$spaceId', {
-      'notes': allNotesJson,
-    });
+    await FirebaseService.saveUserFeatureField(spaceId, 'pinned_note', userId, note.toJson());
+    await SupabaseService.upsertAppContent('pinned_note_${spaceId}_$userId', note.toJson());
     await SupabaseService.broadcastEvent(
       spaceId: spaceId,
       eventType: 'PINNED_NOTE_CHANGED',
       payload: {
         'senderId': userId,
-        'notes': allNotesJson,
+        'note': note.toJson(),
       },
     );
   }
@@ -573,11 +697,14 @@ class StageProvider extends ChangeNotifier {
   @override
   void dispose() {
     _partnerTouchDecayTimer?.cancel();
+    _drawingSaveDebounce?.cancel();
     _anniversarySub?.cancel();
     _moodSub?.cancel();
     _noteSub?.cancel();
     _dailyPromptSub?.cancel();
     _goalsSub?.cancel();
+    _pulseSub?.cancel();
+    _touchStatsSub?.cancel();
     super.dispose();
   }
 }

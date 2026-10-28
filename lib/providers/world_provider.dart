@@ -108,6 +108,10 @@ class WorldProvider extends ChangeNotifier {
               _locations[key] =
                   UserLocationData.fromJson(Map<String, dynamic>.from(val));
             });
+            if (partnerId != null && _locations[partnerId] != null) {
+              final pLoc = _locations[partnerId]!;
+              _fetchPartnerWeather(pLoc.lat, pLoc.lng);
+            }
             notifyListeners();
           }
           if (data['places'] != null) {
@@ -277,18 +281,27 @@ class WorldProvider extends ChangeNotifier {
       }
     } catch (_) {}
 
-    // 2. Firestore sync
+    // 2. Firestore sync (Safe update with dot notation so partner location is never erased)
     try {
-      final currentMap = _locations.map((k, v) => MapEntry(k, v.toJson()));
-      await FirebaseFirestore.instance
+      final docRef = FirebaseFirestore.instance
           .collection('spaces')
           .doc(spaceId)
           .collection('features')
-          .doc('locations')
-          .set({
-        'locations': currentMap,
-        'updatedAt': DateTime.now().toIso8601String(),
-      }, SetOptions(merge: true));
+          .doc('locations');
+
+      try {
+        await docRef.update({
+          'locations.${location.userId}': location.toJson(),
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+      } catch (_) {
+        await docRef.set({
+          'locations': {
+            location.userId: location.toJson(),
+          },
+          'updatedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+      }
     } catch (_) {}
   }
 

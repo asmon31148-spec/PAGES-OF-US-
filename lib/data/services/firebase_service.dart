@@ -233,4 +233,62 @@ class FirebaseService {
         .doc(featureName)
         .set(data, SetOptions(merge: true));
   }
+
+  /// Saves a feature field partitioned by userId so neither partner ever overwrites the other
+  static Future<void> saveUserFeatureField(
+    String spaceId,
+    String featureName,
+    String userId,
+    Map<String, dynamic> data,
+  ) async {
+    final docRef = firestore
+        .collection('spaces')
+        .doc(spaceId)
+        .collection('features')
+        .doc(featureName);
+
+    try {
+      await docRef.update({
+        userId: data,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    } catch (_) {
+      await docRef.set({
+        userId: data,
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+    }
+  }
+
+  /// Updates a nested map key (e.g. 'answers.$userId' or 'locations.$userId') safely
+  static Future<void> saveNestedFeatureField(
+    String spaceId,
+    String featureName,
+    String fieldPath,
+    dynamic value, {
+    Map<String, dynamic>? rootDefaults,
+  }) async {
+    final docRef = firestore
+        .collection('spaces')
+        .doc(spaceId)
+        .collection('features')
+        .doc(featureName);
+
+    try {
+      await docRef.update({
+        fieldPath: value,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    } catch (_) {
+      final initialMap = Map<String, dynamic>.from(rootDefaults ?? {});
+      initialMap['updatedAt'] = FieldValue.serverTimestamp();
+      await docRef.set(initialMap, SetOptions(merge: true));
+      try {
+        await docRef.update({
+          fieldPath: value,
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+      } catch (_) {}
+    }
+  }
 }

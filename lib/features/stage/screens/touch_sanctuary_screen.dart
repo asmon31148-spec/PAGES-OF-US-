@@ -71,6 +71,18 @@ class _TouchSanctuaryScreenState extends State<TouchSanctuaryScreen>
       vsync: this,
       duration: const Duration(milliseconds: 1600),
     )..repeat();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final auth = context.read<AuthProvider>();
+      if (auth.space != null && auth.user != null) {
+        context.read<StageProvider>().initSpaceListeners(
+              auth.space!.id,
+              auth.user!.id,
+              auth.partner?.id,
+            );
+      }
+    });
   }
 
   @override
@@ -486,40 +498,40 @@ class _TouchSanctuaryScreenState extends State<TouchSanctuaryScreen>
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onPanDown: (details) {
+        setState(() {
+          _isMyThumbDown = true;
+          _myThumbPoint = details.localPosition;
+        });
+        HapticFeedback.lightImpact();
         if (spaceId.isNotEmpty && userId.isNotEmpty) {
-          setState(() {
-            _isMyThumbDown = true;
-            _myThumbPoint = details.localPosition;
-          });
-          HapticFeedback.lightImpact();
           _handleThumbMove(details.localPosition, padSize, stageProvider, spaceId, userId, true);
         }
       },
       onPanUpdate: (details) {
+        setState(() {
+          _myThumbPoint = details.localPosition;
+        });
         if (spaceId.isNotEmpty && userId.isNotEmpty) {
-          setState(() {
-            _myThumbPoint = details.localPosition;
-          });
           _handleThumbMove(details.localPosition, padSize, stageProvider, spaceId, userId, true);
         }
       },
       onPanEnd: (_) {
+        setState(() {
+          _isMyThumbDown = false;
+          _isColliding = false;
+        });
+        _stopContinuousHeartbeat();
         if (spaceId.isNotEmpty && userId.isNotEmpty) {
-          setState(() {
-            _isMyThumbDown = false;
-            _isColliding = false;
-          });
-          _stopContinuousHeartbeat();
           _handleThumbMove(_myThumbPoint ?? Offset.zero, padSize, stageProvider, spaceId, userId, false);
         }
       },
       onPanCancel: () {
+        setState(() {
+          _isMyThumbDown = false;
+          _isColliding = false;
+        });
+        _stopContinuousHeartbeat();
         if (spaceId.isNotEmpty && userId.isNotEmpty) {
-          setState(() {
-            _isMyThumbDown = false;
-            _isColliding = false;
-          });
-          _stopContinuousHeartbeat();
           _handleThumbMove(_myThumbPoint ?? Offset.zero, padSize, stageProvider, spaceId, userId, false);
         }
       },
@@ -674,18 +686,20 @@ class _TouchSanctuaryScreenState extends State<TouchSanctuaryScreen>
             });
           },
           onPanEnd: (_) {
-            if (_activePoints != null && _activePoints!.isNotEmpty && spaceId.isNotEmpty) {
+            if (_activePoints != null && _activePoints!.isNotEmpty) {
               final newStroke = DrawingStroke(
                 points: List.from(_activePoints!),
                 colorValue: _selectedColor.value,
                 strokeWidth: _selectedWidth,
                 tool: _selectedTool,
               );
-              stageProvider.addDrawingStroke(newStroke, spaceId, userId);
-              setState(() {
-                _activePoints = null;
-              });
+              if (spaceId.isNotEmpty && userId.isNotEmpty) {
+                stageProvider.addDrawingStroke(newStroke, spaceId, userId);
+              }
             }
+            setState(() {
+              _activePoints = null;
+            });
           },
           child: CustomPaint(
             size: padSize,
@@ -903,6 +917,7 @@ class _TouchSanctuaryScreenState extends State<TouchSanctuaryScreen>
         _playLowPadTone();
         if (spaceId.isNotEmpty && userId.isNotEmpty) {
           stageProvider.incrementMyTouch(spaceId, userId, partnerNickname);
+          stageProvider.sendPulse(spaceId, userId, 'Partner');
         }
       },
       child: AnimatedBuilder(

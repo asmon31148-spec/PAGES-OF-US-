@@ -16,6 +16,8 @@ class VaultProvider extends ChangeNotifier {
   final AudioPlayer _vaultAudio = AudioPlayer();
   bool _isAudioPlaying = false;
   String? _currentPlayingTrack;
+  StreamSubscription? _vaultSub;
+  String? _activeSpaceId;
 
   List<VaultItem> get vaults => List.unmodifiable(_vaults);
   VaultItem? get selectedVault => _selectedVault ?? (_vaults.isNotEmpty ? _vaults.first : null);
@@ -159,6 +161,10 @@ class VaultProvider extends ChangeNotifier {
   // --- Real-time Sync & Persistence ---
 
   Future<void> initVaultSync(String spaceId) async {
+    if (spaceId.isEmpty) return;
+    if (_activeSpaceId == spaceId && _vaultSub != null) return;
+    _activeSpaceId = spaceId;
+
     final vaultDocId = 'vaults_$spaceId';
 
     // 1. Supabase fetch
@@ -233,7 +239,8 @@ class VaultProvider extends ChangeNotifier {
 
     // 3. Firestore Realtime Sync Listener
     try {
-      FirebaseFirestore.instance
+      _vaultSub?.cancel();
+      _vaultSub = FirebaseFirestore.instance
           .collection('spaces')
           .doc(spaceId)
           .collection('features')
@@ -395,6 +402,7 @@ class VaultProvider extends ChangeNotifier {
 
   @override
   void dispose() {
+    _vaultSub?.cancel();
     _vaultAudio.dispose();
     super.dispose();
   }

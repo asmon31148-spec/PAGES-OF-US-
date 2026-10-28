@@ -121,6 +121,8 @@ class MainNavigationScaffold extends StatefulWidget {
 
 class _MainNavigationScaffoldState extends State<MainNavigationScaffold> with WidgetsBindingObserver {
   int _currentIndex = 0;
+  String? _syncedSpaceId;
+  String? _syncedPartnerId;
 
   @override
   void initState() {
@@ -136,7 +138,12 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold> with Wi
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive || state == AppLifecycleState.detached) {
+    if (state == AppLifecycleState.resumed && mounted) {
+      final auth = context.read<AuthProvider>();
+      if (auth.user != null) {
+        auth.refreshUserData(auth.user!.id);
+      }
+    } else if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive || state == AppLifecycleState.detached) {
       if (mounted) {
         final audioProvider = context.read<AudioProvider>();
         // Atmosphere sounds strictly stop when leaving the app!
@@ -152,8 +159,40 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold> with Wi
   @override
   Widget build(BuildContext context) {
     final isDark = context.watch<ThemeProvider>().isDark;
+    final authProvider = context.watch<AuthProvider>();
     final isVaultTab = _currentIndex == 3;
     final isDarkScreen = isVaultTab || isDark;
+
+    // Reactively connect space listeners whenever user pairs or space changes
+    final space = authProvider.space;
+    final user = authProvider.user;
+    final partner = authProvider.partner;
+
+    if (space != null && user != null) {
+      if (_syncedSpaceId != space.id || _syncedPartnerId != partner?.id) {
+        _syncedSpaceId = space.id;
+        _syncedPartnerId = partner?.id;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          context.read<StageProvider>().initSpaceListeners(
+                space.id,
+                user.id,
+                partner?.id,
+              );
+          context.read<WorldProvider>().initWorldSync(
+                spaceId: space.id,
+                currentUserId: user.id,
+                partnerId: partner?.id,
+              );
+          context.read<VaultProvider>().initVaultSync(space.id);
+          context.read<MemoriesProvider>().initMemoriesSync(
+                spaceId: space.id,
+                currentUserId: user.id,
+                partnerNickname: partner?.nickname,
+              );
+        });
+      }
+    }
 
     final systemOverlay = SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,

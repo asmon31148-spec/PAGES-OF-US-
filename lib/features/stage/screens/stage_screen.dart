@@ -87,6 +87,16 @@ class _StageScreenState extends State<StageScreen> {
                 onRefresh: () async {
                   if (authProvider.user != null) {
                     await authProvider.refreshUserData(authProvider.user!.id);
+                    final space = authProvider.space;
+                    final user = authProvider.user;
+                    final partner = authProvider.partner;
+                    if (space != null && user != null && context.mounted) {
+                      context.read<StageProvider>().initSpaceListeners(
+                            space.id,
+                            user.id,
+                            partner?.id,
+                          );
+                    }
                   }
                 },
                 color: AppColors.sage,

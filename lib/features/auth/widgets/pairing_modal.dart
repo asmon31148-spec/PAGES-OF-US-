@@ -4,6 +4,10 @@ import 'package:provider/provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../providers/theme_provider.dart';
 import '../../../providers/auth_provider.dart';
+import '../../../providers/stage_provider.dart';
+import '../../../providers/world_provider.dart';
+import '../../../providers/vault_provider.dart';
+import '../../../providers/memories_provider.dart';
 
 class PairingModal extends StatefulWidget {
   const PairingModal({super.key});
@@ -211,6 +215,27 @@ class _PairingModalState extends State<PairingModal> {
                           final ok = await authProvider.joinSpace(code);
                           setState(() => _isLinking = false);
                           if (ok && context.mounted) {
+                            final space = authProvider.space;
+                            final user = authProvider.user;
+                            final partner = authProvider.partner;
+                            if (space != null && user != null) {
+                              context.read<StageProvider>().initSpaceListeners(
+                                    space.id,
+                                    user.id,
+                                    partner?.id,
+                                  );
+                              context.read<WorldProvider>().initWorldSync(
+                                    spaceId: space.id,
+                                    currentUserId: user.id,
+                                    partnerId: partner?.id,
+                                  );
+                              context.read<VaultProvider>().initVaultSync(space.id);
+                              context.read<MemoriesProvider>().initMemoriesSync(
+                                    spaceId: space.id,
+                                    currentUserId: user.id,
+                                    partnerNickname: partner?.nickname,
+                                  );
+                            }
                             Navigator.pop(context);
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(

@@ -118,16 +118,19 @@ jobs:
             - **Signing Certificate SHA-256**: `${{ steps.cert_fingerprints.outputs.sha256 }}`
             
             #### ✨ What's New in v${{ steps.app_version.outputs.version }}
+            - ⚡ **True Realtime 2-Device Bidirectional Sync**:
+              - Dual-Engine Transmission: Supabase Realtime WebSockets (0-50ms) + Firestore Live Feature Streams (guaranteed delivery).
+              - Reactive Lifecycle Coordinator: Automatically pairs and binds all listeners (`Stage`, `World`, `Vault`, `Memories`) the millisecond a space is joined or partner connects without requiring an app restart.
+              - Multi-Device Safe Partitioning: Firestore field dot-notation (`mood.$userId`, `notes.$userId`, `locations.$userId`) prevents partners from ever overwriting each other's data.
+              - Dual Pulse Engine: Heart pulses trigger vibration and ripples reliably across physical phones.
+            - 🖐️ **Dedicated Full-Screen Touch Studio**:
+              - Moved from homepage card to a distraction-free, edge-to-edge isolated sanctuary via the top bar `Touch` button.
+              - **Thumb-Kiss**: Pure physical concentric shockwaves with continuous heartbeat vibration on collision.
+              - **Glow Trace**: Live collaborative canvas with persistent cloud cache (messages stay on canvas!).
+              - **Miss U / Heart Pulse**: 3D ripples with low ambient pad resonance and synchronized daily counters.
             - 🎬 **Cinema Video Player**: Smooth buffered scrubber with 200ms position ticker, live seek, and ±10s skip controls.
-            - 🎙️ **Voice Whisper Player**: WhatsApp/Instagram-style 32-bar interactive audio waveform player with live seeking and timestamps.
+            - 🎙️ **Voice Whisper Player**: 32-bar interactive audio waveform player with live seeking and timestamps.
             - 🎵 **Interactive Music Scrubber**: Smooth finger-dragging seek bar in Music Sanctuary and Listen Together.
-            - 💫 **Living Sanctuary Reel**: Dynamic hero feed with 6.5s auto-transitions and hold-to-pause.
-            - 🖐️ **Synchronized Touch Pad (3 Modes)**:
-              - **Thumb-Kiss**: Pure physical concentric shockwaves with heartbeat haptics (zero emojis).
-              - **Glow Trace**: Live shared canvas with Glow Pen, Stardust Brush, and Eraser.
-              - **Miss U / Heart Pulse**: 3D ripple perspective, low ambient pad tone, daily touch counter with midnight auto-reset, and weekly touch notifications.
-            - 🌙 **Theming Overhaul**: Adaptive system status bar; Vault and Music Sanctuary permanently isolated in dark theme.
-            - 🚀 **Zero-Billing Video Engine**: Dedicated high-speed streaming via ImageKit.io.
             
             #### 🔑 Firebase Google Sign-In Setup
             If Google Sign-In gives Code 10, add this SHA-1 to your Firebase Console:

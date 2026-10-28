@@ -20,6 +20,7 @@ class SupabaseService {
 
   // Realtime Broadcast Channel
   static RealtimeChannel? _channel;
+  static String? _currentSpaceId;
 
   static void subscribeToSpaceEvents(
     String spaceId, {
@@ -35,8 +36,18 @@ class SupabaseService {
     if (_client == null || spaceId.isEmpty) return;
 
     try {
-      _channel?.unsubscribe();
-      _channel = _client!.channel('stage_space_$spaceId');
+      if (_channel != null) {
+        try {
+          _client!.removeChannel(_channel!);
+        } catch (_) {}
+        _channel = null;
+      }
+
+      _currentSpaceId = spaceId;
+      _channel = _client!.channel(
+        'stage_space_$spaceId',
+        opts: const RealtimeChannelConfig(ack: false, self: false),
+      );
 
       _channel!.onBroadcast(
         event: 'PULSE',
@@ -88,7 +99,9 @@ class SupabaseService {
         );
       }
 
-      _channel!.subscribe();
+      _channel!.subscribe((status, [error]) {
+        // Realtime subscription callback
+      });
     } catch (_) {}
   }
 
@@ -97,8 +110,16 @@ class SupabaseService {
     required String eventType,
     required Map<String, dynamic> payload,
   }) async {
-    if (_channel == null) return;
+    if (_client == null || spaceId.isEmpty) return;
     try {
+      if (_channel == null || _currentSpaceId != spaceId) {
+        _currentSpaceId = spaceId;
+        _channel = _client!.channel(
+          'stage_space_$spaceId',
+          opts: const RealtimeChannelConfig(ack: false, self: false),
+        );
+        _channel!.subscribe();
+      }
       await _channel!.sendBroadcastMessage(
         event: eventType,
         payload: payload,
@@ -117,5 +138,21 @@ class SupabaseService {
         'updated_at': nowIso,
       });
     } catch (_) {}
+  }
+
+  // App Content Retrieval
+  static Future<Map<String, dynamic>?> getAppContent(String id) async {
+    if (_client == null) return null;
+    try {
+      final res = await _client!
+          .from('app_content')
+          .select('content')
+          .eq('id', id)
+          .maybeSingle();
+      if (res != null && res['content'] != null) {
+        return Map<String, dynamic>.from(res['content'] as Map);
+      }
+    } catch (_) {}
+    return null;
   }
 }
