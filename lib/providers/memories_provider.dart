@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -8,6 +9,7 @@ import '../data/models/letter_item.dart';
 import '../data/models/milestone_item.dart';
 import '../data/services/supabase_service.dart';
 import '../data/services/firebase_service.dart';
+import '../core/services/notification_service.dart';
 import 'audio_provider.dart';
 
 class MemoriesProvider extends ChangeNotifier {
@@ -182,6 +184,20 @@ class MemoriesProvider extends ChangeNotifier {
     if (supabase != null) {
       _memoriesChannel = supabase
           .channel('memories_$spaceId')
+          .onBroadcast(
+            event: 'NEW_MEMORY',
+            callback: (payload) {
+              if (payload['senderId'] != currentUserId) {
+                NotificationService.showNewMemoryNotification(
+                  partnerNickname: partnerNickname ?? 'Partner',
+                  type: payload['type'] ?? 'photo',
+                  title: payload['title'] ?? 'New Memory',
+                  caption: payload['caption'] ?? '',
+                  id: payload['id'] ?? '',
+                );
+              }
+            },
+          )
           .onPostgresChanges(
             event: PostgresChangeEvent.all,
             schema: 'public',
@@ -197,6 +213,20 @@ class MemoriesProvider extends ChangeNotifier {
 
       _lettersChannel = supabase
           .channel('letters_$spaceId')
+          .onBroadcast(
+            event: 'NEW_LETTER',
+            callback: (payload) {
+              if (payload['senderId'] != currentUserId) {
+                NotificationService.showNewMemoryNotification(
+                  partnerNickname: partnerNickname ?? 'Partner',
+                  type: 'letter',
+                  title: payload['title'] ?? 'Love Letter',
+                  caption: payload['caption'] ?? '',
+                  id: payload['id'] ?? '',
+                );
+              }
+            },
+          )
           .onPostgresChanges(
             event: PostgresChangeEvent.all,
             schema: 'public',
@@ -473,6 +503,20 @@ class MemoriesProvider extends ChangeNotifier {
       final supabase = SupabaseService.client;
       if (supabase != null) {
         await supabase.from('memories').insert(optimisticItem.toJson(spaceId: spaceId));
+        // 4th: Broadcast new memory event to partner
+        try {
+          final ch = supabase.channel('memories_$spaceId');
+          await ch.sendBroadcastMessage(
+            event: 'NEW_MEMORY',
+            payload: {
+              'senderId': currentUserId,
+              'type': optimisticItem.mediaType,
+              'title': title,
+              'caption': caption,
+              'id': newId,
+            },
+          );
+        } catch (_) {}
       }
     } catch (_) {}
   }

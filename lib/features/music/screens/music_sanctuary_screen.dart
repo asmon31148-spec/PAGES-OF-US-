@@ -424,12 +424,27 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
           ),
           const SizedBox(height: 12),
 
-          ListView.separated(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: songs.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 8),
-            itemBuilder: (ctx, i) {
+          if (songs.isEmpty)
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 20),
+              alignment: Alignment.center,
+              child: Column(
+                children: [
+                  Icon(Icons.music_off_outlined, color: Colors.white.withOpacity(0.25), size: 40),
+                  const SizedBox(height: 12),
+                  const Text('No songs in sanctuary', style: TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 4),
+                  Text('Tap the + button above to upload custom music', style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 12), textAlign: TextAlign.center),
+                ],
+              ),
+            )
+          else
+            ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: songs.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 8),
+              itemBuilder: (ctx, i) {
               final song = songs[i];
               final isCurrent = i == audioProvider.currentSongIndex;
 
@@ -1257,6 +1272,13 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
                 onTap: () {
                   context.read<AudioProvider>().deleteSong(song.id);
                   Navigator.pop(ctx);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Permanently removed "${song.title}" ✦'),
+                      backgroundColor: const Color(0xFF1E1A29),
+                      duration: const Duration(seconds: 2),
+                    ),
+                  );
                 },
               ),
             ],

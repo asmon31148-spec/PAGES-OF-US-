@@ -192,6 +192,7 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold> with Wi
                 currentUserId: user.id,
                 partnerNickname: partner?.nickname,
               );
+          context.read<AudioProvider>().initMusicSync(effectiveSpaceId);
         });
       }
     }

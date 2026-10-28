@@ -16,6 +16,15 @@ class WeatherInfo {
     required this.emoji,
   });
 
+  /// Unnatural or extreme weather: Thunderstorm (>=95), violent rain (65, 82), heavy snow (75, 86), or extreme temperature
+  bool get isUnnatural {
+    if (weatherCode >= 95) return true; // Thunderstorm
+    if (weatherCode == 65 || weatherCode == 82) return true; // Heavy/Violent Rain
+    if (weatherCode == 75 || weatherCode == 86) return true; // Heavy Snow
+    if (temperature >= 42.0 || temperature <= -8.0) return true; // Extreme heat or freeze
+    return false;
+  }
+
   factory WeatherInfo.fromJson(Map<String, dynamic> json) {
     final current = json['current'] as Map<String, dynamic>? ?? {};
     final temp = (current['temperature_2m'] as num?)?.toDouble() ?? 22.0;

@@ -5,6 +5,8 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../features/music/models/music_models.dart';
 import '../core/services/audio_handler.dart';
+import '../core/services/local_cache_service.dart';
+import '../data/services/firebase_service.dart';
 
 class AudioProvider extends ChangeNotifier {
   final SanctuaryAudioHandler? audioHandler;
@@ -28,7 +30,7 @@ class AudioProvider extends ChangeNotifier {
     }
   }
 
-  final List<SongItem> _songs = [
+  static final List<SongItem> _defaultTemplateSongs = [
     SongItem(
       id: 'song_1',
       title: 'Slow Morning',
@@ -77,6 +79,10 @@ class AudioProvider extends ChangeNotifier {
       addedBy: 'Sanctuary',
     ),
   ];
+
+  List<SongItem> _songs = [];
+  final Set<String> _deletedSongIds = {};
+  StreamSubscription? _musicCloudSub;
 
   final List<PlaylistItem> _playlists = [
     PlaylistItem(
@@ -179,9 +185,22 @@ class AudioProvider extends ChangeNotifier {
   List<SongItem> get songs => List.unmodifiable(_songs);
   List<PlaylistItem> get playlists => List.unmodifiable(_playlists);
   int get currentSongIndex => _currentSongIndex;
-  SongItem get currentSong => _songs[_currentSongIndex];
-  bool get isSongPlaying => _isSongPlaying;
-  bool get isPlaying => _isSongPlaying || _isAtmospherePlaying;
+  SongItem get currentSong {
+    if (_songs.isEmpty) {
+      return SongItem(
+        id: 'empty',
+        title: 'No songs in sanctuary',
+        artist: 'Tap + above to add tracks',
+        durationSeconds: 0,
+        audioUrl: '',
+        coverColor: const Color(0xFF2DD4BF),
+      );
+    }
+    final safeIndex = _currentSongIndex.clamp(0, _songs.length - 1);
+    return _songs[safeIndex];
+  }
+  bool get isSongPlaying => _isSongPlaying && _songs.isNotEmpty;
+  bool get isPlaying => (_isSongPlaying && _songs.isNotEmpty) || _isAtmospherePlaying;
   String get currentTrackTitle => currentSong.title;
   Duration get songPosition => _songPosition;
   Duration get songDuration => _songDuration;
@@ -197,9 +216,31 @@ class AudioProvider extends ChangeNotifier {
   String get activePreset => _activePreset;
 
   AudioProvider({this.audioHandler}) {
+    _loadPersistedSongs();
     _initHandlerCallbacks();
     _initSongListeners();
     _initAtmospherePlayers();
+  }
+
+  void _loadPersistedSongs() {
+    try {
+      final deleted = LocalCacheService.getCachedDeletedSongIds();
+      _deletedSongIds.addAll(deleted);
+
+      final cached = LocalCacheService.getCachedSongs();
+      if (cached != null) {
+        _songs = cached
+            .map((e) => SongItem.fromJson(e))
+            .where((s) => !_deletedSongIds.contains(s.id))
+            .toList();
+      } else {
+        _songs = _defaultTemplateSongs
+            .where((s) => !_deletedSongIds.contains(s.id))
+            .toList();
+      }
+    } catch (_) {
+      _songs = List.from(_defaultTemplateSongs);
+    }
   }
 
   void _initHandlerCallbacks() {
@@ -434,20 +475,100 @@ class AudioProvider extends ChangeNotifier {
   }
 
   void addCustomSong(SongItem song) {
+    _deletedSongIds.remove(song.id);
+    LocalCacheService.setCachedDeletedSongIds(_deletedSongIds.toList());
     _songs.add(song);
+    _persistSongs();
     notifyListeners();
   }
 
-  void deleteSong(String id) {
-    if (_songs.length <= 1) return; // Keep at least one
+  Future<void> deleteSong(String id) async {
+    // 1. Permanently record this song ID as deleted so it NEVER reappears on app reopen
+    _deletedSongIds.add(id);
+    await LocalCacheService.setCachedDeletedSongIds(_deletedSongIds.toList());
+
+    // 2. Remove from active memory list
     final idx = _songs.indexWhere((s) => s.id == id);
     if (idx != -1) {
-      _songs.removeAt(idx);
-      if (_currentSongIndex >= _songs.length) {
-        _currentSongIndex = 0;
+      final wasPlayingThis = _isSongPlaying && _currentSongIndex == idx;
+      if (wasPlayingThis) {
+        await pauseSong();
       }
+      _songs.removeAt(idx);
+      if (_songs.isEmpty) {
+        _currentSongIndex = 0;
+        _isSongPlaying = false;
+        await _songPlayer.stop();
+      } else if (_currentSongIndex >= _songs.length) {
+        _currentSongIndex = _songs.length - 1;
+      }
+      await _persistSongs();
       notifyListeners();
     }
+  }
+
+  Future<void> _persistSongs() async {
+    try {
+      final list = _songs.map((s) => s.toJson()).toList();
+      await LocalCacheService.setCachedSongs(list);
+
+      if (_syncSpaceId.isNotEmpty) {
+        await FirebaseService.saveNestedFeatureField(
+          _syncSpaceId,
+          'music',
+          'songs',
+          list,
+          rootDefaults: {'songs': list, 'deleted_ids': _deletedSongIds.toList()},
+        );
+        await FirebaseService.saveNestedFeatureField(
+          _syncSpaceId,
+          'music',
+          'deleted_ids',
+          _deletedSongIds.toList(),
+        );
+      }
+    } catch (_) {}
+  }
+
+  void initMusicSync(String spaceId) {
+    if (spaceId.isEmpty || _syncSpaceId == spaceId) return;
+    _syncSpaceId = spaceId;
+
+    _musicCloudSub?.cancel();
+    _musicCloudSub = FirebaseService.streamFeatureDoc(spaceId, 'music').listen((snap) {
+      if (snap.exists && snap.data() != null) {
+        final data = snap.data()!;
+        bool hasChanges = false;
+        if (data['deleted_ids'] is List) {
+          final del = List<String>.from(data['deleted_ids'] as List);
+          _deletedSongIds.addAll(del);
+          LocalCacheService.setCachedDeletedSongIds(_deletedSongIds.toList());
+          final beforeCount = _songs.length;
+          _songs.removeWhere((s) => _deletedSongIds.contains(s.id));
+          if (_songs.length != beforeCount) hasChanges = true;
+        }
+        if (data['songs'] is List) {
+          final list = (data['songs'] as List)
+              .map((e) => SongItem.fromJson(Map<String, dynamic>.from(e as Map)))
+              .where((s) => !_deletedSongIds.contains(s.id))
+              .toList();
+          if (list.isNotEmpty || _songs.isNotEmpty) {
+            _songs = list;
+            LocalCacheService.setCachedSongs(_songs.map((s) => s.toJson()).toList());
+            hasChanges = true;
+          }
+        }
+        if (hasChanges) {
+          if (_songs.isEmpty) {
+            _currentSongIndex = 0;
+            _isSongPlaying = false;
+          } else if (_currentSongIndex >= _songs.length) {
+            _currentSongIndex = _songs.length - 1;
+          }
+          notifyListeners();
+        }
+      }
+    });
   }
 
   // -------------------------------------------------------------

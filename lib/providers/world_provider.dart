@@ -10,6 +10,7 @@ import '../data/models/pinned_place.dart';
 import '../data/services/firebase_service.dart';
 import '../data/services/supabase_service.dart';
 import '../core/services/weather_service.dart';
+import '../core/services/notification_service.dart';
 
 class WorldProvider extends ChangeNotifier {
   final Map<String, UserLocationData> _locations = {};
@@ -179,6 +180,7 @@ class WorldProvider extends ChangeNotifier {
             if (partnerId != null && _locations[partnerId] != null) {
               final pLoc = _locations[partnerId]!;
               _fetchPartnerWeather(pLoc.lat, pLoc.lng);
+              _checkPartnerGeofence(pLoc);
             }
             notifyListeners();
           }
@@ -205,6 +207,7 @@ class WorldProvider extends ChangeNotifier {
       final loc = UserLocationData.fromJson(Map<String, dynamic>.from(data['location'] as Map));
       if (loc.userId.isNotEmpty && loc.userId != _currentUserId) {
         _locations[loc.userId] = loc;
+        _checkPartnerGeofence(loc);
         if (_partnerWeather == null) {
           _fetchPartnerWeather(loc.lat, loc.lng);
         }
@@ -255,10 +258,33 @@ class WorldProvider extends ChangeNotifier {
     } catch (_) {}
   }
 
+  void _checkPartnerGeofence(UserLocationData pLoc) {
+    if (_pinnedPlaces.isEmpty || pLoc.lat == 0.0 || pLoc.lng == 0.0) return;
+    for (final place in _pinnedPlaces) {
+      final dist = calculateDistanceKm(pLoc.lat, pLoc.lng, place.lat, place.lng);
+      // Within 300 meters
+      if (dist <= 0.3) {
+        NotificationService.showPartnerArrivedPlaceNotification(
+          partnerNickname: pLoc.nickname.isNotEmpty ? pLoc.nickname : 'Your Partner',
+          placeName: place.name,
+          placeTag: place.tag,
+        );
+        break;
+      }
+    }
+  }
+
   Future<void> _fetchPartnerWeather(double lat, double lng) async {
     try {
       final weather = await WeatherService.fetchWeather(lat, lng);
       _partnerWeather = weather;
+      if (weather != null && weather.isUnnatural) {
+        NotificationService.showUnnaturalWeatherAlert(
+          partnerNickname: partnerLocation?.nickname ?? 'Your Partner',
+          condition: weather.condition,
+          tempC: weather.temperature,
+        );
+      }
       notifyListeners();
     } catch (_) {}
   }

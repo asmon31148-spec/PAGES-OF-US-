@@ -393,6 +393,22 @@ class StageProvider extends ChangeNotifier {
         if (promptData != null) {
           _dailyPrompt = DailyPrompt.fromJson(promptData);
           LocalCacheService.setCachedDailyPrompt(promptData);
+
+          // 7th: Partner answered notification
+          final sender = data['senderId'] as String?;
+          if (sender != null && sender != userId) {
+            NotificationService.showPartnerAnsweredDailyQuestionNotification(
+              partnerNickname: partnerNickname ?? 'Partner',
+            );
+          }
+
+          // Evaluate daily pending question reminder
+          final hasUserAnswered = _dailyPrompt?.answers[userId]?.isNotEmpty ?? false;
+          NotificationService.scheduleDailyQuestionPendingReminder(
+            hasUserAnswered: hasUserAnswered,
+            partnerNickname: partnerNickname ?? 'Partner',
+          );
+
           notifyListeners();
         }
       },
@@ -707,6 +723,12 @@ class StageProvider extends ChangeNotifier {
     await LocalCacheService.setCachedDailyPrompt(updatedPrompt.toJson());
     notifyListeners();
 
+    // 7th: Since user has answered, cancel the pending reminder!
+    NotificationService.scheduleDailyQuestionPendingReminder(
+      hasUserAnswered: true,
+      partnerNickname: _activePartnerId ?? 'Partner',
+    );
+
     // If both partners have now answered, auto-archive to history!
     if (updatedAnswers.length > 1) {
       final historyItem = PromptHistoryItem(
@@ -786,6 +808,8 @@ class StageProvider extends ChangeNotifier {
             _goals = list
                 .map((e) => CoupleGoalItem.fromJson(Map<String, dynamic>.from(e as Map)))
                 .toList();
+            final pending = _goals.where((g) => !g.isCompleted).length;
+            NotificationService.scheduleWeeklyGoalReminder(pendingGoalsCount: pending);
             notifyListeners();
             return;
           }
@@ -794,8 +818,10 @@ class StageProvider extends ChangeNotifier {
     }
     if (_goals.isEmpty) {
       _goals = List.from(defaultPresetGoals);
-      notifyListeners();
     }
+    final pending = _goals.where((g) => !g.isCompleted).length;
+    NotificationService.scheduleWeeklyGoalReminder(pendingGoalsCount: pending);
+    notifyListeners();
   }
 
   Future<void> toggleGoal(String spaceId, String goalId, bool isCompleted, String? nickname) async {

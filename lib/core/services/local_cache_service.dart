@@ -167,6 +167,30 @@ class LocalCacheService {
     await _prefs?.setBool(AppConstants.prefIsDark, isDark);
   }
 
+  // Music Songs & Deleted IDs (Persistent across app restarts)
+  static List<Map<String, dynamic>>? getCachedSongs() {
+    final str = _prefs?.getString('cached_music_songs');
+    if (str == null || str.isEmpty) return null;
+    try {
+      final list = jsonDecode(str) as List<dynamic>;
+      return list.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static Future<void> setCachedSongs(List<Map<String, dynamic>> songs) async {
+    await _prefs?.setString('cached_music_songs', jsonEncode(songs));
+  }
+
+  static List<String> getCachedDeletedSongIds() {
+    return _prefs?.getStringList('cached_deleted_song_ids') ?? [];
+  }
+
+  static Future<void> setCachedDeletedSongIds(List<String> ids) async {
+    await _prefs?.setStringList('cached_deleted_song_ids', ids);
+  }
+
   // Clear cache on logout
   static Future<void> clearAll() async {
     await _prefs?.clear();
