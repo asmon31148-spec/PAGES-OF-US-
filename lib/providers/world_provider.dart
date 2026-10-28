@@ -5,14 +5,14 @@ import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../data/models/user_location_model.dart';
 import '../data/models/pinned_place.dart';
+import '../data/services/firebase_service.dart';
 import '../data/services/supabase_service.dart';
 import '../core/services/weather_service.dart';
 
 class WorldProvider extends ChangeNotifier {
-  Map<String, UserLocationData> _locations = {};
+  final Map<String, UserLocationData> _locations = {};
   List<PinnedPlace> _pinnedPlaces = [];
   bool _isSharing = true;
   bool _isLoading = false;
@@ -20,11 +20,25 @@ class WorldProvider extends ChangeNotifier {
   WeatherInfo? _partnerWeather;
   DateTime _now = DateTime.now();
   Timer? _clockTimer;
+  Timer? _cloudDebounce;
   StreamSubscription? _firestoreSub;
-  RealtimeChannel? _supabaseChannel;
+  StreamSubscription<Position>? _positionStreamSub;
 
-  Map<String, UserLocationData> get locations => _locations;
-  List<PinnedPlace> get pinnedPlaces => _pinnedPlaces;
+  String? _spaceId;
+  String? _currentUserId;
+  String? _currentNickname;
+  String? _currentAvatarUrl;
+  String? _partnerId;
+
+  double? _lastGeocodedLat;
+  double? _lastGeocodedLng;
+  DateTime? _lastGeocodedTime;
+  String _cachedPlaceName = 'Nearby';
+  String _cachedNeighborhood = '';
+  String _cachedCity = '';
+
+  Map<String, UserLocationData> get locations => Map.unmodifiable(_locations);
+  List<PinnedPlace> get pinnedPlaces => List.unmodifiable(_pinnedPlaces);
   bool get isSharing => _isSharing;
   bool get isLoading => _isLoading;
   String get gpsStatus => _gpsStatus;
@@ -45,10 +59,10 @@ class WorldProvider extends ChangeNotifier {
   @override
   void dispose() {
     _clockTimer?.cancel();
+    _cloudDebounce?.cancel();
     _firestoreSub?.cancel();
-    if (_supabaseChannel != null) {
-      SupabaseService.client?.removeChannel(_supabaseChannel!);
-    }
+    _positionStreamSub?.cancel();
+    SupabaseService.removeLocationListener(_handleSupabaseLocationUpdate);
     super.dispose();
   }
 
@@ -70,65 +84,72 @@ class WorldProvider extends ChangeNotifier {
     required String currentUserId,
     String? partnerId,
   }) async {
+    if (spaceId.isEmpty) return;
+
+    _spaceId = spaceId;
+    _currentUserId = currentUserId;
+    _partnerId = partnerId;
+
+    // 1. Listen to Realtime WebSocket via unified space channel
+    SupabaseService.addLocationListener(_handleSupabaseLocationUpdate);
+
+    // 2. Initial cloud fetch (Supabase app_content)
     _fetchCloudData(spaceId);
 
-    // 1. Supabase Realtime channel
-    final supabase = SupabaseService.client;
-    if (supabase != null) {
-      _supabaseChannel = supabase
-          .channel('locations_space_$spaceId')
-          .onBroadcast(
-            event: 'LOCATION_UPDATE',
-            callback: (payload) {
-              if (payload['location'] != null) {
-                final loc = UserLocationData.fromJson(
-                    Map<String, dynamic>.from(payload['location']));
-                _locations[loc.userId] = loc;
-                notifyListeners();
+    // 3. Firestore live listener (using dot-notation-safe feature doc)
+    _firestoreSub?.cancel();
+    _firestoreSub = FirebaseService.streamFeatureDoc(spaceId, 'locations').listen((snap) {
+      if (snap.exists && snap.data() != null) {
+        final data = snap.data()!;
+        if (data['locations'] != null && data['locations'] is Map) {
+          final map = Map<String, dynamic>.from(data['locations'] as Map);
+          bool hasChanges = false;
+          map.forEach((key, val) {
+            if (val is Map) {
+              final loc = UserLocationData.fromJson(Map<String, dynamic>.from(val));
+              // Don't overwrite local high-frequency GPS with older Firestore data for self
+              if (key != currentUserId || !_locations.containsKey(key)) {
+                _locations[key] = loc;
+                hasChanges = true;
               }
-            },
-          )
-          .subscribe();
-    }
+            }
+          });
 
-    // 2. Firestore real-time snapshot
-    try {
-      _firestoreSub = FirebaseFirestore.instance
-          .collection('spaces')
-          .doc(spaceId)
-          .collection('features')
-          .doc('locations')
-          .snapshots()
-          .listen((snap) {
-        if (snap.exists && snap.data() != null) {
-          final data = snap.data()!;
-          if (data['locations'] != null) {
-            final map = Map<String, dynamic>.from(data['locations']);
-            map.forEach((key, val) {
-              _locations[key] =
-                  UserLocationData.fromJson(Map<String, dynamic>.from(val));
-            });
+          if (hasChanges) {
             if (partnerId != null && _locations[partnerId] != null) {
               final pLoc = _locations[partnerId]!;
               _fetchPartnerWeather(pLoc.lat, pLoc.lng);
             }
             notifyListeners();
           }
-          if (data['places'] != null) {
-            final list = List<dynamic>.from(data['places']);
-            _pinnedPlaces = list
-                .map((e) => PinnedPlace.fromJson(Map<String, dynamic>.from(e)))
-                .toList();
-            notifyListeners();
-          }
         }
-      });
-    } catch (_) {}
 
-    // Check weather for partner if location exists
+        if (data['places'] != null && data['places'] is List) {
+          final list = List<dynamic>.from(data['places'] as List);
+          _pinnedPlaces = list
+              .map((e) => PinnedPlace.fromJson(Map<String, dynamic>.from(e as Map)))
+              .toList();
+          notifyListeners();
+        }
+      }
+    });
+
     if (partnerId != null && _locations[partnerId] != null) {
       final pLoc = _locations[partnerId]!;
       _fetchPartnerWeather(pLoc.lat, pLoc.lng);
+    }
+  }
+
+  void _handleSupabaseLocationUpdate(Map<String, dynamic> data) {
+    if (data['location'] != null && data['location'] is Map) {
+      final loc = UserLocationData.fromJson(Map<String, dynamic>.from(data['location'] as Map));
+      if (loc.userId.isNotEmpty && loc.userId != _currentUserId) {
+        _locations[loc.userId] = loc;
+        if (_partnerWeather == null) {
+          _fetchPartnerWeather(loc.lat, loc.lng);
+        }
+        notifyListeners();
+      }
     }
   }
 
@@ -143,11 +164,15 @@ class WorldProvider extends ChangeNotifier {
           .eq('id', 'location_$spaceId')
           .maybeSingle();
 
-      if (res != null && res['content'] != null) {
-        final content = Map<String, dynamic>.from(res['content']);
+      if (res != null && res['content'] != null && res['content'] is Map) {
+        final content = Map<String, dynamic>.from(res['content'] as Map);
         content.forEach((key, val) {
-          _locations[key] =
-              UserLocationData.fromJson(Map<String, dynamic>.from(val));
+          if (val is Map) {
+            final loc = UserLocationData.fromJson(Map<String, dynamic>.from(val));
+            if (key != _currentUserId || !_locations.containsKey(key)) {
+              _locations[key] = loc;
+            }
+          }
         });
         notifyListeners();
       }
@@ -160,10 +185,10 @@ class WorldProvider extends ChangeNotifier {
           .eq('id', 'places_$spaceId')
           .maybeSingle();
 
-      if (placesRes != null && placesRes['content'] != null) {
-        final list = List<dynamic>.from(placesRes['content']);
+      if (placesRes != null && placesRes['content'] != null && placesRes['content'] is List) {
+        final list = List<dynamic>.from(placesRes['content'] as List);
         _pinnedPlaces = list
-            .map((e) => PinnedPlace.fromJson(Map<String, dynamic>.from(e)))
+            .map((e) => PinnedPlace.fromJson(Map<String, dynamic>.from(e as Map)))
             .toList();
         notifyListeners();
       }
@@ -178,6 +203,194 @@ class WorldProvider extends ChangeNotifier {
     } catch (_) {}
   }
 
+  /// Starts continuous real-time high-accuracy GPS movement tracking
+  Future<void> startLiveTracking({
+    required String spaceId,
+    required String currentUserId,
+    required String nickname,
+    String? avatarUrl,
+  }) async {
+    if (spaceId.isEmpty || currentUserId.isEmpty) return;
+
+    _spaceId = spaceId;
+    _currentUserId = currentUserId;
+    _currentNickname = nickname;
+    _currentAvatarUrl = avatarUrl;
+
+    // Check location permission
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
+        _gpsStatus = 'Permission Denied';
+        notifyListeners();
+        return;
+      }
+    }
+
+    _gpsStatus = 'Acquiring GPS...';
+    notifyListeners();
+
+    // 1. Immediate initial fix
+    try {
+      final initialPosition = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 10),
+        ),
+      );
+      await _handleNewPosition(initialPosition);
+    } catch (_) {
+      try {
+        final lastKnown = await Geolocator.getLastKnownPosition();
+        if (lastKnown != null) {
+          await _handleNewPosition(lastKnown);
+        }
+      } catch (_) {}
+    }
+
+    // 2. High-performance continuous position stream (fires on 3m movement)
+    _positionStreamSub?.cancel();
+    const settings = LocationSettings(
+      accuracy: LocationAccuracy.high,
+      distanceFilter: 3,
+    );
+
+    _positionStreamSub = Geolocator.getPositionStream(locationSettings: settings).listen(
+      (Position position) {
+        _handleNewPosition(position);
+      },
+      onError: (err) {
+        _gpsStatus = 'GPS Error';
+        notifyListeners();
+      },
+    );
+  }
+
+  void stopLiveTracking() {
+    _positionStreamSub?.cancel();
+    _positionStreamSub = null;
+    _gpsStatus = 'Standby';
+    notifyListeners();
+  }
+
+  Future<void> _handleNewPosition(Position position) async {
+    if (_currentUserId == null || _spaceId == null) return;
+
+    _gpsStatus = 'Live Tethered';
+
+    // Reverse geocoding only when moved > 60m or > 2 minutes
+    final now = DateTime.now();
+    bool shouldGeocode = false;
+    if (_lastGeocodedLat == null || _lastGeocodedLng == null || _lastGeocodedTime == null) {
+      shouldGeocode = true;
+    } else {
+      final dist = calculateDistanceKm(
+        _lastGeocodedLat!,
+        _lastGeocodedLng!,
+        position.latitude,
+        position.longitude,
+      );
+      if (dist > 0.06 || now.difference(_lastGeocodedTime!).inMinutes >= 2) {
+        shouldGeocode = true;
+      }
+    }
+
+    if (shouldGeocode) {
+      _lastGeocodedLat = position.latitude;
+      _lastGeocodedLng = position.longitude;
+      _lastGeocodedTime = now;
+      _reverseGeocode(position.latitude, position.longitude);
+    }
+
+    final myLocation = UserLocationData(
+      userId: _currentUserId!,
+      nickname: _currentNickname ?? 'You',
+      avatarUrl: _currentAvatarUrl,
+      lat: position.latitude,
+      lng: position.longitude,
+      placeName: _cachedPlaceName,
+      neighborhood: _cachedNeighborhood,
+      city: _cachedCity,
+      customLabel: _locations[_currentUserId]?.customLabel,
+      accuracy: position.accuracy,
+      isSharingEnabled: _isSharing,
+      updatedAt: now.toIso8601String(),
+    );
+
+    _locations[_currentUserId!] = myLocation;
+    notifyListeners();
+
+    // Instant WebSocket broadcast to partner (0-50ms)
+    SupabaseService.broadcastEvent(
+      spaceId: _spaceId!,
+      eventType: 'LOCATION_UPDATE',
+      payload: {'location': myLocation.toJson()},
+    );
+
+    // Debounced Firestore sync to preserve free quotas
+    _scheduleCloudPersist(myLocation);
+  }
+
+  void _scheduleCloudPersist(UserLocationData location) {
+    _cloudDebounce?.cancel();
+    _cloudDebounce = Timer(const Duration(seconds: 4), () async {
+      if (_spaceId == null || _spaceId!.isEmpty) return;
+
+      try {
+        // Multi-device safe dot-notation update: never clobbers partner!
+        await FirebaseService.saveNestedFeatureField(
+          _spaceId!,
+          'locations',
+          'locations.${location.userId}',
+          location.toJson(),
+          rootDefaults: {'locations': {}},
+        );
+
+        // Supabase app_content merge
+        final supabase = SupabaseService.client;
+        if (supabase != null) {
+          final map = _locations.map((k, v) => MapEntry(k, v.toJson()));
+          await supabase.from('app_content').upsert({
+            'id': 'location_$_spaceId',
+            'content': map,
+            'updated_at': DateTime.now().toIso8601String(),
+          });
+        }
+      } catch (_) {}
+    });
+  }
+
+  Future<void> _reverseGeocode(double lat, double lng) async {
+    try {
+      final geoUrl = Uri.parse(
+        'https://nominatim.openstreetmap.org/reverse?format=json&lat=$lat&lon=$lng',
+      );
+      final resp = await http.get(geoUrl, headers: {'User-Agent': 'PagesOfUs/1.0'});
+      if (resp.statusCode == 200) {
+        final geoData = jsonDecode(resp.body) as Map<String, dynamic>;
+        final addr = geoData['address'] as Map<String, dynamic>?;
+        if (addr != null) {
+          _cachedNeighborhood = addr['suburb'] ?? addr['neighbourhood'] ?? addr['quarter'] ?? '';
+          _cachedCity = addr['city'] ?? addr['town'] ?? addr['state'] ?? '';
+          _cachedPlaceName = _cachedNeighborhood.isNotEmpty
+              ? '$_cachedNeighborhood, $_cachedCity'
+              : (geoData['display_name']?.toString().split(',').first ?? 'Nearby');
+
+          if (_currentUserId != null && _locations.containsKey(_currentUserId)) {
+            _locations[_currentUserId!] = _locations[_currentUserId!]!.copyWith(
+              placeName: _cachedPlaceName,
+              neighborhood: _cachedNeighborhood,
+              city: _cachedCity,
+            );
+            notifyListeners();
+          }
+        }
+      }
+    } catch (_) {}
+  }
+
+  /// Manual force-refresh triggered by "Update GPS"
   Future<void> updateMyPosition({
     required String spaceId,
     required String currentUserId,
@@ -185,124 +398,38 @@ class WorldProvider extends ChangeNotifier {
     String? avatarUrl,
     String? customTag,
   }) async {
+    if (spaceId.isEmpty || currentUserId.isEmpty) return;
+
     _isLoading = true;
-    _gpsStatus = 'Acquiring GPS...';
+    _gpsStatus = 'Locating GPS...';
     notifyListeners();
 
     try {
-      LocationPermission permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-        if (permission == LocationPermission.denied) {
-          _gpsStatus = 'Permission Denied';
-          _isLoading = false;
-          notifyListeners();
-          return;
-        }
-      }
-
       final position = await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(
           accuracy: LocationAccuracy.high,
-          timeLimit: Duration(seconds: 15),
+          timeLimit: Duration(seconds: 12),
         ),
       );
 
-      _gpsStatus = 'Locating place...';
-      notifyListeners();
+      _spaceId = spaceId;
+      _currentUserId = currentUserId;
+      _currentNickname = nickname;
+      _currentAvatarUrl = avatarUrl;
 
-      // Reverse geocode via Nominatim
-      String placeName = 'Nearby';
-      String city = '';
-      String neighborhood = '';
-
-      try {
-        final geoUrl = Uri.parse(
-          'https://nominatim.openstreetmap.org/reverse?format=json&lat=${position.latitude}&lon=${position.longitude}',
-        );
-        final resp = await http.get(geoUrl, headers: {'User-Agent': 'PagesOfUs/1.0'});
-        if (resp.statusCode == 200) {
-          final geoData = jsonDecode(resp.body) as Map<String, dynamic>;
-          final addr = geoData['address'] as Map<String, dynamic>?;
-          if (addr != null) {
-            neighborhood = addr['suburb'] ?? addr['neighbourhood'] ?? addr['quarter'] ?? '';
-            city = addr['city'] ?? addr['town'] ?? addr['state'] ?? '';
-            placeName = neighborhood.isNotEmpty
-                ? '$neighborhood, $city'
-                : (geoData['display_name']?.toString().split(',').first ?? 'Nearby');
-          }
+      if (customTag != null) {
+        if (_locations.containsKey(currentUserId)) {
+          _locations[currentUserId] = _locations[currentUserId]!.copyWith(customLabel: customTag);
         }
-      } catch (_) {}
+      }
 
-      final myLocation = UserLocationData(
-        userId: currentUserId,
-        nickname: nickname,
-        avatarUrl: avatarUrl,
-        lat: position.latitude,
-        lng: position.longitude,
-        placeName: placeName,
-        neighborhood: neighborhood,
-        city: city,
-        customLabel: customTag ?? _locations[currentUserId]?.customLabel,
-        accuracy: position.accuracy,
-        isSharingEnabled: _isSharing,
-        updatedAt: DateTime.now().toIso8601String(),
-      );
-
-      _locations[currentUserId] = myLocation;
-      _gpsStatus = 'Live Tethered';
-      notifyListeners();
-
-      await _broadcastLocation(spaceId, myLocation);
+      await _handleNewPosition(position);
     } catch (e) {
       _gpsStatus = 'GPS Unavailable';
     } finally {
       _isLoading = false;
       notifyListeners();
     }
-  }
-
-  Future<void> _broadcastLocation(String spaceId, UserLocationData location) async {
-    // 1. Supabase app_content upsert
-    try {
-      final supabase = SupabaseService.client;
-      if (supabase != null) {
-        final currentMap = _locations.map((k, v) => MapEntry(k, v.toJson()));
-        await supabase.from('app_content').upsert({
-          'id': 'location_$spaceId',
-          'content': currentMap,
-          'updated_at': DateTime.now().toIso8601String(),
-        });
-
-        _supabaseChannel?.sendBroadcastMessage(
-          event: 'LOCATION_UPDATE',
-          payload: {'location': location.toJson()},
-        );
-      }
-    } catch (_) {}
-
-    // 2. Firestore sync (Safe update with dot notation so partner location is never erased)
-    try {
-      final docRef = FirebaseFirestore.instance
-          .collection('spaces')
-          .doc(spaceId)
-          .collection('features')
-          .doc('locations');
-
-      try {
-        await docRef.update({
-          'locations.${location.userId}': location.toJson(),
-          'updatedAt': FieldValue.serverTimestamp(),
-        });
-      } catch (_) {
-        await docRef.set({
-          'locations': {
-            location.userId: location.toJson(),
-          },
-          'updatedAt': FieldValue.serverTimestamp(),
-        }, SetOptions(merge: true));
-      }
-    } catch (_) {}
   }
 
   Future<void> addPinnedPlace({
@@ -314,6 +441,8 @@ class WorldProvider extends ChangeNotifier {
     required double radiusMeters,
     required String currentUserId,
   }) async {
+    if (spaceId.isEmpty) return;
+
     final newPlace = PinnedPlace(
       id: 'place_${DateTime.now().millisecondsSinceEpoch}',
       name: name,
@@ -353,6 +482,8 @@ class WorldProvider extends ChangeNotifier {
     required String spaceId,
     required String placeId,
   }) async {
+    if (spaceId.isEmpty) return;
+
     _pinnedPlaces.removeWhere((p) => p.id == placeId);
     notifyListeners();
 
@@ -381,16 +512,25 @@ class WorldProvider extends ChangeNotifier {
     required String spaceId,
     required String currentUserId,
   }) async {
+    if (spaceId.isEmpty || currentUserId.isEmpty) return;
+
     _isSharing = !_isSharing;
     if (_locations.containsKey(currentUserId)) {
       final updated = _locations[currentUserId]!.copyWith(isSharingEnabled: _isSharing);
       _locations[currentUserId] = updated;
-      await _broadcastLocation(spaceId, updated);
+      _scheduleCloudPersist(updated);
+      SupabaseService.broadcastEvent(
+        spaceId: spaceId,
+        eventType: 'LOCATION_UPDATE',
+        payload: {'location': updated.toJson()},
+      );
     }
     notifyListeners();
   }
 
   Future<void> clearLocationHistory(String spaceId) async {
+    if (spaceId.isEmpty) return;
+
     _locations.clear();
     notifyListeners();
 

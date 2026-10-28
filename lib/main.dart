@@ -167,26 +167,27 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold> with Wi
     final space = authProvider.space;
     final user = authProvider.user;
     final partner = authProvider.partner;
+    final effectiveSpaceId = space?.id ?? user?.spaceId;
 
-    if (space != null && user != null) {
-      if (_syncedSpaceId != space.id || _syncedPartnerId != partner?.id) {
-        _syncedSpaceId = space.id;
+    if (effectiveSpaceId != null && effectiveSpaceId.isNotEmpty && user != null) {
+      if (_syncedSpaceId != effectiveSpaceId || _syncedPartnerId != partner?.id) {
+        _syncedSpaceId = effectiveSpaceId;
         _syncedPartnerId = partner?.id;
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!mounted) return;
           context.read<StageProvider>().initSpaceListeners(
-                space.id,
+                effectiveSpaceId,
                 user.id,
                 partner?.id,
               );
           context.read<WorldProvider>().initWorldSync(
-                spaceId: space.id,
+                spaceId: effectiveSpaceId,
                 currentUserId: user.id,
                 partnerId: partner?.id,
               );
-          context.read<VaultProvider>().initVaultSync(space.id);
+          context.read<VaultProvider>().initVaultSync(effectiveSpaceId);
           context.read<MemoriesProvider>().initMemoriesSync(
-                spaceId: space.id,
+                spaceId: effectiveSpaceId,
                 currentUserId: user.id,
                 partnerNickname: partner?.nickname,
               );

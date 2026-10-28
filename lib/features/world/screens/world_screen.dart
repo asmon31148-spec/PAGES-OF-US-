@@ -12,6 +12,12 @@ import '../../stage/widgets/profile_modal.dart';
 import '../../../data/models/user_location_model.dart';
 import '../../../data/models/pinned_place.dart';
 
+enum MapBasemapStyle {
+  dark,
+  streets,
+  satellite,
+}
+
 class WorldScreen extends StatefulWidget {
   const WorldScreen({super.key});
 
@@ -22,20 +28,53 @@ class WorldScreen extends StatefulWidget {
 class _WorldScreenState extends State<WorldScreen> {
   final MapController _mapController = MapController();
   bool _isMapReady = false;
+  MapBasemapStyle _mapStyle = MapBasemapStyle.dark;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final auth = context.read<AuthProvider>();
-      if (auth.space != null && auth.user != null) {
-        context.read<WorldProvider>().initWorldSync(
-              spaceId: auth.space!.id,
-              currentUserId: auth.user!.id,
-              partnerId: auth.partner?.id,
-            );
-      }
+      _startLiveWorldTracking();
     });
+  }
+
+  void _startLiveWorldTracking() {
+    final auth = context.read<AuthProvider>();
+    final world = context.read<WorldProvider>();
+    final spaceId = auth.space?.id ?? auth.user?.spaceId ?? '';
+    final user = auth.user;
+    final partner = auth.partner;
+
+    if (spaceId.isNotEmpty && user != null) {
+      world.initWorldSync(
+        spaceId: spaceId,
+        currentUserId: user.id,
+        partnerId: partner?.id,
+      );
+
+      // Automatically acquire GPS and begin continuous real-time movement streaming
+      world.startLiveTracking(
+        spaceId: spaceId,
+        currentUserId: user.id,
+        nickname: user.nickname,
+        avatarUrl: user.avatarUrl,
+      );
+    }
+  }
+
+  String _getTileUrl(MapBasemapStyle style) {
+    switch (style) {
+      case MapBasemapStyle.dark:
+        // Esri World Dark Gray Canvas: 100% free, zero watermark, zero key
+        return 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}';
+      case MapBasemapStyle.satellite:
+        // Esri World Imagery: 100% free high-res satellite tiles
+        return 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+      case MapBasemapStyle.streets:
+      default:
+        // OpenStreetMap Standard: 100% free worldwide street map
+        return 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+    }
   }
 
   @override
@@ -46,12 +85,12 @@ class _WorldScreenState extends State<WorldScreen> {
 
     final user = authProvider.user;
     final partner = authProvider.partner;
-    final spaceId = authProvider.space?.id ?? 'default_space';
+    final spaceId = authProvider.space?.id ?? authProvider.user?.spaceId ?? '';
 
     final myLoc = user != null ? worldProvider.getUserLocation(user.id) : null;
     final partnerLoc = partner != null ? worldProvider.getUserLocation(partner.id) : null;
 
-    // Calculate distance
+    // Calculate live distance
     double? distanceKm;
     if (myLoc != null && partnerLoc != null && myLoc.isSharingEnabled && partnerLoc.isSharingEnabled) {
       distanceKm = worldProvider.calculateDistanceKm(
@@ -62,12 +101,12 @@ class _WorldScreenState extends State<WorldScreen> {
       );
     }
 
-    // Default center point: User location, partner location, or romantic default (e.g. Paris or center)
+    // Default center point: User location, partner location, or romantic default
     final defaultCenter = myLoc != null
         ? LatLng(myLoc.lat, myLoc.lng)
         : partnerLoc != null
             ? LatLng(partnerLoc.lat, partnerLoc.lng)
-            : const LatLng(48.8566, 2.3522);
+            : const LatLng(22.5726, 88.3639);
 
     return Scaffold(
       backgroundColor: isDark ? AppColors.darkBg : AppColors.lightBg,
@@ -108,7 +147,7 @@ class _WorldScreenState extends State<WorldScreen> {
                     // 3. Interactive FlutterMap Card
                     Container(
                       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      height: 380,
+                      height: 390,
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(28),
                         border: Border.all(
@@ -129,22 +168,25 @@ class _WorldScreenState extends State<WorldScreen> {
                             mapController: _mapController,
                             options: MapOptions(
                               initialCenter: defaultCenter,
-                              initialZoom: 13.0,
+                              initialZoom: 14.0,
                               onMapReady: () {
                                 _isMapReady = true;
                                 _fitMapBounds(myLoc, partnerLoc);
                               },
                             ),
                             children: [
+                              // Clean, verified tile layer without watermark
                               TileLayer(
-                                urlTemplate: isDark
-                                    ? 'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png'
-                                    : 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                                urlTemplate: _getTileUrl(_mapStyle),
                                 userAgentPackageName: 'com.pagesofus.app',
+                                maxZoom: 19,
                               ),
 
                               // Polyline tether between user & partner
-                              if (myLoc != null && partnerLoc != null && myLoc.isSharingEnabled && partnerLoc.isSharingEnabled)
+                              if (myLoc != null &&
+                                  partnerLoc != null &&
+                                  myLoc.isSharingEnabled &&
+                                  partnerLoc.isSharingEnabled)
                                 PolylineLayer(
                                   polylines: [
                                     Polyline(
@@ -152,27 +194,58 @@ class _WorldScreenState extends State<WorldScreen> {
                                         LatLng(myLoc.lat, myLoc.lng),
                                         LatLng(partnerLoc.lat, partnerLoc.lng),
                                       ],
-                                      color: AppColors.terra.withOpacity(0.8),
-                                      strokeWidth: 3.0,
+                                      color: AppColors.terra.withOpacity(0.85),
+                                      strokeWidth: 3.5,
                                     ),
                                   ],
                                 ),
 
-                              // Pinned Places Geofence Circles
+                              // Accuracy circles (Meter-precise GPS rings)
                               CircleLayer(
-                                circles: worldProvider.pinnedPlaces.map((p) {
-                                  return CircleMarker(
-                                    point: LatLng(p.lat, p.lng),
-                                    radius: p.radiusMeters,
-                                    useRadiusInMeter: true,
-                                    color: AppColors.sage.withOpacity(0.15),
-                                    borderColor: AppColors.sage,
-                                    borderStrokeWidth: 1.5,
-                                  );
-                                }).toList(),
+                                circles: [
+                                  // My accuracy ring
+                                  if (myLoc != null &&
+                                      myLoc.isSharingEnabled &&
+                                      myLoc.accuracy != null &&
+                                      myLoc.accuracy! > 0)
+                                    CircleMarker(
+                                      point: LatLng(myLoc.lat, myLoc.lng),
+                                      radius: myLoc.accuracy!.clamp(5.0, 150.0),
+                                      useRadiusInMeter: true,
+                                      color: AppColors.sage.withOpacity(0.12),
+                                      borderColor: AppColors.sage.withOpacity(0.45),
+                                      borderStrokeWidth: 1.2,
+                                    ),
+
+                                  // Partner accuracy ring
+                                  if (partnerLoc != null &&
+                                      partnerLoc.isSharingEnabled &&
+                                      partnerLoc.accuracy != null &&
+                                      partnerLoc.accuracy! > 0)
+                                    CircleMarker(
+                                      point: LatLng(partnerLoc.lat, partnerLoc.lng),
+                                      radius: partnerLoc.accuracy!.clamp(5.0, 150.0),
+                                      useRadiusInMeter: true,
+                                      color: AppColors.terra.withOpacity(0.12),
+                                      borderColor: AppColors.terra.withOpacity(0.45),
+                                      borderStrokeWidth: 1.2,
+                                    ),
+
+                                  // Pinned Places Geofence Circles
+                                  ...worldProvider.pinnedPlaces.map((p) {
+                                    return CircleMarker(
+                                      point: LatLng(p.lat, p.lng),
+                                      radius: p.radiusMeters,
+                                      useRadiusInMeter: true,
+                                      color: AppColors.sage.withOpacity(0.15),
+                                      borderColor: AppColors.sage,
+                                      borderStrokeWidth: 1.5,
+                                    );
+                                  }),
+                                ],
                               ),
 
-                              // Markers
+                              // Markers Layer
                               MarkerLayer(
                                 markers: [
                                   // Pinned Places
@@ -200,10 +273,11 @@ class _WorldScreenState extends State<WorldScreen> {
                                   if (myLoc != null && myLoc.isSharingEnabled)
                                     Marker(
                                       point: LatLng(myLoc.lat, myLoc.lng),
-                                      width: 52,
-                                      height: 52,
+                                      width: 60,
+                                      height: 60,
                                       child: _buildAvatarMarker(
                                         name: user?.nickname ?? 'You',
+                                        avatarUrl: myLoc.avatarUrl ?? user?.avatarUrl,
                                         isMe: true,
                                         isDark: isDark,
                                         customLabel: myLoc.customLabel,
@@ -214,10 +288,11 @@ class _WorldScreenState extends State<WorldScreen> {
                                   if (partnerLoc != null && partnerLoc.isSharingEnabled)
                                     Marker(
                                       point: LatLng(partnerLoc.lat, partnerLoc.lng),
-                                      width: 52,
-                                      height: 52,
+                                      width: 60,
+                                      height: 60,
                                       child: _buildAvatarMarker(
                                         name: partner?.nickname ?? 'Partner',
+                                        avatarUrl: partnerLoc.avatarUrl ?? partner?.avatarUrl,
                                         isMe: false,
                                         isDark: isDark,
                                         customLabel: partnerLoc.customLabel,
@@ -228,30 +303,142 @@ class _WorldScreenState extends State<WorldScreen> {
                             ],
                           ),
 
-                          // Floating Map Controls (Fit bounds & Center me)
+                          // Top-Left Live Status Pill
+                          Positioned(
+                            top: 12,
+                            left: 12,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                              decoration: BoxDecoration(
+                                color: (isDark ? const Color(0xFF191823) : Colors.white).withOpacity(0.92),
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: isDark ? Colors.white12 : Colors.black12,
+                                ),
+                                boxShadow: const [
+                                  BoxShadow(color: Colors.black12, blurRadius: 4),
+                                ],
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Container(
+                                    width: 8,
+                                    height: 8,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: worldProvider.gpsStatus.contains('Live')
+                                          ? AppColors.sage
+                                          : (worldProvider.isLoading ? Colors.orangeAccent : Colors.grey),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    worldProvider.gpsStatus,
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                      color: isDark ? Colors.white70 : Colors.black87,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+
+                          // Top-Right Basemap Style Switcher
+                          Positioned(
+                            top: 12,
+                            right: 12,
+                            child: GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  if (_mapStyle == MapBasemapStyle.dark) {
+                                    _mapStyle = MapBasemapStyle.streets;
+                                  } else if (_mapStyle == MapBasemapStyle.streets) {
+                                    _mapStyle = MapBasemapStyle.satellite;
+                                  } else {
+                                    _mapStyle = MapBasemapStyle.dark;
+                                  }
+                                });
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                decoration: BoxDecoration(
+                                  color: (isDark ? const Color(0xFF191823) : Colors.white).withOpacity(0.92),
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(
+                                    color: isDark ? Colors.white12 : Colors.black12,
+                                  ),
+                                  boxShadow: const [
+                                    BoxShadow(color: Colors.black12, blurRadius: 4),
+                                  ],
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      _mapStyle == MapBasemapStyle.dark
+                                          ? '🌙 Dark'
+                                          : (_mapStyle == MapBasemapStyle.streets ? '🗺️ Street' : '🛰️ Satellite'),
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                        color: isDark ? Colors.white70 : Colors.black87,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+
+                          // Floating Map Controls (Fit bounds & Center me / partner)
                           Positioned(
                             right: 12,
                             bottom: 12,
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
+                                // Fit Both
                                 FloatingActionButton.small(
                                   heroTag: 'recenter_map',
                                   backgroundColor: isDark ? AppColors.darkSurface : Colors.white,
                                   foregroundColor: isDark ? AppColors.darkInk : AppColors.lightInk,
                                   onPressed: () => _fitMapBounds(myLoc, partnerLoc),
+                                  tooltip: 'Fit Both',
                                   child: const Icon(Icons.crop_free, size: 18),
                                 ),
                                 const SizedBox(height: 8),
+
+                                // Center Partner
+                                if (partnerLoc != null) ...[
+                                  FloatingActionButton.small(
+                                    heroTag: 'zoom_partner',
+                                    backgroundColor: AppColors.terra,
+                                    foregroundColor: Colors.white,
+                                    onPressed: () {
+                                      _mapController.move(LatLng(partnerLoc.lat, partnerLoc.lng), 15.5);
+                                    },
+                                    tooltip: 'Center Partner',
+                                    child: const Icon(Icons.favorite, size: 16),
+                                  ),
+                                  const SizedBox(height: 8),
+                                ],
+
+                                // Center Me
                                 FloatingActionButton.small(
                                   heroTag: 'zoom_me',
                                   backgroundColor: AppColors.sage,
                                   foregroundColor: Colors.white,
                                   onPressed: () {
                                     if (myLoc != null) {
-                                      _mapController.move(LatLng(myLoc.lat, myLoc.lng), 15.0);
+                                      _mapController.move(LatLng(myLoc.lat, myLoc.lng), 15.5);
+                                    } else {
+                                      _startLiveWorldTracking();
                                     }
                                   },
+                                  tooltip: 'Center Me',
                                   child: const Icon(Icons.my_location, size: 18),
                                 ),
                               ],
@@ -269,15 +456,16 @@ class _WorldScreenState extends State<WorldScreen> {
                           Expanded(
                             child: _buildActionButton(
                               icon: Icons.gps_fixed,
-                              label: worldProvider.isLoading ? 'Locating...' : 'Update GPS',
+                              label: worldProvider.isLoading ? 'Locating...' : 'Refresh GPS',
                               color: AppColors.sage,
                               isDark: isDark,
                               onTap: () {
-                                if (user != null) {
+                                if (user != null && spaceId.isNotEmpty) {
                                   worldProvider.updateMyPosition(
                                     spaceId: spaceId,
                                     currentUserId: user.id,
                                     nickname: user.nickname,
+                                    avatarUrl: user.avatarUrl,
                                   );
                                 }
                               },
@@ -342,7 +530,7 @@ class _WorldScreenState extends State<WorldScreen> {
                                 value: worldProvider.isSharing,
                                 activeColor: AppColors.sage,
                                 onChanged: (val) {
-                                  if (user != null) {
+                                  if (user != null && spaceId.isNotEmpty) {
                                     worldProvider.toggleSharing(
                                       spaceId: spaceId,
                                       currentUserId: user.id,
@@ -354,7 +542,7 @@ class _WorldScreenState extends State<WorldScreen> {
                           ),
                           const SizedBox(height: 6),
                           Text(
-                            'Your coordinates are shared exclusively with your partner in your private encrypted sanctuary. Turning sharing off hides your location and partner tether simultaneously.',
+                            'Your coordinates stream continuously and privately between your two paired phones. Turning sharing off hides your location and partner tether simultaneously.',
                             style: TextStyle(
                               fontSize: 11,
                               color: isDark ? AppColors.darkSoft : AppColors.lightSoft,
@@ -379,7 +567,11 @@ class _WorldScreenState extends State<WorldScreen> {
                                   padding: EdgeInsets.zero,
                                   foregroundColor: Colors.redAccent,
                                 ),
-                                onPressed: () => worldProvider.clearLocationHistory(spaceId),
+                                onPressed: () {
+                                  if (spaceId.isNotEmpty) {
+                                    worldProvider.clearLocationHistory(spaceId);
+                                  }
+                                },
                                 child: const Text('Clear History', style: TextStyle(fontSize: 11)),
                               ),
                             ],
@@ -399,73 +591,122 @@ class _WorldScreenState extends State<WorldScreen> {
 
   void _fitMapBounds(UserLocationData? myLoc, UserLocationData? partnerLoc) {
     if (!_isMapReady) return;
+
     if (myLoc != null && partnerLoc != null) {
-      final bounds = LatLngBounds(
-        LatLng(myLoc.lat, myLoc.lng),
-        LatLng(partnerLoc.lat, partnerLoc.lng),
-      );
-      _mapController.fitCamera(
-        CameraFit.bounds(bounds: bounds, padding: const EdgeInsets.all(50)),
-      );
+      final latDiff = (myLoc.lat - partnerLoc.lat).abs();
+      final lngDiff = (myLoc.lng - partnerLoc.lng).abs();
+
+      // If both are very close (same building/room), zoom comfortably
+      if (latDiff < 0.0003 && lngDiff < 0.0003) {
+        _mapController.move(LatLng(myLoc.lat, myLoc.lng), 16.0);
+      } else {
+        final bounds = LatLngBounds(
+          LatLng(myLoc.lat, myLoc.lng),
+          LatLng(partnerLoc.lat, partnerLoc.lng),
+        );
+        _mapController.fitCamera(
+          CameraFit.bounds(bounds: bounds, padding: const EdgeInsets.all(55)),
+        );
+      }
     } else if (myLoc != null) {
-      _mapController.move(LatLng(myLoc.lat, myLoc.lng), 14.0);
+      _mapController.move(LatLng(myLoc.lat, myLoc.lng), 15.0);
     } else if (partnerLoc != null) {
-      _mapController.move(LatLng(partnerLoc.lat, partnerLoc.lng), 14.0);
+      _mapController.move(LatLng(partnerLoc.lat, partnerLoc.lng), 15.0);
     }
   }
 
   Widget _buildAvatarMarker({
     required String name,
+    String? avatarUrl,
     required bool isMe,
     required bool isDark,
     String? customLabel,
   }) {
+    final color = isMe ? AppColors.sage : AppColors.terra;
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Container(
-          width: 36,
-          height: 36,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: isMe ? AppColors.sage : AppColors.terra,
-            border: Border.all(color: Colors.white, width: 2),
-            boxShadow: [
-              BoxShadow(
-                color: (isMe ? AppColors.sage : AppColors.terra).withOpacity(0.4),
-                blurRadius: 8,
-                spreadRadius: 2,
-              ),
-            ],
-          ),
+        Stack(
           alignment: Alignment.center,
-          child: Text(
-            name.isNotEmpty ? name.substring(0, 1).toUpperCase() : '♥',
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-              fontSize: 14,
+          children: [
+            // Outer Halo
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: color.withOpacity(0.22),
+              ),
             ),
+
+            // Inner Avatar
+            Container(
+              width: 34,
+              height: 34,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: color,
+                border: Border.all(color: Colors.white, width: 2),
+                boxShadow: [
+                  BoxShadow(
+                    color: color.withOpacity(0.45),
+                    blurRadius: 6,
+                    spreadRadius: 1,
+                  ),
+                ],
+              ),
+              alignment: Alignment.center,
+              child: avatarUrl != null && avatarUrl.isNotEmpty
+                  ? ClipOval(
+                      child: Image.network(
+                        avatarUrl,
+                        width: 30,
+                        height: 30,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Text(
+                          name.isNotEmpty ? name.substring(0, 1).toUpperCase() : '♥',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                    )
+                  : Text(
+                      name.isNotEmpty ? name.substring(0, 1).toUpperCase() : '♥',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                      ),
+                    ),
+            ),
+          ],
+        ),
+
+        // Custom Status Tag or Name
+        Container(
+          margin: const EdgeInsets.only(top: 2),
+          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF1E1D2A) : Colors.white,
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(color: isDark ? Colors.white12 : Colors.black12),
+            boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 2)],
+          ),
+          child: Text(
+            customLabel?.isNotEmpty == true ? customLabel! : name,
+            style: TextStyle(
+              fontSize: 8.5,
+              fontWeight: FontWeight.bold,
+              color: isDark ? Colors.white : Colors.black87,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
         ),
-        if (customLabel != null && customLabel.isNotEmpty)
-          Container(
-            margin: const EdgeInsets.only(top: 2),
-            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-            decoration: BoxDecoration(
-              color: isDark ? AppColors.darkCard : Colors.white,
-              borderRadius: BorderRadius.circular(6),
-              boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 2)],
-            ),
-            child: Text(
-              customLabel,
-              style: TextStyle(
-                fontSize: 8,
-                fontWeight: FontWeight.bold,
-                color: isDark ? AppColors.darkInk : AppColors.lightInk,
-              ),
-            ),
-          ),
       ],
     );
   }
@@ -502,13 +743,17 @@ class _WorldScreenState extends State<WorldScreen> {
                   children: [
                     const Text('☀️', style: TextStyle(fontSize: 12)),
                     const SizedBox(width: 4),
-                    Text(
-                      userNickname.toUpperCase(),
-                      style: const TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 0.5,
-                        color: AppColors.sage,
+                    Expanded(
+                      child: Text(
+                        userNickname.toUpperCase(),
+                        style: const TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.5,
+                          color: AppColors.sage,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ],
@@ -522,7 +767,7 @@ class _WorldScreenState extends State<WorldScreen> {
                   ),
                 ),
                 Text(
-                  myLoc?.placeName ?? 'Local Time',
+                  myLoc?.placeName ?? 'Locating...',
                   style: TextStyle(
                     fontSize: 10,
                     color: isDark ? AppColors.darkSoft : AppColors.lightSoft,
@@ -551,13 +796,17 @@ class _WorldScreenState extends State<WorldScreen> {
                   children: [
                     const Text('🌙', style: TextStyle(fontSize: 12)),
                     const SizedBox(width: 4),
-                    Text(
-                      partnerNickname.toUpperCase(),
-                      style: const TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 0.5,
-                        color: AppColors.terra,
+                    Expanded(
+                      child: Text(
+                        partnerNickname.toUpperCase(),
+                        style: const TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.5,
+                          color: AppColors.terra,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ],
@@ -571,7 +820,7 @@ class _WorldScreenState extends State<WorldScreen> {
                   ),
                 ),
                 Text(
-                  partnerLoc?.placeName ?? 'Partner Time',
+                  partnerLoc?.placeName ?? (partnerLoc != null ? 'Nearby' : 'Awaiting signal...'),
                   style: TextStyle(
                     fontSize: 10,
                     color: isDark ? AppColors.darkSoft : AppColors.lightSoft,
@@ -596,6 +845,31 @@ class _WorldScreenState extends State<WorldScreen> {
   }) {
     final isTethered = distanceKm != null;
 
+    String distanceLabel;
+    String statusSubtitle;
+
+    if (isTethered) {
+      if (distanceKm < 0.05) {
+        distanceLabel = 'Side by side · Together ♥';
+        statusSubtitle = 'Tether active 🌿';
+      } else if (distanceKm < 1.0) {
+        final meters = (distanceKm * 1000).round();
+        distanceLabel = '$meters m apart · Walking distance';
+        statusSubtitle = 'Tether active 🌿';
+      } else {
+        distanceLabel = '${distanceKm.toStringAsFixed(1)} km apart';
+        statusSubtitle = 'Tether active 🌿';
+      }
+    } else {
+      if (myLoc != null && partnerLoc == null) {
+        distanceLabel = 'Awaiting $partnerNickname\'s signal...';
+        statusSubtitle = 'Waiting for partner';
+      } else {
+        distanceLabel = 'Awaiting mutual tether...';
+        statusSubtitle = 'Standby';
+      }
+    }
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -618,9 +892,7 @@ class _WorldScreenState extends State<WorldScreen> {
               Text(isTethered ? '✦' : '○', style: const TextStyle(fontSize: 14, color: AppColors.terra)),
               const SizedBox(width: 8),
               Text(
-                isTethered
-                    ? '${distanceKm.toStringAsFixed(1)} km apart'
-                    : 'Awaiting mutual tether...',
+                distanceLabel,
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.bold,
@@ -630,7 +902,7 @@ class _WorldScreenState extends State<WorldScreen> {
             ],
           ),
           Text(
-            isTethered ? 'Tether active 🌿' : 'Standby',
+            statusSubtitle,
             style: TextStyle(
               fontSize: 10,
               fontWeight: FontWeight.w600,
@@ -681,7 +953,7 @@ class _WorldScreenState extends State<WorldScreen> {
   }
 
   void _showLocationTagModal(BuildContext context, String spaceId, String? userId) {
-    if (userId == null) return;
+    if (userId == null || spaceId.isEmpty) return;
     final tags = ['Home 🏡', 'Work 💼', 'Cafe ☕', 'Transit 🚇', 'Gym 🏋️', 'Out Exploring ✨'];
 
     showModalBottomSheet(
@@ -734,7 +1006,7 @@ class _WorldScreenState extends State<WorldScreen> {
   }
 
   void _showAddPlaceModal(BuildContext context, String spaceId, String? userId, LatLng center) {
-    if (userId == null) return;
+    if (userId == null || spaceId.isEmpty) return;
     final nameCtrl = TextEditingController();
     String icon = '🏡';
     double radius = 150;

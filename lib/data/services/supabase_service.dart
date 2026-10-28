@@ -21,6 +21,17 @@ class SupabaseService {
   // Realtime Broadcast Channel
   static RealtimeChannel? _channel;
   static String? _currentSpaceId;
+  static final List<Function(Map<String, dynamic> data)> _locationCallbacks = [];
+
+  static void addLocationListener(Function(Map<String, dynamic> data) callback) {
+    if (!_locationCallbacks.contains(callback)) {
+      _locationCallbacks.add(callback);
+    }
+  }
+
+  static void removeLocationListener(Function(Map<String, dynamic> data) callback) {
+    _locationCallbacks.remove(callback);
+  }
 
   static void subscribeToSpaceEvents(
     String spaceId, {
@@ -62,6 +73,17 @@ class SupabaseService {
       _channel!.onBroadcast(
         event: 'TOUCH_PAD_EVENT',
         callback: (payload) => onTouchPad(payload),
+      );
+
+      _channel!.onBroadcast(
+        event: 'LOCATION_UPDATE',
+        callback: (payload) {
+          for (final cb in List<Function(Map<String, dynamic> data)>.from(_locationCallbacks)) {
+            try {
+              cb(payload);
+            } catch (_) {}
+          }
+        },
       );
 
       if (onDrawStroke != null) {
@@ -117,6 +139,16 @@ class SupabaseService {
         _channel = _client!.channel(
           'stage_space_$spaceId',
           opts: const RealtimeChannelConfig(ack: false, self: false),
+        );
+        _channel!.onBroadcast(
+          event: 'LOCATION_UPDATE',
+          callback: (payload) {
+            for (final cb in List<Function(Map<String, dynamic> data)>.from(_locationCallbacks)) {
+              try {
+                cb(payload);
+              } catch (_) {}
+            }
+          },
         );
         _channel!.subscribe();
       }
