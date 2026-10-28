@@ -19,6 +19,12 @@ class NotificationService {
   static const String alertChannelId = 'com.pagesofus.app.alerts';
   static const String alertChannelName = 'Important Place & Weather Alerts';
 
+  // App Icons (Displays full color official App Icon on the notification card)
+  static const String _smallIcon = '@mipmap/ic_launcher';
+  static const DrawableResourceAndroidBitmap _largeAppIcon =
+      DrawableResourceAndroidBitmap('@mipmap/ic_launcher');
+  static const Color _brandColor = Color(0xFFE07A5F); // Signature Terracotta Rose
+
   // Navigation Stream for Instant Deep-Linking
   static final StreamController<String?> selectNotificationStream =
       StreamController<String?>.broadcast();
@@ -150,7 +156,9 @@ class NotificationService {
       partnerChannelName,
       importance: Importance.max,
       priority: Priority.high,
-      color: Color(0xFFE07A5F),
+      icon: _smallIcon,
+      largeIcon: _largeAppIcon,
+      color: _brandColor,
       enableVibration: true,
       styleInformation: BigTextStyleInformation(''),
     );
@@ -184,6 +192,9 @@ class NotificationService {
         partnerChannelName,
         importance: Importance.high,
         priority: Priority.high,
+        icon: _smallIcon,
+        largeIcon: _largeAppIcon,
+        color: _brandColor,
         styleInformation: BigTextStyleInformation(''),
       );
 
@@ -225,6 +236,8 @@ class NotificationService {
       alertChannelName,
       importance: Importance.high,
       priority: Priority.high,
+      icon: _smallIcon,
+      largeIcon: _largeAppIcon,
       color: Color(0xFF6B8E23),
       enableVibration: true,
       styleInformation: BigTextStyleInformation(''),
@@ -282,7 +295,9 @@ class NotificationService {
       partnerChannelName,
       importance: Importance.high,
       priority: Priority.high,
-      color: Color(0xFFE07A5F),
+      icon: _smallIcon,
+      largeIcon: _largeAppIcon,
+      color: _brandColor,
       enableVibration: true,
       styleInformation: BigTextStyleInformation(''),
     );
@@ -315,6 +330,8 @@ class NotificationService {
       partnerChannelName,
       importance: Importance.high,
       priority: Priority.high,
+      icon: _smallIcon,
+      largeIcon: _largeAppIcon,
       color: Color(0xFF9D84B7),
       enableVibration: true,
       styleInformation: BigTextStyleInformation(''),
@@ -373,9 +390,11 @@ class NotificationService {
           android: AndroidNotificationDetails(
             vaultChannelId,
             vaultChannelName,
-            channelDescription: 'Midnight time-lock capsule unlocks and secret surprises',
+            channelDescription: 'Midnight time-lock vault unlocks and secret surprises',
             importance: Importance.max,
             priority: Priority.high,
+            icon: _smallIcon,
+            largeIcon: _largeAppIcon,
             color: Color(0xFFE89A8A), // Rose Gold
             enableVibration: true,
             styleInformation: BigTextStyleInformation(''),
@@ -426,7 +445,9 @@ class NotificationService {
         partnerChannelName,
         importance: Importance.high,
         priority: Priority.high,
-        color: Color(0xFFE07A5F),
+        icon: _smallIcon,
+        largeIcon: _largeAppIcon,
+        color: _brandColor,
         enableVibration: true,
         styleInformation: BigTextStyleInformation(''),
       );
@@ -456,7 +477,9 @@ class NotificationService {
       partnerChannelName,
       importance: Importance.high,
       priority: Priority.high,
-      color: Color(0xFFE07A5F),
+      icon: _smallIcon,
+      largeIcon: _largeAppIcon,
+      color: _brandColor,
       enableVibration: true,
       styleInformation: BigTextStyleInformation(''),
     );
@@ -487,6 +510,8 @@ class NotificationService {
       alertChannelName,
       importance: Importance.max,
       priority: Priority.max,
+      icon: _smallIcon,
+      largeIcon: _largeAppIcon,
       color: Color(0xFF1E88E5),
       enableVibration: true,
       styleInformation: BigTextStyleInformation(''),
@@ -519,6 +544,9 @@ class NotificationService {
         partnerChannelName,
         importance: Importance.high,
         priority: Priority.high,
+        icon: _smallIcon,
+        largeIcon: _largeAppIcon,
+        color: _brandColor,
         styleInformation: BigTextStyleInformation(''),
       );
 
@@ -555,7 +583,9 @@ class NotificationService {
       partnerChannelName,
       importance: Importance.high,
       priority: Priority.high,
-      color: Color(0xFFE07A5F),
+      icon: _smallIcon,
+      largeIcon: _largeAppIcon,
+      color: _brandColor,
       enableVibration: true,
       styleInformation: BigTextStyleInformation(''),
     );
@@ -582,6 +612,9 @@ class NotificationService {
         partnerChannelName,
         importance: Importance.high,
         priority: Priority.high,
+        icon: _smallIcon,
+        largeIcon: _largeAppIcon,
+        color: _brandColor,
       );
 
       await _localNotifications.zonedSchedule(
