@@ -22,45 +22,24 @@ class UploadResult {
 }
 
 class MediaUploadService {
-  // 1. Cloudinary: High-performance auto-compression for Photos & Audio Whispers (25 GB Free, No Card)
+  // 1. Cloudinary: High-performance auto-compression for Photos, Videos & Audio Whispers
+  // Uses client-safe unsigned upload preset (Zero private keys exposed)
   static const String cloudinaryCloudName = 'i8bn5qmo';
   static const String cloudinaryUploadPreset = 'pages_of_us_preset';
 
-  // 2. ImageKit.io: Dedicated High-Speed Video Streaming (20 GB Free, Zero Billing, No Card)
-  static const String imageKitEndpoint = 'https://ik.imagekit.io/asmon96';
-  static const String imageKitPublicKey = 'public_2DxFyUqrIx65H0BV8faIyT0APK8=';
-  static const String imageKitPrivateKey = 'private_zsRoRnAnXOg0XByDzddSQkTBAts=';
-  static const String imageKitUploadUrl = 'https://upload.imagekit.io/api/v1/files/upload';
-
-  // 3. Supabase Storage Fallback Bucket
+  // 2. Supabase Storage Fallback Bucket
   static const String mediaBucketName = 'pages-media';
 
-  /// Uploads media file based on intelligent multi-cloud routing:
-  /// - Videos (Vault & Memories) -> ImageKit.io (20 GB Free, fast edge CDN streaming)
-  /// - Photos & Voice Whispers -> Cloudinary (auto-WebP, auto-compression, face crop)
-  /// - Fallback -> Supabase Storage
+  /// Uploads media file based on secure client-side routing:
+  /// - Primary: Cloudinary (Auto-compression, adaptive video streaming, WebP & face-crop)
+  /// - Secondary Fallback: Supabase Storage
   static Future<UploadResult> uploadFile(
     File file, {
     String folder = 'memories',
     void Function(double progress)? onProgress,
   }) async {
-    final ext = p.extension(file.path).replaceAll('.', '').toLowerCase();
-    final isVideo = ['mp4', 'mov', 'mkv', 'webm', 'avi', '3gp'].contains(ext) || folder.contains('video');
-
     // -------------------------------------------------------------
-    // ROUTE 1: VIDEOS -> ImageKit.io (20 GB Free, separated folders)
-    // -------------------------------------------------------------
-    if (isVideo) {
-      final targetFolder = folder.contains('vault') ? '/vault_videos' : '/memories_videos';
-      final imageKitResult = await _uploadToImageKit(file, targetFolder, onProgress);
-      if (imageKitResult != null) {
-        return imageKitResult;
-      }
-      // If ImageKit has a network issue, gracefully falls back to Cloudinary
-    }
-
-    // -------------------------------------------------------------
-    // ROUTE 2: PHOTOS & AUDIO -> Cloudinary (Optimized WebP & Audio)
+    // ROUTE 1: PRIMARY -> Cloudinary (Secure Unsigned Preset)
     // -------------------------------------------------------------
     final cloudResult = await _uploadToCloudinary(file, folder, onProgress);
     if (cloudResult != null) {
@@ -68,7 +47,7 @@ class MediaUploadService {
     }
 
     // -------------------------------------------------------------
-    // ROUTE 3: FALLBACK -> Supabase Storage
+    // ROUTE 2: FALLBACK -> Supabase Storage
     // -------------------------------------------------------------
     final supaResult = await _uploadToSupabase(file, folder, onProgress);
     if (supaResult != null) {
@@ -78,55 +57,7 @@ class MediaUploadService {
     throw Exception('Failed to upload media. Please check your internet connection.');
   }
 
-  /// Uploads video directly to ImageKit.io REST API with Basic Auth
-  static Future<UploadResult?> _uploadToImageKit(
-    File file,
-    String targetFolder,
-    void Function(double progress)? onProgress,
-  ) async {
-    try {
-      final fileName = p.basename(file.path);
-      final size = await file.length();
-      final uri = Uri.parse(imageKitUploadUrl);
-
-      final request = http.MultipartRequest('POST', uri);
-      final authHeader = 'Basic ${base64Encode(utf8.encode('$imageKitPrivateKey:'))}';
-      request.headers['Authorization'] = authHeader;
-
-      request.fields['fileName'] = '${DateTime.now().millisecondsSinceEpoch}_$fileName';
-      request.fields['folder'] = targetFolder;
-      request.fields['useUniqueFileName'] = 'true';
-      request.fields['tags'] = 'pages_of_us';
-
-      request.files.add(await http.MultipartFile.fromPath('file', file.path));
-
-      onProgress?.call(0.3);
-      final streamedResponse = await request.send();
-      final response = await http.Response.fromStream(streamedResponse);
-
-      if (response.statusCode >= 200 && response.statusCode < 300) {
-        final data = jsonDecode(response.body) as Map<String, dynamic>;
-        final rawUrl = data['url'] as String? ?? '';
-        final thumb = (data['thumbnailUrl'] as String?) ??
-            (data['thumbnail'] as String?) ??
-            '$rawUrl/ik-thumbnail.jpg';
-
-        onProgress?.call(1.0);
-        return UploadResult(
-          url: rawUrl,
-          thumbnailUrl: thumb,
-          fileName: fileName,
-          size: size,
-          provider: 'imagekit',
-        );
-      }
-    } catch (_) {
-      // Allows seamless fallback to Cloudinary / Supabase
-    }
-    return null;
-  }
-
-  /// Uploads media directly to Cloudinary with unsigned preset
+  /// Uploads media directly to Cloudinary with secure unsigned preset
   static Future<UploadResult?> _uploadToCloudinary(
     File file,
     String folder,
@@ -152,8 +83,16 @@ class MediaUploadService {
       if (response.statusCode >= 200 && response.statusCode < 300) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
         final secureUrl = data['secure_url'] as String? ?? '';
-        final optimizedUrl = secureUrl.replaceAll('/upload/', '/upload/f_auto,q_auto/');
-        final thumb = secureUrl.replaceAll('/upload/', '/upload/c_thumb,w_300,g_face,f_auto,q_auto/');
+        final resourceType = data['resource_type'] as String? ?? 'image';
+        final isVideo = resourceType == 'video';
+
+        final optimizedUrl = isVideo
+            ? secureUrl.replaceAll('/upload/', '/upload/q_auto/')
+            : secureUrl.replaceAll('/upload/', '/upload/f_auto,q_auto/');
+
+        final thumb = isVideo
+            ? secureUrl.replaceAll(p.extension(secureUrl), '.jpg').replaceAll('/upload/', '/upload/so_0,w_400,c_fill,q_auto,f_jpg/')
+            : secureUrl.replaceAll('/upload/', '/upload/c_thumb,w_300,g_face,f_auto,q_auto/');
 
         onProgress?.call(1.0);
         return UploadResult(
