@@ -104,6 +104,24 @@ class VaultProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  String? get currentPlayingTrack => _currentPlayingTrack;
+
+  static String getTrackDisplayName(String? track) {
+    if (track == null || track.isEmpty || track == 'none') return 'None (Silent)';
+    if (track == 'lofi_sanctuary' || track.startsWith('lofi')) return '☕ Lo-fi Sanctuary';
+    if (track == 'rain') return '🌧️ Gentle Rain';
+    if (track == 'ocean') return '🌊 Ocean Waves';
+    if (track == 'breeze') return '🍃 Night Breeze';
+    if (track == 'fireplace') return '🔥 Cozy Fireplace';
+    if (track == 'birds') return '🐦 Morning Birds';
+    if (track.startsWith('http')) return '🎵 Custom Song (Cloud)';
+    if (track.startsWith('/') || track.contains(':\\')) {
+      final name = track.split(RegExp(r'[\\/]')).last;
+      return '🎵 ${name.replaceAll(RegExp(r'\.[a-zA-Z0-9]+$'), '')}';
+    }
+    return track;
+  }
+
   // --- Smooth Background Audio Player with Fade-in & Fade-out ---
 
   Future<void> startVaultMusic(String? track) async {
@@ -123,10 +141,15 @@ class VaultProvider extends ChangeNotifier {
       await _vaultAudio.setVolume(0.0);
       await _vaultAudio.setReleaseMode(ReleaseMode.loop);
 
-      if (track.startsWith('http')) {
+      if (track.startsWith('http://') || track.startsWith('https://')) {
         await _vaultAudio.play(UrlSource(track));
+      } else if (track.startsWith('/') || track.contains(':\\') || track.startsWith('file://')) {
+        final localPath = track.startsWith('file://') ? track.substring(7) : track;
+        await _vaultAudio.play(DeviceFileSource(localPath));
       } else if (track == 'lofi_sanctuary' || track.startsWith('lofi')) {
         await _vaultAudio.play(AssetSource('audio/lofi_sanctuary.mp3'));
+      } else if (track.startsWith('audio/')) {
+        await _vaultAudio.play(AssetSource(track));
       } else {
         await _vaultAudio.play(AssetSource('audio/$track.mp3'));
       }

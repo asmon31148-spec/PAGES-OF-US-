@@ -188,16 +188,28 @@ class _NewVaultScreenState extends State<NewVaultScreen> {
   }
 
   Future<void> _pickCustomAudio() async {
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: ['mp3', 'm4a', 'wav', 'aac'],
-    );
-    if (result != null && result.files.single.path != null) {
-      setState(() {
-        _customAudioFile = File(result.files.single.path!);
-        _backgroundSong = 'custom';
-      });
-    }
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['mp3', 'm4a', 'wav', 'aac', 'ogg', 'flac'],
+      );
+      if (result != null && result.files.single.path != null) {
+        setState(() {
+          _customAudioFile = File(result.files.single.path!);
+          _backgroundSong = 'custom';
+        });
+        HapticFeedback.selectionClick();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Selected "${result.files.single.name}" as background song ✦'),
+              backgroundColor: const Color(0xFF2E2A3A),
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+      }
+    } catch (_) {}
   }
 
   Future<void> _pickSpecialDate() async {
@@ -1240,22 +1252,35 @@ class _NewVaultScreenState extends State<NewVaultScreen> {
                 spacing: 8,
                 runSpacing: 8,
                 children: [
-                  _buildMusicChip('lofi_sanctuary', 'Lo-fi Sanctuary'),
-                  _buildMusicChip('romantic_piano', 'Midnight Piano'),
-                  _buildMusicChip('acoustic_warmth', 'Warm Acoustic'),
-                  _buildMusicChip('none', 'None'),
+                  _buildMusicChip('lofi_sanctuary', '☕ Lo-fi Sanctuary'),
+                  _buildMusicChip('rain', '🌧️ Gentle Rain'),
+                  _buildMusicChip('ocean', '🌊 Ocean Waves'),
+                  _buildMusicChip('breeze', '🍃 Night Breeze'),
+                  _buildMusicChip('fireplace', '🔥 Cozy Fireplace'),
+                  _buildMusicChip('birds', '🐦 Morning Birds'),
+                  _buildMusicChip('none', '🔇 None'),
                   ActionChip(
-                    backgroundColor: _backgroundSong == 'custom'
+                    backgroundColor: (_backgroundSong == 'custom' || (_backgroundSong != null && _backgroundSong!.startsWith('http')))
                         ? const Color(0xFFD4AF37).withOpacity(0.2)
                         : const Color(0xFF1E1A29),
                     side: BorderSide(
-                      color: _backgroundSong == 'custom' ? const Color(0xFFD4AF37) : Colors.white12,
+                      color: (_backgroundSong == 'custom' || (_backgroundSong != null && _backgroundSong!.startsWith('http')))
+                          ? const Color(0xFFD4AF37)
+                          : Colors.white12,
                     ),
+                    avatar: const Icon(Icons.upload_file_rounded, size: 14, color: Color(0xFFD4AF37)),
                     label: Text(
-                      _customAudioFile != null ? 'Custom Audio ✓' : '+ Upload Custom Song',
+                      _customAudioFile != null
+                          ? 'Custom: ${p.basename(_customAudioFile!.path)} ✓'
+                          : (_backgroundSong != null && _backgroundSong!.startsWith('http')
+                              ? 'Custom Song Saved ✓'
+                              : '+ Upload Custom Song'),
                       style: TextStyle(
-                        color: _backgroundSong == 'custom' ? const Color(0xFFD4AF37) : Colors.white70,
+                        color: (_backgroundSong == 'custom' || (_backgroundSong != null && _backgroundSong!.startsWith('http')))
+                            ? const Color(0xFFD4AF37)
+                            : Colors.white70,
                         fontSize: 12,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                     onPressed: _pickCustomAudio,

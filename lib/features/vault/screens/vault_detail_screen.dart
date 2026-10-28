@@ -1,13 +1,18 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:audioplayers/audioplayers.dart';
 
+import '../../../core/services/media_upload_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/full_screen_video_player.dart';
 import '../../../data/models/vault_item.dart';
+import '../../../providers/audio_provider.dart';
 import '../../../providers/vault_provider.dart';
 import '../widgets/vault_emblem.dart';
 import 'new_vault_screen.dart';
@@ -129,6 +134,505 @@ class _VaultDetailScreenState extends State<VaultDetailScreen> {
     }
   }
 
+  void _showMusicCustomizationSheet(BuildContext context) {
+    bool isUploading = false;
+    String? uploadStatusText;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF13101A),
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetCtx) {
+        return StatefulBuilder(
+          builder: (ctx, setSheetState) {
+            final audioProvider = ctx.watch<AudioProvider>();
+            final currentSong = _vault.backgroundSong;
+
+            final soundscapes = [
+              {'key': 'lofi_sanctuary', 'name': 'Lo-Fi Sanctuary', 'icon': Icons.headphones_rounded, 'desc': 'Chill relaxing beats'},
+              {'key': 'rain', 'name': 'Gentle Rain', 'icon': Icons.water_drop_outlined, 'desc': 'Cozy rainfall ambiance'},
+              {'key': 'ocean', 'name': 'Ocean Waves', 'icon': Icons.waves_rounded, 'desc': 'Soothing rhythmic tide'},
+              {'key': 'breeze', 'name': 'Night Breeze', 'icon': Icons.air_rounded, 'desc': 'Whispering evening wind'},
+              {'key': 'fireplace', 'name': 'Warm Fireplace', 'icon': Icons.local_fire_department_outlined, 'desc': 'Crackling cozy embers'},
+              {'key': 'birds', 'name': 'Morning Birds', 'icon': Icons.eco_outlined, 'desc': 'Peaceful dawn chorus'},
+            ];
+
+            Future<void> selectTrack(String trackKey) async {
+              HapticFeedback.selectionClick();
+              final updated = _vault.copyWith(backgroundSong: trackKey);
+              setState(() => _vault = updated);
+              setSheetState(() {});
+              await context.read<VaultProvider>().updateVault(updated, widget.spaceId);
+              if (mounted) {
+                if (trackKey == 'none') {
+                  await context.read<VaultProvider>().stopVaultMusic();
+                  setState(() => _isMusicMuted = true);
+                } else {
+                  setState(() => _isMusicMuted = false);
+                  await context.read<VaultProvider>().startVaultMusic(trackKey);
+                }
+              }
+            }
+
+            Future<void> pickAndUploadCustomMusic() async {
+              try {
+                final result = await FilePicker.platform.pickFiles(
+                  type: FileType.custom,
+                  allowedExtensions: ['mp3', 'm4a', 'wav', 'aac', 'ogg', 'flac'],
+                );
+
+                if (result != null && result.files.single.path != null) {
+                  final file = File(result.files.single.path!);
+                  setSheetState(() {
+                    isUploading = true;
+                    uploadStatusText = 'Uploading ${result.files.single.name}...';
+                  });
+
+                  final uploadRes = await MediaUploadService.uploadFile(
+                    file,
+                    folder: 'vault_music',
+                  );
+
+                  final updated = _vault.copyWith(backgroundSong: uploadRes.url);
+                  setState(() => _vault = updated);
+                  await context.read<VaultProvider>().updateVault(updated, widget.spaceId);
+
+                  if (mounted) {
+                    setState(() => _isMusicMuted = false);
+                    await context.read<VaultProvider>().startVaultMusic(uploadRes.url);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Soundtrack set to: ${result.files.single.name}'),
+                        backgroundColor: const Color(0xFF1F1B2C),
+                      ),
+                    );
+                  }
+
+                  if (ctx.mounted) {
+                    setSheetState(() {
+                      isUploading = false;
+                      uploadStatusText = null;
+                    });
+                  }
+                }
+              } catch (e) {
+                if (ctx.mounted) {
+                  setSheetState(() {
+                    isUploading = false;
+                    uploadStatusText = null;
+                  });
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Upload failed: $e'),
+                      backgroundColor: Colors.redAccent,
+                    ),
+                  );
+                }
+              }
+            }
+
+            return Container(
+              height: MediaQuery.of(context).size.height * 0.78,
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Handle bar
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.white24,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Header
+                  Row(
+                    children: [
+                      const Icon(Icons.music_note_rounded, color: Color(0xFFD4AF37), size: 22),
+                      const SizedBox(width: 10),
+                      const Expanded(
+                        child: Text(
+                          'Vault Soundtrack',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close_rounded, color: Colors.white70),
+                        onPressed: () => Navigator.pop(sheetCtx),
+                      ),
+                    ],
+                  ),
+                  Text(
+                    'Pick a nature soundscape, couple playlist song, or upload your own song from device storage.',
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.6),
+                      fontSize: 12.5,
+                      height: 1.3,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  Expanded(
+                    child: ListView(
+                      children: [
+                        // --- 1. Upload Custom Audio from Device ---
+                        GestureDetector(
+                          onTap: isUploading ? null : pickAndUploadCustomMusic,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  const Color(0xFFD4AF37).withOpacity(0.18),
+                                  const Color(0xFFD4AF37).withOpacity(0.06),
+                                ],
+                              ),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: const Color(0xFFD4AF37).withOpacity(0.5),
+                                width: 1.2,
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFD4AF37).withOpacity(0.2),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: isUploading
+                                      ? const SizedBox(
+                                          width: 20,
+                                          height: 20,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            color: Color(0xFFD4AF37),
+                                          ),
+                                        )
+                                      : const Icon(
+                                          Icons.file_upload_outlined,
+                                          color: Color(0xFFD4AF37),
+                                          size: 22,
+                                        ),
+                                ),
+                                const SizedBox(width: 14),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        isUploading
+                                            ? (uploadStatusText ?? 'Uploading track...')
+                                            : 'Upload Any Music from Phone',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        isUploading
+                                            ? 'Saving to cloud & synchronizing...'
+                                            : 'Select MP3, M4A, WAV, AAC from your device',
+                                        style: TextStyle(
+                                          color: Colors.white.withOpacity(0.6),
+                                          fontSize: 11.5,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const Icon(
+                                  Icons.chevron_right_rounded,
+                                  color: Color(0xFFD4AF37),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+
+                        // --- 2. Ambient Soundscapes ---
+                        Text(
+                          'SANCTUARY AMBIENT SOUNDSCAPES',
+                          style: TextStyle(
+                            color: const Color(0xFFD4AF37).withOpacity(0.8),
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 1.0,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+
+                        ...soundscapes.map((sc) {
+                          final isSelected = currentSong == sc['key'];
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            decoration: BoxDecoration(
+                              color: isSelected ? const Color(0xFFD4AF37).withOpacity(0.12) : const Color(0xFF1E1A29),
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(
+                                color: isSelected ? const Color(0xFFD4AF37) : Colors.white10,
+                                width: isSelected ? 1.5 : 1,
+                              ),
+                            ),
+                            child: ListTile(
+                              onTap: () => selectTrack(sc['key'] as String),
+                              dense: true,
+                              leading: Icon(
+                                sc['icon'] as IconData,
+                                color: isSelected ? const Color(0xFFD4AF37) : Colors.white70,
+                                size: 22,
+                              ),
+                              title: Text(
+                                sc['name'] as String,
+                                style: TextStyle(
+                                  color: isSelected ? const Color(0xFFD4AF37) : Colors.white,
+                                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                                  fontSize: 13.5,
+                                ),
+                              ),
+                              subtitle: Text(
+                                sc['desc'] as String,
+                                style: TextStyle(
+                                  color: Colors.white.withOpacity(0.5),
+                                  fontSize: 11.5,
+                                ),
+                              ),
+                              trailing: isSelected
+                                  ? const Icon(Icons.check_circle_rounded, color: Color(0xFFD4AF37), size: 20)
+                                  : null,
+                            ),
+                          );
+                        }),
+
+                        const SizedBox(height: 16),
+
+                        // --- 3. Couple Playlist Songs ---
+                        if (audioProvider.songs.isNotEmpty) ...[
+                          Text(
+                            "COUPLE'S PLAYLIST SONGS",
+                            style: TextStyle(
+                              color: const Color(0xFFD4AF37).withOpacity(0.8),
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 1.0,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+
+                          ...audioProvider.songs.map((song) {
+                            final isSelected = currentSong == song.audioUrl;
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 8),
+                              decoration: BoxDecoration(
+                                color: isSelected ? const Color(0xFFD4AF37).withOpacity(0.12) : const Color(0xFF1E1A29),
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(
+                                  color: isSelected ? const Color(0xFFD4AF37) : Colors.white10,
+                                  width: isSelected ? 1.5 : 1,
+                                ),
+                              ),
+                              child: ListTile(
+                                onTap: () => selectTrack(song.audioUrl),
+                                dense: true,
+                                leading: const Icon(
+                                  Icons.music_note_rounded,
+                                  color: Colors.white70,
+                                  size: 20,
+                                ),
+                                title: Text(
+                                  song.title,
+                                  style: TextStyle(
+                                    color: isSelected ? const Color(0xFFD4AF37) : Colors.white,
+                                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                                    fontSize: 13.5,
+                                  ),
+                                ),
+                                subtitle: Text(
+                                  song.artist,
+                                  style: TextStyle(
+                                    color: Colors.white.withOpacity(0.5),
+                                    fontSize: 11.5,
+                                  ),
+                                ),
+                                trailing: isSelected
+                                    ? const Icon(Icons.check_circle_rounded, color: Color(0xFFD4AF37), size: 20)
+                                    : null,
+                              ),
+                            );
+                          }),
+                          const SizedBox(height: 16),
+                        ],
+
+                        // --- 4. Turn Off Music ---
+                        Container(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          decoration: BoxDecoration(
+                            color: currentSong == 'none' || currentSong == null || currentSong.isEmpty
+                                ? const Color(0xFFE57373).withOpacity(0.12)
+                                : const Color(0xFF1E1A29),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: currentSong == 'none' || currentSong == null || currentSong.isEmpty
+                                  ? const Color(0xFFE57373)
+                                  : Colors.white10,
+                              width: 1,
+                            ),
+                          ),
+                          child: ListTile(
+                            onTap: () => selectTrack('none'),
+                            dense: true,
+                            leading: const Icon(
+                              Icons.volume_off_rounded,
+                              color: Color(0xFFE57373),
+                              size: 20,
+                            ),
+                            title: const Text(
+                              'Turn Off Soundtrack (Silent Vault)',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w500,
+                                fontSize: 13.5,
+                              ),
+                            ),
+                            subtitle: Text(
+                              'Quiet reading without background music',
+                              style: TextStyle(
+                                color: Colors.white.withOpacity(0.5),
+                                fontSize: 11.5,
+                              ),
+                            ),
+                            trailing: (currentSong == 'none' || currentSong == null || currentSong.isEmpty)
+                                ? const Icon(Icons.check_circle_rounded, color: Color(0xFFE57373), size: 20)
+                                : null,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildBackgroundMusicBanner(VaultProvider vp) {
+    final track = _vault.backgroundSong;
+    final hasMusic = track != null && track.isNotEmpty && track != 'none';
+    final trackName = VaultProvider.getTrackDisplayName(track);
+    final isPlaying = vp.isAudioPlaying && !_isMusicMuted;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF16141F),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: hasMusic ? const Color(0xFFD4AF37).withOpacity(0.3) : Colors.white10,
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: hasMusic
+                  ? const Color(0xFFD4AF37).withOpacity(0.15)
+                  : Colors.white.withOpacity(0.05),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              hasMusic
+                  ? (isPlaying ? Icons.music_note_rounded : Icons.pause_rounded)
+                  : Icons.music_off_outlined,
+              color: hasMusic ? const Color(0xFFD4AF37) : Colors.white38,
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'BACKGROUND SOUNDTRACK',
+                  style: TextStyle(
+                    color: const Color(0xFFD4AF37).withOpacity(0.8),
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1.0,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  trackName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (hasMusic) ...[
+            IconButton(
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
+              icon: Icon(
+                _isMusicMuted || !vp.isAudioPlaying ? Icons.volume_off_rounded : Icons.volume_up_rounded,
+                color: const Color(0xFFD4AF37),
+                size: 20,
+              ),
+              tooltip: _isMusicMuted ? 'Unmute' : 'Mute',
+              onPressed: _toggleMuteMusic,
+            ),
+            const SizedBox(width: 4),
+          ],
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFD4AF37).withOpacity(0.18),
+              foregroundColor: const Color(0xFFD4AF37),
+              elevation: 0,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              minimumSize: const Size(0, 32),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+                side: BorderSide(color: const Color(0xFFD4AF37).withOpacity(0.4)),
+              ),
+            ),
+            onPressed: () => _showMusicCustomizationSheet(context),
+            child: const Text(
+              'Change',
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _confirmDeleteVault() async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -221,17 +725,18 @@ class _VaultDetailScreenState extends State<VaultDetailScreen> {
             onPressed: _handleBack,
           ),
           actions: [
-            // Background Music Indicator & Mute toggle
-            if (_vault.backgroundSong != null && _vault.backgroundSong != 'none')
-              IconButton(
-                icon: Icon(
-                  _isMusicMuted || !vp.isAudioPlaying ? Icons.volume_off_rounded : Icons.volume_up_rounded,
-                  color: const Color(0xFFD4AF37),
-                  size: 20,
-                ),
-                tooltip: _isMusicMuted ? 'Play background music' : 'Mute music',
-                onPressed: _toggleMuteMusic,
+            // Background Music Quick Action & Sheet opener
+            IconButton(
+              icon: Icon(
+                (_vault.backgroundSong == null || _vault.backgroundSong == 'none')
+                    ? Icons.music_off_outlined
+                    : (_isMusicMuted || !vp.isAudioPlaying ? Icons.volume_off_rounded : Icons.music_note_rounded),
+                color: const Color(0xFFD4AF37),
+                size: 22,
               ),
+              tooltip: 'Vault soundtrack',
+              onPressed: () => _showMusicCustomizationSheet(context),
+            ),
 
             // Edit button (available for both partners)
             TextButton.icon(
@@ -263,6 +768,10 @@ class _VaultDetailScreenState extends State<VaultDetailScreen> {
             children: [
               // 1. Hero Card (Matching Image 3)
               _buildHeroCard(),
+              const SizedBox(height: 16),
+
+              // Background Soundtrack Banner & Customizer
+              _buildBackgroundMusicBanner(vp),
               const SizedBox(height: 24),
 
               // 2. The Letter Section
