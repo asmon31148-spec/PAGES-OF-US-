@@ -86,35 +86,64 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
     });
   }
 
+  bool _isPinning = false;
+
   Future<void> _pinPromptToBoard({
     required BuildContext context,
     required String question,
     required String vibeTag,
     required String category,
   }) async {
+    if (_isPinning) return;
+    _isPinning = true;
+
     HapticFeedback.mediumImpact();
     final auth = context.read<AuthProvider>();
     final stage = context.read<StageProvider>();
     final spaceId = auth.space?.id ?? auth.user?.spaceId ?? '';
 
-    if (spaceId.isEmpty) return;
+    // Capture the messenger BEFORE popping to avoid using a deactivated context
+    final messenger = ScaffoldMessenger.of(context);
 
-    await stage.setCustomDailyPrompt(
-      spaceId: spaceId,
-      question: question,
-      vibeTag: vibeTag,
-      category: category,
+    // Safely dismiss the bottom sheet modal first
+    if (mounted && Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+    }
+
+    messenger.hideCurrentSnackBar();
+    messenger.showSnackBar(
+      SnackBar(
+        content: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: const [
+            Icon(Icons.auto_awesome_rounded, size: 15, color: Colors.white),
+            SizedBox(width: 8),
+            Text(
+              'Pinned new question to sanctuary board! 💌',
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+            ),
+          ],
+        ),
+        backgroundColor: AppColors.terra,
+        duration: const Duration(milliseconds: 2000),
+        behavior: SnackBarBehavior.floating,
+      ),
     );
 
-    if (mounted) {
-      Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Pinned new question to sanctuary board! 💌'),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+    if (spaceId.isNotEmpty) {
+      try {
+        await stage.setCustomDailyPrompt(
+          spaceId: spaceId,
+          question: question,
+          vibeTag: vibeTag,
+          category: category,
+        );
+      } catch (e) {
+        debugPrint('Failed to set custom prompt: $e');
+      }
     }
+
+    _isPinning = false;
   }
 
   @override
@@ -500,12 +529,14 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
                           ),
                         ),
                         ElevatedButton(
-                          onPressed: () => _pinPromptToBoard(
-                            context: context,
-                            question: gen.question,
-                            vibeTag: gen.vibeTag,
-                            category: gen.category,
-                          ),
+                          onPressed: _isPinning
+                              ? null
+                              : () => _pinPromptToBoard(
+                                  context: context,
+                                  question: gen.question,
+                                  vibeTag: gen.vibeTag,
+                                  category: gen.category,
+                                ),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.sage,
                             foregroundColor: Colors.white,
@@ -641,7 +672,7 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: _customQuestionController.text.trim().isEmpty
+              onPressed: (_isPinning || _customQuestionController.text.trim().isEmpty)
                   ? null
                   : () => _pinPromptToBoard(
                         context: context,
@@ -789,12 +820,14 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
                     ),
                     const SizedBox(width: 10),
                     ElevatedButton(
-                      onPressed: () => _pinPromptToBoard(
-                        context: context,
-                        question: item['question']!,
-                        vibeTag: item['vibeTag']!,
-                        category: item['category']!,
-                      ),
+                      onPressed: _isPinning
+                          ? null
+                          : () => _pinPromptToBoard(
+                              context: context,
+                              question: item['question']!,
+                              vibeTag: item['vibeTag']!,
+                              category: item['category']!,
+                            ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.sage,
                         foregroundColor: Colors.white,

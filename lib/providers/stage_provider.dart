@@ -670,17 +670,21 @@ class StageProvider extends ChangeNotifier {
     notifyListeners();
 
     // 1. Dual save: Firestore & Supabase app_content
-    await FirebaseService.saveFeatureDoc(spaceId, 'daily_prompt', newPrompt.toJson());
-    await SupabaseService.upsertAppContent('daily_prompt_$spaceId', newPrompt.toJson());
+    try {
+      await FirebaseService.saveFeatureDoc(spaceId, 'daily_prompt', newPrompt.toJson());
+      await SupabaseService.upsertAppContent('daily_prompt_$spaceId', newPrompt.toJson());
 
-    // 2. Broadcast to partner
-    await SupabaseService.broadcastEvent(
-      spaceId: spaceId,
-      eventType: 'DAILY_PROMPT_UPDATE',
-      payload: {
-        'dailyPrompt': newPrompt.toJson(),
-      },
-    );
+      // 2. Broadcast to partner
+      await SupabaseService.broadcastEvent(
+        spaceId: spaceId,
+        eventType: 'DAILY_PROMPT_UPDATE',
+        payload: {
+          'dailyPrompt': newPrompt.toJson(),
+        },
+      );
+    } catch (e) {
+      debugPrint('Failed to sync custom daily prompt: $e');
+    }
   }
 
   Future<void> _archivePromptHistory(String spaceId, PromptHistoryItem item) async {

@@ -247,16 +247,27 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold> with Wi
       const VaultScreen(),
     ];
 
-    return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: systemOverlay,
-      child: Scaffold(
-        body: IndexedStack(
-          index: _currentIndex,
-          children: screens,
-        ),
-        bottomNavigationBar: CustomBottomNav(
-          currentIndex: _currentIndex,
-          onTabSelected: (index) => setState(() => _currentIndex = index),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        if (_currentIndex != 0) {
+          setState(() => _currentIndex = 0);
+        } else {
+          SystemNavigator.pop();
+        }
+      },
+      child: AnnotatedRegion<SystemUiOverlayStyle>(
+        value: systemOverlay,
+        child: Scaffold(
+          body: IndexedStack(
+            index: _currentIndex,
+            children: screens,
+          ),
+          bottomNavigationBar: CustomBottomNav(
+            currentIndex: _currentIndex,
+            onTabSelected: (index) => setState(() => _currentIndex = index),
+          ),
         ),
       ),
     );

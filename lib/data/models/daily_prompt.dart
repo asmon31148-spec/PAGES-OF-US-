@@ -22,21 +22,42 @@ class DailyPrompt {
   });
 
   factory DailyPrompt.fromJson(Map<String, dynamic> json) {
-    final rawAnswers = json['answers'] as Map<String, dynamic>? ?? {};
-    final rawReveals = json['reveals'] as Map<String, dynamic>? ?? {};
-    final rawCare = json['careChecks'] as Map<String, dynamic>? ?? {};
+    final rawAnswers = json['answers'] is Map ? (json['answers'] as Map) : {};
+    final rawReveals = json['reveals'] is Map ? (json['reveals'] as Map) : {};
+    final rawCare = json['careChecks'] is Map ? (json['careChecks'] as Map) : {};
+
+    final parsedAnswers = <String, String>{};
+    rawAnswers.forEach((k, v) {
+      if (k != null && v != null) {
+        parsedAnswers[k.toString()] = v.toString();
+      }
+    });
+
+    final parsedReveals = <String, bool>{};
+    rawReveals.forEach((k, v) {
+      if (k != null) {
+        parsedReveals[k.toString()] = v == true;
+      }
+    });
+
+    final parsedCare = <String, Map<String, dynamic>>{};
+    rawCare.forEach((k, v) {
+      if (k != null && v is Map) {
+        try {
+          parsedCare[k.toString()] = Map<String, dynamic>.from(v);
+        } catch (_) {}
+      }
+    });
 
     return DailyPrompt(
-      id: json['id'] as String? ?? '',
-      prompt: json['prompt'] as String? ?? json['question'] as String? ?? 'What was the sweetest little thought you had about us today?',
-      category: json['category'] as String? ?? 'Soft Affection',
-      vibeTag: json['vibeTag'] as String? ?? 'Gentle Whisper',
-      answers: rawAnswers.map((k, v) => MapEntry(k, v.toString())),
-      reveals: rawReveals.map((k, v) => MapEntry(k, v == true)),
-      careChecks: rawCare.map(
-        (k, v) => MapEntry(k, Map<String, dynamic>.from(v as Map)),
-      ),
-      createdAt: json['createdAt'] as String?,
+      id: json['id']?.toString() ?? '',
+      prompt: json['prompt']?.toString() ?? json['question']?.toString() ?? 'What was the sweetest little thought you had about us today?',
+      category: json['category']?.toString() ?? 'Soft Affection',
+      vibeTag: json['vibeTag']?.toString() ?? 'Gentle Whisper',
+      answers: parsedAnswers,
+      reveals: parsedReveals,
+      careChecks: parsedCare,
+      createdAt: json['createdAt']?.toString(),
       isCustom: json['isCustom'] == true,
     );
   }
@@ -74,14 +95,21 @@ class PromptHistoryItem {
   });
 
   factory PromptHistoryItem.fromJson(Map<String, dynamic> json) {
-    final rawAnswers = json['answers'] as Map<String, dynamic>? ?? {};
+    final rawAnswers = json['answers'] is Map ? (json['answers'] as Map) : {};
+    final parsedAnswers = <String, String>{};
+    rawAnswers.forEach((k, v) {
+      if (k != null && v != null) {
+        parsedAnswers[k.toString()] = v.toString();
+      }
+    });
+
     return PromptHistoryItem(
-      id: json['id'] as String? ?? '',
-      question: json['question'] as String? ?? json['prompt'] as String? ?? '',
-      vibeTag: json['vibeTag'] as String? ?? '',
-      category: json['category'] as String? ?? '',
-      answers: rawAnswers.map((k, v) => MapEntry(k, v.toString())),
-      date: json['date'] as String? ?? json['createdAt'] as String? ?? '',
+      id: json['id']?.toString() ?? '',
+      question: json['question']?.toString() ?? json['prompt']?.toString() ?? '',
+      vibeTag: json['vibeTag']?.toString() ?? '',
+      category: json['category']?.toString() ?? '',
+      answers: parsedAnswers,
+      date: json['date']?.toString() ?? json['createdAt']?.toString() ?? '',
     );
   }
 
