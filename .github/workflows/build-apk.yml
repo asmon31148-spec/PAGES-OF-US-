@@ -74,6 +74,13 @@ jobs:
             echo "google-services.json found in repository"
           fi
 
+      - name: Disable Web Support & Clean Stale Artifacts
+        run: |
+          flutter config --no-enable-web
+          rm -rf web/ build/ .dart_tool/
+          rm -f index.html
+          flutter clean
+
       - name: Install Flutter Dependencies
         run: flutter pub get
 
