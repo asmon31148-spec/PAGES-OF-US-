@@ -77,6 +77,18 @@ class _WorldScreenState extends State<WorldScreen> {
     }
   }
 
+  int _getMaxNativeZoom(MapBasemapStyle style) {
+    switch (style) {
+      case MapBasemapStyle.satellite:
+        return 17; // Esri Imagery max native tile zoom worldwide (prevents white "not available" tiles)
+      case MapBasemapStyle.dark:
+        return 16;
+      case MapBasemapStyle.streets:
+      default:
+        return 18;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = context.watch<ThemeProvider>().isDark;
@@ -169,6 +181,8 @@ class _WorldScreenState extends State<WorldScreen> {
                             options: MapOptions(
                               initialCenter: defaultCenter,
                               initialZoom: 14.0,
+                              maxZoom: 18.0,
+                              minZoom: 3.0,
                               onMapReady: () {
                                 _isMapReady = true;
                                 _fitMapBounds(myLoc, partnerLoc);
@@ -179,7 +193,8 @@ class _WorldScreenState extends State<WorldScreen> {
                               TileLayer(
                                 urlTemplate: _getTileUrl(_mapStyle),
                                 userAgentPackageName: 'com.pagesofus.app',
-                                maxZoom: 19,
+                                maxZoom: 18.0,
+                                maxNativeZoom: _getMaxNativeZoom(_mapStyle),
                               ),
 
                               // Polyline tether between user & partner

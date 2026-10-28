@@ -189,13 +189,40 @@ class _VoiceWhisperPlayerCardState extends State<VoiceWhisperPlayerCard> {
           // Main WhatsApp / Instagram style player row
           Row(
             children: [
+              // Speed Toggle Pill (WhatsApp style: 1x, 1.5x, 2x)
+              GestureDetector(
+                onTap: () => memoriesProvider.togglePlaybackSpeed(),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: widget.isDark ? Colors.white.withOpacity(0.1) : Colors.black.withOpacity(0.06),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: widget.isDark ? Colors.white12 : Colors.black12,
+                      width: 0.8,
+                    ),
+                  ),
+                  child: Text(
+                    memoriesProvider.playbackSpeed == 1.0
+                        ? '1x'
+                        : (memoriesProvider.playbackSpeed == 1.5 ? '1.5x' : '2x'),
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: isPlaying ? activeColor : (widget.isDark ? Colors.white70 : Colors.black87),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+
               // Play/Pause button
               GestureDetector(
                 onTap: () => _handlePlayToggle(memoriesProvider),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
-                  width: 46,
-                  height: 46,
+                  width: 44,
+                  height: 44,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     color: activeColor,
@@ -212,12 +239,12 @@ class _VoiceWhisperPlayerCardState extends State<VoiceWhisperPlayerCard> {
                     child: Icon(
                       isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
                       color: Colors.white,
-                      size: 28,
+                      size: 26,
                     ),
                   ),
                 ),
               ),
-              const SizedBox(width: 14),
+              const SizedBox(width: 12),
 
               // Interactive Waveform & Smooth Timestamps
               Expanded(
@@ -290,26 +317,25 @@ class _VoiceWhisperPlayerCardState extends State<VoiceWhisperPlayerCard> {
                                 ),
 
                                 // Active WhatsApp-style Scrubber Thumb Dot
-                                if (progressFraction > 0.01)
-                                  Positioned(
-                                    left: thumbX - 4,
-                                    child: Container(
-                                      width: 8,
-                                      height: 8,
-                                      decoration: BoxDecoration(
-                                        color: activeColor,
-                                        shape: BoxShape.circle,
-                                        border: Border.all(color: Colors.white, width: 1.5),
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: activeColor.withOpacity(0.5),
-                                            blurRadius: 4,
-                                            spreadRadius: 1,
-                                          ),
-                                        ],
-                                      ),
+                                Positioned(
+                                  left: (thumbX - 5).clamp(0.0, totalWidth - 10),
+                                  child: Container(
+                                    width: 10,
+                                    height: 10,
+                                    decoration: BoxDecoration(
+                                      color: activeColor,
+                                      shape: BoxShape.circle,
+                                      border: Border.all(color: Colors.white, width: 1.5),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: activeColor.withOpacity(0.6),
+                                          blurRadius: 5,
+                                          spreadRadius: 1,
+                                        ),
+                                      ],
                                     ),
                                   ),
+                                ),
                               ],
                             );
                           },

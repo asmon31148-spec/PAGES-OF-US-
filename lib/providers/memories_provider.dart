@@ -25,6 +25,8 @@ class MemoriesProvider extends ChangeNotifier {
   Duration _voicePosition = Duration.zero;
   Duration _voiceDuration = Duration.zero;
   PlayerState _playerState = PlayerState.stopped;
+  Timer? _positionTicker;
+  double _playbackSpeed = 1.0;
 
   List<MemoryItem> get memories => _memories;
   List<LetterItem> get letters => _letters;
@@ -37,6 +39,7 @@ class MemoriesProvider extends ChangeNotifier {
   Duration get voicePosition => _voicePosition;
   Duration get voiceDuration => _voiceDuration;
   bool get isVoicePlaying => _playerState == PlayerState.playing;
+  double get playbackSpeed => _playbackSpeed;
 
   StreamSubscription? _voicePosSub;
   StreamSubscription? _voiceDurSub;
@@ -53,7 +56,7 @@ class MemoriesProvider extends ChangeNotifier {
   void _initVoicePlayerListeners() {
     _voicePosSub = _voicePlayer.onPositionChanged.listen((pos) async {
       _voicePosition = pos;
-      if (_voiceDuration.inMilliseconds == 0 || _voiceDuration == const Duration(seconds: 30)) {
+      if (_voiceDuration.inMilliseconds == 0 || _voiceDuration == const Duration(seconds: 15)) {
         try {
           final d = await _voicePlayer.getDuration();
           if (d != null && d.inMilliseconds > 0) {
@@ -72,15 +75,47 @@ class MemoriesProvider extends ChangeNotifier {
     _voiceStateSub = _voicePlayer.onPlayerStateChanged.listen((state) {
       _playerState = state;
       if (state == PlayerState.completed || state == PlayerState.stopped) {
+        _stopPositionTicker();
         _playingVoiceId = null;
         _voicePosition = Duration.zero;
+      } else if (state == PlayerState.playing) {
+        _startPositionTicker();
       }
       notifyListeners();
     });
   }
 
+  void _startPositionTicker() {
+    _positionTicker?.cancel();
+    _positionTicker = Timer.periodic(const Duration(milliseconds: 100), (_) async {
+      if (_playerState == PlayerState.playing) {
+        try {
+          final pos = await _voicePlayer.getCurrentPosition();
+          if (pos != null) {
+            _voicePosition = pos;
+          }
+          if (_voiceDuration.inMilliseconds == 0 || _voiceDuration == const Duration(seconds: 15)) {
+            final dur = await _voicePlayer.getDuration();
+            if (dur != null && dur.inMilliseconds > 0) {
+              _voiceDuration = dur;
+            }
+          }
+          notifyListeners();
+        } catch (_) {}
+      } else if (_playerState != PlayerState.paused) {
+        _stopPositionTicker();
+      }
+    });
+  }
+
+  void _stopPositionTicker() {
+    _positionTicker?.cancel();
+    _positionTicker = null;
+  }
+
   @override
   void dispose() {
+    _stopPositionTicker();
     _voicePosSub?.cancel();
     _voiceDurSub?.cancel();
     _voiceStateSub?.cancel();
@@ -304,21 +339,40 @@ class MemoriesProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Voice whisper playback with ambient audio ducking
+  // Voice whisper playback with ambient audio ducking & seamless pause/resume
   Future<void> playVoiceWhisper(
     String id,
     String url, {
     AudioProvider? ambientAudio,
   }) async {
-    if (_playingVoiceId == id && isVoicePlaying) {
+    // 1. If currently playing this exact note -> Smooth Pause
+    if (_playingVoiceId == id && _playerState == PlayerState.playing) {
+      _stopPositionTicker();
       await _voicePlayer.pause();
+      _playerState = PlayerState.paused;
       ambientAudio?.restoreFromMedia();
+      notifyListeners();
       return;
     }
 
+    // 2. If currently paused on this exact note -> Smooth Resume
+    if (_playingVoiceId == id && _playerState == PlayerState.paused) {
+      ambientAudio?.duckForMedia();
+      await _voicePlayer.resume();
+      _playerState = PlayerState.playing;
+      _startPositionTicker();
+      notifyListeners();
+      return;
+    }
+
+    // 3. New voice note -> Start fresh from 0
     try {
+      _stopPositionTicker();
       ambientAudio?.duckForMedia();
       _playingVoiceId = id;
+      _voicePosition = Duration.zero;
+      _voiceDuration = Duration.zero;
+      _playerState = PlayerState.playing;
       notifyListeners();
 
       await _voicePlayer.stop();
@@ -333,7 +387,10 @@ class MemoriesProvider extends ChangeNotifier {
         source = DeviceFileSource(cleanUrl.replaceFirst('file://', ''));
       }
 
+      await _voicePlayer.setPlaybackRate(_playbackSpeed);
       await _voicePlayer.play(source);
+      _startPositionTicker();
+
       try {
         final d = await _voicePlayer.getDuration();
         if (d != null && d.inMilliseconds > 0) {
@@ -342,10 +399,24 @@ class MemoriesProvider extends ChangeNotifier {
         }
       } catch (_) {}
     } catch (_) {
+      _stopPositionTicker();
       ambientAudio?.restoreFromMedia();
       _playingVoiceId = null;
+      _playerState = PlayerState.stopped;
       notifyListeners();
     }
+  }
+
+  Future<void> togglePlaybackSpeed() async {
+    if (_playbackSpeed == 1.0) {
+      _playbackSpeed = 1.5;
+    } else if (_playbackSpeed == 1.5) {
+      _playbackSpeed = 2.0;
+    } else {
+      _playbackSpeed = 1.0;
+    }
+    await _voicePlayer.setPlaybackRate(_playbackSpeed);
+    notifyListeners();
   }
 
   Future<void> seekVoiceWhisper(Duration target) async {
@@ -357,9 +428,12 @@ class MemoriesProvider extends ChangeNotifier {
   }
 
   Future<void> stopVoiceWhisper({AudioProvider? ambientAudio}) async {
+    _stopPositionTicker();
     await _voicePlayer.stop();
     ambientAudio?.restoreFromMedia();
     _playingVoiceId = null;
+    _playerState = PlayerState.stopped;
+    _voicePosition = Duration.zero;
     notifyListeners();
   }
 

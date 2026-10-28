@@ -402,34 +402,8 @@ class _MemoryStackViewState extends State<MemoryStackView> {
                       ],
                     )
                   else
-                    // Audio Tile Graphic
-                    Container(
-                      color: isDark ? const Color(0xFF141C18) : const Color(0xFFEAEFEA),
-                      padding: const EdgeInsets.all(12),
-                      alignment: Alignment.center,
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            memoriesProvider.playingVoiceId == memory.id && memoriesProvider.isVoicePlaying
-                                ? Icons.pause_circle_filled_rounded
-                                : Icons.play_circle_fill_rounded,
-                            size: 42,
-                            color: AppColors.terra,
-                          ),
-                          const SizedBox(height: 6),
-                          const Text(
-                            'VOICE NOTE',
-                            style: TextStyle(
-                              fontSize: 9.5,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 0.8,
-                              color: AppColors.terra,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                    // Audio Tile Graphic (Warm Romantic Acoustic Card with waveform)
+                    _buildAudioGridTile(memory, isDark, memoriesProvider, audioProvider),
 
                   // 2. Type Badge in Top-Right
                   Positioned(
@@ -867,6 +841,123 @@ class _MemoryStackViewState extends State<MemoryStackView> {
       return '$url/ik-thumbnail.jpg?tr=w-1080,q-85';
     }
     return '';
+  }
+
+  Widget _buildAudioGridTile(
+    MemoryItem memory,
+    bool isDark,
+    MemoriesProvider memoriesProvider,
+    AudioProvider? audioProvider,
+  ) {
+    final isPlaying = memoriesProvider.playingVoiceId == memory.id && memoriesProvider.isVoicePlaying;
+    final url = memory.voiceUrl != null && memory.voiceUrl!.isNotEmpty
+        ? memory.voiceUrl!
+        : memory.mediaUrl;
+
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: isDark
+              ? [const Color(0xFF241926), const Color(0xFF16121D)]
+              : [const Color(0xFFFFF0EC), const Color(0xFFFBE0D8)],
+        ),
+      ),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          // Background Sound Waveform silhouette
+          Center(
+            child: Opacity(
+              opacity: isDark ? 0.35 : 0.28,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: List.generate(14, (i) {
+                  const heights = [10.0, 18.0, 28.0, 42.0, 22.0, 14.0, 32.0, 50.0, 36.0, 20.0, 30.0, 44.0, 18.0, 10.0];
+                  return Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 1.5),
+                    width: 3.5,
+                    height: heights[i % heights.length],
+                    decoration: BoxDecoration(
+                      color: AppColors.terra,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  );
+                }),
+              ),
+            ),
+          ),
+
+          // Central Floating Play/Pause Action Button
+          Center(
+            child: GestureDetector(
+              onTap: () {
+                memoriesProvider.playVoiceWhisper(memory.id, url, ambientAudio: audioProvider);
+              },
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: AppColors.terra,
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.terra.withOpacity(isPlaying ? 0.5 : 0.25),
+                      blurRadius: isPlaying ? 16 : 8,
+                      spreadRadius: isPlaying ? 2 : 0,
+                    ),
+                  ],
+                ),
+                child: Icon(
+                  isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                  color: Colors.white,
+                  size: 28,
+                ),
+              ),
+            ),
+          ),
+
+          // Bottom Tag
+          Positioned(
+            left: 10,
+            bottom: 10,
+            right: 10,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.mic_rounded, size: 12, color: AppColors.terra),
+                    const SizedBox(width: 4),
+                    Text(
+                      isPlaying ? 'Playing...' : 'Voice Note',
+                      style: const TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.terra,
+                      ),
+                    ),
+                  ],
+                ),
+                if (isPlaying)
+                  Container(
+                    width: 6,
+                    height: 6,
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: AppColors.terra,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildFilmFallback(MemoryItem memory, bool isDark) {
