@@ -436,9 +436,9 @@ class StageProvider extends ChangeNotifier {
 
   void _triggerPulseEffect() {
     _isPulsing = true;
-    HapticFeedback.vibrate();
+    HapticFeedback.mediumImpact();
     notifyListeners();
-    Future.delayed(const Duration(milliseconds: 2000), () {
+    Future.delayed(const Duration(milliseconds: 850), () {
       _isPulsing = false;
       notifyListeners();
     });
