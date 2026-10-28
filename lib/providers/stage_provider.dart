@@ -6,6 +6,7 @@ import '../data/models/mood_aura.dart';
 import '../data/models/daily_prompt.dart';
 import '../data/models/pinned_note.dart';
 import '../data/models/couple_goal_item.dart';
+import '../data/models/daily_care_item.dart';
 import '../data/models/drawing_stroke.dart';
 import '../data/services/firebase_service.dart';
 import '../data/services/supabase_service.dart';
@@ -28,6 +29,7 @@ class StageProvider extends ChangeNotifier {
   List<PromptHistoryItem> _promptHistory = [];
   Map<String, PinnedNote> _pinnedNotes = {};
   List<CoupleGoalItem> _goals = [];
+  List<DailyCareItem> _dailyCareItems = [];
   bool _isPulsing = false;
   final List<TouchPoint> _touchPoints = [];
   TouchPoint? _partnerTouchPoint;
@@ -48,6 +50,7 @@ class StageProvider extends ChangeNotifier {
   StreamSubscription? _dailyPromptSub;
   StreamSubscription? _promptHistorySub;
   StreamSubscription? _goalsSub;
+  StreamSubscription? _dailyCareSub;
   StreamSubscription? _pulseSub;
   StreamSubscription? _touchStatsSub;
   String? _activeSpaceId;
@@ -66,6 +69,7 @@ class StageProvider extends ChangeNotifier {
   List<PromptHistoryItem> get promptHistory => List.unmodifiable(_promptHistory);
   Map<String, PinnedNote> get pinnedNotes => _pinnedNotes;
   List<CoupleGoalItem> get goals => _goals;
+  List<DailyCareItem> get dailyCareItems => List.unmodifiable(_dailyCareItems);
   bool get isPulsing => _isPulsing;
   List<TouchPoint> get touchPoints => List.unmodifiable(_touchPoints);
   TouchPoint? get partnerTouchPoint => _partnerTouchPoint;
@@ -252,6 +256,21 @@ class StageProvider extends ChangeNotifier {
       }
     });
     fetchGoals(spaceId);
+
+    // 5.5 Daily Care Schedules Live Listener
+    _dailyCareSub?.cancel();
+    _dailyCareSub = FirebaseService.streamFeatureDoc(spaceId, 'daily_care_schedules').listen((snap) {
+      if (snap.exists && snap.data() != null) {
+        final list = snap.data()!['care_items'] as List?;
+        if (list != null) {
+          _dailyCareItems = list
+              .map((e) => DailyCareItem.fromJson(Map<String, dynamic>.from(e as Map)))
+              .toList();
+          notifyListeners();
+        }
+      }
+    });
+    fetchDailyCare(spaceId);
 
     // 6. Dual Pulse Live Listener (Guaranteed delivery if socket packet dropped)
     _pulseSub?.cancel();
@@ -883,6 +902,170 @@ class StageProvider extends ChangeNotifier {
     } catch (_) {}
   }
 
+  static final List<DailyCareItem> defaultPresetCareItems = [
+    DailyCareItem(
+      id: 'care_preset_1',
+      title: 'Morning Hydration 💧',
+      icon: '💧',
+      scheduledTime: '08:30 AM',
+      timeSlot: 'morning',
+      caringNote: 'Drink a tall glass of warm water to wake up fresh and hydrated!',
+      targetUserId: '',
+      createdById: 'system',
+      createdByName: 'Sanctuary Care',
+    ),
+    DailyCareItem(
+      id: 'care_preset_2',
+      title: 'Mindful Lunch & Breather 🥗',
+      icon: '🥗',
+      scheduledTime: '01:00 PM',
+      timeSlot: 'afternoon',
+      caringNote: 'Eat on time, take a deep breath, and don\'t skip lunch!',
+      targetUserId: '',
+      createdById: 'system',
+      createdByName: 'Sanctuary Care',
+    ),
+    DailyCareItem(
+      id: 'care_preset_3',
+      title: 'Daily Vitamins & Booster 💊',
+      icon: '💊',
+      scheduledTime: '03:00 PM',
+      timeSlot: 'afternoon',
+      caringNote: 'Keep your immunity strong and stay energized.',
+      targetUserId: '',
+      createdById: 'system',
+      createdByName: 'Sanctuary Care',
+    ),
+    DailyCareItem(
+      id: 'care_preset_4',
+      title: 'Evening Relax & Stretch 🍵',
+      icon: '🍵',
+      scheduledTime: '08:30 PM',
+      timeSlot: 'evening',
+      caringNote: 'Rest your eyes, drink warm tea, and let go of today\'s fatigue.',
+      targetUserId: '',
+      createdById: 'system',
+      createdByName: 'Sanctuary Care',
+    ),
+    DailyCareItem(
+      id: 'care_preset_5',
+      title: 'Sweet Sleep & Peaceful Night 🌙',
+      icon: '🌙',
+      scheduledTime: '10:30 PM',
+      timeSlot: 'night',
+      caringNote: 'Sleep early and dream sweetly. You are always cherished.',
+      targetUserId: '',
+      createdById: 'system',
+      createdByName: 'Sanctuary Care',
+    ),
+  ];
+
+  Future<void> fetchDailyCare(String spaceId) async {
+    final supabase = SupabaseService.client;
+    if (supabase != null) {
+      try {
+        final res = await supabase
+            .from('app_content')
+            .select('content')
+            .eq('id', 'daily_care_$spaceId')
+            .maybeSingle();
+        if (res != null && res['content'] != null && res['content'] is List) {
+          final list = res['content'] as List;
+          if (list.isNotEmpty) {
+            _dailyCareItems = list
+                .map((e) => DailyCareItem.fromJson(Map<String, dynamic>.from(e as Map)))
+                .toList();
+            notifyListeners();
+            return;
+          }
+        }
+      } catch (_) {}
+    }
+    if (_dailyCareItems.isEmpty) {
+      _dailyCareItems = List.from(defaultPresetCareItems);
+    }
+    notifyListeners();
+  }
+
+  Future<void> toggleCareItemCompleted(
+    String spaceId,
+    String careId,
+    bool completed,
+    String completedByName,
+  ) async {
+    final idx = _dailyCareItems.indexWhere((c) => c.id == careId);
+    if (idx != -1) {
+      final todayKey = DateTime.now().toIso8601String().split('T')[0];
+      _dailyCareItems[idx] = _dailyCareItems[idx].copyWith(
+        isCompletedToday: completed,
+        completedDateKey: completed ? todayKey : null,
+        completedAt: completed ? DateTime.now().toIso8601String() : null,
+        completedByName: completed ? completedByName : null,
+      );
+      notifyListeners();
+      _syncDailyCareToCloud(spaceId);
+    }
+  }
+
+  Future<void> addCareItem(String spaceId, DailyCareItem item) async {
+    _dailyCareItems.add(item);
+    notifyListeners();
+    _syncDailyCareToCloud(spaceId);
+  }
+
+  Future<void> updateCareItem(String spaceId, DailyCareItem item) async {
+    final idx = _dailyCareItems.indexWhere((c) => c.id == item.id);
+    if (idx != -1) {
+      _dailyCareItems[idx] = item;
+      notifyListeners();
+      _syncDailyCareToCloud(spaceId);
+    }
+  }
+
+  Future<void> deleteCareItem(String spaceId, String careId) async {
+    _dailyCareItems.removeWhere((c) => c.id == careId);
+    notifyListeners();
+    _syncDailyCareToCloud(spaceId);
+  }
+
+  Future<void> sendCareNudge(
+    String spaceId,
+    String careId,
+    String senderName,
+    String recipientName,
+  ) async {
+    final idx = _dailyCareItems.indexWhere((c) => c.id == careId);
+    if (idx != -1) {
+      final currentNudges = _dailyCareItems[idx].reminderNudgeCount;
+      _dailyCareItems[idx] = _dailyCareItems[idx].copyWith(
+        reminderNudgeCount: currentNudges + 1,
+        lastNudgedAt: DateTime.now().toIso8601String(),
+      );
+      notifyListeners();
+      _syncDailyCareToCloud(spaceId);
+    }
+  }
+
+  Future<void> _syncDailyCareToCloud(String spaceId) async {
+    final jsonList = _dailyCareItems.map((c) => c.toJson()).toList();
+    final supabase = SupabaseService.client;
+    if (supabase != null) {
+      try {
+        await supabase.from('app_content').upsert({
+          'id': 'daily_care_$spaceId',
+          'content': jsonList,
+          'updated_at': DateTime.now().toIso8601String(),
+        });
+      } catch (_) {}
+    }
+    try {
+      await FirebaseService.saveFeatureDoc(spaceId, 'daily_care_schedules', {
+        'care_items': jsonList,
+        'updatedAt': DateTime.now().toIso8601String(),
+      });
+    } catch (_) {}
+  }
+
   @override
   void dispose() {
     _partnerTouchDecayTimer?.cancel();
@@ -893,6 +1076,7 @@ class StageProvider extends ChangeNotifier {
     _dailyPromptSub?.cancel();
     _promptHistorySub?.cancel();
     _goalsSub?.cancel();
+    _dailyCareSub?.cancel();
     _pulseSub?.cancel();
     _touchStatsSub?.cancel();
     super.dispose();
