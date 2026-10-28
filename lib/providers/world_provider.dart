@@ -44,6 +44,66 @@ class WorldProvider extends ChangeNotifier {
   String get gpsStatus => _gpsStatus;
   WeatherInfo? get partnerWeather => _partnerWeather;
   DateTime get now => _now;
+  bool get isLiveTrackingActive => _positionStreamSub != null;
+
+  UserLocationData? get myLocation {
+    if (_currentUserId != null && _locations.containsKey(_currentUserId)) {
+      return _locations[_currentUserId];
+    }
+    for (final loc in _locations.values) {
+      if (_currentUserId != null && loc.userId == _currentUserId) {
+        return loc;
+      }
+    }
+    return null;
+  }
+
+  UserLocationData? get partnerLocation {
+    if (_partnerId != null && _locations.containsKey(_partnerId)) {
+      return _locations[_partnerId];
+    }
+    for (final entry in _locations.entries) {
+      if (entry.key != _currentUserId && entry.value.userId != _currentUserId) {
+        return entry.value;
+      }
+    }
+    return null;
+  }
+
+  double? get liveDistanceKm {
+    final me = myLocation;
+    final partner = partnerLocation;
+    if (me != null && partner != null) {
+      if ((me.lat != 0.0 || me.lng != 0.0) && (partner.lat != 0.0 || partner.lng != 0.0)) {
+        return calculateDistanceKm(me.lat, me.lng, partner.lat, partner.lng);
+      }
+    }
+    return null;
+  }
+
+  String get formattedLiveDistance {
+    final dist = liveDistanceKm;
+    if (dist == null) {
+      final pLoc = partnerLocation;
+      if (myLocation != null && pLoc == null) {
+        return 'Awaiting partner signal...';
+      }
+      return 'Connecting live tether...';
+    }
+
+    if (dist < 0.05) {
+      return 'Together · Side by side ♥';
+    } else if (dist < 1.0) {
+      final m = (dist * 1000).round();
+      return '$m meters apart · Walking distance';
+    } else if (dist < 10.0) {
+      final miles = (dist * 0.621371).toStringAsFixed(1);
+      return '${dist.toStringAsFixed(2)} km ($miles mi) apart';
+    } else {
+      final miles = (dist * 0.621371).toStringAsFixed(1);
+      return '${dist.toStringAsFixed(1)} km ($miles mi) apart';
+    }
+  }
 
   WorldProvider() {
     _startClockTimer();

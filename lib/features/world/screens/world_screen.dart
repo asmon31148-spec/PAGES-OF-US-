@@ -99,19 +99,41 @@ class _WorldScreenState extends State<WorldScreen> {
     final partner = authProvider.partner;
     final spaceId = authProvider.space?.id ?? authProvider.user?.spaceId ?? '';
 
-    final myLoc = user != null ? worldProvider.getUserLocation(user.id) : null;
-    final partnerLoc = partner != null ? worldProvider.getUserLocation(partner.id) : null;
-
-    // Calculate live distance
-    double? distanceKm;
-    if (myLoc != null && partnerLoc != null && myLoc.isSharingEnabled && partnerLoc.isSharingEnabled) {
-      distanceKm = worldProvider.calculateDistanceKm(
-        myLoc.lat,
-        myLoc.lng,
-        partnerLoc.lat,
-        partnerLoc.lng,
-      );
+    // Auto-start live GPS tracking & cloud sync as soon as credentials become available
+    if (spaceId.isNotEmpty && user != null && !worldProvider.isLiveTrackingActive) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && !worldProvider.isLiveTrackingActive) {
+          worldProvider.initWorldSync(
+            spaceId: spaceId,
+            currentUserId: user.id,
+            partnerId: partner?.id,
+          );
+          worldProvider.startLiveTracking(
+            spaceId: spaceId,
+            currentUserId: user.id,
+            nickname: user.nickname,
+            avatarUrl: user.avatarUrl,
+          );
+        }
+      });
     }
+
+    final myLoc = (user != null ? worldProvider.getUserLocation(user.id) : null) ?? worldProvider.myLocation;
+    final partnerLoc = (partner != null ? worldProvider.getUserLocation(partner.id) : null) ?? worldProvider.partnerLocation;
+
+    // Automatic real-time distance calculation between two partners
+    double? distanceKm;
+    if (myLoc != null && partnerLoc != null) {
+      if ((myLoc.lat != 0.0 || myLoc.lng != 0.0) && (partnerLoc.lat != 0.0 || partnerLoc.lng != 0.0)) {
+        distanceKm = worldProvider.calculateDistanceKm(
+          myLoc.lat,
+          myLoc.lng,
+          partnerLoc.lat,
+          partnerLoc.lng,
+        );
+      }
+    }
+    distanceKm ??= worldProvider.liveDistanceKm;
 
     // Default center point: User location, partner location, or romantic default
     final defaultCenter = myLoc != null
@@ -200,8 +222,8 @@ class _WorldScreenState extends State<WorldScreen> {
                               // Polyline tether between user & partner
                               if (myLoc != null &&
                                   partnerLoc != null &&
-                                  myLoc.isSharingEnabled &&
-                                  partnerLoc.isSharingEnabled)
+                                  (myLoc.lat != 0.0 || myLoc.lng != 0.0) &&
+                                  (partnerLoc.lat != 0.0 || partnerLoc.lng != 0.0))
                                 PolylineLayer(
                                   polylines: [
                                     Polyline(
@@ -211,6 +233,53 @@ class _WorldScreenState extends State<WorldScreen> {
                                       ],
                                       color: AppColors.terra.withOpacity(0.85),
                                       strokeWidth: 3.5,
+                                    ),
+                                  ],
+                                ),
+
+                              // Floating Midpoint Distance Badge along the Tether Line
+                              if (myLoc != null &&
+                                  partnerLoc != null &&
+                                  distanceKm != null &&
+                                  (myLoc.lat != 0.0 || myLoc.lng != 0.0) &&
+                                  (partnerLoc.lat != 0.0 || partnerLoc.lng != 0.0))
+                                MarkerLayer(
+                                  markers: [
+                                    Marker(
+                                      point: LatLng(
+                                        (myLoc.lat + partnerLoc.lat) / 2,
+                                        (myLoc.lng + partnerLoc.lng) / 2,
+                                      ),
+                                      width: 140,
+                                      height: 32,
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                                        decoration: BoxDecoration(
+                                          color: (isDark ? const Color(0xFF191823) : Colors.white).withOpacity(0.92),
+                                          borderRadius: BorderRadius.circular(16),
+                                          border: Border.all(color: AppColors.terra, width: 1.2),
+                                          boxShadow: const [
+                                            BoxShadow(color: Colors.black26, blurRadius: 4, offset: Offset(0, 2)),
+                                          ],
+                                        ),
+                                        child: Row(
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            const Text('♥ ', style: TextStyle(color: AppColors.terra, fontSize: 10)),
+                                            Text(
+                                              distanceKm < 1.0
+                                                  ? '${(distanceKm * 1000).round()} m'
+                                                  : '${distanceKm.toStringAsFixed(1)} km',
+                                              style: TextStyle(
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.bold,
+                                                color: isDark ? Colors.white : AppColors.lightInk,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
                                     ),
                                   ],
                                 ),
@@ -285,7 +354,7 @@ class _WorldScreenState extends State<WorldScreen> {
                                   }),
 
                                   // User Marker
-                                  if (myLoc != null && myLoc.isSharingEnabled)
+                                  if (myLoc != null && (myLoc.lat != 0.0 || myLoc.lng != 0.0))
                                     Marker(
                                       point: LatLng(myLoc.lat, myLoc.lng),
                                       width: 60,
@@ -300,7 +369,7 @@ class _WorldScreenState extends State<WorldScreen> {
                                     ),
 
                                   // Partner Marker
-                                  if (partnerLoc != null && partnerLoc.isSharingEnabled)
+                                  if (partnerLoc != null && (partnerLoc.lat != 0.0 || partnerLoc.lng != 0.0))
                                     Marker(
                                       point: LatLng(partnerLoc.lat, partnerLoc.lng),
                                       width: 60,
@@ -860,70 +929,218 @@ class _WorldScreenState extends State<WorldScreen> {
   }) {
     final isTethered = distanceKm != null;
 
-    String distanceLabel;
-    String statusSubtitle;
+    String primaryDistance;
+    String secondaryInfo;
+    String proximityTag;
 
     if (isTethered) {
       if (distanceKm < 0.05) {
-        distanceLabel = 'Side by side · Together ♥';
-        statusSubtitle = 'Tether active 🌿';
+        primaryDistance = 'Side by side ♥';
+        secondaryInfo = 'Under the same roof';
+        proximityTag = 'Together';
       } else if (distanceKm < 1.0) {
         final meters = (distanceKm * 1000).round();
-        distanceLabel = '$meters m apart · Walking distance';
-        statusSubtitle = 'Tether active 🌿';
+        primaryDistance = '$meters m apart';
+        secondaryInfo = '~${(meters / 80).clamp(1, 15).round()} min walk';
+        proximityTag = 'Walking Distance 🚶';
+      } else if (distanceKm < 25.0) {
+        final miles = (distanceKm * 0.621371).toStringAsFixed(1);
+        primaryDistance = '${distanceKm.toStringAsFixed(1)} km';
+        secondaryInfo = '$miles miles · Same city';
+        proximityTag = 'Short Drive 🚗';
       } else {
-        distanceLabel = '${distanceKm.toStringAsFixed(1)} km apart';
-        statusSubtitle = 'Tether active 🌿';
+        final miles = (distanceKm * 0.621371).toStringAsFixed(1);
+        primaryDistance = '${distanceKm.toStringAsFixed(1)} km';
+        secondaryInfo = '$miles miles · Long distance';
+        proximityTag = 'Under Same Sky ☁️';
       }
     } else {
       if (myLoc != null && partnerLoc == null) {
-        distanceLabel = 'Awaiting $partnerNickname\'s signal...';
-        statusSubtitle = 'Waiting for partner';
+        primaryDistance = 'Waiting for partner...';
+        secondaryInfo = 'Awaiting $partnerNickname\'s signal';
+        proximityTag = 'Standby';
       } else {
-        distanceLabel = 'Awaiting mutual tether...';
-        statusSubtitle = 'Standby';
+        primaryDistance = 'Connecting Tether...';
+        secondaryInfo = 'Acquiring mutual GPS coordinates';
+        proximityTag = 'Locating';
       }
     }
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: isTethered
-            ? AppColors.terra.withOpacity(0.1)
+            ? (isDark ? const Color(0xFF221A1A) : const Color(0xFFFFF6F0))
             : (isDark ? AppColors.darkCard : AppColors.lightCard),
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: isTethered
-              ? AppColors.terra.withOpacity(0.3)
+              ? AppColors.terra.withOpacity(0.4)
               : (isDark ? AppColors.darkBorder : AppColors.lightBorder),
+          width: 1.2,
         ),
+        boxShadow: [
+          if (isTethered)
+            BoxShadow(
+              color: AppColors.terra.withOpacity(0.08),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+        ],
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Top Row: Status badge & Recenter action
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(isTethered ? '✦' : '○', style: const TextStyle(fontSize: 14, color: AppColors.terra)),
-              const SizedBox(width: 8),
+              Row(
+                children: [
+                  Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: isTethered ? AppColors.sage : Colors.orangeAccent,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    isTethered ? 'REAL-TIME LIVE DISTANCE' : 'MUTUAL GPS TETHER',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.8,
+                      color: isTethered ? AppColors.sage : Colors.orangeAccent,
+                    ),
+                  ),
+                ],
+              ),
+              if (isTethered)
+                GestureDetector(
+                  onTap: () => _fitMapBounds(myLoc, partnerLoc),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: AppColors.terra.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.crop_free, size: 12, color: AppColors.terra),
+                        SizedBox(width: 4),
+                        Text(
+                          'Fit Map',
+                          style: TextStyle(
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.terra,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 8),
+
+          // Middle: Big Distance readout + Proximity Tag
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
               Text(
-                distanceLabel,
+                primaryDistance,
                 style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  color: isDark ? AppColors.darkInk : AppColors.lightInk,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.5,
+                  color: isTethered
+                      ? AppColors.terra
+                      : (isDark ? AppColors.darkInk : AppColors.lightInk),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: (isDark ? Colors.white10 : Colors.black.withOpacity(0.05)),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  proximityTag,
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    color: isDark ? AppColors.darkSoft : AppColors.lightSoft,
+                  ),
                 ),
               ),
             ],
           ),
+          const SizedBox(height: 4),
+
+          // Subtitle info
           Text(
-            statusSubtitle,
+            secondaryInfo,
             style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w600,
-              color: isTethered ? AppColors.terra : (isDark ? AppColors.darkSoft : AppColors.lightSoft),
+              fontSize: 11.5,
+              fontWeight: FontWeight.w500,
+              color: isDark ? AppColors.darkSoft : AppColors.lightSoft,
             ),
           ),
+
+          // Bottom Row: Location tags if available
+          if (myLoc != null || partnerLoc != null) ...[
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: Row(
+                    children: [
+                      const Icon(Icons.location_on, size: 12, color: AppColors.sage),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          'You: ${myLoc?.placeName ?? "Locating..."}',
+                          style: TextStyle(
+                            fontSize: 10.5,
+                            color: isDark ? Colors.white60 : Colors.black54,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Row(
+                    children: [
+                      const Icon(Icons.location_on, size: 12, color: AppColors.terra),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          '$partnerNickname: ${partnerLoc?.placeName ?? "Awaiting signal"}',
+                          style: TextStyle(
+                            fontSize: 10.5,
+                            color: isDark ? Colors.white60 : Colors.black54,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );
