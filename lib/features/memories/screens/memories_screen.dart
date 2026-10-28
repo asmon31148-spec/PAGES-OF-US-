@@ -53,7 +53,7 @@ class _MemoriesScreenState extends State<MemoriesScreen> {
             // Top Bar
             AppTopBar(
               title: 'Our Memories',
-              subtitle: 'Captured moments, letters & journey',
+              subtitle: 'Moments, letters & keepsakes',
               onOpenProfile: () => ProfileModal.show(context),
             ),
 

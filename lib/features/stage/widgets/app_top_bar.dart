@@ -19,6 +19,8 @@ class AppTopBar extends StatelessWidget {
   final VoidCallback? onAvatarTap;
   final bool showThemeToggle;
   final bool forceDark;
+  final bool showTouch;
+  final bool showMusic;
 
   const AppTopBar({
     super.key,
@@ -30,6 +32,8 @@ class AppTopBar extends StatelessWidget {
     this.onAvatarTap,
     this.showThemeToggle = true,
     this.forceDark = false,
+    this.showTouch = false,
+    this.showMusic = false,
   });
 
   @override
@@ -50,6 +54,7 @@ class AppTopBar extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           // Wordmark & Subtitle
           Expanded(
@@ -57,21 +62,30 @@ class AppTopBar extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  effectiveTitle,
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: forceDark
-                        ? AppColors.romanceInk
-                        : (isDark ? AppColors.darkInk : AppColors.lightInk),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    effectiveTitle,
+                    maxLines: 1,
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: -0.3,
+                      color: forceDark
+                          ? AppColors.romanceInk
+                          : (isDark ? AppColors.darkInk : AppColors.lightInk),
+                    ),
                   ),
                 ),
-                if (effectiveSubtitle != null)
+                if (effectiveSubtitle != null) ...[
+                  const SizedBox(height: 2),
                   Text(
                     effectiveSubtitle,
                     style: TextStyle(
-                      fontSize: 11,
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w400,
+                      letterSpacing: 0.1,
                       color: forceDark
                           ? AppColors.romanceSoft
                           : (isDark ? AppColors.darkSoft : AppColors.lightSoft),
@@ -79,130 +93,147 @@ class AppTopBar extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
+                ],
               ],
             ),
           ),
 
+          const SizedBox(width: 12),
+
           // Actions Row
           Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              // Touch & Draw Studio Isolated Full-Screen Menu Button
-              GestureDetector(
-                onTap: () {
-                  HapticFeedback.lightImpact();
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const TouchSanctuaryScreen(),
-                    ),
-                  );
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  margin: const EdgeInsets.only(right: 8),
-                  decoration: BoxDecoration(
-                    color: isPartnerTouching
-                        ? AppColors.terra.withOpacity(0.2)
-                        : (forceDark
-                            ? AppColors.romanceSurface
-                            : (isDark ? AppColors.darkSurface : AppColors.lightSurface)),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
+              // Touch & Draw Studio Isolated Full-Screen Menu Button (Stage / Home)
+              if (showTouch) ...[
+                GestureDetector(
+                  onTap: () {
+                    HapticFeedback.lightImpact();
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const TouchSanctuaryScreen(),
+                      ),
+                    );
+                  },
+                  child: Container(
+                    height: 32,
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    margin: const EdgeInsets.only(right: 6),
+                    decoration: BoxDecoration(
                       color: isPartnerTouching
-                          ? AppColors.terra
+                          ? const Color(0xFF10B981).withOpacity(0.18)
                           : (forceDark
-                              ? AppColors.romanceBorder
-                              : (isDark ? AppColors.darkBorder : AppColors.lightBorder)),
-                      width: isPartnerTouching ? 1.5 : 1,
+                              ? AppColors.romanceSurface
+                              : (isDark ? AppColors.darkSurface : AppColors.lightSurface)),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: isPartnerTouching
+                            ? const Color(0xFF10B981)
+                            : (forceDark
+                                ? AppColors.romanceBorder
+                                : (isDark ? AppColors.darkBorder : AppColors.lightBorder)),
+                        width: isPartnerTouching ? 1.5 : 1,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.fingerprint_rounded,
+                          size: 15,
+                          color: isPartnerTouching ? const Color(0xFF10B981) : AppColors.terra,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          isPartnerTouching ? 'Touching!' : 'Touch',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: isPartnerTouching ? FontWeight.bold : FontWeight.w600,
+                            color: isPartnerTouching
+                                ? const Color(0xFF10B981)
+                                : (forceDark
+                                    ? AppColors.romanceInk
+                                    : (isDark ? AppColors.darkInk : AppColors.lightInk)),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.fingerprint_rounded,
-                        size: 13,
-                        color: isPartnerTouching ? const Color(0xFF10B981) : AppColors.terra,
+                ),
+              ],
+
+              // Music & Atmosphere Studio Shortcut
+              if (showMusic || audioProvider.isPlaying) ...[
+                GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const MusicSanctuaryScreen(),
                       ),
-                      const SizedBox(width: 4),
-                      Text(
-                        isPartnerTouching ? 'Touching!' : 'Touch',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: isPartnerTouching ? FontWeight.bold : FontWeight.w500,
-                          color: isPartnerTouching
-                              ? const Color(0xFF10B981)
+                    );
+                  },
+                  child: Container(
+                    height: 32,
+                    padding: EdgeInsets.symmetric(horizontal: audioProvider.isPlaying ? 8 : 0),
+                    width: audioProvider.isPlaying ? null : 32,
+                    margin: const EdgeInsets.only(right: 6),
+                    decoration: BoxDecoration(
+                      color: audioProvider.isPlaying
+                          ? AppColors.terra.withOpacity(0.15)
+                          : (forceDark
+                              ? AppColors.romanceSurface
+                              : (isDark ? AppColors.darkSurface : AppColors.lightSurface)),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: audioProvider.isPlaying
+                            ? AppColors.terra
+                            : (forceDark
+                                ? AppColors.romanceBorder
+                                : (isDark ? AppColors.darkBorder : AppColors.lightBorder)),
+                        width: 1,
+                      ),
+                    ),
+                    alignment: Alignment.center,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.music_note_rounded,
+                          size: 15,
+                          color: audioProvider.isPlaying
+                              ? AppColors.terra
                               : (forceDark
                                   ? AppColors.romanceInk
                                   : (isDark ? AppColors.darkInk : AppColors.lightInk)),
                         ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
-              // Music & Atmosphere Studio Screen
-              GestureDetector(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const MusicSanctuaryScreen(),
-                    ),
-                  );
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: forceDark
-                        ? AppColors.romanceSurface
-                        : (isDark ? AppColors.darkSurface : AppColors.lightSurface),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: audioProvider.isPlaying
-                          ? AppColors.terra
-                          : (forceDark
-                              ? AppColors.romanceBorder
-                              : (isDark ? AppColors.darkBorder : AppColors.lightBorder)),
-                      width: 1,
+                        if (audioProvider.isPlaying) ...[
+                          const SizedBox(width: 3),
+                          const Text(
+                            'Playing',
+                            style: TextStyle(
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.terra,
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                   ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        '♫',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: audioProvider.isPlaying ? AppColors.terra : null,
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        audioProvider.isPlaying ? 'Playing ♫' : 'Music',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500,
-                          color: forceDark
-                              ? AppColors.romanceInk
-                              : (isDark ? AppColors.darkInk : AppColors.lightInk),
-                        ),
-                      ),
-                    ],
-                  ),
                 ),
-              ),
+              ],
 
-              // Light / Dark Theme Switcher (Only shown on Stage, Memories, World - NOT in Vault or Music)
+              // Light / Dark Theme Switcher
               if (showThemeToggle) ...[
-                const SizedBox(width: 8),
                 GestureDetector(
                   onTap: () => themeProvider.toggleDarkLight(),
                   onLongPress: () => ThemeModal.show(context),
                   child: Container(
-                    width: 34,
-                    height: 34,
+                    width: 32,
+                    height: 32,
+                    margin: const EdgeInsets.only(right: 6),
                     decoration: BoxDecoration(
                       color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
                       shape: BoxShape.circle,
@@ -212,22 +243,22 @@ class AppTopBar extends StatelessWidget {
                       ),
                     ),
                     alignment: Alignment.center,
-                    child: Text(
-                      isDark ? '☀️' : '🌙',
-                      style: const TextStyle(fontSize: 14),
+                    child: Icon(
+                      isDark ? Icons.wb_sunny_rounded : Icons.nightlight_round,
+                      size: 15,
+                      color: isDark ? const Color(0xFFFBBF24) : AppColors.terra,
                     ),
                   ),
                 ),
               ],
-              const SizedBox(width: 8),
 
               // Profile Avatar Pill
               GestureDetector(
                 onTap: effectiveProfileTap,
                 child: Container(
-                  width: 34,
-                  height: 34,
-                  padding: const EdgeInsets.all(2),
+                  width: 32,
+                  height: 32,
+                  padding: const EdgeInsets.all(1.5),
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     gradient: LinearGradient(

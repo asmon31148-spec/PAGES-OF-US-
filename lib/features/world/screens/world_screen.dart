@@ -116,7 +116,7 @@ class _WorldScreenState extends State<WorldScreen> {
             // Top Bar
             AppTopBar(
               title: 'Our World',
-              subtitle: 'Realtime tether & mutual presence',
+              subtitle: 'Realtime tether & presence',
               onOpenProfile: () => ProfileModal.show(context),
             ),
 
