@@ -3,7 +3,6 @@ import 'package:flutter/foundation.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:cloud_firestore/cloud_firestore.dart' hide Source;
 import '../data/models/vault_item.dart';
-import '../data/models/event_capsule.dart';
 import '../data/services/supabase_service.dart';
 import '../core/services/notification_service.dart';
 
@@ -232,24 +231,8 @@ class VaultProvider extends ChangeNotifier {
       }
     } catch (_) {}
 
-    // 2. Initial Default Seeds if empty (No dummy partner templates)
-    if (_vaults.isEmpty) {
-      _vaults = [
-        VaultItem(
-          id: 'vault_paris_seed',
-          creatorId: '',
-          creatorName: 'You',
-          title: 'Our First Paris Trip',
-          emblemShape: 'circle',
-          colorValue: 0xFF541525, // Wine
-          specialDate: DateTime.now().add(const Duration(days: 49)),
-          accessMode: 'timer',
-          letter: 'No matter how many places we wander through, this city and this view with you remains my absolute favorite memory in this universe.',
-          photoUrls: [],
-          backgroundSong: 'lofi_sanctuary',
-          createdAt: DateTime.now().subtract(const Duration(days: 12)),
-        ),
-      ];
+    // 2. If vaults exist in local cache, select the first
+    if (_vaults.isNotEmpty && _selectedVault == null) {
       _selectedVault = _vaults.first;
       notifyListeners();
     }
@@ -421,49 +404,6 @@ class VaultProvider extends ChangeNotifier {
         payload: {'vaults': jsonList},
       );
     } catch (_) {}
-  }
-
-  // Backward compatibility methods
-  Future<void> addEventCapsule(EventCapsule capsule, String spaceId) async {
-    final item = VaultItem(
-      id: capsule.id,
-      creatorId: capsule.creatorId,
-      creatorName: capsule.creatorName,
-      title: capsule.title,
-      colorValue: 0xFF541525,
-      emblemShape: 'circle',
-      accessMode: capsule.passcode.isNotEmpty ? 'pin' : (capsule.unlockAt != null ? 'timer' : 'open'),
-      pinCode: capsule.passcode.isNotEmpty ? capsule.passcode : null,
-      specialDate: capsule.unlockAt,
-      letter: capsule.personalNote,
-      videoUrl: capsule.videoUrl,
-      backgroundSong: capsule.ambientTrack,
-      createdAt: capsule.createdAt,
-    );
-    await createVault(item, spaceId);
-  }
-
-  Future<void> updateEventCapsule(EventCapsule capsule, String spaceId) async {
-    final item = VaultItem(
-      id: capsule.id,
-      creatorId: capsule.creatorId,
-      creatorName: capsule.creatorName,
-      title: capsule.title,
-      colorValue: 0xFF541525,
-      emblemShape: 'circle',
-      accessMode: capsule.passcode.isNotEmpty ? 'pin' : (capsule.unlockAt != null ? 'timer' : 'open'),
-      pinCode: capsule.passcode.isNotEmpty ? capsule.passcode : null,
-      specialDate: capsule.unlockAt,
-      letter: capsule.personalNote,
-      videoUrl: capsule.videoUrl,
-      backgroundSong: capsule.ambientTrack,
-      createdAt: capsule.createdAt,
-    );
-    await updateVault(item, spaceId);
-  }
-
-  Future<void> deleteEventCapsule(String capsuleId, String spaceId) async {
-    await deleteVault(capsuleId, spaceId);
   }
 
   @override

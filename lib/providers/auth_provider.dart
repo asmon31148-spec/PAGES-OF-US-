@@ -18,8 +18,11 @@ class AuthProvider extends ChangeNotifier {
   StreamSubscription? _spaceSub;
 
   UserProfile? get user => _user;
+  UserProfile? get currentUser => _user;
   SpaceModel? get space => _space;
+  SpaceModel? get currentSpace => _space;
   UserProfile? get partner => _partner;
+  UserProfile? get partnerUser => _partner;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   bool get isAuthenticated => _user != null;

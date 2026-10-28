@@ -701,7 +701,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     _buildSettingsTile(
                       icon: Icons.info_outline_rounded,
                       title: 'About Pages of Us',
-                      subtitle: 'Version 1.0.0 (Native Flutter Edition)',
+                      subtitle: 'Version ${UpdateService.currentVersion} (Native Flutter Edition)',
                       ink: ink,
                       soft: soft,
                       onTap: () => PolicyDialogs.showAbout(context),

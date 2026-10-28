@@ -34,49 +34,47 @@ class AudioProvider extends ChangeNotifier {
   static final List<SongItem> _defaultTemplateSongs = [
     SongItem(
       id: 'song_1',
-      title: 'Slow Morning',
-      artist: 'Sanctuary Beats · Built-in',
-      durationSeconds: 222, // 3:42
+      title: 'Slow Morning Lofi',
+      artist: 'Pages of Us · Sanctuary',
+      durationSeconds: 222,
       audioUrl: 'audio/lofi_sanctuary.mp3',
       coverColor: const Color(0xFF86EFAC),
       addedBy: 'Sanctuary',
     ),
     SongItem(
       id: 'song_2',
-      title: 'Rainy Window',
-      artist: 'Aarav Mehta',
-      durationSeconds: 178, // 2:58
-      audioUrl:
-          'https://raw.githubusercontent.com/rafaelreis-hotmart/Audio-Sample-files/master/sample.mp3',
+      title: 'Gentle Rain on Leaves',
+      artist: 'Pages of Us · Atmosphere',
+      durationSeconds: 180,
+      audioUrl: 'audio/rain.mp3',
       coverColor: const Color(0xFF2DD4BF),
-      addedBy: 'Sam',
+      addedBy: 'Sanctuary',
     ),
     SongItem(
       id: 'song_3',
-      title: 'Night Garden',
-      artist: 'Mira Das',
-      durationSeconds: 250, // 4:10
-      audioUrl:
-          'https://raw.githubusercontent.com/rafaelreis-hotmart/Audio-Sample-files/master/sample2.mp3',
-      coverColor: const Color(0xFFF97316),
-      addedBy: 'You',
+      title: 'Midnight Ocean Tide',
+      artist: 'Pages of Us · Atmosphere',
+      durationSeconds: 240,
+      audioUrl: 'audio/ocean.mp3',
+      coverColor: const Color(0xFF38BDF8),
+      addedBy: 'Sanctuary',
     ),
     SongItem(
       id: 'song_4',
-      title: 'Paper Boats',
-      artist: 'Aarav Mehta',
-      durationSeconds: 195, // 3:15
-      audioUrl: 'audio/breeze.mp3',
-      coverColor: const Color(0xFF9CE658),
-      addedBy: 'Aarav Mehta',
+      title: 'Morning Songbirds',
+      artist: 'Pages of Us · Nature',
+      durationSeconds: 195,
+      audioUrl: 'audio/birds.mp3',
+      coverColor: const Color(0xFFFBBF24),
+      addedBy: 'Sanctuary',
     ),
     SongItem(
       id: 'song_5',
-      title: 'Calm Sanctuary',
-      artist: 'Sanctuary Duo',
-      durationSeconds: 210, // 3:30
-      audioUrl: 'audio/rain.mp3',
-      coverColor: const Color(0xFF34D399),
+      title: 'Cozy Hearth Fireplace',
+      artist: 'Pages of Us · Sanctuary',
+      durationSeconds: 210,
+      audioUrl: 'audio/fireplace.mp3',
+      coverColor: const Color(0xFFFB7185),
       addedBy: 'Sanctuary',
     ),
   ];
@@ -238,6 +236,12 @@ class AudioProvider extends ChangeNotifier {
         _songs = _defaultTemplateSongs
             .where((s) => !_deletedSongIds.contains(s.id))
             .toList();
+      }
+
+      final cachedPlaylists = LocalCacheService.getCachedPlaylists();
+      if (cachedPlaylists != null && cachedPlaylists.isNotEmpty) {
+        _playlists.clear();
+        _playlists.addAll(cachedPlaylists.map((e) => PlaylistItem.fromJson(e)));
       }
     } catch (_) {
       _songs = List.from(_defaultTemplateSongs);
@@ -575,6 +579,12 @@ class AudioProvider extends ChangeNotifier {
   // -------------------------------------------------------------
   // PLAYLIST MANAGEMENT
   // -------------------------------------------------------------
+  void _savePlaylistsLocally() {
+    try {
+      LocalCacheService.setCachedPlaylists(_playlists.map((p) => p.toJson()).toList());
+    } catch (_) {}
+  }
+
   void createPlaylist(String title, List<String> songIds, {Color? coverColor}) {
     final pl = PlaylistItem(
       id: 'pl_${DateTime.now().millisecondsSinceEpoch}',
@@ -583,11 +593,13 @@ class AudioProvider extends ChangeNotifier {
       songIds: songIds,
     );
     _playlists.add(pl);
+    _savePlaylistsLocally();
     notifyListeners();
   }
 
   void deletePlaylist(String id) {
     _playlists.removeWhere((p) => p.id == id);
+    _savePlaylistsLocally();
     notifyListeners();
   }
 
@@ -596,15 +608,19 @@ class AudioProvider extends ChangeNotifier {
     if (idx != -1) {
       if (!_playlists[idx].songIds.contains(songId)) {
         _playlists[idx].songIds.add(songId);
+        _savePlaylistsLocally();
         notifyListeners();
       }
     }
   }
 
   void removeSongFromPlaylist(String playlistId, String songId) {
-    final pl = _playlists.firstWhere((p) => p.id == playlistId, orElse: () => _playlists.first);
-    pl.songIds.remove(songId);
-    notifyListeners();
+    final idx = _playlists.indexWhere((p) => p.id == playlistId);
+    if (idx != -1) {
+      _playlists[idx].songIds.remove(songId);
+      _savePlaylistsLocally();
+      notifyListeners();
+    }
   }
 
   // -------------------------------------------------------------

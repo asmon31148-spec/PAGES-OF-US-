@@ -152,7 +152,7 @@ class _StageDailySyncCardState extends State<StageDailySyncCard> {
                           Icon(Icons.auto_awesome, size: 11, color: AppColors.terra),
                           SizedBox(width: 3),
                           Text(
-                            'AI ✦',
+                            'Studio ✦',
                             style: TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.bold,

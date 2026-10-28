@@ -50,9 +50,9 @@ class _DailyCareScreenState extends State<DailyCareScreen> with SingleTickerProv
     final isDark = context.watch<ThemeProvider>().isDark;
     final auth = context.watch<AuthProvider>();
     final stage = context.watch<StageProvider>();
-    final user = auth.currentUser;
-    final partner = auth.partnerUser;
-    final spaceId = auth.currentSpace?.id ?? '';
+    final user = auth.user;
+    final partner = auth.partner;
+    final spaceId = auth.space?.id ?? '';
 
     final hasPartner = partner != null;
     final partnerName = partner?.nickname ?? 'Partner';

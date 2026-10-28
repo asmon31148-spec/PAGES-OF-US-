@@ -65,11 +65,12 @@ class _StageScreenState extends State<StageScreen> {
     final formattedDate =
         DateFormat('EEEE, MMMM d').format(DateTime.now()).toUpperCase();
 
-    final anniversaryYear = stageProvider.anniversaryDate != null &&
-            stageProvider.anniversaryDate!.isNotEmpty
+    final hasAnniversary = stageProvider.anniversaryDate != null &&
+        stageProvider.anniversaryDate!.isNotEmpty;
+    final anniversaryYear = hasAnniversary
         ? DateTime.tryParse(stageProvider.anniversaryDate!)?.year.toString() ??
-            '2024'
-        : '2024';
+            DateTime.now().year.toString()
+        : null;
 
     return Scaffold(
       backgroundColor: isDark ? AppColors.darkBg : AppColors.lightBg,
@@ -133,7 +134,9 @@ class _StageScreenState extends State<StageScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.end,
                                 children: [
                                   Text(
-                                    'Together since $anniversaryYear ✎',
+                                    hasAnniversary
+                                        ? 'Together since $anniversaryYear ✎'
+                                        : 'Our Special Date ✎',
                                     style: TextStyle(
                                       fontSize: 11,
                                       fontWeight: FontWeight.w600,
@@ -143,7 +146,9 @@ class _StageScreenState extends State<StageScreen> {
                                     ),
                                   ),
                                   Text(
-                                    'Day ${stageProvider.daysTogether} together ✦',
+                                    hasAnniversary
+                                        ? 'Day ${stageProvider.daysTogether} together ✦'
+                                        : 'Set Anniversary ✦',
                                     style: const TextStyle(
                                       fontSize: 10,
                                       fontWeight: FontWeight.bold,

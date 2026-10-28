@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:geolocator/geolocator.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/services/weather_service.dart';
 import '../../../providers/theme_provider.dart';
+import '../../../providers/world_provider.dart';
 
 class StageAtmosphereCard extends StatefulWidget {
   const StageAtmosphereCard({super.key});
@@ -18,17 +20,49 @@ class _StageAtmosphereCardState extends State<StageAtmosphereCard> {
   @override
   void initState() {
     super.initState();
-    _loadWeather();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadWeather();
+    });
   }
 
   Future<void> _loadWeather() async {
-    // Default sanctuary latitude/longitude or user location
-    final info = await WeatherService.fetchWeather(22.5726, 88.3639);
-    if (mounted) {
-      setState(() {
-        _weather = info;
-        _isLoading = false;
-      });
+    try {
+      final world = context.read<WorldProvider>();
+      double? lat = world.myLocation?.lat;
+      double? lng = world.myLocation?.lng;
+
+      if (lat == null || lng == null || (lat == 0.0 && lng == 0.0)) {
+        try {
+          final pos = await Geolocator.getLastKnownPosition();
+          if (pos != null) {
+            lat = pos.latitude;
+            lng = pos.longitude;
+          }
+        } catch (_) {}
+      }
+
+      WeatherInfo? info;
+      if (lat != null && lng != null && (lat != 0.0 || lng != 0.0)) {
+        info = await WeatherService.fetchWeather(lat, lng);
+      } else {
+        info = world.partnerWeather ??
+            WeatherInfo(
+              temperature: 24.0,
+              weatherCode: 0,
+              isDay: DateTime.now().hour >= 6 && DateTime.now().hour < 19,
+              condition: 'Sanctuary Calm',
+              emoji: '✨',
+            );
+      }
+
+      if (mounted) {
+        setState(() {
+          _weather = info;
+          _isLoading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 

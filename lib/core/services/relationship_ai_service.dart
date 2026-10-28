@@ -395,9 +395,11 @@ class RelationshipAiService {
 
     return selected.map((q) {
       return GeneratedPrompt(
-        id: 'ai_${DateTime.now().millisecondsSinceEpoch}_${random.nextInt(1000)}',
+        id: 'prompt_${DateTime.now().millisecondsSinceEpoch}_${random.nextInt(1000)}',
         question: q,
-        vibeTag: '${mood.toUpperCase()} · AI TAILORED',
+        vibeTag: customTopic != null && customTopic.trim().isNotEmpty
+            ? '${mood.toUpperCase()} · TOPIC TAILORED'
+            : '${mood.toUpperCase()} · INTIMATE PROMPT',
         category: mood,
       );
     }).toList();

@@ -14,7 +14,7 @@ class StageDailyCareCard extends StatelessWidget {
     final isDark = context.watch<ThemeProvider>().isDark;
     final stage = context.watch<StageProvider>();
     final auth = context.watch<AuthProvider>();
-    final partner = auth.partnerUser;
+    final partner = auth.partner;
     final hasPartner = partner != null;
 
     final todayKey = DateTime.now().toIso8601String().split('T')[0];

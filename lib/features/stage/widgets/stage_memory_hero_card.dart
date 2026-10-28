@@ -229,7 +229,32 @@ class _StageMemoryHeroCardState extends State<StageMemoryHeroCard> {
         title: '“${note.text}”',
         subtitle: 'A sweet reminder pinned on the sanctuary corkboard',
         badgeText: 'Read Note 📌',
-        onTap: widget.onGoToMemories,
+        onTap: () {
+          showDialog(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              backgroundColor: isDark ? const Color(0xFF241B15) : const Color(0xFFFFF9F5),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              title: const Row(
+                children: [
+                  Icon(Icons.push_pin_rounded, color: Color(0xFFFFB74D), size: 22),
+                  SizedBox(width: 8),
+                  Text('Sanctuary Note 📌', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                ],
+              ),
+              content: Text(
+                '“${note.text}”',
+                style: const TextStyle(fontSize: 15, fontStyle: FontStyle.italic, height: 1.4),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Close'),
+                ),
+              ],
+            ),
+          );
+        },
       ));
     }
 

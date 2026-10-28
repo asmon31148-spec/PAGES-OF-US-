@@ -191,6 +191,21 @@ class LocalCacheService {
     await _prefs?.setStringList('cached_deleted_song_ids', ids);
   }
 
+  static List<Map<String, dynamic>>? getCachedPlaylists() {
+    final str = _prefs?.getString('cached_music_playlists');
+    if (str == null || str.isEmpty) return null;
+    try {
+      final list = jsonDecode(str) as List<dynamic>;
+      return list.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static Future<void> setCachedPlaylists(List<Map<String, dynamic>> playlists) async {
+    await _prefs?.setString('cached_music_playlists', jsonEncode(playlists));
+  }
+
   // Clear cache on logout
   static Future<void> clearAll() async {
     await _prefs?.clear();

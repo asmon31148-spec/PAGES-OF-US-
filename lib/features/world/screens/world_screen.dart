@@ -144,12 +144,12 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
     }
     distanceKm ??= worldProvider.liveDistanceKm;
 
-    // Default center point: User location, partner location, or romantic default
-    final defaultCenter = myLoc != null
+    // Default center point: User location, partner location, or global overview
+    final defaultCenter = (myLoc != null && (myLoc.lat != 0.0 || myLoc.lng != 0.0))
         ? LatLng(myLoc.lat, myLoc.lng)
-        : partnerLoc != null
+        : (partnerLoc != null && (partnerLoc.lat != 0.0 || partnerLoc.lng != 0.0))
             ? LatLng(partnerLoc.lat, partnerLoc.lng)
-            : const LatLng(22.5726, 88.3639);
+            : const LatLng(20.0, 0.0);
 
     return PopScope(
       canPop: !_isFullScreenMap,

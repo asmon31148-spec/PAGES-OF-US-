@@ -77,7 +77,7 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
                       const Spacer(),
                       _buildCircleIconButton(
                         icon: Icons.search_rounded,
-                        onTap: () {},
+                        onTap: () => _showSearchModal(context),
                       ),
                       const SizedBox(width: 10),
                       GestureDetector(
@@ -1138,13 +1138,11 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
                           final newSong = SongItem(
                             id: 'custom_${DateTime.now().millisecondsSinceEpoch}',
                             title: title,
-                            artist: artist.isEmpty ? 'Custom' : artist,
+                            artist: artist.isEmpty ? 'Custom Track' : artist,
                             durationSeconds: 180,
-                            audioUrl: url.isEmpty
-                                ? 'https://raw.githubusercontent.com/rafaelreis-hotmart/Audio-Sample-files/master/sample.mp3'
-                                : url,
+                            audioUrl: url.isEmpty ? 'audio/lofi_sanctuary.mp3' : url,
                             coverColor: const Color(0xFF86EFAC),
-                            isLocal: false,
+                            isLocal: url.isEmpty,
                             addedBy: 'You',
                           );
                           ctx.read<AudioProvider>().addCustomSong(newSong);
@@ -1285,6 +1283,105 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  void _showSearchModal(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (modalCtx) {
+        String searchQuery = '';
+        return StatefulBuilder(
+          builder: (ctx, setModalState) {
+            final audio = ctx.watch<AudioProvider>();
+            final allSongs = audio.songs;
+            final filtered = searchQuery.isEmpty
+                ? allSongs
+                : allSongs
+                    .where((s) =>
+                        s.title.toLowerCase().contains(searchQuery.toLowerCase()) ||
+                        s.artist.toLowerCase().contains(searchQuery.toLowerCase()))
+                    .toList();
+
+            return Container(
+              height: MediaQuery.of(ctx).size.height * 0.7,
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
+              decoration: const BoxDecoration(
+                color: Color(0xFF141916),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Search Sanctuary Tracks',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close, color: Colors.white70),
+                        onPressed: () => Navigator.pop(modalCtx),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    autofocus: true,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: InputDecoration(
+                      hintText: 'Search songs, moods, atmospheres...',
+                      hintStyle: const TextStyle(color: Colors.white38),
+                      prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFFA3E635)),
+                      filled: true,
+                      fillColor: Colors.white10,
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
+                    ),
+                    onChanged: (val) => setModalState(() => searchQuery = val),
+                  ),
+                  const SizedBox(height: 12),
+                  Expanded(
+                    child: filtered.isEmpty
+                        ? const Center(
+                            child: Text('No tracks found', style: TextStyle(color: Colors.white54)),
+                          )
+                        : ListView.builder(
+                            itemCount: filtered.length,
+                            itemBuilder: (context, idx) {
+                              final song = filtered[idx];
+                              return ListTile(
+                                leading: Container(
+                                  width: 40,
+                                  height: 40,
+                                  decoration: BoxDecoration(
+                                    color: song.coverColor,
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  alignment: Alignment.center,
+                                  child: const Icon(Icons.music_note_rounded, color: Colors.black87),
+                                ),
+                                title: Text(song.title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                                subtitle: Text(song.artist, style: const TextStyle(color: Colors.white54, fontSize: 12)),
+                                trailing: Text(song.durationFormatted, style: const TextStyle(color: Colors.white38, fontSize: 11)),
+                                onTap: () {
+                                  final globalIndex = audio.songs.indexWhere((s) => s.id == song.id);
+                                  if (globalIndex != -1) {
+                                    audio.selectSong(globalIndex);
+                                    Navigator.pop(modalCtx);
+                                  }
+                                },
+                              );
+                            },
+                          ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
     );
   }
 }

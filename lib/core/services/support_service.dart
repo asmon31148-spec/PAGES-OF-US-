@@ -42,7 +42,7 @@ class SupportTicket {
 }
 
 class SupportService {
-  static const String defaultAdminEmail = 'asmon31148@gmail.com';
+  static const String defaultSupportEmail = 'support@pagesofus.app';
 
   /// Sends support complaint to Firestore, Supabase fallback, and dispatches email notification
   static Future<bool> sendTicket({
@@ -88,9 +88,9 @@ class SupportService {
       });
     } catch (_) {}
 
-    // 3. Dispatch email notification to admin via FormSubmit
+    // 3. Dispatch email notification to support inbox via FormSubmit
     try {
-      final recipient = customAdminEmail ?? defaultAdminEmail;
+      final recipient = customAdminEmail ?? defaultSupportEmail;
       final uri = Uri.parse('https://formsubmit.co/ajax/$recipient');
       final resp = await http.post(
         uri,

@@ -35,10 +35,10 @@ class _ListenTogetherScreenState extends State<ListenTogetherScreen> {
     final partner = authProvider.partner;
     final space = authProvider.space;
 
-    final myInitial = (user?.nickname.isNotEmpty ?? false) ? user!.nickname[0].toUpperCase() : 'A';
-    final partnerInitial = (partner?.nickname.isNotEmpty ?? false) ? partner!.nickname[0].toUpperCase() : 'S';
+    final myInitial = (user?.nickname.isNotEmpty ?? false) ? user!.nickname[0].toUpperCase() : '♥';
+    final partnerInitial = (partner?.nickname.isNotEmpty ?? false) ? partner!.nickname[0].toUpperCase() : '♥';
     final partnerName = partner?.nickname ?? 'Partner';
-    final pairCode = space?.pairCode ?? 'FOREST-482';
+    final pairCode = (space?.pairCode != null && space!.pairCode.isNotEmpty) ? space.pairCode : 'SANCTUARY';
 
     final currentSong = audioProvider.currentSong;
     final isPlaying = audioProvider.isSongPlaying;
