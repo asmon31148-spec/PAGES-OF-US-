@@ -85,19 +85,18 @@ jobs:
           set +e
           flutter build apk --release --android-skip-build-dependency-validation > build_log.txt 2>&1
           EXIT_CODE=$?
-          if [ $EXIT_CODE -ne 0 ]; then
-            echo "=================== FLUTTER BUILD ERROR ==================="
-            tail -n 120 build_log.txt
-            echo "==========================================================="
-            git config user.name "github-actions[bot]"
-            git config user.email "github-actions[bot]@users.noreply.github.com"
-            git checkout -b build-failure-log || git checkout build-failure-log
-            tail -n 300 build_log.txt > build_error.txt
-            git add build_error.txt
-            git commit -m "chore: record build failure error" || true
-            git push -f origin build-failure-log || true
-            exit $EXIT_CODE
-          fi
+          echo "=================== FLUTTER BUILD LOG TAIL ==================="
+          tail -n 120 build_log.txt
+          echo "==============================================================="
+          exit $EXIT_CODE
+
+      - name: Upload Diagnostic Build Log on Failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: build_log.txt
+          retention-days: 7
 
       - name: Extract App Version
         id: app_version
