@@ -396,6 +396,8 @@ class _StageMemoryHeroCardState extends State<StageMemoryHeroCard> {
   }
 
   Widget _buildSpotlightCard(SpotlightItem item, bool isDark) {
+    final hasImage = item.imageUrl != null && item.imageUrl!.isNotEmpty;
+
     return GestureDetector(
       onTap: item.onTap,
       child: Container(
@@ -404,12 +406,12 @@ class _StageMemoryHeroCardState extends State<StageMemoryHeroCard> {
           borderRadius: BorderRadius.circular(18),
           color: isDark ? const Color(0xFF161F1A) : const Color(0xFFEBE6DC),
           border: Border.all(
-            color: item.tagColor.withOpacity(0.35),
-            width: 1.0,
+            color: item.tagColor.withOpacity(0.40),
+            width: 1.1,
           ),
           boxShadow: [
             BoxShadow(
-              color: item.tagColor.withOpacity(0.12),
+              color: item.tagColor.withOpacity(0.16),
               blurRadius: 16,
               offset: const Offset(0, 4),
             ),
@@ -418,32 +420,34 @@ class _StageMemoryHeroCardState extends State<StageMemoryHeroCard> {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            // Background Image if available (Photos / Video / Vault cover)
-            if (item.imageUrl != null && item.imageUrl!.isNotEmpty)
+            // 1. If photo/video has an imageUrl, render image with vignette
+            if (hasImage) ...[
               ClipRRect(
                 borderRadius: BorderRadius.circular(17),
                 child: CachedNetworkImage(
                   imageUrl: item.imageUrl!,
                   fit: BoxFit.cover,
                   placeholder: (_, __) => Container(color: Colors.black26),
-                  errorWidget: (_, __, ___) => Container(color: Colors.black26),
+                  errorWidget: (_, __, ___) => _buildArtisticBackdrop(item, isDark),
                 ),
               ),
-
-            // Soft luxury gradient vignette so text is always 100% readable
-            Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(17),
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.black.withOpacity(0.25),
-                    Colors.black.withOpacity(0.72),
-                  ],
+              Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(17),
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.black.withOpacity(0.25),
+                      Colors.black.withOpacity(0.72),
+                    ],
+                  ),
                 ),
               ),
-            ),
+            ] else ...[
+              // 2. Beautiful category-specific artistic backdrop (Voice, Tether, Dreams, etc.)
+              _buildArtisticBackdrop(item, isDark),
+            ],
 
             // Text & Action Content
             Padding(
@@ -452,32 +456,35 @@ class _StageMemoryHeroCardState extends State<StageMemoryHeroCard> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        item.title,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                          height: 1.3,
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 220),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          item.title,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 15.5,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                            height: 1.25,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        item.subtitle,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 11.5,
-                          color: Colors.white.withOpacity(0.8),
-                          height: 1.3,
+                        const SizedBox(height: 4),
+                        Text(
+                          item.subtitle,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            color: Colors.white.withOpacity(0.85),
+                            height: 1.3,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
 
                   // Bottom Action Row
@@ -485,32 +492,40 @@ class _StageMemoryHeroCardState extends State<StageMemoryHeroCard> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4.5),
+                        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
                         decoration: BoxDecoration(
-                          color: Colors.black54,
+                          color: item.tagColor.withOpacity(0.18),
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.white24, width: 0.8),
+                          border: Border.all(color: item.tagColor.withOpacity(0.35), width: 0.9),
                         ),
                         child: Text(
                           item.badgeText,
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontSize: 10.5,
                             fontWeight: FontWeight.bold,
-                            color: item.tagColor,
+                            color: Colors.white,
+                            letterSpacing: 0.2,
                           ),
                         ),
                       ),
                       Container(
-                        width: 28,
-                        height: 28,
+                        width: 30,
+                        height: 30,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: item.tagColor.withOpacity(0.85),
+                          color: item.tagColor,
+                          boxShadow: [
+                            BoxShadow(
+                              color: item.tagColor.withOpacity(0.45),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
                         ),
                         child: const Icon(
                           Icons.arrow_forward_rounded,
-                          color: Colors.black,
-                          size: 16,
+                          color: Colors.black87,
+                          size: 17,
                         ),
                       ),
                     ],
@@ -520,6 +535,333 @@ class _StageMemoryHeroCardState extends State<StageMemoryHeroCard> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildArtisticBackdrop(SpotlightItem item, bool isDark) {
+    List<Color> gradientColors;
+    Widget graphic;
+
+    switch (item.tag) {
+      case 'VOICE WHISPER':
+        gradientColors = const [
+          Color(0xFF0C2417),
+          Color(0xFF163E27),
+          Color(0xFF0A1B11),
+        ];
+        graphic = _buildVoiceWhisperGraphic(item.tagColor);
+        break;
+
+      case 'LIVE TETHER':
+      case 'PARTNER THOUGHT':
+        gradientColors = const [
+          Color(0xFF0A1B2E),
+          Color(0xFF12345A),
+          Color(0xFF071424),
+        ];
+        graphic = _buildLiveTetherGraphic(item.tagColor);
+        break;
+
+      case 'DREAM IN PROGRESS':
+        gradientColors = const [
+          Color(0xFF220D2F),
+          Color(0xFF3B1652),
+          Color(0xFF160820),
+        ];
+        graphic = _buildDreamGraphic(item.tagColor);
+        break;
+
+      case 'PINNED CORKBOARD NOTE':
+        gradientColors = const [
+          Color(0xFF2A1C12),
+          Color(0xFF422819),
+          Color(0xFF1B110B),
+        ];
+        graphic = _buildPinnedNoteGraphic(item.tagColor);
+        break;
+
+      case 'VAULT COUNTDOWN':
+      case 'OUR VAULTS':
+      case 'VAULT TIMER':
+        gradientColors = const [
+          Color(0xFF221C11),
+          Color(0xFF382D18),
+          Color(0xFF15110B),
+        ];
+        graphic = _buildVaultGraphic(item.tagColor);
+        break;
+
+      default:
+        gradientColors = const [
+          Color(0xFF241019),
+          Color(0xFF3C182A),
+          Color(0xFF180A11),
+        ];
+        graphic = _buildSanctuaryGraphic(item.tagColor);
+        break;
+    }
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(17),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          // 1. Rich Thematic Gradient
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: gradientColors,
+              ),
+            ),
+          ),
+
+          // 2. Ambient Radial Lighting Flare from Top-Right
+          Positioned(
+            right: -30,
+            top: -30,
+            child: Container(
+              width: 190,
+              height: 190,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(
+                  colors: [
+                    item.tagColor.withOpacity(0.30),
+                    item.tagColor.withOpacity(0.0),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          // 3. Category-specific artistic graphic
+          graphic,
+
+          // 4. Directional shadow vignette to guarantee text legibility
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+                stops: const [0.0, 0.65, 1.0],
+                colors: [
+                  Colors.black.withOpacity(0.50),
+                  Colors.black.withOpacity(0.18),
+                  Colors.transparent,
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildVoiceWhisperGraphic(Color accentColor) {
+    const barHeights = [14.0, 26.0, 42.0, 68.0, 50.0, 84.0, 58.0, 96.0, 72.0, 46.0, 28.0, 16.0];
+    return Positioned(
+      right: 14,
+      top: 12,
+      bottom: 12,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          for (int i = 0; i < barHeights.length; i++) ...[
+            Container(
+              width: 3.5,
+              height: barHeights[i],
+              decoration: BoxDecoration(
+                color: accentColor.withOpacity(0.30 + (barHeights[i] / 96.0) * 0.65),
+                borderRadius: BorderRadius.circular(3),
+                boxShadow: [
+                  if (barHeights[i] > 50)
+                    BoxShadow(
+                      color: accentColor.withOpacity(0.45),
+                      blurRadius: 6,
+                      spreadRadius: 0.5,
+                    ),
+                ],
+              ),
+            ),
+            if (i < barHeights.length - 1) const SizedBox(width: 3.5),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLiveTetherGraphic(Color accentColor) {
+    return Positioned(
+      right: -10,
+      top: -10,
+      bottom: -10,
+      width: 140,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          // Concentric radar rings
+          Container(
+            width: 130,
+            height: 130,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: accentColor.withOpacity(0.14), width: 1.2),
+            ),
+          ),
+          Container(
+            width: 90,
+            height: 90,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: accentColor.withOpacity(0.22), width: 1.2),
+            ),
+          ),
+          Container(
+            width: 52,
+            height: 52,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: accentColor.withOpacity(0.38), width: 1.2),
+              color: accentColor.withOpacity(0.08),
+            ),
+          ),
+          // Central tether pulse beacon
+          Container(
+            width: 14,
+            height: 14,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: accentColor,
+              boxShadow: [
+                BoxShadow(
+                  color: accentColor.withOpacity(0.65),
+                  blurRadius: 10,
+                  spreadRadius: 2,
+                ),
+              ],
+            ),
+          ),
+          // Watermark compass
+          Positioned(
+            right: 25,
+            child: Icon(
+              Icons.explore_rounded,
+              size: 72,
+              color: accentColor.withOpacity(0.14),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDreamGraphic(Color accentColor) {
+    return Positioned(
+      right: -5,
+      top: -10,
+      bottom: -10,
+      width: 135,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          // Dream halo rings
+          Container(
+            width: 120,
+            height: 120,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: accentColor.withOpacity(0.16), width: 1.2),
+            ),
+          ),
+          Container(
+            width: 80,
+            height: 80,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: accentColor.withOpacity(0.28), width: 1.2),
+            ),
+          ),
+          // Star icon
+          Icon(
+            Icons.stars_rounded,
+            size: 64,
+            color: accentColor.withOpacity(0.42),
+          ),
+          // Sparkle elements
+          Positioned(
+            top: 25,
+            right: 20,
+            child: Text(
+              '✦',
+              style: TextStyle(
+                color: const Color(0xFFFFD54F).withOpacity(0.85),
+                fontSize: 18,
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: 25,
+            right: 35,
+            child: Text(
+              '✨',
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.white.withOpacity(0.75),
+              ),
+            ),
+          ),
+          Positioned(
+            top: 50,
+            right: 85,
+            child: Text(
+              '⋆',
+              style: TextStyle(
+                color: accentColor.withOpacity(0.75),
+                fontSize: 20,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPinnedNoteGraphic(Color accentColor) {
+    return Positioned(
+      right: 14,
+      top: 22,
+      child: Icon(
+        Icons.push_pin_rounded,
+        size: 72,
+        color: accentColor.withOpacity(0.16),
+      ),
+    );
+  }
+
+  Widget _buildVaultGraphic(Color accentColor) {
+    return Positioned(
+      right: 14,
+      top: 18,
+      child: Icon(
+        Icons.hourglass_top_rounded,
+        size: 72,
+        color: accentColor.withOpacity(0.16),
+      ),
+    );
+  }
+
+  Widget _buildSanctuaryGraphic(Color accentColor) {
+    return Positioned(
+      right: 14,
+      top: 20,
+      child: Icon(
+        Icons.favorite_rounded,
+        size: 72,
+        color: accentColor.withOpacity(0.16),
       ),
     );
   }
