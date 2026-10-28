@@ -78,7 +78,9 @@ jobs:
         run: flutter pub get
 
       - name: Analyze Project
-        run: flutter analyze || true
+        run: |
+          flutter analyze > analyze_log.txt 2>&1 || true
+          cat analyze_log.txt
 
       - name: Build Release APK
         run: |
@@ -89,6 +91,19 @@ jobs:
           tail -n 120 build_log.txt
           echo "==============================================================="
           exit $EXIT_CODE
+
+      - name: Commit Build Log on Failure
+        if: failure()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          echo "=== FLUTTER ANALYZE ===" > BUILD_ERROR.txt
+          cat analyze_log.txt >> BUILD_ERROR.txt 2>/dev/null || true
+          echo "=== FLUTTER BUILD LOG ===" >> BUILD_ERROR.txt
+          tail -n 250 build_log.txt >> BUILD_ERROR.txt 2>/dev/null || true
+          git add BUILD_ERROR.txt
+          git commit -m "chore: record build error log [skip ci]" || true
+          git push origin ${{ github.ref_name }} || true
 
       - name: Upload Diagnostic Build Log on Failure
         if: always()
