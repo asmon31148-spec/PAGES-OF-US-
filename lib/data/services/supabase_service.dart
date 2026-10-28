@@ -29,6 +29,7 @@ class SupabaseService {
   static Function(Map<String, dynamic> data)? _onMood;
   static Function(Map<String, dynamic> data)? _onTouchPad;
   static Function(Map<String, dynamic> data)? _onDrawStroke;
+  static Function(Map<String, dynamic> data)? _onSyncDrawing;
   static Function(Map<String, dynamic> data)? _onClearDrawing;
   static Function(Map<String, dynamic> data)? _onTouchCountSync;
   static Function(Map<String, dynamic> data)? _onDailyPrompt;
@@ -120,6 +121,11 @@ class SupabaseService {
     );
 
     ch.onBroadcast(
+      event: 'SYNC_DRAWING',
+      callback: (payload) => _onSyncDrawing?.call(payload),
+    );
+
+    ch.onBroadcast(
       event: 'TOUCH_COUNT_SYNC',
       callback: (payload) => _onTouchCountSync?.call(payload),
     );
@@ -156,6 +162,7 @@ class SupabaseService {
     required Function(Map<String, dynamic> data) onMood,
     required Function(Map<String, dynamic> data) onTouchPad,
     Function(Map<String, dynamic> data)? onDrawStroke,
+    Function(Map<String, dynamic> data)? onSyncDrawing,
     Function(Map<String, dynamic> data)? onClearDrawing,
     Function(Map<String, dynamic> data)? onTouchCountSync,
     Function(Map<String, dynamic> data)? onDailyPrompt,
@@ -167,6 +174,7 @@ class SupabaseService {
     _onMood = onMood;
     _onTouchPad = onTouchPad;
     _onDrawStroke = onDrawStroke;
+    _onSyncDrawing = onSyncDrawing;
     _onClearDrawing = onClearDrawing;
     _onTouchCountSync = onTouchCountSync;
     _onDailyPrompt = onDailyPrompt;

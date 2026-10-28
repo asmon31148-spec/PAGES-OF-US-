@@ -46,10 +46,11 @@ class _TouchSanctuaryScreenState extends State<TouchSanctuaryScreen>
   Color _selectedColor = const Color(0xFFE2847A);
   double _selectedWidth = 3.5;
   List<StrokePoint>? _activePoints;
+  Offset? _eraserTouchPoint;
 
-  // Mode 3: Heart Pulse state
-  final List<Offset> _3dWavePoints = [];
-  Timer? _padToneDebounce;
+  // Mode 3: Heart Pulse state (Water ripple model)
+  final List<_WaterRipple> _waterRipples = [];
+  Timer? _waterDropSoundDebounce;
 
   @override
   void initState() {
@@ -69,7 +70,7 @@ class _TouchSanctuaryScreenState extends State<TouchSanctuaryScreen>
 
     _waveController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1600),
+      duration: const Duration(milliseconds: 1000),
     )..repeat();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -103,7 +104,7 @@ class _TouchSanctuaryScreenState extends State<TouchSanctuaryScreen>
   @override
   void dispose() {
     _heartbeatTimer?.cancel();
-    _padToneDebounce?.cancel();
+    _waterDropSoundDebounce?.cancel();
     _pulseController.dispose();
     _collisionController.dispose();
     _waveController.dispose();
@@ -111,15 +112,20 @@ class _TouchSanctuaryScreenState extends State<TouchSanctuaryScreen>
     super.dispose();
   }
 
-  // Soft low pad ambient sound effect (volume 0.15)
-  Future<void> _playLowPadTone() async {
-    if (_padToneDebounce?.isActive ?? false) return;
-    _padToneDebounce = Timer(const Duration(milliseconds: 400), () {});
+  // Instant soft water droplet sound with native click and gentle chime
+  Future<void> _playWaterDropSound() async {
+    if (_waterDropSoundDebounce?.isActive ?? false) return;
+    _waterDropSoundDebounce = Timer(const Duration(milliseconds: 90), () {});
 
     try {
+      HapticFeedback.lightImpact();
+      SystemSound.play(SystemSoundType.click);
       await _audioPlayer.stop();
-      await _audioPlayer.setVolume(0.15);
-      await _audioPlayer.play(AssetSource('audio/breeze.mp3'));
+      await _audioPlayer.setVolume(0.45);
+      await _audioPlayer.play(
+        AssetSource('audio/water_drop.wav'),
+        mode: PlayerMode.lowLatency,
+      );
     } catch (_) {}
   }
 
@@ -263,10 +269,11 @@ class _TouchSanctuaryScreenState extends State<TouchSanctuaryScreen>
             // Bottom Tool Palette (Exclusively for Glow Trace mode)
             if (_currentMode == TouchSanctuaryMode.glowTrace)
               Positioned(
-                left: 16,
-                right: 16,
-                bottom: 24,
+                left: 14,
+                right: 14,
+                bottom: 16,
                 child: SafeArea(
+                  bottom: true,
                   child: _buildGlowToolBar(
                     stageProvider: stageProvider,
                     spaceId: effectiveSpaceId,
@@ -275,13 +282,14 @@ class _TouchSanctuaryScreenState extends State<TouchSanctuaryScreen>
                 ),
               ),
 
-            // Bottom Guidance Pill for Thumb-Kiss & Heart Pulse
+            // Bottom Guidance Pill for Thumb-Kiss
             if (_currentMode == TouchSanctuaryMode.thumbKiss)
               Positioned(
                 left: 20,
                 right: 20,
-                bottom: 28,
+                bottom: 20,
                 child: SafeArea(
+                  bottom: true,
                   child: _buildThumbKissStatusPill(isPartnerTouching, partnerNickname),
                 ),
               ),
@@ -778,6 +786,15 @@ class _TouchSanctuaryScreenState extends State<TouchSanctuaryScreen>
           onPanStart: (details) {
             final nx = (details.localPosition.dx / padSize.width).clamp(0.0, 1.0);
             final ny = (details.localPosition.dy / padSize.height).clamp(0.0, 1.0);
+            if (_selectedTool == 'eraser') {
+              setState(() {
+                _eraserTouchPoint = details.localPosition;
+              });
+              if (spaceId.isNotEmpty && userId.isNotEmpty) {
+                stageProvider.eraseStrokesNear(nx, ny, 0.045, spaceId, userId);
+              }
+              return;
+            }
             final norm = StrokePoint(
               double.parse(nx.toStringAsFixed(4)),
               double.parse(ny.toStringAsFixed(4)),
@@ -789,6 +806,15 @@ class _TouchSanctuaryScreenState extends State<TouchSanctuaryScreen>
           onPanUpdate: (details) {
             final nx = (details.localPosition.dx / padSize.width).clamp(0.0, 1.0);
             final ny = (details.localPosition.dy / padSize.height).clamp(0.0, 1.0);
+            if (_selectedTool == 'eraser') {
+              setState(() {
+                _eraserTouchPoint = details.localPosition;
+              });
+              if (spaceId.isNotEmpty && userId.isNotEmpty) {
+                stageProvider.eraseStrokesNear(nx, ny, 0.045, spaceId, userId);
+              }
+              return;
+            }
             if (_activePoints != null && _activePoints!.isNotEmpty) {
               final last = _activePoints!.last;
               final dx = nx - last.x;
@@ -807,6 +833,12 @@ class _TouchSanctuaryScreenState extends State<TouchSanctuaryScreen>
             });
           },
           onPanEnd: (_) {
+            if (_selectedTool == 'eraser') {
+              setState(() {
+                _eraserTouchPoint = null;
+              });
+              return;
+            }
             if (_activePoints != null && _activePoints!.isNotEmpty) {
               List<StrokePoint> optimizedPoints = _activePoints!;
               if (optimizedPoints.length > 100) {
@@ -835,16 +867,21 @@ class _TouchSanctuaryScreenState extends State<TouchSanctuaryScreen>
               _activePoints = null;
             });
           },
+          onPanCancel: () {
+            setState(() {
+              _eraserTouchPoint = null;
+              _activePoints = null;
+            });
+          },
           child: CustomPaint(
             size: padSize,
             painter: _FullScreenGlowDrawingPainter(
               strokes: strokes,
               activePoints: _activePoints,
-              activeColor: _selectedTool == 'eraser'
-                  ? const Color(0xFF07060B)
-                  : _selectedColor,
-              activeWidth: _selectedTool == 'eraser' ? 22.0 : _selectedWidth,
+              activeColor: _selectedColor,
+              activeWidth: _selectedWidth,
               activeTool: _selectedTool,
+              eraserPoint: _eraserTouchPoint,
             ),
           ),
         ),
@@ -892,40 +929,74 @@ class _TouchSanctuaryScreenState extends State<TouchSanctuaryScreen>
     required String userId,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: const Color(0xFF14121E).withOpacity(0.92),
+        color: const Color(0xFF14121E).withOpacity(0.94),
         borderRadius: BorderRadius.circular(26),
         border: Border.all(color: Colors.white.withOpacity(0.12)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.4),
-            blurRadius: 20,
-            offset: const Offset(0, 6),
+            blurRadius: 18,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
       child: Row(
         children: [
-          // 1. Tool Selectors
-          _buildToolButton('pen', Icons.edit_rounded, 'Glow Pen'),
-          const SizedBox(width: 4),
-          _buildToolButton('stardust', Icons.auto_awesome_rounded, 'Stardust'),
-          const SizedBox(width: 4),
-          _buildToolButton('eraser', Icons.cleaning_services_rounded, 'Eraser'),
+          // 1. Tool Selectors (Pen, Stardust, Eraser)
+          _buildToolButton('pen', Icons.edit_rounded, 'Pen'),
+          const SizedBox(width: 3),
+          _buildToolButton('stardust', Icons.auto_awesome_rounded, 'Glow'),
+          const SizedBox(width: 3),
+          _buildToolButton('eraser', Icons.auto_fix_high_rounded, 'Eraser'),
 
-          const Spacer(),
+          const SizedBox(width: 6),
 
-          // 2. Neon Color Palette (if not eraser)
-          if (_selectedTool != 'eraser') ...[
-            _buildColorPill(const Color(0xFFFF4B72)),
-            _buildColorPill(const Color(0xFF00E5FF)),
-            _buildColorPill(const Color(0xFFFBBF24)),
-            _buildColorPill(const Color(0xFF34D399)),
-            _buildColorPill(const Color(0xFFA855F7)),
-            _buildColorPill(const Color(0xFFFFFFFF)),
-            const SizedBox(width: 6),
-          ],
+          // 2. Middle Palette or Eraser guidance
+          Expanded(
+            child: _selectedTool == 'eraser'
+                ? Center(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF43F5E).withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.touch_app_rounded, size: 12, color: Color(0xFFF43F5E)),
+                          SizedBox(width: 4),
+                          Flexible(
+                            child: Text(
+                              'Rub to erase',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white70,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                : Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      _buildColorPill(const Color(0xFFFF4B72)),
+                      _buildColorPill(const Color(0xFF00E5FF)),
+                      _buildColorPill(const Color(0xFFFBBF24)),
+                      _buildColorPill(const Color(0xFF34D399)),
+                      _buildColorPill(const Color(0xFFFFFFFF)),
+                    ],
+                  ),
+          ),
+
+          const SizedBox(width: 6),
 
           // 3. Clear Canvas Button
           GestureDetector(
@@ -936,20 +1007,21 @@ class _TouchSanctuaryScreenState extends State<TouchSanctuaryScreen>
               }
             },
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.08),
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.white.withOpacity(0.1)),
               ),
               child: const Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.delete_sweep_rounded, size: 15, color: Colors.white70),
+                  Icon(Icons.delete_outline_rounded, size: 14, color: Colors.white70),
                   SizedBox(width: 3),
                   Text(
                     'Clear',
                     style: TextStyle(
-                      fontSize: 11,
+                      fontSize: 10,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
                     ),
@@ -965,6 +1037,8 @@ class _TouchSanctuaryScreenState extends State<TouchSanctuaryScreen>
 
   Widget _buildToolButton(String tool, IconData icon, String label) {
     final isSelected = _selectedTool == tool;
+    final activeColor = tool == 'eraser' ? const Color(0xFFF43F5E) : AppColors.terra;
+
     return GestureDetector(
       onTap: () {
         HapticFeedback.selectionClick();
@@ -972,21 +1046,37 @@ class _TouchSanctuaryScreenState extends State<TouchSanctuaryScreen>
           _selectedTool = tool;
         });
       },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: EdgeInsets.symmetric(horizontal: isSelected ? 8 : 6, vertical: 6),
         decoration: BoxDecoration(
-          color: isSelected
-              ? AppColors.terra.withOpacity(0.3)
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(14),
-          border: isSelected
-              ? Border.all(color: AppColors.terra, width: 1.5)
-              : Border.all(color: Colors.transparent),
+          color: isSelected ? activeColor.withOpacity(0.25) : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected ? activeColor : Colors.transparent,
+            width: 1.2,
+          ),
         ),
-        child: Icon(
-          icon,
-          size: 18,
-          color: isSelected ? AppColors.terra : Colors.white70,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 15,
+              color: isSelected ? activeColor : Colors.white60,
+            ),
+            if (isSelected) ...[
+              const SizedBox(width: 4),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                  color: isSelected ? Colors.white : Colors.white60,
+                ),
+              ),
+            ],
+          ],
         ),
       ),
     );
@@ -1002,9 +1092,9 @@ class _TouchSanctuaryScreenState extends State<TouchSanctuaryScreen>
         });
       },
       child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 3),
-        width: 22,
-        height: 22,
+        margin: const EdgeInsets.symmetric(horizontal: 2.5),
+        width: 20,
+        height: 20,
         decoration: BoxDecoration(
           color: color,
           shape: BoxShape.circle,
@@ -1041,14 +1131,19 @@ class _TouchSanctuaryScreenState extends State<TouchSanctuaryScreen>
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTapDown: (details) {
+        final now = DateTime.now().millisecondsSinceEpoch;
         setState(() {
-          _3dWavePoints.add(details.localPosition);
-          if (_3dWavePoints.length > 8) {
-            _3dWavePoints.removeAt(0);
+          _waterRipples.removeWhere((r) => (now - r.startTimeMs) > 1300);
+          if (_waterRipples.length >= 4) {
+            _waterRipples.removeAt(0);
           }
+          _waterRipples.add(_WaterRipple(
+            position: details.localPosition,
+            startTimeMs: now,
+          ));
         });
-        HapticFeedback.mediumImpact();
-        _playLowPadTone();
+        HapticFeedback.lightImpact();
+        _playWaterDropSound();
         if (spaceId.isNotEmpty && userId.isNotEmpty) {
           stageProvider.incrementMyTouch(spaceId, userId, partnerNickname);
           stageProvider.sendPulse(spaceId, userId, 'Partner');
@@ -1062,17 +1157,16 @@ class _TouchSanctuaryScreenState extends State<TouchSanctuaryScreen>
             children: [
               CustomPaint(
                 size: padSize,
-                painter: _FullScreenPerspective3DWavePainter(
-                  wavePoints: _3dWavePoints,
-                  waveProgress: _waveController.value,
+                painter: _FullScreenWaterRipplePainter(
+                  ripples: _waterRipples,
                 ),
               ),
 
               // Floating 3D Heart Daily Counter Cards
               Positioned(
-                top: 80,
-                left: 20,
-                right: 20,
+                top: 76,
+                left: 16,
+                right: 16,
                 child: Row(
                   children: [
                     Expanded(
@@ -1083,7 +1177,7 @@ class _TouchSanctuaryScreenState extends State<TouchSanctuaryScreen>
                         Icons.favorite_rounded,
                       ),
                     ),
-                    const SizedBox(width: 14),
+                    const SizedBox(width: 12),
                     Expanded(
                       child: _buildGlassHeartCard(
                         'You',
@@ -1097,7 +1191,7 @@ class _TouchSanctuaryScreenState extends State<TouchSanctuaryScreen>
               ),
 
               // Center Pulse Hint
-              if (_3dWavePoints.isEmpty)
+              if (_waterRipples.isEmpty)
                 Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -1122,7 +1216,7 @@ class _TouchSanctuaryScreenState extends State<TouchSanctuaryScreen>
                       ),
                       const SizedBox(height: 18),
                       const Text(
-                        'Tap anywhere to send a 3D pulse',
+                        'Tap anywhere to send a gentle water wave',
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: 18,
@@ -1131,7 +1225,7 @@ class _TouchSanctuaryScreenState extends State<TouchSanctuaryScreen>
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        'Daily counts reset automatically at midnight ✦',
+                        'Every touch ripples softly to $partnerNickname ✦',
                         style: TextStyle(
                           color: Colors.white.withOpacity(0.6),
                           fontSize: 13,
@@ -1210,6 +1304,16 @@ class _TouchSanctuaryScreenState extends State<TouchSanctuaryScreen>
 // HARDWARE-ACCELERATED PAINTERS FOR FULL-SCREEN RESPONSIVENESS
 // =============================================================================
 
+class _WaterRipple {
+  final Offset position;
+  final int startTimeMs;
+
+  _WaterRipple({
+    required this.position,
+    required this.startTimeMs,
+  });
+}
+
 class _FullScreenThumbKissPainter extends CustomPainter {
   final bool isMyThumbDown;
   final Offset? myThumb;
@@ -1229,133 +1333,176 @@ class _FullScreenThumbKissPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    // 1. Render Partner's Thumb ripples (Electric Neon Cyan)
-    if (partnerThumb != null) {
-      _drawConcentricRipples(
-        canvas: canvas,
-        center: partnerThumb!,
-        baseColor: const Color(0xFF00E5FF),
-        pulseProgress: pulseVal,
-        isCollision: isColliding,
-      );
-    }
-
-    // 2. Render My Thumb ripples (Radiant Coral Rose)
-    if (isMyThumbDown && myThumb != null) {
-      _drawConcentricRipples(
-        canvas: canvas,
-        center: myThumb!,
-        baseColor: const Color(0xFFFF4B72),
-        pulseProgress: pulseVal,
-        isCollision: isColliding,
-      );
-    }
-
-    // 3. Collision Resonance Wave & Connection Beam
-    if (isColliding && myThumb != null && partnerThumb != null) {
+    // 1. Dual Touch Luminous Filament (when both touch at the same time)
+    if (isMyThumbDown && myThumb != null && partnerThumb != null) {
       final midPoint = Offset(
         (myThumb!.dx + partnerThumb!.dx) / 2,
         (myThumb!.dy + partnerThumb!.dy) / 2,
       );
+      final dist = (myThumb! - partnerThumb!).distance;
 
-      // A. Luminous Energy Beam connecting both thumbs
-      final beamGlow = Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 3.5
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4)
-        ..color = const Color(0xFFFF2D55).withOpacity(0.85);
-      canvas.drawLine(myThumb!, partnerThumb!, beamGlow);
+      if (!isColliding) {
+        // Soft glowing light thread connecting both thumbs
+        final proximity = (1.0 - (dist / 400.0)).clamp(0.2, 1.0);
 
-      final beamCore = Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.5
-        ..color = Colors.white;
-      canvas.drawLine(myThumb!, partnerThumb!, beamCore);
+        final threadGlow = Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 3.0
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4)
+          ..color = const Color(0xFFFF4B72).withOpacity(0.4 * proximity);
+        canvas.drawLine(myThumb!, partnerThumb!, threadGlow);
 
-      // B. Burst Resonance Shockwaves
-      final radius = 22.0 + (collisionVal * 140.0);
-      final ringOpacity = (1.0 - collisionVal).clamp(0.0, 1.0);
+        final threadCore = Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.2
+          ..color = Colors.white.withOpacity(0.6 * proximity);
+        canvas.drawLine(myThumb!, partnerThumb!, threadCore);
 
-      final resonancePaint = Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 3.5 * ringOpacity
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5)
-        ..color = Colors.white.withOpacity(ringOpacity);
-      canvas.drawCircle(midPoint, radius, resonancePaint);
-
-      final burstGlow = Paint()
-        ..style = PaintingStyle.fill
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 16)
-        ..color = const Color(0xFFFF2D55).withOpacity(0.4 * ringOpacity);
-      canvas.drawCircle(midPoint, radius * 0.65, burstGlow);
-
-      // C. Orbiting Star Sparks Burst
-      for (int i = 0; i < 8; i++) {
-        final angle = (i * math.pi / 4) + (collisionVal * 0.8);
-        final sparkDist = 14.0 + (collisionVal * 75.0);
-        final sparkOffset = Offset(
-          midPoint.dx + math.cos(angle) * sparkDist,
-          midPoint.dy + math.sin(angle) * sparkDist,
-        );
-        final sparkPaint = Paint()
-          ..color = (i % 2 == 0 ? Colors.white : const Color(0xFFFFD700))
-              .withOpacity(ringOpacity);
-        canvas.drawCircle(sparkOffset, 2.5 * ringOpacity, sparkPaint);
+        // Subtle traveling light motes along the connection thread
+        for (int i = 0; i < 2; i++) {
+          final travel = (pulseVal + (i * 0.5)) % 1.0;
+          final motePos = Offset(
+            myThumb!.dx + (partnerThumb!.dx - myThumb!.dx) * travel,
+            myThumb!.dy + (partnerThumb!.dy - myThumb!.dy) * travel,
+          );
+          final motePaint = Paint()..color = Colors.white.withOpacity(0.75 * proximity);
+          canvas.drawCircle(motePos, 2.0, motePaint);
+        }
+      } else {
+        // Colliding: Soft Heart Bloom between both thumbs
+        _drawCollisionHeartBloom(canvas, midPoint);
       }
+    }
+
+    // 2. Render Partner's Thumb aura (Electric Cyan)
+    if (partnerThumb != null) {
+      _drawIntimateThumbAura(
+        canvas: canvas,
+        center: partnerThumb!,
+        baseColor: const Color(0xFF00E5FF),
+        pulseProgress: pulseVal,
+      );
+    }
+
+    // 3. Render My Thumb aura (Coral Rose)
+    if (isMyThumbDown && myThumb != null) {
+      _drawIntimateThumbAura(
+        canvas: canvas,
+        center: myThumb!,
+        baseColor: const Color(0xFFFF4B72),
+        pulseProgress: pulseVal,
+      );
     }
   }
 
-  void _drawConcentricRipples({
+  void _drawIntimateThumbAura({
     required Canvas canvas,
     required Offset center,
     required Color baseColor,
     required double pulseProgress,
-    required bool isCollision,
   }) {
-    // 1. Expanding Liquid Energy Waves
-    for (int i = 0; i < 3; i++) {
-      final progress = (pulseProgress + (i * 0.33)) % 1.0;
-      final radius = 16.0 + (progress * 90.0);
-      final opacity = math.sin(progress * math.pi).clamp(0.0, 1.0);
-
-      // Ambient Glow Ring
-      final glowRing = Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 3.5 * (1.0 - progress)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3)
-        ..color = baseColor.withOpacity(opacity * 0.45);
-      canvas.drawCircle(center, radius, glowRing);
-
-      // Crisp Inner Wave
-      final wavePaint = Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.6 * (1.0 - progress)
-        ..color = Colors.white.withOpacity(opacity * 0.7);
-      canvas.drawCircle(center, radius, wavePaint);
-    }
-
-    // 2. Radiant Outer Bloom Aura
+    // A. Soft ambient radial aura directly under thumb (max 38dp)
+    final auraRadius = 24.0 + (pulseProgress * 8.0);
     final auraPaint = Paint()
       ..style = PaintingStyle.fill
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 12)
-      ..color = baseColor.withOpacity(0.6);
-    canvas.drawCircle(center, 20.0, auraPaint);
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 14)
+      ..color = baseColor.withOpacity(0.5);
+    canvas.drawCircle(center, auraRadius, auraPaint);
 
-    // 3. Luminous Shimmer Core
+    // B. Single delicate breathing wave ring
+    final ringRadius = 22.0 + (pulseProgress * 14.0);
+    final ringAlpha = (1.0 - pulseProgress).clamp(0.0, 1.0);
+    final ringPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.4
+      ..color = baseColor.withOpacity(ringAlpha * 0.45);
+    canvas.drawCircle(center, ringRadius, ringPaint);
+
+    // C. Luminous Shimmer Core
     final corePaint = Paint()
       ..shader = RadialGradient(
         colors: [
           Colors.white,
           baseColor,
-          baseColor.withOpacity(0.2),
+          baseColor.withOpacity(0.1),
         ],
-        stops: const [0.0, 0.6, 1.0],
+        stops: const [0.0, 0.5, 1.0],
       ).createShader(Rect.fromCircle(center: center, radius: 14.0));
     canvas.drawCircle(center, 14.0, corePaint);
 
-    // 4. Center Micro Spark
-    final centerDot = Paint()..color = Colors.white;
-    canvas.drawCircle(center, 3.5, centerDot);
+    // D. Center Touch Anchor Dot
+    final dotPaint = Paint()..color = Colors.white;
+    canvas.drawCircle(center, 3.0, dotPaint);
+  }
+
+  void _drawCollisionHeartBloom(Canvas canvas, Offset midPoint) {
+    final bloomRadius = 24.0 + (collisionVal * 16.0);
+    final bloomAlpha = (1.0 - collisionVal * 0.4).clamp(0.0, 1.0);
+
+    // Warm radial glow bloom
+    final bloomPaint = Paint()
+      ..style = PaintingStyle.fill
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 16)
+      ..color = const Color(0xFFFF2D55).withOpacity(0.5 * bloomAlpha);
+    canvas.drawCircle(midPoint, bloomRadius, bloomPaint);
+
+    // Golden halo ring
+    final haloPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.8 * (1.0 - collisionVal)
+      ..color = const Color(0xFFFFD700).withOpacity(bloomAlpha * 0.7);
+    canvas.drawCircle(midPoint, bloomRadius * 1.1, haloPaint);
+
+    // Mini glowing heart centered right where thumbs meet
+    _drawMiniGlowingHeart(
+      canvas,
+      midPoint,
+      14.0 + (collisionVal * 3.0),
+      Colors.white.withOpacity(0.95),
+    );
+
+    // Delicate star sparks orbiting closely
+    for (int i = 0; i < 6; i++) {
+      final angle = (i * math.pi / 3) + (collisionVal * 0.9);
+      final dist = 14.0 + (collisionVal * 16.0);
+      final sparkOffset = Offset(
+        midPoint.dx + math.cos(angle) * dist,
+        midPoint.dy + math.sin(angle) * dist,
+      );
+      final sparkPaint = Paint()
+        ..color = (i % 2 == 0 ? Colors.white : const Color(0xFFFFD700))
+            .withOpacity(bloomAlpha * 0.85);
+      canvas.drawCircle(sparkOffset, 2.0 * bloomAlpha, sparkPaint);
+    }
+  }
+
+  void _drawMiniGlowingHeart(Canvas canvas, Offset center, double size, Color color) {
+    final path = Path();
+    final half = size / 2;
+
+    path.moveTo(center.dx, center.dy + half * 0.5);
+    path.cubicTo(
+      center.dx + half * 1.2, center.dy - half * 0.3,
+      center.dx + half * 0.8, center.dy - half * 1.1,
+      center.dx, center.dy - half * 0.4,
+    );
+    path.cubicTo(
+      center.dx - half * 0.8, center.dy - half * 1.1,
+      center.dx - half * 1.2, center.dy - half * 0.3,
+      center.dx, center.dy + half * 0.5,
+    );
+    path.close();
+
+    final glow = Paint()
+      ..style = PaintingStyle.fill
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5)
+      ..color = const Color(0xFFFF2D55).withOpacity(0.6);
+    canvas.drawPath(path, glow);
+
+    final core = Paint()
+      ..style = PaintingStyle.fill
+      ..color = color;
+    canvas.drawPath(path, core);
   }
 
   @override
@@ -1368,6 +1515,7 @@ class _FullScreenGlowDrawingPainter extends CustomPainter {
   final Color activeColor;
   final double activeWidth;
   final String activeTool;
+  final Offset? eraserPoint;
 
   _FullScreenGlowDrawingPainter({
     required this.strokes,
@@ -1375,6 +1523,7 @@ class _FullScreenGlowDrawingPainter extends CustomPainter {
     required this.activeColor,
     required this.activeWidth,
     required this.activeTool,
+    this.eraserPoint,
   });
 
   @override
@@ -1385,6 +1534,20 @@ class _FullScreenGlowDrawingPainter extends CustomPainter {
 
     if (activePoints != null && activePoints!.isNotEmpty) {
       _drawStroke(canvas, size, activePoints!, activeColor, activeWidth, activeTool);
+    }
+
+    // Render soft translucent eraser reticle
+    if (eraserPoint != null) {
+      final ringPaint = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.5
+        ..color = Colors.white.withOpacity(0.85);
+      canvas.drawCircle(eraserPoint!, 18.0, ringPaint);
+
+      final fillPaint = Paint()
+        ..style = PaintingStyle.fill
+        ..color = const Color(0xFFF43F5E).withOpacity(0.18);
+      canvas.drawCircle(eraserPoint!, 18.0, fillPaint);
     }
   }
 
@@ -1441,37 +1604,62 @@ class _FullScreenGlowDrawingPainter extends CustomPainter {
   bool shouldRepaint(covariant _FullScreenGlowDrawingPainter old) => true;
 }
 
-class _FullScreenPerspective3DWavePainter extends CustomPainter {
-  final List<Offset> wavePoints;
-  final double waveProgress;
+class _FullScreenWaterRipplePainter extends CustomPainter {
+  final List<_WaterRipple> ripples;
 
-  _FullScreenPerspective3DWavePainter({
-    required this.wavePoints,
-    required this.waveProgress,
+  _FullScreenWaterRipplePainter({
+    required this.ripples,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
-    for (final pt in wavePoints) {
-      for (int i = 1; i <= 4; i++) {
-        final ringProgress = (waveProgress + (i * 0.25)) % 1.0;
-        final rx = (ringProgress * 220.0);
-        final ry = rx * 0.45; // 3D perspective ground-plane tilt
-        final opacity = (1.0 - ringProgress).clamp(0.0, 1.0);
+    final now = DateTime.now().millisecondsSinceEpoch;
 
-        final wavePaint = Paint()
+    for (final ripple in ripples) {
+      final elapsed = (now - ripple.startTimeMs) / 1100.0;
+      if (elapsed < 0.0 || elapsed > 1.0) continue;
+
+      final progress = Curves.easeOutCubic.transform(elapsed);
+      final fade = (1.0 - progress).clamp(0.0, 1.0);
+
+      // 1. Primary water crest wave
+      final r1 = 10.0 + progress * 135.0;
+      final p1 = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = (2.2 * fade).clamp(0.6, 2.8)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1.5)
+        ..color = const Color(0xFFF43F5E).withOpacity(fade * 0.65);
+      canvas.drawCircle(ripple.position, r1, p1);
+
+      // 2. Secondary refraction wave following closely behind
+      final subProgress = (progress - 0.12).clamp(0.0, 1.0);
+      if (subProgress > 0) {
+        final r2 = 6.0 + subProgress * 105.0;
+        final subFade = (1.0 - subProgress).clamp(0.0, 1.0);
+        final p2 = Paint()
           ..style = PaintingStyle.stroke
-          ..strokeWidth = 2.0 * (1.0 - ringProgress)
-          ..color = const Color(0xFFF43F5E).withOpacity(opacity * 0.7);
+          ..strokeWidth = (1.4 * subFade).clamp(0.4, 2.0)
+          ..color = const Color(0xFFFF8FA3).withOpacity(subFade * 0.38);
+        canvas.drawCircle(ripple.position, r2, p2);
+      }
 
-        canvas.drawOval(
-          Rect.fromCenter(center: pt, width: rx * 2, height: ry * 2),
-          wavePaint,
-        );
+      // 3. Delicate droplet impact epicenter
+      if (progress < 0.35) {
+        final dropAlpha = (1.0 - (progress / 0.35)).clamp(0.0, 1.0);
+        final dropPaint = Paint()
+          ..style = PaintingStyle.fill
+          ..color = Colors.white.withOpacity(dropAlpha * 0.85);
+        canvas.drawCircle(ripple.position, 3.5 * dropAlpha, dropPaint);
+
+        final glowPaint = Paint()
+          ..style = PaintingStyle.fill
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6)
+          ..color = const Color(0xFFF43F5E).withOpacity(dropAlpha * 0.5);
+        canvas.drawCircle(ripple.position, 12.0 * dropAlpha, glowPaint);
       }
     }
   }
 
   @override
-  bool shouldRepaint(covariant _FullScreenPerspective3DWavePainter old) => true;
+  bool shouldRepaint(covariant _FullScreenWaterRipplePainter old) => true;
 }

@@ -619,6 +619,12 @@ class _StageLiveTouchPadState extends State<StageLiveTouchPad>
           onPanStart: (details) {
             final nx = (details.localPosition.dx / padSize.width).clamp(0.0, 1.0);
             final ny = (details.localPosition.dy / padSize.height).clamp(0.0, 1.0);
+            if (_selectedTool == 'eraser') {
+              if (spaceId.isNotEmpty && userId.isNotEmpty) {
+                stageProvider.eraseStrokesNear(nx, ny, 0.05, spaceId, userId);
+              }
+              return;
+            }
             setState(() {
               _activePoints = [StrokePoint(nx, ny)];
             });
@@ -627,18 +633,28 @@ class _StageLiveTouchPadState extends State<StageLiveTouchPad>
           onPanUpdate: (details) {
             final nx = (details.localPosition.dx / padSize.width).clamp(0.0, 1.0);
             final ny = (details.localPosition.dy / padSize.height).clamp(0.0, 1.0);
+            if (_selectedTool == 'eraser') {
+              if (spaceId.isNotEmpty && userId.isNotEmpty) {
+                stageProvider.eraseStrokesNear(nx, ny, 0.05, spaceId, userId);
+              }
+              return;
+            }
             setState(() {
               _activePoints?.add(StrokePoint(nx, ny));
             });
           },
           onPanEnd: (_) {
+            if (_selectedTool == 'eraser') {
+              setState(() {
+                _activePoints = null;
+              });
+              return;
+            }
             if (_activePoints != null && _activePoints!.isNotEmpty && spaceId.isNotEmpty) {
               final stroke = DrawingStroke(
                 points: List.from(_activePoints!),
-                colorValue: _selectedTool == 'eraser'
-                    ? (isDark ? 0xFF16151A : 0xFFFAF7F5)
-                    : _selectedColor.value,
-                strokeWidth: _selectedTool == 'eraser' ? 14.0 : _selectedWidth,
+                colorValue: _selectedColor.value,
+                strokeWidth: _selectedWidth,
                 tool: _selectedTool,
                 isPartner: false,
               );
@@ -724,7 +740,7 @@ class _StageLiveTouchPadState extends State<StageLiveTouchPad>
                 const SizedBox(width: 4),
                 _buildDrawingToolButton('stardust', Icons.auto_awesome_rounded, 'Stardust', isDark),
                 const SizedBox(width: 4),
-                _buildDrawingToolButton('eraser', Icons.cleaning_services_rounded, 'Eraser', isDark),
+                _buildDrawingToolButton('eraser', Icons.auto_fix_high_rounded, 'Eraser', isDark),
 
                 const Spacer(),
 

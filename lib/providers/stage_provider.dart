@@ -359,6 +359,16 @@ class StageProvider extends ChangeNotifier {
           notifyListeners();
         }
       },
+      onSyncDrawing: (data) {
+        final sender = data['senderId'] as String?;
+        if (sender != userId && data['strokes'] is List) {
+          final list = (data['strokes'] as List)
+              .map((e) => DrawingStroke.fromJson(Map<String, dynamic>.from(e as Map)))
+              .toList();
+          _drawingStrokes = list;
+          notifyListeners();
+        }
+      },
       onClearDrawing: (data) {
         final sender = data['senderId'] as String?;
         if (sender != userId) {
@@ -517,6 +527,44 @@ class StageProvider extends ChangeNotifier {
         'strokes': toSave.map((s) => s.toJson()).toList(),
       });
     });
+  }
+
+  Future<void> eraseStrokesNear(double nx, double ny, double radius, String spaceId, String userId) async {
+    final beforeCount = _drawingStrokes.length;
+    final rSq = radius * radius;
+    _drawingStrokes.removeWhere((stroke) {
+      for (final pt in stroke.points) {
+        final dx = pt.x - nx;
+        final dy = pt.y - ny;
+        if ((dx * dx + dy * dy) <= rSq) {
+          return true;
+        }
+      }
+      return false;
+    });
+
+    if (_drawingStrokes.length != beforeCount) {
+      notifyListeners();
+      HapticFeedback.selectionClick();
+
+      _drawingSaveDebounce?.cancel();
+      _drawingSaveDebounce = Timer(const Duration(milliseconds: 800), () {
+        final toSave = _drawingStrokes.length > 80
+            ? _drawingStrokes.sublist(_drawingStrokes.length - 80)
+            : _drawingStrokes;
+        SupabaseService.upsertAppContent('drawing_$spaceId', {
+          'strokes': toSave.map((s) => s.toJson()).toList(),
+        });
+        SupabaseService.broadcastEvent(
+          spaceId: spaceId,
+          eventType: 'SYNC_DRAWING',
+          payload: {
+            'senderId': userId,
+            'strokes': toSave.map((s) => s.toJson()).toList(),
+          },
+        );
+      });
+    }
   }
 
   Future<void> clearDrawing(String spaceId, String userId) async {
