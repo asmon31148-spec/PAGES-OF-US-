@@ -2,10 +2,12 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../data/models/memory_item.dart';
 import '../data/models/letter_item.dart';
 import '../data/models/milestone_item.dart';
 import '../data/services/supabase_service.dart';
+import '../data/services/firebase_service.dart';
 import 'audio_provider.dart';
 
 class MemoriesProvider extends ChangeNotifier {
@@ -39,6 +41,7 @@ class MemoriesProvider extends ChangeNotifier {
   StreamSubscription? _voicePosSub;
   StreamSubscription? _voiceDurSub;
   StreamSubscription? _voiceStateSub;
+  StreamSubscription? _firestoreMilestonesSub;
   RealtimeChannel? _memoriesChannel;
   RealtimeChannel? _lettersChannel;
   RealtimeChannel? _milestonesChannel;
@@ -71,6 +74,7 @@ class MemoriesProvider extends ChangeNotifier {
     _voicePosSub?.cancel();
     _voiceDurSub?.cancel();
     _voiceStateSub?.cancel();
+    _firestoreMilestonesSub?.cancel();
     _voicePlayer.dispose();
     final supabase = SupabaseService.client;
     if (supabase != null) {
@@ -176,6 +180,30 @@ class MemoriesProvider extends ChangeNotifier {
           )
           .subscribe();
     }
+
+    // Firestore Dual-Sync Realtime Listener for Milestones
+    try {
+      _firestoreMilestonesSub?.cancel();
+      _firestoreMilestonesSub = FirebaseService.firestore
+          .collection('spaces')
+          .doc(spaceId)
+          .collection('milestones')
+          .snapshots()
+          .listen((snapshot) {
+            final incoming = snapshot.docs.map((doc) {
+              final data = doc.data();
+              data['id'] = doc.id;
+              return MilestoneItem.fromJson(
+                data,
+                currentUserId: currentUserId,
+                partnerNickname: partnerNickname,
+              );
+            }).toList();
+            _mergeMilestones(incoming);
+          }, onError: (err) {
+            debugPrint('Firestore milestones listener err: $err');
+          });
+    } catch (_) {}
   }
 
   Future<void> fetchMemories(
@@ -245,15 +273,25 @@ class MemoriesProvider extends ChangeNotifier {
           .eq('space_id', spaceId)
           .order('event_date', ascending: false);
 
-      _milestones = (data as List)
+      final list = (data as List)
           .map((row) => MilestoneItem.fromJson(
                 row as Map<String, dynamic>,
                 currentUserId: currentUserId,
                 partnerNickname: partnerNickname,
               ))
           .toList();
-      notifyListeners();
+      _mergeMilestones(list);
     } catch (_) {}
+  }
+
+  void _mergeMilestones(List<MilestoneItem> incoming) {
+    final Map<String, MilestoneItem> map = {for (final m in _milestones) m.id: m};
+    for (final item in incoming) {
+      map[item.id] = item;
+    }
+    _milestones = map.values.toList()
+      ..sort((a, b) => b.rawDate.compareTo(a.rawDate));
+    notifyListeners();
   }
 
   // Voice whisper playback with ambient audio ducking
@@ -445,6 +483,9 @@ class MemoriesProvider extends ChangeNotifier {
     required String date,
     required String story,
     required String author,
+    String? imageUrl,
+    String? audioUrl,
+    int? audioDuration,
   }) async {
     final newId = 'mls_${DateTime.now().millisecondsSinceEpoch}';
 
@@ -455,29 +496,60 @@ class MemoriesProvider extends ChangeNotifier {
       rawDate: date,
       story: story,
       addedBy: 'You',
+      authorId: author,
       isMine: true,
+      imageUrl: imageUrl,
+      audioUrl: audioUrl,
+      audioDuration: audioDuration,
     );
 
     _milestones.insert(0, item);
+    _milestones.sort((a, b) => b.rawDate.compareTo(a.rawDate));
     notifyListeners();
 
+    // 1. Dual-Sync: Save to Supabase
     try {
       final supabase = SupabaseService.client;
       if (supabase != null) {
         await supabase.from('milestones').insert(item.toJson(spaceId: spaceId, author: author));
       }
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('Supabase milestone insert fallback: $e');
+    }
+
+    // 2. Dual-Sync: Save to Firebase Firestore
+    try {
+      await FirebaseService.firestore
+          .collection('spaces')
+          .doc(spaceId)
+          .collection('milestones')
+          .doc(newId)
+          .set(item.toJson(spaceId: spaceId, author: author));
+    } catch (e) {
+      debugPrint('Firestore milestone insert error: $e');
+    }
   }
 
   Future<void> deleteMilestone(String spaceId, String milestoneId) async {
     _milestones.removeWhere((m) => m.id == milestoneId);
     notifyListeners();
 
+    // 1. Delete from Supabase
     try {
       final supabase = SupabaseService.client;
       if (supabase != null) {
         await supabase.from('milestones').delete().eq('id', milestoneId);
       }
+    } catch (_) {}
+
+    // 2. Delete from Firebase Firestore
+    try {
+      await FirebaseService.firestore
+          .collection('spaces')
+          .doc(spaceId)
+          .collection('milestones')
+          .doc(milestoneId)
+          .delete();
     } catch (_) {}
   }
 }
