@@ -260,7 +260,7 @@ class FirebaseService {
     }
   }
 
-  /// Updates a nested map key (e.g. 'answers.$userId' or 'locations.$userId') safely
+  /// Updates a nested map key (e.g. 'answers.$userId', 'locations.$userId', or 'touches.$userId') safely
   static Future<void> saveNestedFeatureField(
     String spaceId,
     String featureName,
@@ -275,14 +275,21 @@ class FirebaseService {
         .doc(featureName);
 
     try {
-      await docRef.update({
-        fieldPath: value,
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
+      if (fieldPath.contains('.')) {
+        final parts = fieldPath.split('.');
+        final parent = parts[0];
+        final child = parts.sublist(1).join('.');
+        await docRef.set({
+          parent: {child: value},
+          'updatedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+      } else {
+        await docRef.set({
+          fieldPath: value,
+          'updatedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+      }
     } catch (_) {
-      final initialMap = Map<String, dynamic>.from(rootDefaults ?? {});
-      initialMap['updatedAt'] = FieldValue.serverTimestamp();
-      await docRef.set(initialMap, SetOptions(merge: true));
       try {
         await docRef.update({
           fieldPath: value,

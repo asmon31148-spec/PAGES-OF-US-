@@ -4,7 +4,10 @@ class StrokePoint {
 
   StrokePoint(this.x, this.y);
 
-  Map<String, dynamic> toJson() => {'x': x, 'y': y};
+  Map<String, dynamic> toJson() => {
+        'x': double.parse(x.toStringAsFixed(4)),
+        'y': double.parse(y.toStringAsFixed(4)),
+      };
 
   factory StrokePoint.fromJson(Map<String, dynamic> json) => StrokePoint(
         (json['x'] as num).toDouble(),
@@ -29,12 +32,26 @@ class DrawingStroke {
     this.isPartner = false,
   });
 
-  Map<String, dynamic> toJson() => {
-        'points': points.map((p) => p.toJson()).toList(),
-        'color': colorValue,
-        'width': strokeWidth,
-        'tool': tool,
-      };
+  Map<String, dynamic> toJson() {
+    List<StrokePoint> toSerialize = points;
+    if (points.length > 120) {
+      final step = (points.length / 120.0).ceil();
+      final sampled = <StrokePoint>[];
+      for (int i = 0; i < points.length; i += step) {
+        sampled.add(points[i]);
+      }
+      if (sampled.last != points.last) {
+        sampled.add(points.last);
+      }
+      toSerialize = sampled;
+    }
+    return {
+      'points': toSerialize.map((p) => p.toJson()).toList(),
+      'color': colorValue,
+      'width': strokeWidth,
+      'tool': tool,
+    };
+  }
 
   factory DrawingStroke.fromJson(Map<String, dynamic> json, {bool isPartner = false}) {
     final rawPoints = json['points'] as List? ?? [];

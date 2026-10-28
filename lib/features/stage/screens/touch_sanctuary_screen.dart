@@ -87,6 +87,20 @@ class _TouchSanctuaryScreenState extends State<TouchSanctuaryScreen>
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final auth = context.read<AuthProvider>();
+    final effectiveSpaceId = auth.space?.id ?? auth.user?.spaceId;
+    if (effectiveSpaceId != null && effectiveSpaceId.isNotEmpty && auth.user != null) {
+      context.read<StageProvider>().initSpaceListeners(
+            effectiveSpaceId,
+            auth.user!.id,
+            auth.partner?.id,
+          );
+    }
+  }
+
+  @override
   void dispose() {
     _heartbeatTimer?.cancel();
     _padToneDebounce?.cancel();
@@ -127,14 +141,24 @@ class _TouchSanctuaryScreenState extends State<TouchSanctuaryScreen>
     _isColliding = false;
   }
 
+  int _lastTouchSendMs = 0;
+
   void _handleThumbMove(
     Offset local,
     Size size,
     StageProvider stageProvider,
     String spaceId,
     String userId,
-    bool isDown,
-  ) {
+    bool isDown, {
+    bool force = false,
+  }) {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    // Throttle network broadcast to ~35Hz to prevent socket flooding & WebSocket drops
+    if (!force && isDown && (now - _lastTouchSendMs) < 28) {
+      return;
+    }
+    _lastTouchSendMs = now;
+
     final nx = (local.dx / size.width).clamp(0.0, 1.0);
     final ny = (local.dy / size.height).clamp(0.0, 1.0);
     stageProvider.sendTouchPadEvent(spaceId, userId, nx, ny, isTouching: isDown);
@@ -157,25 +181,27 @@ class _TouchSanctuaryScreenState extends State<TouchSanctuaryScreen>
       value: const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
         statusBarIconBrightness: Brightness.light,
-        systemNavigationBarColor: Color(0xFF0F0E13),
+        systemNavigationBarColor: Color(0xFF07060B),
         systemNavigationBarIconBrightness: Brightness.light,
       ),
       child: Scaffold(
-        backgroundColor: const Color(0xFF0F0E13),
+        backgroundColor: const Color(0xFF07060B),
         body: Stack(
           fit: StackFit.expand,
           children: [
-            // Background Ambient Radial Glow
+            // Deep Cosmic Nebula Ambient Background
             Positioned.fill(
               child: Container(
                 decoration: BoxDecoration(
                   gradient: RadialGradient(
-                    center: const Alignment(0, -0.2),
-                    radius: 1.2,
+                    center: const Alignment(0, -0.3),
+                    radius: 1.3,
                     colors: [
-                      _getAmbientModeColor().withOpacity(0.15),
-                      const Color(0xFF0F0E13),
+                      _getAmbientModeColor().withOpacity(0.18),
+                      const Color(0xFF0C0A15),
+                      const Color(0xFF07060B),
                     ],
+                    stops: const [0.0, 0.55, 1.0],
                   ),
                 ),
               ),
@@ -221,7 +247,7 @@ class _TouchSanctuaryScreenState extends State<TouchSanctuaryScreen>
               ),
             ),
 
-            // Top Floating Header Bar
+            // Top Floating Header Bar (Guaranteed ZERO overlap)
             Positioned(
               top: 0,
               left: 0,
@@ -268,7 +294,7 @@ class _TouchSanctuaryScreenState extends State<TouchSanctuaryScreen>
   Color _getAmbientModeColor() {
     switch (_currentMode) {
       case TouchSanctuaryMode.thumbKiss:
-        return const Color(0xFFE2847A);
+        return const Color(0xFFFF2D55);
       case TouchSanctuaryMode.glowTrace:
         return _selectedColor;
       case TouchSanctuaryMode.heartPulse:
@@ -285,14 +311,14 @@ class _TouchSanctuaryScreenState extends State<TouchSanctuaryScreen>
   }) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
       decoration: BoxDecoration(
-        color: const Color(0xFF1B1924).withOpacity(0.85),
+        color: const Color(0xFF14121E).withOpacity(0.92),
         borderRadius: BorderRadius.circular(28),
         border: Border.all(color: Colors.white.withOpacity(0.08)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.35),
+            color: Colors.black.withOpacity(0.4),
             blurRadius: 20,
             offset: const Offset(0, 4),
           ),
@@ -300,113 +326,82 @@ class _TouchSanctuaryScreenState extends State<TouchSanctuaryScreen>
       ),
       child: Row(
         children: [
-          // Close / Exit Button
+          // 1. Sleek Back Button
           GestureDetector(
             onTap: () {
               HapticFeedback.lightImpact();
               Navigator.pop(context);
             },
             child: Container(
-              width: 38,
-              height: 38,
+              width: 36,
+              height: 36,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: Colors.white.withOpacity(0.08),
+                color: Colors.white.withOpacity(0.07),
+                border: Border.all(color: Colors.white.withOpacity(0.08)),
               ),
               child: const Icon(
-                Icons.arrow_back_rounded,
+                Icons.arrow_back_ios_new_rounded,
                 color: Colors.white,
-                size: 20,
+                size: 15,
               ),
-            ),
-          ),
-          const SizedBox(width: 10),
-
-          // Center Mode Switcher Tabs
-          Expanded(
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                _buildModePill(
-                  mode: TouchSanctuaryMode.thumbKiss,
-                  label: 'Thumb-Kiss',
-                  icon: Icons.fingerprint_rounded,
-                ),
-                const SizedBox(width: 6),
-                _buildModePill(
-                  mode: TouchSanctuaryMode.glowTrace,
-                  label: 'Glow Trace',
-                  icon: Icons.brush_rounded,
-                ),
-                const SizedBox(width: 6),
-                _buildModePill(
-                  mode: TouchSanctuaryMode.heartPulse,
-                  label: 'Miss U',
-                  icon: Icons.favorite_rounded,
-                ),
-              ],
             ),
           ),
           const SizedBox(width: 8),
 
-          // Partner Presence Pill
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-            decoration: BoxDecoration(
-              color: isPartnerTouching
-                  ? const Color(0xFF10B981).withOpacity(0.2)
-                  : Colors.white.withOpacity(0.06),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: isPartnerTouching
-                    ? const Color(0xFF10B981).withOpacity(0.4)
-                    : Colors.transparent,
+          // 2. Center Mode Switcher (Guaranteed ZERO overflow across all screen sizes)
+          Expanded(
+            child: Container(
+              height: 38,
+              padding: const EdgeInsets.all(3),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.06),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _buildModeSegment(
+                      mode: TouchSanctuaryMode.thumbKiss,
+                      label: 'Kiss',
+                      icon: Icons.fingerprint_rounded,
+                      activeColor: const Color(0xFFFF4B72),
+                    ),
+                  ),
+                  Expanded(
+                    child: _buildModeSegment(
+                      mode: TouchSanctuaryMode.glowTrace,
+                      label: 'Draw',
+                      icon: Icons.brush_rounded,
+                      activeColor: const Color(0xFF00E5FF),
+                    ),
+                  ),
+                  Expanded(
+                    child: _buildModeSegment(
+                      mode: TouchSanctuaryMode.heartPulse,
+                      label: 'Pulse',
+                      icon: Icons.favorite_rounded,
+                      activeColor: const Color(0xFFF43F5E),
+                    ),
+                  ),
+                ],
               ),
             ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 7,
-                  height: 7,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: isPartnerTouching
-                        ? const Color(0xFF10B981)
-                        : Colors.white38,
-                    boxShadow: isPartnerTouching
-                        ? [
-                            BoxShadow(
-                              color: const Color(0xFF10B981).withOpacity(0.8),
-                              blurRadius: 6,
-                            ),
-                          ]
-                        : null,
-                  ),
-                ),
-                const SizedBox(width: 5),
-                Text(
-                  isPartnerTouching ? 'Active' : partnerNickname,
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
-                    color: isPartnerTouching
-                        ? const Color(0xFF6EE7B7)
-                        : Colors.white70,
-                  ),
-                ),
-              ],
-            ),
           ),
+          const SizedBox(width: 8),
+
+          // 3. Compact Partner Live Presence Badge
+          _buildPartnerPresenceBadge(partnerNickname, isPartnerTouching),
         ],
       ),
     );
   }
 
-  Widget _buildModePill({
+  Widget _buildModeSegment({
     required TouchSanctuaryMode mode,
     required String label,
     required IconData icon,
+    required Color activeColor,
   }) {
     final isSelected = _currentMode == mode;
     return GestureDetector(
@@ -422,28 +417,28 @@ class _TouchSanctuaryScreenState extends State<TouchSanctuaryScreen>
       },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        curve: Curves.easeInOut,
         decoration: BoxDecoration(
-          color: isSelected
-              ? AppColors.terra
-              : Colors.white.withOpacity(0.06),
-          borderRadius: BorderRadius.circular(16),
+          color: isSelected ? activeColor : Colors.transparent,
+          borderRadius: BorderRadius.circular(17),
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: AppColors.terra.withOpacity(0.4),
-                    blurRadius: 10,
+                    color: activeColor.withOpacity(0.4),
+                    blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),
                 ]
               : null,
         ),
+        alignment: Alignment.center,
         child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
               icon,
-              size: 13,
+              size: 14,
               color: isSelected ? Colors.white : Colors.white60,
             ),
             const SizedBox(width: 4),
@@ -452,7 +447,73 @@ class _TouchSanctuaryScreenState extends State<TouchSanctuaryScreen>
               style: TextStyle(
                 fontSize: 11,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                color: isSelected ? Colors.white : Colors.white70,
+                color: isSelected ? Colors.white : Colors.white60,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPartnerPresenceBadge(String partnerNickname, bool isPartnerTouching) {
+    final initial = partnerNickname.isNotEmpty ? partnerNickname[0].toUpperCase() : 'P';
+    return Tooltip(
+      message: isPartnerTouching ? '$partnerNickname is touching!' : '$partnerNickname connected',
+      child: Container(
+        width: 36,
+        height: 36,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.white.withOpacity(0.08),
+          border: Border.all(
+            color: isPartnerTouching
+                ? const Color(0xFF10B981)
+                : Colors.white.withOpacity(0.12),
+            width: isPartnerTouching ? 1.5 : 1.0,
+          ),
+          boxShadow: isPartnerTouching
+              ? [
+                  BoxShadow(
+                    color: const Color(0xFF10B981).withOpacity(0.5),
+                    blurRadius: 10,
+                  ),
+                ]
+              : null,
+        ),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            Text(
+              initial,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+                color: isPartnerTouching ? const Color(0xFF6EE7B7) : Colors.white70,
+              ),
+            ),
+            Positioned(
+              right: 1,
+              bottom: 1,
+              child: Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: isPartnerTouching
+                      ? const Color(0xFF10B981)
+                      : const Color(0xFF38BDF8),
+                  border: Border.all(color: const Color(0xFF14121E), width: 1.5),
+                  boxShadow: [
+                    BoxShadow(
+                      color: (isPartnerTouching
+                              ? const Color(0xFF10B981)
+                              : const Color(0xFF38BDF8))
+                          .withOpacity(0.8),
+                      blurRadius: 4,
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
@@ -506,7 +567,7 @@ class _TouchSanctuaryScreenState extends State<TouchSanctuaryScreen>
         });
         HapticFeedback.lightImpact();
         if (spaceId.isNotEmpty && userId.isNotEmpty) {
-          _handleThumbMove(details.localPosition, padSize, stageProvider, spaceId, userId, true);
+          _handleThumbMove(details.localPosition, padSize, stageProvider, spaceId, userId, true, force: true);
         }
       },
       onPanUpdate: (details) {
@@ -514,7 +575,7 @@ class _TouchSanctuaryScreenState extends State<TouchSanctuaryScreen>
           _myThumbPoint = details.localPosition;
         });
         if (spaceId.isNotEmpty && userId.isNotEmpty) {
-          _handleThumbMove(details.localPosition, padSize, stageProvider, spaceId, userId, true);
+          _handleThumbMove(details.localPosition, padSize, stageProvider, spaceId, userId, true, force: false);
         }
       },
       onPanEnd: (_) {
@@ -524,7 +585,7 @@ class _TouchSanctuaryScreenState extends State<TouchSanctuaryScreen>
         });
         _stopContinuousHeartbeat();
         if (spaceId.isNotEmpty && userId.isNotEmpty) {
-          _handleThumbMove(_myThumbPoint ?? Offset.zero, padSize, stageProvider, spaceId, userId, false);
+          _handleThumbMove(_myThumbPoint ?? Offset.zero, padSize, stageProvider, spaceId, userId, false, force: true);
         }
       },
       onPanCancel: () {
@@ -534,7 +595,7 @@ class _TouchSanctuaryScreenState extends State<TouchSanctuaryScreen>
         });
         _stopContinuousHeartbeat();
         if (spaceId.isNotEmpty && userId.isNotEmpty) {
-          _handleThumbMove(_myThumbPoint ?? Offset.zero, padSize, stageProvider, spaceId, userId, false);
+          _handleThumbMove(_myThumbPoint ?? Offset.zero, padSize, stageProvider, spaceId, userId, false, force: true);
         }
       },
       child: AnimatedBuilder(
@@ -555,44 +616,59 @@ class _TouchSanctuaryScreenState extends State<TouchSanctuaryScreen>
                 ),
               ),
 
-              // Pristine Initial Prompt (When neither user is touching)
+              // Sleek, refined Initial Prompt (When neither user is touching)
               if (!_isMyThumbDown && !isPartnerTouching)
                 Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Container(
-                        padding: const EdgeInsets.all(20),
+                        width: 68,
+                        height: 68,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: AppColors.terra.withOpacity(0.08),
-                          border: Border.all(
-                            color: AppColors.terra.withOpacity(0.2),
+                          gradient: RadialGradient(
+                            colors: [
+                              const Color(0xFFFF4B72).withOpacity(0.22),
+                              const Color(0xFFFF4B72).withOpacity(0.04),
+                            ],
                           ),
+                          border: Border.all(
+                            color: const Color(0xFFFF4B72).withOpacity(0.35),
+                            width: 1.5,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFFFF4B72).withOpacity(0.25 * _pulseController.value),
+                              blurRadius: 24,
+                              spreadRadius: 2,
+                            ),
+                          ],
                         ),
                         child: Transform.scale(
-                          scale: 1.0 + (_pulseController.value * 0.1),
+                          scale: 1.0 + (_pulseController.value * 0.08),
                           child: const Icon(
                             Icons.fingerprint_rounded,
-                            size: 64,
-                            color: AppColors.terra,
+                            size: 32,
+                            color: Color(0xFFFF4B72),
                           ),
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 18),
                       const Text(
-                        'Rest thumb anywhere to connect',
+                        'Touch Anywhere to Connect',
                         style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.4,
                           color: Colors.white,
                         ),
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        'Both of you can move freely across the entire screen ✦',
+                        'Move freely across the screen with $partnerNickname ✦',
                         style: TextStyle(
-                          fontSize: 13,
+                          fontSize: 12,
                           color: Colors.white.withOpacity(0.6),
                         ),
                       ),
@@ -608,45 +684,75 @@ class _TouchSanctuaryScreenState extends State<TouchSanctuaryScreen>
 
   Widget _buildThumbKissStatusPill(bool isPartnerTouching, String partnerNickname) {
     String text;
+    IconData icon;
+    Color glowColor;
+
     if (_isColliding) {
-      text = '✨ Pure Thumb Kiss! Collision Synchronized ✨';
+      text = '✨ Pure Thumb Kiss! Colliding in Space ✨';
+      icon = Icons.auto_awesome_rounded;
+      glowColor = const Color(0xFFFF2D55);
     } else if (_isMyThumbDown && isPartnerTouching) {
-      text = 'Partner is touching! Move closer to connect ❤️';
+      text = '$partnerNickname is here! Move closer to kiss ❤️';
+      icon = Icons.favorite_rounded;
+      glowColor = const Color(0xFFFF4B72);
     } else if (_isMyThumbDown) {
       text = 'Holding space... Waiting for $partnerNickname ✦';
+      icon = Icons.hourglass_top_rounded;
+      glowColor = Colors.white24;
     } else if (isPartnerTouching) {
-      text = '$partnerNickname is touching the screen! Touch to meet ✦';
+      text = '$partnerNickname is touching the screen! Touch to connect ✦';
+      icon = Icons.touch_app_rounded;
+      glowColor = const Color(0xFF00E5FF);
     } else {
-      text = 'Full screen physical shockwaves & continuous heartbeat';
+      text = 'Rest your thumb to feel physical touch ripples';
+      icon = Icons.fingerprint_rounded;
+      glowColor = Colors.white12;
     }
 
     return Center(
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
         decoration: BoxDecoration(
-          color: _isColliding
-              ? AppColors.terra.withOpacity(0.9)
-              : const Color(0xFF1F1D28).withOpacity(0.85),
+          color: const Color(0xFF14121E).withOpacity(0.92),
           borderRadius: BorderRadius.circular(24),
           border: Border.all(
-            color: _isColliding ? Colors.white70 : Colors.white.withOpacity(0.12),
+            color: _isColliding
+                ? const Color(0xFFFF2D55)
+                : (isPartnerTouching
+                    ? const Color(0xFF00E5FF).withOpacity(0.5)
+                    : Colors.white.withOpacity(0.1)),
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.3),
+              color: glowColor.withOpacity(0.3),
               blurRadius: 16,
               offset: const Offset(0, 4),
             ),
           ],
         ),
-        child: Text(
-          text,
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-          ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 14,
+              color: _isColliding
+                  ? Colors.white
+                  : (isPartnerTouching ? const Color(0xFF38BDF8) : Colors.white70),
+            ),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                text,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -670,18 +776,31 @@ class _TouchSanctuaryScreenState extends State<TouchSanctuaryScreen>
         GestureDetector(
           behavior: HitTestBehavior.opaque,
           onPanStart: (details) {
+            final nx = (details.localPosition.dx / padSize.width).clamp(0.0, 1.0);
+            final ny = (details.localPosition.dy / padSize.height).clamp(0.0, 1.0);
             final norm = StrokePoint(
-              details.localPosition.dx / padSize.width,
-              details.localPosition.dy / padSize.height,
+              double.parse(nx.toStringAsFixed(4)),
+              double.parse(ny.toStringAsFixed(4)),
             );
             setState(() {
               _activePoints = [norm];
             });
           },
           onPanUpdate: (details) {
+            final nx = (details.localPosition.dx / padSize.width).clamp(0.0, 1.0);
+            final ny = (details.localPosition.dy / padSize.height).clamp(0.0, 1.0);
+            if (_activePoints != null && _activePoints!.isNotEmpty) {
+              final last = _activePoints!.last;
+              final dx = nx - last.x;
+              final dy = ny - last.y;
+              // Filter consecutive points within 0.005 distance (~2-3px) to prevent payload bloat
+              if ((dx * dx + dy * dy) < 0.00003) {
+                return;
+              }
+            }
             final norm = StrokePoint(
-              details.localPosition.dx / padSize.width,
-              details.localPosition.dy / padSize.height,
+              double.parse(nx.toStringAsFixed(4)),
+              double.parse(ny.toStringAsFixed(4)),
             );
             setState(() {
               _activePoints?.add(norm);
@@ -689,8 +808,21 @@ class _TouchSanctuaryScreenState extends State<TouchSanctuaryScreen>
           },
           onPanEnd: (_) {
             if (_activePoints != null && _activePoints!.isNotEmpty) {
+              List<StrokePoint> optimizedPoints = _activePoints!;
+              if (optimizedPoints.length > 100) {
+                final step = (optimizedPoints.length / 100.0).ceil();
+                final sampled = <StrokePoint>[];
+                for (int i = 0; i < optimizedPoints.length; i += step) {
+                  sampled.add(optimizedPoints[i]);
+                }
+                if (sampled.last != optimizedPoints.last) {
+                  sampled.add(optimizedPoints.last);
+                }
+                optimizedPoints = sampled;
+              }
+
               final newStroke = DrawingStroke(
-                points: List.from(_activePoints!),
+                points: optimizedPoints,
                 colorValue: _selectedColor.value,
                 strokeWidth: _selectedWidth,
                 tool: _selectedTool,
@@ -709,7 +841,7 @@ class _TouchSanctuaryScreenState extends State<TouchSanctuaryScreen>
               strokes: strokes,
               activePoints: _activePoints,
               activeColor: _selectedTool == 'eraser'
-                  ? const Color(0xFF0F0E13)
+                  ? const Color(0xFF07060B)
                   : _selectedColor,
               activeWidth: _selectedTool == 'eraser' ? 22.0 : _selectedWidth,
               activeTool: _selectedTool,
@@ -726,23 +858,23 @@ class _TouchSanctuaryScreenState extends State<TouchSanctuaryScreen>
                 children: [
                   Icon(
                     Icons.auto_awesome_rounded,
-                    size: 48,
-                    color: Colors.white.withOpacity(0.18),
+                    size: 40,
+                    color: const Color(0xFF00E5FF).withOpacity(0.35),
                   ),
                   const SizedBox(height: 14),
                   const Text(
-                    'Full-Screen Live Glow Drawing',
+                    'Full-Screen Glow Canvas',
                     style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
                       color: Colors.white,
                     ),
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    'Draw messages & glowing hearts with $partnerNickname in real-time ✦',
+                    'Draw glowing messages with $partnerNickname in real-time ✦',
                     style: TextStyle(
-                      fontSize: 13,
+                      fontSize: 12,
                       color: Colors.white.withOpacity(0.6),
                     ),
                   ),
@@ -760,9 +892,9 @@ class _TouchSanctuaryScreenState extends State<TouchSanctuaryScreen>
     required String userId,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
       decoration: BoxDecoration(
-        color: const Color(0xFF1E1C28).withOpacity(0.92),
+        color: const Color(0xFF14121E).withOpacity(0.92),
         borderRadius: BorderRadius.circular(26),
         border: Border.all(color: Colors.white.withOpacity(0.12)),
         boxShadow: [
@@ -777,26 +909,59 @@ class _TouchSanctuaryScreenState extends State<TouchSanctuaryScreen>
         children: [
           // 1. Tool Selectors
           _buildToolButton('pen', Icons.edit_rounded, 'Glow Pen'),
-          const SizedBox(width: 6),
+          const SizedBox(width: 4),
           _buildToolButton('stardust', Icons.auto_awesome_rounded, 'Stardust'),
-          const SizedBox(width: 6),
+          const SizedBox(width: 4),
           _buildToolButton('eraser', Icons.cleaning_services_rounded, 'Eraser'),
 
           const Spacer(),
 
-          // 2. Color Palette (if not eraser)
+          // 2. Neon Color Palette (if not eraser)
           if (_selectedTool != 'eraser') ...[
-            _buildColorPill(const Color(0xFFE2847A)),
-            _buildColorPill(const Color(0xFFF97316)),
+            _buildColorPill(const Color(0xFFFF4B72)),
+            _buildColorPill(const Color(0xFF00E5FF)),
             _buildColorPill(const Color(0xFFFBBF24)),
             _buildColorPill(const Color(0xFF34D399)),
             _buildColorPill(const Color(0xFFA855F7)),
             _buildColorPill(const Color(0xFFFFFFFF)),
-            const SizedBox(width: 8),
+            const SizedBox(width: 6),
           ],
 
           // 3. Clear Canvas Button
           GestureDetector(
+            onTap: () {
+              HapticFeedback.mediumImpact();
+              if (spaceId.isNotEmpty) {
+                stageProvider.clearDrawing(spaceId, userId);
+              }
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.delete_sweep_rounded, size: 15, color: Colors.white70),
+                  SizedBox(width: 3),
+                  Text(
+                    'Clear',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
             onTap: () {
               HapticFeedback.mediumImpact();
               if (spaceId.isNotEmpty) {
@@ -1017,15 +1182,15 @@ class _TouchSanctuaryScreenState extends State<TouchSanctuaryScreen>
 
   Widget _buildGlassHeartCard(String name, int count, Color accent, IconData icon) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFF1B1925).withOpacity(0.85),
-        borderRadius: BorderRadius.circular(22),
+        color: const Color(0xFF14121E).withOpacity(0.88),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(color: accent.withOpacity(0.35), width: 1.2),
         boxShadow: [
           BoxShadow(
-            color: accent.withOpacity(0.2),
-            blurRadius: 18,
+            color: accent.withOpacity(0.18),
+            blurRadius: 16,
             offset: const Offset(0, 4),
           ),
         ],
@@ -1033,36 +1198,40 @@ class _TouchSanctuaryScreenState extends State<TouchSanctuaryScreen>
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(8),
+            padding: const EdgeInsets.all(7),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: accent.withOpacity(0.15),
             ),
-            child: Icon(icon, color: accent, size: 22),
+            child: Icon(icon, color: accent, size: 20),
           ),
-          const SizedBox(width: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                name,
-                style: const TextStyle(
-                  color: Colors.white70,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                '$count touches',
-                style: TextStyle(
-                  color: accent,
-                  fontSize: 17,
-                  fontWeight: FontWeight.bold,
+                const SizedBox(height: 2),
+                Text(
+                  '$count touches',
+                  style: TextStyle(
+                    color: accent,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ],
       ),
@@ -1093,47 +1262,79 @@ class _FullScreenThumbKissPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    // 1. Render Partner's Thumb ripples
+    // 1. Render Partner's Thumb ripples (Electric Neon Cyan)
     if (partnerThumb != null) {
       _drawConcentricRipples(
         canvas: canvas,
         center: partnerThumb!,
-        baseColor: const Color(0xFF38BDF8),
+        baseColor: const Color(0xFF00E5FF),
         pulseProgress: pulseVal,
         isCollision: isColliding,
       );
     }
 
-    // 2. Render My Thumb ripples
+    // 2. Render My Thumb ripples (Radiant Coral Rose)
     if (isMyThumbDown && myThumb != null) {
       _drawConcentricRipples(
         canvas: canvas,
         center: myThumb!,
-        baseColor: const Color(0xFFE2847A),
+        baseColor: const Color(0xFFFF4B72),
         pulseProgress: pulseVal,
         isCollision: isColliding,
       );
     }
 
-    // 3. Collision Resonance Wave
+    // 3. Collision Resonance Wave & Connection Beam
     if (isColliding && myThumb != null && partnerThumb != null) {
       final midPoint = Offset(
         (myThumb!.dx + partnerThumb!.dx) / 2,
         (myThumb!.dy + partnerThumb!.dy) / 2,
       );
 
-      final resonancePaint = Paint()
+      // A. Luminous Energy Beam connecting both thumbs
+      final beamGlow = Paint()
         ..style = PaintingStyle.stroke
         ..strokeWidth = 3.5
-        ..color = Colors.white.withOpacity((1.0 - collisionVal).clamp(0.0, 1.0));
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4)
+        ..color = const Color(0xFFFF2D55).withOpacity(0.85);
+      canvas.drawLine(myThumb!, partnerThumb!, beamGlow);
 
-      final radius = 25.0 + (collisionVal * 120.0);
+      final beamCore = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.5
+        ..color = Colors.white;
+      canvas.drawLine(myThumb!, partnerThumb!, beamCore);
+
+      // B. Burst Resonance Shockwaves
+      final radius = 22.0 + (collisionVal * 140.0);
+      final ringOpacity = (1.0 - collisionVal).clamp(0.0, 1.0);
+
+      final resonancePaint = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 3.5 * ringOpacity
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5)
+        ..color = Colors.white.withOpacity(ringOpacity);
       canvas.drawCircle(midPoint, radius, resonancePaint);
 
-      final glowPaint = Paint()
+      final burstGlow = Paint()
         ..style = PaintingStyle.fill
-        ..color = const Color(0xFFF43F5E).withOpacity(0.35 * (1.0 - collisionVal));
-      canvas.drawCircle(midPoint, radius * 0.7, glowPaint);
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 16)
+        ..color = const Color(0xFFFF2D55).withOpacity(0.4 * ringOpacity);
+      canvas.drawCircle(midPoint, radius * 0.65, burstGlow);
+
+      // C. Orbiting Star Sparks Burst
+      for (int i = 0; i < 8; i++) {
+        final angle = (i * math.pi / 4) + (collisionVal * 0.8);
+        final sparkDist = 14.0 + (collisionVal * 75.0);
+        final sparkOffset = Offset(
+          midPoint.dx + math.cos(angle) * sparkDist,
+          midPoint.dy + math.sin(angle) * sparkDist,
+        );
+        final sparkPaint = Paint()
+          ..color = (i % 2 == 0 ? Colors.white : const Color(0xFFFFD700))
+              .withOpacity(ringOpacity);
+        canvas.drawCircle(sparkOffset, 2.5 * ringOpacity, sparkPaint);
+      }
     }
   }
 
@@ -1144,30 +1345,50 @@ class _FullScreenThumbKissPainter extends CustomPainter {
     required double pulseProgress,
     required bool isCollision,
   }) {
-    for (int i = 1; i <= 4; i++) {
-      final ringProgress = (pulseProgress + (i * 0.22)) % 1.0;
-      final radius = 20.0 + (ringProgress * 110.0);
-      final opacity = (1.0 - ringProgress).clamp(0.0, 0.85);
+    // 1. Expanding Liquid Energy Waves
+    for (int i = 0; i < 3; i++) {
+      final progress = (pulseProgress + (i * 0.33)) % 1.0;
+      final radius = 16.0 + (progress * 90.0);
+      final opacity = math.sin(progress * math.pi).clamp(0.0, 1.0);
 
+      // Ambient Glow Ring
+      final glowRing = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 3.5 * (1.0 - progress)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3)
+        ..color = baseColor.withOpacity(opacity * 0.45);
+      canvas.drawCircle(center, radius, glowRing);
+
+      // Crisp Inner Wave
       final wavePaint = Paint()
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 2.0 * (1.0 - ringProgress)
-        ..color = baseColor.withOpacity(opacity * 0.7);
-
+        ..strokeWidth = 1.6 * (1.0 - progress)
+        ..color = Colors.white.withOpacity(opacity * 0.7);
       canvas.drawCircle(center, radius, wavePaint);
     }
 
-    // Solid core thumb glow
-    final corePaint = Paint()
+    // 2. Radiant Outer Bloom Aura
+    final auraPaint = Paint()
       ..style = PaintingStyle.fill
-      ..color = baseColor.withOpacity(0.85);
-    canvas.drawCircle(center, 24.0, corePaint);
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 12)
+      ..color = baseColor.withOpacity(0.6);
+    canvas.drawCircle(center, 20.0, auraPaint);
 
-    final outerRing = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.5
-      ..color = Colors.white.withOpacity(0.9);
-    canvas.drawCircle(center, 26.0, outerRing);
+    // 3. Luminous Shimmer Core
+    final corePaint = Paint()
+      ..shader = RadialGradient(
+        colors: [
+          Colors.white,
+          baseColor,
+          baseColor.withOpacity(0.2),
+        ],
+        stops: const [0.0, 0.6, 1.0],
+      ).createShader(Rect.fromCircle(center: center, radius: 14.0));
+    canvas.drawCircle(center, 14.0, corePaint);
+
+    // 4. Center Micro Spark
+    final centerDot = Paint()..color = Colors.white;
+    canvas.drawCircle(center, 3.5, centerDot);
   }
 
   @override

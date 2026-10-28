@@ -24,6 +24,16 @@ class SupabaseService {
   static final List<Function(Map<String, dynamic> data)> _locationCallbacks = [];
   static final List<Function(Map<String, dynamic> data)> _vaultCallbacks = [];
 
+  // Persistent Event Handlers
+  static Function(Map<String, dynamic> data)? _onPulse;
+  static Function(Map<String, dynamic> data)? _onMood;
+  static Function(Map<String, dynamic> data)? _onTouchPad;
+  static Function(Map<String, dynamic> data)? _onDrawStroke;
+  static Function(Map<String, dynamic> data)? _onClearDrawing;
+  static Function(Map<String, dynamic> data)? _onTouchCountSync;
+  static Function(Map<String, dynamic> data)? _onDailyPrompt;
+  static Function(Map<String, dynamic> data)? _onPinnedNote;
+
   static void addLocationListener(Function(Map<String, dynamic> data) callback) {
     if (!_locationCallbacks.contains(callback)) {
       _locationCallbacks.add(callback);
@@ -44,6 +54,102 @@ class SupabaseService {
     _vaultCallbacks.remove(callback);
   }
 
+  static RealtimeChannel _ensureChannel(String spaceId) {
+    if (_channel != null && _currentSpaceId == spaceId) {
+      return _channel!;
+    }
+
+    if (_channel != null) {
+      try {
+        _client?.removeChannel(_channel!);
+      } catch (_) {}
+      _channel = null;
+    }
+
+    _currentSpaceId = spaceId;
+    final ch = _client!.channel(
+      'stage_space_$spaceId',
+      opts: const RealtimeChannelConfig(ack: false, self: false),
+    );
+
+    ch.onBroadcast(
+      event: 'PULSE',
+      callback: (payload) => _onPulse?.call(payload),
+    );
+
+    ch.onBroadcast(
+      event: 'MOOD_UPDATE',
+      callback: (payload) => _onMood?.call(payload),
+    );
+
+    ch.onBroadcast(
+      event: 'TOUCH_PAD_EVENT',
+      callback: (payload) => _onTouchPad?.call(payload),
+    );
+
+    ch.onBroadcast(
+      event: 'LOCATION_UPDATE',
+      callback: (payload) {
+        for (final cb in List<Function(Map<String, dynamic> data)>.from(_locationCallbacks)) {
+          try {
+            cb(payload);
+          } catch (_) {}
+        }
+      },
+    );
+
+    ch.onBroadcast(
+      event: 'VAULTS_UPDATE',
+      callback: (payload) {
+        for (final cb in List<Function(Map<String, dynamic> data)>.from(_vaultCallbacks)) {
+          try {
+            cb(payload);
+          } catch (_) {}
+        }
+      },
+    );
+
+    ch.onBroadcast(
+      event: 'DRAW_STROKE',
+      callback: (payload) => _onDrawStroke?.call(payload),
+    );
+
+    ch.onBroadcast(
+      event: 'CLEAR_DRAWING',
+      callback: (payload) => _onClearDrawing?.call(payload),
+    );
+
+    ch.onBroadcast(
+      event: 'TOUCH_COUNT_SYNC',
+      callback: (payload) => _onTouchCountSync?.call(payload),
+    );
+
+    ch.onBroadcast(
+      event: 'DAILY_PROMPT_UPDATE',
+      callback: (payload) => _onDailyPrompt?.call(payload),
+    );
+
+    ch.onBroadcast(
+      event: 'PINNED_NOTE_CHANGED',
+      callback: (payload) => _onPinnedNote?.call(payload),
+    );
+
+    ch.subscribe((status, [error]) {
+      if (status == RealtimeSubscribeStatus.channelError || status == RealtimeSubscribeStatus.closed) {
+        Future.delayed(const Duration(milliseconds: 1500), () {
+          if (_currentSpaceId == spaceId && _channel != null) {
+            try {
+              _channel!.subscribe();
+            } catch (_) {}
+          }
+        });
+      }
+    });
+
+    _channel = ch;
+    return ch;
+  }
+
   static void subscribeToSpaceEvents(
     String spaceId, {
     required Function(Map<String, dynamic> data) onPulse,
@@ -57,95 +163,17 @@ class SupabaseService {
   }) {
     if (_client == null || spaceId.isEmpty) return;
 
+    _onPulse = onPulse;
+    _onMood = onMood;
+    _onTouchPad = onTouchPad;
+    _onDrawStroke = onDrawStroke;
+    _onClearDrawing = onClearDrawing;
+    _onTouchCountSync = onTouchCountSync;
+    _onDailyPrompt = onDailyPrompt;
+    _onPinnedNote = onPinnedNote;
+
     try {
-      if (_channel != null) {
-        try {
-          _client!.removeChannel(_channel!);
-        } catch (_) {}
-        _channel = null;
-      }
-
-      _currentSpaceId = spaceId;
-      _channel = _client!.channel(
-        'stage_space_$spaceId',
-        opts: const RealtimeChannelConfig(ack: false, self: false),
-      );
-
-      _channel!.onBroadcast(
-        event: 'PULSE',
-        callback: (payload) => onPulse(payload),
-      );
-
-      _channel!.onBroadcast(
-        event: 'MOOD_UPDATE',
-        callback: (payload) => onMood(payload),
-      );
-
-      _channel!.onBroadcast(
-        event: 'TOUCH_PAD_EVENT',
-        callback: (payload) => onTouchPad(payload),
-      );
-
-      _channel!.onBroadcast(
-        event: 'LOCATION_UPDATE',
-        callback: (payload) {
-          for (final cb in List<Function(Map<String, dynamic> data)>.from(_locationCallbacks)) {
-            try {
-              cb(payload);
-            } catch (_) {}
-          }
-        },
-      );
-
-      _channel!.onBroadcast(
-        event: 'VAULTS_UPDATE',
-        callback: (payload) {
-          for (final cb in List<Function(Map<String, dynamic> data)>.from(_vaultCallbacks)) {
-            try {
-              cb(payload);
-            } catch (_) {}
-          }
-        },
-      );
-
-      if (onDrawStroke != null) {
-        _channel!.onBroadcast(
-          event: 'DRAW_STROKE',
-          callback: (payload) => onDrawStroke(payload),
-        );
-      }
-
-      if (onClearDrawing != null) {
-        _channel!.onBroadcast(
-          event: 'CLEAR_DRAWING',
-          callback: (payload) => onClearDrawing(payload),
-        );
-      }
-
-      if (onTouchCountSync != null) {
-        _channel!.onBroadcast(
-          event: 'TOUCH_COUNT_SYNC',
-          callback: (payload) => onTouchCountSync(payload),
-        );
-      }
-
-      if (onDailyPrompt != null) {
-        _channel!.onBroadcast(
-          event: 'DAILY_PROMPT_UPDATE',
-          callback: (payload) => onDailyPrompt(payload),
-        );
-      }
-
-      if (onPinnedNote != null) {
-        _channel!.onBroadcast(
-          event: 'PINNED_NOTE_CHANGED',
-          callback: (payload) => onPinnedNote(payload),
-        );
-      }
-
-      _channel!.subscribe((status, [error]) {
-        // Realtime subscription callback
-      });
+      _ensureChannel(spaceId);
     } catch (_) {}
   }
 
@@ -156,35 +184,8 @@ class SupabaseService {
   }) async {
     if (_client == null || spaceId.isEmpty) return;
     try {
-      if (_channel == null || _currentSpaceId != spaceId) {
-        _currentSpaceId = spaceId;
-        _channel = _client!.channel(
-          'stage_space_$spaceId',
-          opts: const RealtimeChannelConfig(ack: false, self: false),
-        );
-        _channel!.onBroadcast(
-          event: 'LOCATION_UPDATE',
-          callback: (payload) {
-            for (final cb in List<Function(Map<String, dynamic> data)>.from(_locationCallbacks)) {
-              try {
-                cb(payload);
-              } catch (_) {}
-            }
-          },
-        );
-        _channel!.onBroadcast(
-          event: 'VAULTS_UPDATE',
-          callback: (payload) {
-            for (final cb in List<Function(Map<String, dynamic> data)>.from(_vaultCallbacks)) {
-              try {
-                cb(payload);
-              } catch (_) {}
-            }
-          },
-        );
-        _channel!.subscribe();
-      }
-      await _channel!.sendBroadcastMessage(
+      final ch = _ensureChannel(spaceId);
+      await ch.sendBroadcastMessage(
         event: eventType,
         payload: payload,
       );
