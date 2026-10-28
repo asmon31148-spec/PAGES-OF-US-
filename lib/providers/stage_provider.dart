@@ -396,8 +396,6 @@ class StageProvider extends ChangeNotifier {
       },
     );
   }
-    );
-  }
 
   void _triggerPulseEffect() {
     _isPulsing = true;
