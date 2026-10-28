@@ -106,38 +106,43 @@ jobs:
         if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/flutter-migration'
         with:
           tag_name: v${{ steps.app_version.outputs.version }}
-          name: "Pages of Us v${{ steps.app_version.outputs.version }} — Sanctuary Overhaul"
+          name: "Pages of Us v${{ steps.app_version.outputs.version }} — Sanctuary Edition"
           make_latest: true
           body: |
-            ### 🌿 Pages of Us v${{ steps.app_version.outputs.version }} — Sanctuary Overhaul
-            Direct 1-tap download and in-app update for Android.
-            
-            - **Native Engine**: 100% Pure Flutter / Dart (Zero WebView latency)
-            - **Application ID**: `com.pagesofus.app`
-            - **Signing Certificate SHA-1**: `${{ steps.cert_fingerprints.outputs.sha1 }}`
-            - **Signing Certificate SHA-256**: `${{ steps.cert_fingerprints.outputs.sha256 }}`
-            
-            #### ✨ What's New in v${{ steps.app_version.outputs.version }}
-            - ⚡ **True Realtime 2-Device Bidirectional Sync**:
-              - Dual-Engine Transmission: Supabase Realtime WebSockets (0-50ms) + Firestore Live Feature Streams (guaranteed delivery).
-              - Reactive Lifecycle Coordinator: Automatically pairs and binds all listeners (`Stage`, `World`, `Vault`, `Memories`) the millisecond a space is joined or partner connects without requiring an app restart.
-              - Multi-Device Safe Partitioning: Firestore field dot-notation (`mood.$userId`, `notes.$userId`, `locations.$userId`) prevents partners from ever overwriting each other's data.
-              - Dual Pulse Engine: Heart pulses trigger vibration and ripples reliably across physical phones.
-            - 🖐️ **Dedicated Full-Screen Touch Studio**:
-              - Moved from homepage card to a distraction-free, edge-to-edge isolated sanctuary via the top bar `Touch` button.
-              - **Thumb-Kiss**: Pure physical concentric shockwaves with continuous heartbeat vibration on collision.
-              - **Glow Trace**: Live collaborative canvas with persistent cloud cache (messages stay on canvas!).
-              - **Miss U / Heart Pulse**: 3D ripples with low ambient pad resonance and synchronized daily counters.
-            - 🎬 **Cinema Video Player**: Smooth buffered scrubber with 200ms position ticker, live seek, and ±10s skip controls.
-            - 🎙️ **Voice Whisper Player**: 32-bar interactive audio waveform player with live seeking and timestamps.
-            - 🎵 **Interactive Music Scrubber**: Smooth finger-dragging seek bar in Music Sanctuary and Listen Together.
-            
-            #### 🔑 Firebase Google Sign-In Setup
-            If Google Sign-In gives Code 10, add this SHA-1 to your Firebase Console:
-            1. Open [Firebase Console](https://console.firebase.google.com/project/soulmate-p1/settings/general) -> **Project Settings**
-            2. Scroll down to **Your apps** -> Select `com.pagesofus.app`
-            3. Click **Add fingerprint** and paste: `${{ steps.cert_fingerprints.outputs.sha1 }}`
-            4. Verify **Google** is enabled under **Authentication -> Sign-in method**
+            ### ✨ What's New in Pages of Us v${{ steps.app_version.outputs.version }}
+
+            - **💖 Daily Care & Checkup Routine**:
+              - Schedule loving reminders for your partner (hydration, vitamins, meals, wind-down).
+              - Real-time dual perspective: see partner checkoffs instantly with sweet care notes.
+              - One-tap gentle care nudges with warm vibration.
+
+            - **🗺️ Our World & Live Partner Tether**:
+              - True full-screen interactive world map with smooth camera flight to your partner.
+              - Real-time mutual distance calculation and midpoint badge.
+              - Removed map accuracy circles for a clean, unobstructed view.
+
+            - **✨ Celestial Pulse Beacon**:
+              - Replaced static heart with illuminated celestial pulse beacon.
+              - Triple concentric expanding fluid ripples and glowing connecting tether line.
+              - Floating pill toast and synchronized dual-phone tactile response.
+
+            - **🎨 Illuminated Highlight Memories**:
+              - Aesthetic dynamic backdrops for Voice Whispers, Live Tether, and Milestone Dreams.
+              - Luminous audio soundwave visualizer and celestial radar motifs.
+
+            - **🔒 Vault Sanctuary & Custom Audio**:
+              - Upload your own custom background songs (.mp3, .m4a) to any Vault.
+              - Clean empty state with zero dummy templates.
+              - Intelligent audio ducking when listening to voice memos.
+
+            - **🎶 Music Sanctuary & Ambient Soundscapes**:
+              - Curated offline sanctuary audio (Lofi, Rain, Ocean, Fireplace, Birds).
+              - Live interactive track search and permanently persisted playlists.
+
+            - **⚡ Performance & Polish**:
+              - Full edge-to-edge layout matching modern luxury aesthetics.
+              - Complete fix for AI question selection blackout and debounced cloud pinning.
+              - 100% pure native Flutter speed with zero lag.
           files: |
             build/app/outputs/flutter-apk/PagesOfUs.apk
             build/app/outputs/flutter-apk/app-release.apk

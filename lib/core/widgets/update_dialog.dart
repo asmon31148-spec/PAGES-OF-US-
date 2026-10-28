@@ -127,14 +127,7 @@ class _UpdateDialogState extends State<UpdateDialog> {
                           ),
                         ),
                         const SizedBox(height: 10),
-                        Text(
-                          widget.updateInfo.changelog,
-                          style: TextStyle(
-                            color: Colors.white.withOpacity(0.75),
-                            fontSize: 13,
-                            height: 1.5,
-                          ),
-                        ),
+                        _buildFormattedChangelog(widget.updateInfo.changelog),
                       ],
                     ),
                   ),
@@ -239,6 +232,167 @@ class _UpdateDialogState extends State<UpdateDialog> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildFormattedChangelog(String rawChangelog) {
+    final lines = rawChangelog.split('\n');
+    final cleanWidgets = <Widget>[];
+    bool skipSection = false;
+
+    for (final rawLine in lines) {
+      var line = rawLine.trim();
+
+      // Filter out technical certificate/signing fingerprints and setup guides
+      if (line.contains('SHA-1') ||
+          line.contains('SHA-256') ||
+          line.contains('Signing Certificate') ||
+          line.contains('Application ID') ||
+          line.contains('Firebase Console') ||
+          line.contains('Add fingerprint') ||
+          line.contains('Code 10') ||
+          line.toLowerCase().contains('keystore')) {
+        continue;
+      }
+
+      if (line.startsWith('#### 🔑') || line.contains('Google Sign-In Setup')) {
+        skipSection = true;
+        continue;
+      }
+      if (skipSection) {
+        if (line.startsWith('###') || line.startsWith('##') || line.startsWith('✨')) {
+          skipSection = false;
+        } else {
+          continue;
+        }
+      }
+
+      if (line.isEmpty) {
+        cleanWidgets.add(const SizedBox(height: 5));
+        continue;
+      }
+
+      // Section Headings (e.g. "### 🌿 ...", "✨ What's New...")
+      if (line.startsWith('###') || line.startsWith('##') || line.startsWith('#')) {
+        line = line.replaceAll(RegExp(r'^#+\s*'), '').trim();
+        line = line.replaceAll('**', '');
+        cleanWidgets.add(
+          Padding(
+            padding: const EdgeInsets.only(top: 8, bottom: 4),
+            child: Text(
+              line,
+              style: const TextStyle(
+                color: Color(0xFFC7D2FE),
+                fontSize: 13.5,
+                fontWeight: FontWeight.bold,
+                letterSpacing: -0.2,
+              ),
+            ),
+          ),
+        );
+        continue;
+      }
+
+      // Bullet points (e.g. "- **Title**: Description" or "• Description")
+      if (line.startsWith('-') || line.startsWith('•') || line.startsWith('*')) {
+        line = line.replaceFirst(RegExp(r'^[-•*]\s*'), '').trim();
+
+        // Check if there is a bold title prefix (e.g. "**Title**: Description")
+        final parts = line.split('**:');
+        if (parts.length == 2 && parts[0].startsWith('**')) {
+          final title = parts[0].replaceAll('**', '').trim();
+          final desc = parts[1].replaceAll('**', '').trim();
+
+          cleanWidgets.add(
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 2.5),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Padding(
+                    padding: EdgeInsets.only(top: 6, right: 8),
+                    child: Icon(Icons.circle, size: 4.5, color: Color(0xFF818CF8)),
+                  ),
+                  Expanded(
+                    child: RichText(
+                      text: TextSpan(
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.85),
+                          fontSize: 12.5,
+                          height: 1.4,
+                        ),
+                        children: [
+                          TextSpan(
+                            text: '$title: ',
+                            style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+                          ),
+                          TextSpan(text: desc),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+          continue;
+        }
+
+        line = line.replaceAll('**', '').trim();
+        cleanWidgets.add(
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 2.5),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Padding(
+                  padding: EdgeInsets.only(top: 6, right: 8),
+                  child: Icon(Icons.circle, size: 4.5, color: Color(0xFF818CF8)),
+                ),
+                Expanded(
+                  child: Text(
+                    line,
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.85),
+                      fontSize: 12.5,
+                      height: 1.4,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+        continue;
+      }
+
+      // Normal text line
+      line = line.replaceAll('**', '').trim();
+      cleanWidgets.add(
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 2),
+          child: Text(
+            line,
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.75),
+              fontSize: 12.5,
+              height: 1.4,
+            ),
+          ),
+        ),
+      );
+    }
+
+    if (cleanWidgets.isEmpty) {
+      return Text(
+        'Fresh features, bug fixes, and performance improvements for your couple sanctuary ✦',
+        style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 13, height: 1.4),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: cleanWidgets,
     );
   }
 }
