@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../providers/theme_provider.dart';
 import '../../../providers/audio_provider.dart';
 import '../../../providers/auth_provider.dart';
+import '../../../providers/stage_provider.dart';
 import 'theme_modal.dart';
 import '../../music/screens/music_sanctuary_screen.dart';
 import '../screens/touch_sanctuary_screen.dart';
@@ -35,6 +37,8 @@ class AppTopBar extends StatelessWidget {
     final themeProvider = context.watch<ThemeProvider>();
     final audioProvider = context.watch<AudioProvider>();
     final authProvider = context.watch<AuthProvider>();
+    final stageProvider = context.watch<StageProvider>();
+    final isPartnerTouching = stageProvider.isPartnerTouching;
     final user = authProvider.user;
 
     final effectiveTitle = overrideTitle ?? title ?? 'Pages of Us';
@@ -97,34 +101,40 @@ class AppTopBar extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   margin: const EdgeInsets.only(right: 8),
                   decoration: BoxDecoration(
-                    color: forceDark
-                        ? AppColors.romanceSurface
-                        : (isDark ? AppColors.darkSurface : AppColors.lightSurface),
+                    color: isPartnerTouching
+                        ? AppColors.terra.withOpacity(0.2)
+                        : (forceDark
+                            ? AppColors.romanceSurface
+                            : (isDark ? AppColors.darkSurface : AppColors.lightSurface)),
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
-                      color: forceDark
-                          ? AppColors.romanceBorder
-                          : (isDark ? AppColors.darkBorder : AppColors.lightBorder),
-                      width: 1,
+                      color: isPartnerTouching
+                          ? AppColors.terra
+                          : (forceDark
+                              ? AppColors.romanceBorder
+                              : (isDark ? AppColors.darkBorder : AppColors.lightBorder)),
+                      width: isPartnerTouching ? 1.5 : 1,
                     ),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.fingerprint_rounded,
                         size: 13,
-                        color: AppColors.terra,
+                        color: isPartnerTouching ? const Color(0xFF10B981) : AppColors.terra,
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        'Touch',
+                        isPartnerTouching ? 'Touching!' : 'Touch',
                         style: TextStyle(
                           fontSize: 11,
-                          fontWeight: FontWeight.w500,
-                          color: forceDark
-                              ? AppColors.romanceInk
-                              : (isDark ? AppColors.darkInk : AppColors.lightInk),
+                          fontWeight: isPartnerTouching ? FontWeight.bold : FontWeight.w500,
+                          color: isPartnerTouching
+                              ? const Color(0xFF10B981)
+                              : (forceDark
+                                  ? AppColors.romanceInk
+                                  : (isDark ? AppColors.darkInk : AppColors.lightInk)),
                         ),
                       ),
                     ],

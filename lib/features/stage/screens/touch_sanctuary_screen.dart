@@ -657,8 +657,8 @@ class _TouchSanctuaryScreenState extends State<TouchSanctuaryScreen>
           behavior: HitTestBehavior.opaque,
           onPanStart: (details) {
             final norm = StrokePoint(
-              x: details.localPosition.dx / padSize.width,
-              y: details.localPosition.dy / padSize.height,
+              details.localPosition.dx / padSize.width,
+              details.localPosition.dy / padSize.height,
             );
             setState(() {
               _activePoints = [norm];
@@ -666,8 +666,8 @@ class _TouchSanctuaryScreenState extends State<TouchSanctuaryScreen>
           },
           onPanUpdate: (details) {
             final norm = StrokePoint(
-              x: details.localPosition.dx / padSize.width,
-              y: details.localPosition.dy / padSize.height,
+              details.localPosition.dx / padSize.width,
+              details.localPosition.dy / padSize.height,
             );
             setState(() {
               _activePoints?.add(norm);
@@ -678,7 +678,7 @@ class _TouchSanctuaryScreenState extends State<TouchSanctuaryScreen>
               final newStroke = DrawingStroke(
                 points: List.from(_activePoints!),
                 colorValue: _selectedColor.value,
-                width: _selectedWidth,
+                strokeWidth: _selectedWidth,
                 tool: _selectedTool,
               );
               stageProvider.addDrawingStroke(newStroke, spaceId, userId);
@@ -1175,7 +1175,7 @@ class _FullScreenGlowDrawingPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     for (final stroke in strokes) {
-      _drawStroke(canvas, size, stroke.points, Color(stroke.colorValue), stroke.width, stroke.tool);
+      _drawStroke(canvas, size, stroke.points, Color(stroke.colorValue), stroke.strokeWidth, stroke.tool);
     }
 
     if (activePoints != null && activePoints!.isNotEmpty) {

@@ -10,7 +10,6 @@ import '../widgets/stage_atmosphere_card.dart';
 import '../widgets/stage_presence_view.dart';
 import '../widgets/stage_daily_sync_card.dart';
 import '../widgets/stage_pinned_corkboard.dart';
-import '../widgets/stage_touch_sanctuary_card.dart';
 import '../widgets/stage_memory_hero_card.dart';
 import '../widgets/mood_aura_modal.dart';
 import '../widgets/anniversary_modal.dart';
@@ -257,9 +256,7 @@ class _StageScreenState extends State<StageScreen> {
 
                       // 6. Pinned Corkboard Notes
                       const StagePinnedCorkboard(),
-
-                      // 7. Live Touch & Draw Sanctuary (Isolated Full-Screen Portal)
-                      const StageTouchSanctuaryCard(),
+                      const SizedBox(height: 16),
                     ],
                   ),
                 ),

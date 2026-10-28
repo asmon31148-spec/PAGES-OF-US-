@@ -19,6 +19,8 @@ class DrawingStroke {
   final String tool; // 'pen', 'stardust', 'eraser'
   final bool isPartner;
 
+  double get width => strokeWidth;
+
   DrawingStroke({
     required this.points,
     required this.colorValue,
