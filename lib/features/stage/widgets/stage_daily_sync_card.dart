@@ -24,6 +24,42 @@ class _StageDailySyncCardState extends State<StageDailySyncCard> {
     super.dispose();
   }
 
+  Future<void> _submitAnswer({
+    required BuildContext context,
+    required AuthProvider authProvider,
+    required StageProvider stageProvider,
+  }) async {
+    final user = authProvider.user;
+    final spaceId = authProvider.space?.id ?? user?.spaceId ?? '';
+    final userId = user?.id ?? '';
+    final text = _answerController.text.trim();
+    if (spaceId.isEmpty || userId.isEmpty || text.isEmpty) return;
+
+    HapticFeedback.mediumImpact();
+    setState(() => _isSubmitting = true);
+    try {
+      await stageProvider.saveDailyPromptAnswer(spaceId, userId, text);
+      _answerController.clear();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Answer submitted & sealed in envelope 💌'),
+            duration: Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to submit answer: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = context.watch<ThemeProvider>().isDark;
@@ -89,18 +125,49 @@ class _StageDailySyncCardState extends State<StageDailySyncCard> {
                 ),
               ),
 
-              // Action Buttons: History & AI Studio
+              // Action Buttons: AI Studio, Custom +, History
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // History Archive Button
+                  // 1. AI Studio Button
                   GestureDetector(
                     onTap: () {
                       HapticFeedback.lightImpact();
-                      BlindPromptStudioModal.show(context);
+                      BlindPromptStudioModal.show(context, initialTab: 0);
                     },
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: AppColors.terra.withOpacity(0.14),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: AppColors.terra.withOpacity(0.3)),
+                      ),
+                      child: Row(
+                        children: const [
+                          Icon(Icons.auto_awesome, size: 11, color: AppColors.terra),
+                          SizedBox(width: 3),
+                          Text(
+                            'AI ✦',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.terra,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 5),
+
+                  // 2. Custom Question Button
+                  GestureDetector(
+                    onTap: () {
+                      HapticFeedback.lightImpact();
+                      BlindPromptStudioModal.show(context, initialTab: 1);
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
                       decoration: BoxDecoration(
                         color: isDark ? Colors.white10 : Colors.black.withOpacity(0.05),
                         borderRadius: BorderRadius.circular(10),
@@ -108,13 +175,13 @@ class _StageDailySyncCardState extends State<StageDailySyncCard> {
                       child: Row(
                         children: [
                           Icon(
-                            Icons.history_rounded,
+                            Icons.add_rounded,
                             size: 13,
                             color: isDark ? Colors.white70 : Colors.black54,
                           ),
-                          const SizedBox(width: 4),
+                          const SizedBox(width: 2),
                           Text(
-                            'History',
+                            'Custom',
                             style: TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.bold,
@@ -125,31 +192,34 @@ class _StageDailySyncCardState extends State<StageDailySyncCard> {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 6),
+                  const SizedBox(width: 5),
 
-                  // AI Engine Studio Button
+                  // 3. History Archive Button
                   GestureDetector(
                     onTap: () {
                       HapticFeedback.lightImpact();
-                      BlindPromptStudioModal.show(context);
+                      BlindPromptStudioModal.show(context, initialTab: 3);
                     },
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
                       decoration: BoxDecoration(
-                        color: AppColors.terra.withOpacity(0.14),
+                        color: isDark ? Colors.white10 : Colors.black.withOpacity(0.05),
                         borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: AppColors.terra.withOpacity(0.3)),
                       ),
                       child: Row(
-                        children: const [
-                          Icon(Icons.auto_awesome, size: 12, color: AppColors.terra),
-                          SizedBox(width: 4),
+                        children: [
+                          Icon(
+                            Icons.history_rounded,
+                            size: 12,
+                            color: isDark ? Colors.white70 : Colors.black54,
+                          ),
+                          const SizedBox(width: 2),
                           Text(
-                            'Studio ✦',
+                            'History',
                             style: TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.bold,
-                              color: AppColors.terra,
+                              color: isDark ? Colors.white70 : Colors.black54,
                             ),
                           ),
                         ],
@@ -179,6 +249,12 @@ class _StageDailySyncCardState extends State<StageDailySyncCard> {
             TextField(
               controller: _answerController,
               maxLines: 2,
+              textInputAction: TextInputAction.send,
+              onSubmitted: (_) {
+                if (canSubmit) {
+                  _submitAnswer(context: context, authProvider: authProvider, stageProvider: stageProvider);
+                }
+              },
               onChanged: (_) {
                 // Instantly re-evaluates button state as user types!
                 setState(() {});
@@ -207,42 +283,13 @@ class _StageDailySyncCardState extends State<StageDailySyncCard> {
               alignment: Alignment.centerRight,
               child: ElevatedButton(
                 onPressed: canSubmit
-                    ? () async {
-                        HapticFeedback.mediumImpact();
-                        final spaceId = authProvider.space?.id ?? user?.spaceId ?? '';
-                        final userId = user?.id ?? '';
-                        final text = _answerController.text.trim();
-                        if (spaceId.isEmpty || userId.isEmpty || text.isEmpty) return;
-
-                        setState(() => _isSubmitting = true);
-                        try {
-                          await stageProvider.saveDailyPromptAnswer(spaceId, userId, text);
-                          _answerController.clear();
-                          if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Answer sealed in envelope 💌'),
-                                duration: Duration(seconds: 2),
-                                behavior: SnackBarBehavior.floating,
-                              ),
-                            );
-                          }
-                        } catch (e) {
-                          if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Failed to seal answer: $e')),
-                            );
-                          }
-                        } finally {
-                          if (mounted) setState(() => _isSubmitting = false);
-                        }
-                      }
+                    ? () => _submitAnswer(context: context, authProvider: authProvider, stageProvider: stageProvider)
                     : null,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: canSubmit ? AppColors.terra : AppColors.terra.withOpacity(0.3),
                   foregroundColor: Colors.white,
-                  elevation: canSubmit ? 2 : 0,
-                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
+                  elevation: canSubmit ? 3 : 0,
+                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14),
                   ),
@@ -256,9 +303,9 @@ class _StageDailySyncCardState extends State<StageDailySyncCard> {
                     : Row(
                         mainAxisSize: MainAxisSize.min,
                         children: const [
-                          Text('Seal in Envelope', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                          SizedBox(width: 4),
-                          Text('💌', style: TextStyle(fontSize: 12)),
+                          Icon(Icons.send_rounded, size: 13, color: Colors.white),
+                          SizedBox(width: 5),
+                          Text('Submit Answer 💌', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                         ],
                       ),
               ),

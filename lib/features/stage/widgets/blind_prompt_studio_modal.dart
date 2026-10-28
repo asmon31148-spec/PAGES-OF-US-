@@ -9,14 +9,19 @@ import '../../../core/services/relationship_ai_service.dart';
 import '../../../data/models/daily_prompt.dart';
 
 class BlindPromptStudioModal extends StatefulWidget {
-  const BlindPromptStudioModal({super.key});
+  final int initialTab;
 
-  static void show(BuildContext context) {
+  const BlindPromptStudioModal({
+    super.key,
+    this.initialTab = 0,
+  });
+
+  static void show(BuildContext context, {int initialTab = 0}) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => const BlindPromptStudioModal(),
+      builder: (_) => BlindPromptStudioModal(initialTab: initialTab),
     );
   }
 
@@ -45,7 +50,11 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(
+      length: 4,
+      vsync: this,
+      initialIndex: widget.initialTab.clamp(0, 3),
+    );
   }
 
   @override

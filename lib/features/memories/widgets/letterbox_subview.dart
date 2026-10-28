@@ -6,6 +6,7 @@ import '../../../providers/theme_provider.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../providers/memories_provider.dart';
 import '../../../data/models/letter_item.dart';
+import '../screens/letter_book_screen.dart';
 
 class LetterboxSubview extends StatefulWidget {
   const LetterboxSubview({super.key});
@@ -107,7 +108,7 @@ class _LetterboxSubviewState extends State<LetterboxSubview> {
             itemCount: letters.length,
             itemBuilder: (context, index) {
               final letter = letters[index];
-              return _buildEnvelopeCard(context, letter, isDark, spaceId);
+              return _buildEnvelopeCard(context, letter, isDark, spaceId, letters, index);
             },
           ),
       ],
@@ -119,6 +120,8 @@ class _LetterboxSubviewState extends State<LetterboxSubview> {
     LetterItem letter,
     bool isDark,
     String spaceId,
+    List<LetterItem> allLetters,
+    int index,
   ) {
     Color sealColor = AppColors.sage;
     if (letter.sealType == 'terra') sealColor = AppColors.terra;
@@ -144,7 +147,16 @@ class _LetterboxSubviewState extends State<LetterboxSubview> {
           );
           return;
         }
-        _showReadLetterModal(context, letter, spaceId);
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => LetterBookScreen(
+              letters: allLetters,
+              initialIndex: index,
+              spaceId: spaceId,
+            ),
+          ),
+        );
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
