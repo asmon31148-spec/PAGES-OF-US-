@@ -962,39 +962,6 @@ class _TouchSanctuaryScreenState extends State<TouchSanctuaryScreen>
       ),
     );
   }
-            onTap: () {
-              HapticFeedback.mediumImpact();
-              if (spaceId.isNotEmpty) {
-                stageProvider.clearDrawing(spaceId, userId);
-              }
-            },
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.08),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.delete_sweep_rounded, size: 16, color: Colors.white70),
-                  SizedBox(width: 4),
-                  Text(
-                    'Clear',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   Widget _buildToolButton(String tool, IconData icon, String label) {
     final isSelected = _selectedTool == tool;
