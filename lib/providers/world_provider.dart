@@ -45,7 +45,8 @@ class WorldProvider extends ChangeNotifier {
   String get gpsStatus => _gpsStatus;
   WeatherInfo? get partnerWeather => _partnerWeather;
   DateTime get now => _now;
-  bool get isLiveTrackingActive => _positionStreamSub != null;
+  bool _isTrackingInitializing = false;
+  bool get isLiveTrackingActive => _positionStreamSub != null || _isTrackingInitializing;
 
   UserLocationData? get myLocation {
     if (_currentUserId != null && _locations.containsKey(_currentUserId)) {
@@ -297,60 +298,66 @@ class WorldProvider extends ChangeNotifier {
     String? avatarUrl,
   }) async {
     if (spaceId.isEmpty || currentUserId.isEmpty) return;
+    if (_isTrackingInitializing || _positionStreamSub != null) return;
+    _isTrackingInitializing = true;
 
-    _spaceId = spaceId;
-    _currentUserId = currentUserId;
-    _currentNickname = nickname;
-    _currentAvatarUrl = avatarUrl;
-
-    // Check location permission
-    LocationPermission permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
-        _gpsStatus = 'Permission Denied';
-        notifyListeners();
-        return;
-      }
-    }
-
-    _gpsStatus = 'Acquiring GPS...';
-    notifyListeners();
-
-    // 1. Immediate initial fix
     try {
-      final initialPosition = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.high,
-          timeLimit: Duration(seconds: 10),
-        ),
-      );
-      await _handleNewPosition(initialPosition);
-    } catch (_) {
-      try {
-        final lastKnown = await Geolocator.getLastKnownPosition();
-        if (lastKnown != null) {
-          await _handleNewPosition(lastKnown);
+      _spaceId = spaceId;
+      _currentUserId = currentUserId;
+      _currentNickname = nickname;
+      _currentAvatarUrl = avatarUrl;
+
+      // Check location permission
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
+          _gpsStatus = 'Permission Denied';
+          notifyListeners();
+          return;
         }
-      } catch (_) {}
+      }
+
+      _gpsStatus = 'Acquiring GPS...';
+      notifyListeners();
+
+      // 1. Immediate initial fix
+      try {
+        final initialPosition = await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.high,
+            timeLimit: Duration(seconds: 10),
+          ),
+        );
+        await _handleNewPosition(initialPosition);
+      } catch (_) {
+        try {
+          final lastKnown = await Geolocator.getLastKnownPosition();
+          if (lastKnown != null) {
+            await _handleNewPosition(lastKnown);
+          }
+        } catch (_) {}
+      }
+
+      // 2. High-performance continuous position stream (fires on 3m movement)
+      _positionStreamSub?.cancel();
+      const settings = LocationSettings(
+        accuracy: LocationAccuracy.high,
+        distanceFilter: 3,
+      );
+
+      _positionStreamSub = Geolocator.getPositionStream(locationSettings: settings).listen(
+        (Position position) {
+          _handleNewPosition(position);
+        },
+        onError: (err) {
+          _gpsStatus = 'GPS Error';
+          notifyListeners();
+        },
+      );
+    } finally {
+      _isTrackingInitializing = false;
     }
-
-    // 2. High-performance continuous position stream (fires on 3m movement)
-    _positionStreamSub?.cancel();
-    const settings = LocationSettings(
-      accuracy: LocationAccuracy.high,
-      distanceFilter: 3,
-    );
-
-    _positionStreamSub = Geolocator.getPositionStream(locationSettings: settings).listen(
-      (Position position) {
-        _handleNewPosition(position);
-      },
-      onError: (err) {
-        _gpsStatus = 'GPS Error';
-        notifyListeners();
-      },
-    );
   }
 
   void stopLiveTracking() {

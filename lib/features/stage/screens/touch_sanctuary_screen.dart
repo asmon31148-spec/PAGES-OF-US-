@@ -1162,9 +1162,9 @@ class _TouchSanctuaryScreenState extends State<TouchSanctuaryScreen>
                 ),
               ),
 
-              // Floating 3D Heart Daily Counter Cards
+              // Floating 3D Heart Daily Counter Cards (Dynamic top clearance below the header bar)
               Positioned(
-                top: 76,
+                top: MediaQuery.of(context).padding.top + 68,
                 left: 16,
                 right: 16,
                 child: Row(

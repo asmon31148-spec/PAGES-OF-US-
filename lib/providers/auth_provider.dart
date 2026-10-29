@@ -90,6 +90,9 @@ class AuthProvider extends ChangeNotifier {
               );
             }
           }
+        } else if (partnerId.isEmpty && _partner != null) {
+          _partner = null;
+          await LocalCacheService.setCachedPartner(null);
         }
         notifyListeners();
       }
@@ -249,6 +252,33 @@ class AuthProvider extends ChangeNotifier {
     _isLoading = false;
     notifyListeners();
     return false;
+  }
+
+  Future<bool> disconnectPartner() async {
+    if (_user == null || _space == null) return false;
+    _isLoading = true;
+    notifyListeners();
+    try {
+      final newSpace = await FirebaseService.disconnectPartner(
+        currentUser: _user!,
+        currentSpace: _space!,
+      );
+      _spaceSub?.cancel();
+      _space = newSpace;
+      _partner = null;
+      _user = _user!.copyWith(spaceId: newSpace.id);
+      await LocalCacheService.setCachedSpace(newSpace.toJson());
+      await LocalCacheService.setCachedUser(_user!.toJson());
+      await LocalCacheService.setCachedPartner(null);
+      _listenToSpace(newSpace.id, _user!.id);
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (_) {
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
   }
 
   Future<void> updateProfile({String? nickname, String? thought, String? avatarUrl}) async {

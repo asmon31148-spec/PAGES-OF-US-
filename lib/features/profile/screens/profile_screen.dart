@@ -10,6 +10,7 @@ import '../../../providers/auth_provider.dart';
 import '../../../core/services/media_upload_service.dart';
 import '../../../core/services/update_service.dart';
 import '../../../core/widgets/update_dialog.dart';
+import '../../auth/widgets/pairing_modal.dart';
 import '../widgets/policy_dialogs.dart';
 import 'support_bot_screen.dart';
 
@@ -529,12 +530,42 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               ],
                             ),
                           ),
+                          TextButton.icon(
+                            onPressed: () => _confirmDisconnectPartner(context, authProvider, partner.nickname),
+                            icon: const Icon(Icons.link_off_rounded, size: 14, color: AppColors.terra),
+                            label: const Text(
+                              'Disconnect',
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.terra,
+                              ),
+                            ),
+                          ),
                         ],
                       ),
                     ] else ...[
                       Text(
                         'Not paired with a partner yet. Share your Pair Code to connect.',
                         style: TextStyle(fontSize: 11.5, color: soft),
+                      ),
+                      const SizedBox(height: 10),
+                      OutlinedButton.icon(
+                        onPressed: () => PairingModal.show(context),
+                        icon: const Icon(Icons.favorite_border_rounded, size: 15, color: AppColors.sage),
+                        label: const Text(
+                          'Enter Partner\'s Pair Code ✦',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.sage,
+                          ),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          side: BorderSide(color: AppColors.sage.withOpacity(0.5)),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        ),
                       ),
                     ],
                     if (space?.pairCode != null) ...[
@@ -788,6 +819,66 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
       trailing: Icon(Icons.arrow_forward_ios_rounded, size: 12, color: soft),
       onTap: onTap,
+    );
+  }
+
+  void _confirmDisconnectPartner(BuildContext context, AuthProvider authProvider, String partnerName) {
+    showDialog(
+      context: context,
+      builder: (dialogCtx) {
+        return AlertDialog(
+          backgroundColor: AppColors.darkSurface,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Row(
+            children: const [
+              Icon(Icons.link_off_rounded, color: AppColors.terra, size: 22),
+              SizedBox(width: 8),
+              Text(
+                'Disconnect Partner?',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+            ],
+          ),
+          content: Text(
+            'Are you sure you want to disconnect from $partnerName? Both of you will return to your own private sanctuaries, and you can reconnect anytime.',
+            style: const TextStyle(fontSize: 13, color: AppColors.darkSoft, height: 1.4),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogCtx),
+              child: const Text('Cancel', style: TextStyle(color: Colors.white70)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.terra,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              onPressed: () async {
+                Navigator.pop(dialogCtx);
+                final success = await authProvider.disconnectPartner();
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        success
+                            ? 'Disconnected from $partnerName. Your personal sanctuary is ready 🌿'
+                            : 'Failed to disconnect. Please check connection and try again.',
+                      ),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                }
+              },
+              child: const Text('Disconnect', style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+          ],
+        );
+      },
     );
   }
 }

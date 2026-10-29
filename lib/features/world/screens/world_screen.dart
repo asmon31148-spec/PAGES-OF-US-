@@ -54,7 +54,7 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
     final user = auth.user;
     final partner = auth.partner;
 
-    if (spaceId.isNotEmpty && user != null) {
+    if (spaceId.isNotEmpty && user != null && !world.isLiveTrackingActive) {
       world.initWorldSync(
         spaceId: spaceId,
         currentUserId: user.id,
@@ -107,25 +107,6 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
     final user = authProvider.user;
     final partner = authProvider.partner;
     final spaceId = authProvider.space?.id ?? authProvider.user?.spaceId ?? '';
-
-    // Auto-start live GPS tracking & cloud sync as soon as credentials become available
-    if (spaceId.isNotEmpty && user != null && !worldProvider.isLiveTrackingActive) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && !worldProvider.isLiveTrackingActive) {
-          worldProvider.initWorldSync(
-            spaceId: spaceId,
-            currentUserId: user.id,
-            partnerId: partner?.id,
-          );
-          worldProvider.startLiveTracking(
-            spaceId: spaceId,
-            currentUserId: user.id,
-            nickname: user.nickname,
-            avatarUrl: user.avatarUrl,
-          );
-        }
-      });
-    }
 
     final myLoc = (user != null ? worldProvider.getUserLocation(user.id) : null) ?? worldProvider.myLocation;
     final partnerLoc = (partner != null ? worldProvider.getUserLocation(partner.id) : null) ?? worldProvider.partnerLocation;
@@ -434,53 +415,6 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
                       ],
                       color: AppColors.terra.withOpacity(0.85),
                       strokeWidth: 3.5,
-                    ),
-                  ],
-                ),
-
-              // Floating Midpoint Distance Badge along the Tether Line
-              if (myLoc != null &&
-                  partnerLoc != null &&
-                  distanceKm != null &&
-                  (myLoc.lat != 0.0 || myLoc.lng != 0.0) &&
-                  (partnerLoc.lat != 0.0 || partnerLoc.lng != 0.0))
-                MarkerLayer(
-                  markers: [
-                    Marker(
-                      point: LatLng(
-                        (myLoc.lat + partnerLoc.lat) / 2,
-                        (myLoc.lng + partnerLoc.lng) / 2,
-                      ),
-                      width: 140,
-                      height: 32,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: (isDark ? const Color(0xFF191823) : Colors.white).withOpacity(0.92),
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: AppColors.terra, width: 1.2),
-                          boxShadow: const [
-                            BoxShadow(color: Colors.black26, blurRadius: 4, offset: Offset(0, 2)),
-                          ],
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Text('♥ ', style: TextStyle(color: AppColors.terra, fontSize: 10)),
-                            Text(
-                              distanceKm < 1.0
-                                  ? '${(distanceKm * 1000).round()} m'
-                                  : '${distanceKm.toStringAsFixed(1)} km',
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                                color: isDark ? Colors.white : AppColors.lightInk,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
                     ),
                   ],
                 ),

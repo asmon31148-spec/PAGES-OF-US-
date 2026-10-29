@@ -106,7 +106,7 @@ class _StageScreenState extends State<StageScreen> {
                 color: AppColors.sage,
                 child: SingleChildScrollView(
                   physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.only(bottom: 32),
+                  padding: const EdgeInsets.only(bottom: 4),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -283,7 +283,6 @@ class _StageScreenState extends State<StageScreen> {
 
                       // 6. Daily Sync Blind Envelope Connection (Question & Answer)
                       const StageDailySyncCard(),
-                      const SizedBox(height: 16),
                     ],
                   ),
                 ),

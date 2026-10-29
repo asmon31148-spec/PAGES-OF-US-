@@ -204,6 +204,46 @@ class FirebaseService {
     return updatedSpace;
   }
 
+  static Future<SpaceModel> disconnectPartner({
+    required UserProfile currentUser,
+    required SpaceModel currentSpace,
+  }) async {
+    // 1. Remove currentUser from currentSpace.members in Firestore
+    final remainingMembers = currentSpace.members.where((id) => id != currentUser.id).toList();
+    final updatedCurrentSpace = SpaceModel(
+      id: currentSpace.id,
+      name: currentSpace.name,
+      pairCode: currentSpace.pairCode,
+      partnerId: '',
+      members: remainingMembers,
+      createdAt: currentSpace.createdAt,
+    );
+    await firestore
+        .collection('spaces')
+        .doc(currentSpace.id)
+        .set(updatedCurrentSpace.toJson(), SetOptions(merge: true));
+
+    // 2. Create a fresh personal sanctuary space for currentUser
+    final newSpaceId = 'space_${DateTime.now().millisecondsSinceEpoch}';
+    final newPairCode = (newSpaceId.hashCode.abs() % 900000 + 100000).toString();
+    final newSpace = SpaceModel(
+      id: newSpaceId,
+      name: 'Our Sanctuary',
+      pairCode: newPairCode,
+      members: [currentUser.id],
+      createdAt: DateTime.now().toIso8601String(),
+    );
+
+    await firestore.collection('spaces').doc(newSpaceId).set(newSpace.toJson());
+    await firestore.collection('pair_codes').doc(newPairCode).set({'spaceId': newSpaceId});
+
+    // 3. Update currentUser's spaceId to the new space
+    final updatedUser = currentUser.copyWith(spaceId: newSpaceId);
+    await saveUserProfile(updatedUser);
+
+    return newSpace;
+  }
+
   // Feature Documents (Anniversary, Moods, Pinned Notes)
   static Stream<DocumentSnapshot<Map<String, dynamic>>> streamSpace(String spaceId) {
     return firestore.collection('spaces').doc(spaceId).snapshots();
