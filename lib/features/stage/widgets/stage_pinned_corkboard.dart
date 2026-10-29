@@ -43,13 +43,15 @@ class _StagePinnedCorkboardState extends State<StagePinnedCorkboard> {
             : 'Partner');
 
     return Container(
-      margin: const EdgeInsets.symmetric(vertical: 6),
+      margin: EdgeInsets.zero,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
         color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
         border: Border(
-          top: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
-          bottom: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+          bottom: BorderSide(
+            color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+            width: 0.6,
+          ),
         ),
       ),
       child: Column(
@@ -58,14 +60,19 @@ class _StagePinnedCorkboardState extends State<StagePinnedCorkboard> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'PINNED FOR TODAY 📌',
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 1,
-                  color: isDark ? AppColors.darkSoft : AppColors.lightSoft,
-                ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('📌 ', style: TextStyle(fontSize: 13)),
+                  Text(
+                    'Pinned For Today',
+                    style: TextStyle(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? AppColors.darkInk : AppColors.lightInk,
+                    ),
+                  ),
+                ],
               ),
               if (!_isEditing)
                 GestureDetector(
@@ -73,12 +80,19 @@ class _StagePinnedCorkboardState extends State<StagePinnedCorkboard> {
                     _noteController.text = myNote ?? '';
                     setState(() => _isEditing = true);
                   },
-                  child: const Text(
-                    'Write Note ✎',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.sageLight,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: AppColors.sage.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Text(
+                      'Write Note ✎',
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.sage,
+                      ),
                     ),
                   ),
                 ),
@@ -168,16 +182,18 @@ class _StagePinnedCorkboardState extends State<StagePinnedCorkboard> {
                         Text(
                           'From You',
                           style: TextStyle(
-                            fontSize: 10,
+                            fontSize: 10.5,
                             fontWeight: FontWeight.bold,
-                            color: isDark ? AppColors.darkSoft : AppColors.lightSoft,
+                            letterSpacing: 0.2,
+                            color: isDark ? AppColors.sageLight : AppColors.sage,
                           ),
                         ),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 5),
                         Text(
                           myNote?.isNotEmpty == true ? myNote! : 'Tap write note above...',
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: 12.5,
+                            height: 1.35,
                             fontStyle: myNote?.isNotEmpty == true
                                 ? FontStyle.normal
                                 : FontStyle.italic,
@@ -210,18 +226,20 @@ class _StagePinnedCorkboardState extends State<StagePinnedCorkboard> {
                         Text(
                           'From $partnerDisplayName',
                           style: const TextStyle(
-                            fontSize: 10,
+                            fontSize: 10.5,
                             fontWeight: FontWeight.bold,
+                            letterSpacing: 0.2,
                             color: AppColors.terra,
                           ),
                         ),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 5),
                         Text(
                           partnerNote?.isNotEmpty == true
                               ? partnerNote!
                               : 'No note pinned yet 🍃',
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: 12.5,
+                            height: 1.35,
                             fontStyle: partnerNote?.isNotEmpty == true
                                 ? FontStyle.normal
                                 : FontStyle.italic,

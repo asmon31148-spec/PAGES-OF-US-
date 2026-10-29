@@ -92,13 +92,15 @@ class _StageDailySyncCardState extends State<StageDailySyncCard> {
     final canSubmit = !_isSubmitting && _answerController.text.trim().isNotEmpty;
 
     return Container(
-      margin: const EdgeInsets.symmetric(vertical: 6),
+      margin: EdgeInsets.zero,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       decoration: BoxDecoration(
         color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
         border: Border(
-          top: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
-          bottom: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+          bottom: BorderSide(
+            color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+            width: 0.8,
+          ),
         ),
       ),
       child: Column(
@@ -239,14 +241,15 @@ class _StageDailySyncCardState extends State<StageDailySyncCard> {
           ),
           const SizedBox(height: 12),
 
-          // Question Prompt
+          // Question Prompt (Hero Focal Point of the Home Page)
           Text(
             prompt,
             style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
               color: isDark ? AppColors.darkInk : AppColors.lightInk,
-              height: 1.3,
+              height: 1.35,
+              letterSpacing: -0.2,
             ),
           ),
           const SizedBox(height: 16),

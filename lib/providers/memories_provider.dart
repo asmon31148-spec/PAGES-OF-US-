@@ -51,6 +51,10 @@ class MemoriesProvider extends ChangeNotifier {
   RealtimeChannel? _lettersChannel;
   RealtimeChannel? _milestonesChannel;
 
+  String? _currentUserId;
+  String? _lastPreservedMemoryId;
+  String? _lastSentLetterId;
+
   MemoriesProvider() {
     _initVoicePlayerListeners();
   }
@@ -167,6 +171,7 @@ class MemoriesProvider extends ChangeNotifier {
     required String currentUserId,
     String? partnerNickname,
   }) async {
+    _currentUserId = currentUserId;
     _isLoading = true;
     notifyListeners();
 
@@ -182,18 +187,31 @@ class MemoriesProvider extends ChangeNotifier {
     // Setup Supabase Realtime Channels
     final supabase = SupabaseService.client;
     if (supabase != null) {
-      _memoriesChannel = supabase
-          .channel('memories_$spaceId')
+      _memoriesChannel = supabase.channel(
+        'memories_$spaceId',
+        opts: const RealtimeChannelConfig(ack: false, self: false),
+      );
+      _memoriesChannel!
           .onBroadcast(
             event: 'NEW_MEMORY',
-            callback: (payload) {
-              if (payload['senderId'] != currentUserId) {
+            callback: (rawPayload) {
+              final data = (rawPayload['payload'] is Map<String, dynamic>)
+                  ? rawPayload['payload'] as Map<String, dynamic>
+                  : rawPayload;
+              final senderId = data['senderId']?.toString() ?? rawPayload['senderId']?.toString();
+              final memoryId = data['id']?.toString() ?? rawPayload['id']?.toString() ?? '';
+
+              // Never notify if sender is the current user or this is the memory we just created
+              if (senderId != null &&
+                  senderId.isNotEmpty &&
+                  senderId != _currentUserId &&
+                  memoryId != _lastPreservedMemoryId) {
                 NotificationService.showNewMemoryNotification(
                   partnerNickname: partnerNickname ?? 'Partner',
-                  type: payload['type'] ?? 'photo',
-                  title: payload['title'] ?? 'New Memory',
-                  caption: payload['caption'] ?? '',
-                  id: payload['id'] ?? '',
+                  type: data['type']?.toString() ?? 'photo',
+                  title: data['title']?.toString() ?? 'New Memory',
+                  caption: data['caption']?.toString() ?? '',
+                  id: memoryId,
                 );
               }
             },
@@ -211,18 +229,31 @@ class MemoriesProvider extends ChangeNotifier {
           )
           .subscribe();
 
-      _lettersChannel = supabase
-          .channel('letters_$spaceId')
+      _lettersChannel = supabase.channel(
+        'letters_$spaceId',
+        opts: const RealtimeChannelConfig(ack: false, self: false),
+      );
+      _lettersChannel!
           .onBroadcast(
             event: 'NEW_LETTER',
-            callback: (payload) {
-              if (payload['senderId'] != currentUserId) {
+            callback: (rawPayload) {
+              final data = (rawPayload['payload'] is Map<String, dynamic>)
+                  ? rawPayload['payload'] as Map<String, dynamic>
+                  : rawPayload;
+              final senderId = data['senderId']?.toString() ?? rawPayload['senderId']?.toString();
+              final letterId = data['id']?.toString() ?? rawPayload['id']?.toString() ?? '';
+
+              // Never notify if sender is the current user or this is the letter we just created
+              if (senderId != null &&
+                  senderId.isNotEmpty &&
+                  senderId != _currentUserId &&
+                  letterId != _lastSentLetterId) {
                 NotificationService.showNewMemoryNotification(
                   partnerNickname: partnerNickname ?? 'Partner',
                   type: 'letter',
-                  title: payload['title'] ?? 'Love Letter',
-                  caption: payload['caption'] ?? '',
-                  id: payload['id'] ?? '',
+                  title: data['title']?.toString() ?? 'Love Letter',
+                  caption: data['caption']?.toString() ?? '',
+                  id: letterId,
                 );
               }
             },
@@ -507,6 +538,8 @@ class MemoriesProvider extends ChangeNotifier {
       isMine: true,
     );
 
+    _currentUserId = currentUserId;
+    _lastPreservedMemoryId = newId;
     _memories.insert(0, optimisticItem);
     notifyListeners();
 
@@ -571,6 +604,8 @@ class MemoriesProvider extends ChangeNotifier {
       isRead: false,
     );
 
+    _currentUserId = author;
+    _lastSentLetterId = newId;
     _letters.insert(0, newLetter);
     notifyListeners();
 

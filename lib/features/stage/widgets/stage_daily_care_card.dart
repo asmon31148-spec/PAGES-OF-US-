@@ -25,16 +25,18 @@ class StageDailyCareCard extends StatelessWidget {
     return GestureDetector(
       onTap: () => DailyCareScreen.show(context),
       child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 6),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        margin: EdgeInsets.zero,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
           color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
           border: Border(
             top: BorderSide(
               color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+              width: 0.8,
             ),
             bottom: BorderSide(
               color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+              width: 0.6,
             ),
           ),
         ),
@@ -42,14 +44,14 @@ class StageDailyCareCard extends StatelessWidget {
           children: [
             // Left Glowing Icon
             Container(
-              width: 36,
-              height: 36,
+              width: 38,
+              height: 38,
               decoration: BoxDecoration(
-                color: AppColors.rose.withOpacity(0.12),
-                borderRadius: BorderRadius.circular(12),
+                color: AppColors.rose.withOpacity(0.14),
+                borderRadius: BorderRadius.circular(13),
               ),
               alignment: Alignment.center,
-              child: const Text('💖', style: TextStyle(fontSize: 18)),
+              child: const Text('💖', style: TextStyle(fontSize: 19)),
             ),
             const SizedBox(width: 12),
 
@@ -61,25 +63,26 @@ class StageDailyCareCard extends StatelessWidget {
                   Row(
                     children: [
                       const Text(
-                        'DAILY CARE & CHECKUP',
+                        'Daily Care & Checkup',
                         style: TextStyle(
-                          fontSize: 10,
+                          fontSize: 13.5,
                           fontWeight: FontWeight.bold,
                           color: AppColors.rose,
-                          letterSpacing: 0.5,
+                          letterSpacing: 0.2,
                         ),
                       ),
-                      const SizedBox(width: 6),
+                      const SizedBox(width: 7),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                         decoration: BoxDecoration(
-                          color: AppColors.sage.withOpacity(0.12),
+                          color: AppColors.sage.withOpacity(0.14),
                           borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: AppColors.sage.withOpacity(0.25), width: 0.8),
                         ),
                         child: Text(
                           totalCount > 0 ? '$completedCount/$totalCount Done ✦' : 'Daily Routine',
                           style: const TextStyle(
-                            fontSize: 9,
+                            fontSize: 9.5,
                             fontWeight: FontWeight.bold,
                             color: AppColors.sage,
                           ),
@@ -87,7 +90,7 @@ class StageDailyCareCard extends StatelessWidget {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 3),
                   Text(
                     hasPartner
                         ? 'Loving reminders & mutual checkups for each other ✦'
@@ -95,8 +98,8 @@ class StageDailyCareCard extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      fontSize: 11,
-                      color: isDark ? AppColors.darkInk : AppColors.lightInk,
+                      fontSize: 11.5,
+                      color: isDark ? AppColors.darkSoft : AppColors.lightSoft,
                     ),
                   ),
                 ],
@@ -105,8 +108,8 @@ class StageDailyCareCard extends StatelessWidget {
 
             // Right Chevron
             Icon(
-              Icons.chevron_right,
-              size: 18,
+              Icons.chevron_right_rounded,
+              size: 20,
               color: isDark ? AppColors.darkSoft : AppColors.lightSoft,
             ),
           ],

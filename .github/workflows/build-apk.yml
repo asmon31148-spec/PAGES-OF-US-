@@ -149,30 +149,18 @@ jobs:
           body: |
             ### ✨ What's New in Pages of Us v${{ steps.app_version.outputs.version }}
 
-            - **🗺️ Clean World Map & Live Tether**:
-              - Removed the obstructing midpoint distance pill along the tether line for a clean, unobstructed view.
-              - Live distance and driving estimates remain beautifully displayed in the top card.
+            - **📸 Fixed Photo & Memory Self-Notification**:
+              - Fixed the bug where saving a photo/memory sent a notification to your own phone claiming your partner preserved it.
+              - Added strict sender ID checks and disabled local broadcast echo for real-time memory and letter notifications.
 
-            - **🏡 Seamless Stage Screen Layout**:
-              - Removed the empty space at the bottom under the Daily Sync question card.
-              - Compact, elegant alignment sitting snugly above the sanctuary bottom navigation bar.
+            - **🏡 Option 2: Unified Seamless Feed**:
+              - Removed the fragmented 12px background gaps and double borders between sections.
+              - Daily Care, Pinned Notes, and Daily Sync now flow together as one continuous, luxurious couple feed with sleek 1px hairline dividers.
 
-            - **📍 Smooth Location & Accuracy Prompts**:
-              - Fixed the Google Play Services location accuracy dialog glitch and frozen buttons.
-              - Debounced location acquisition ensures smooth, single-tap location enabling without loops.
-
-            - **✨ Touch Sanctuary Header Spacing**:
-              - Fixed the top pill navigation bar overlapping the dual touch counter cards.
-              - Dynamically adapts to status bar safe area and camera notches on all devices.
-
-            - **🌿 Disconnect Partner & Flexible Pairing**:
-              - Added a safe, dedicated option in Profile settings to disconnect/unpair from a partner.
-              - Real-time instant sync: both partners cleanly return to solo sanctuaries with new pair codes ready.
-              - Easy one-tap shortcut to enter partner's code or copy your own code.
-
-            - **⚡ Performance & Smoothness**:
-              - Eliminated re-entrant build listeners to prevent micro-stutters and crashes.
-              - Pure native 60fps Flutter rendering across all sanctuary modules.
+            - **✨ Typography & Visual Focus Makeover**:
+              - The Daily Sync prompt is now elevated to 18px bold as the true emotional focal hero of the home screen.
+              - Section headers are upgraded from tiny 10px labels to crisp, elegant 13.5px titles with expressive color personalities.
+              - Note cards feature richer 12.5px text and clear author badges for an intimate, readable handwritten aesthetic.
           files: |
             build/app/outputs/flutter-apk/PagesOfUs.apk
             build/app/outputs/flutter-apk/app-release.apk
