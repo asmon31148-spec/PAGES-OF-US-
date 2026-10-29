@@ -31,13 +31,13 @@ class _TimelineSubviewState extends State<TimelineSubview> {
   @override
   Widget build(BuildContext context) {
     final isDark = context.watch<ThemeProvider>().isDark;
-    final memoriesProvider = context.watch<MemoriesProvider>();
+    final allMilestones = context.select<MemoriesProvider, List<MilestoneItem>>(
+      (p) => p.milestones,
+    );
     final authProvider = context.watch<AuthProvider>();
     final spaceId = authProvider.space?.id ?? 'default_space';
     final user = authProvider.user;
     final partnerNickname = authProvider.partner?.nickname ?? 'Partner';
-
-    final allMilestones = memoriesProvider.milestones;
 
     // Filter milestones by selected branch
     final List<MilestoneItem> filteredMilestones = allMilestones.where((m) {

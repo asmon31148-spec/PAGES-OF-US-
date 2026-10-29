@@ -40,7 +40,7 @@ class _MemoriesScreenState extends State<MemoriesScreen> {
   Widget build(BuildContext context) {
     final isDark = context.watch<ThemeProvider>().isDark;
     final authProvider = context.watch<AuthProvider>();
-    final memoriesProvider = context.watch<MemoriesProvider>();
+    final memoriesProvider = context.read<MemoriesProvider>();
 
     final user = authProvider.user;
     final spaceId = authProvider.space?.id ?? 'default_space';

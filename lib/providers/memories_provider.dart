@@ -10,6 +10,7 @@ import '../data/models/milestone_item.dart';
 import '../data/services/supabase_service.dart';
 import '../data/services/firebase_service.dart';
 import '../core/services/notification_service.dart';
+import '../core/services/audio_cache_service.dart';
 import 'audio_provider.dart';
 
 class MemoriesProvider extends ChangeNotifier {
@@ -59,21 +60,20 @@ class MemoriesProvider extends ChangeNotifier {
     _initVoicePlayerListeners();
   }
 
+  int _lastPositionNotifyMs = 0;
+
   void _initVoicePlayerListeners() {
-    _voicePosSub = _voicePlayer.onPositionChanged.listen((pos) async {
+    _voicePosSub = _voicePlayer.onPositionChanged.listen((pos) {
       _voicePosition = pos;
-      if (_voiceDuration.inMilliseconds == 0 || _voiceDuration == const Duration(seconds: 15)) {
-        try {
-          final d = await _voicePlayer.getDuration();
-          if (d != null && d.inMilliseconds > 0) {
-            _voiceDuration = d;
-          }
-        } catch (_) {}
+      final now = DateTime.now().millisecondsSinceEpoch;
+      // Throttle position updates to 4-5 fps (~220ms) to eliminate main-thread stuttering
+      if (now - _lastPositionNotifyMs > 220) {
+        _lastPositionNotifyMs = now;
+        notifyListeners();
       }
-      notifyListeners();
     });
     _voiceDurSub = _voicePlayer.onDurationChanged.listen((dur) {
-      if (dur.inMilliseconds > 0) {
+      if (dur.inMilliseconds > 0 && dur != _voiceDuration) {
         _voiceDuration = dur;
         notifyListeners();
       }
@@ -81,37 +81,15 @@ class MemoriesProvider extends ChangeNotifier {
     _voiceStateSub = _voicePlayer.onPlayerStateChanged.listen((state) {
       _playerState = state;
       if (state == PlayerState.completed || state == PlayerState.stopped) {
-        _stopPositionTicker();
         _playingVoiceId = null;
         _voicePosition = Duration.zero;
-      } else if (state == PlayerState.playing) {
-        _startPositionTicker();
       }
       notifyListeners();
     });
   }
 
   void _startPositionTicker() {
-    _positionTicker?.cancel();
-    _positionTicker = Timer.periodic(const Duration(milliseconds: 100), (_) async {
-      if (_playerState == PlayerState.playing) {
-        try {
-          final pos = await _voicePlayer.getCurrentPosition();
-          if (pos != null) {
-            _voicePosition = pos;
-          }
-          if (_voiceDuration.inMilliseconds == 0 || _voiceDuration == const Duration(seconds: 15)) {
-            final dur = await _voicePlayer.getDuration();
-            if (dur != null && dur.inMilliseconds > 0) {
-              _voiceDuration = dur;
-            }
-          }
-          notifyListeners();
-        } catch (_) {}
-      } else if (_playerState != PlayerState.paused) {
-        _stopPositionTicker();
-      }
-    });
+    // Ticker removed to eliminate 10x/sec platform channel spam and widget rebuild thrashing
   }
 
   void _stopPositionTicker() {
@@ -432,14 +410,12 @@ class MemoriesProvider extends ChangeNotifier {
       ambientAudio?.duckForMedia();
       await _voicePlayer.resume();
       _playerState = PlayerState.playing;
-      _startPositionTicker();
       notifyListeners();
       return;
     }
 
     // 3. New voice note -> Start fresh from 0
     try {
-      _stopPositionTicker();
       ambientAudio?.duckForMedia();
       _playingVoiceId = id;
       _voicePosition = Duration.zero;
@@ -449,19 +425,20 @@ class MemoriesProvider extends ChangeNotifier {
 
       await _voicePlayer.stop();
 
-      Source source;
       final cleanUrl = url.trim();
-      if (cleanUrl.startsWith('http://') || cleanUrl.startsWith('https://')) {
-        source = UrlSource(cleanUrl);
-      } else if (cleanUrl.startsWith('assets/')) {
-        source = AssetSource(cleanUrl);
+      final localOrCached = await AudioCacheService.getCachedAudioPath(cleanUrl);
+
+      Source source;
+      if (localOrCached.startsWith('http://') || localOrCached.startsWith('https://')) {
+        source = UrlSource(localOrCached);
+      } else if (localOrCached.startsWith('assets/')) {
+        source = AssetSource(localOrCached);
       } else {
-        source = DeviceFileSource(cleanUrl.replaceFirst('file://', ''));
+        source = DeviceFileSource(localOrCached.replaceFirst('file://', ''));
       }
 
       await _voicePlayer.setPlaybackRate(_playbackSpeed);
       await _voicePlayer.play(source);
-      _startPositionTicker();
 
       try {
         final d = await _voicePlayer.getDuration();
@@ -471,7 +448,6 @@ class MemoriesProvider extends ChangeNotifier {
         }
       } catch (_) {}
     } catch (_) {
-      _stopPositionTicker();
       ambientAudio?.restoreFromMedia();
       _playingVoiceId = null;
       _playerState = PlayerState.stopped;

@@ -9,6 +9,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:audioplayers/audioplayers.dart';
 
 import '../../../core/services/media_upload_service.dart';
+import '../../../core/services/audio_cache_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/full_screen_video_player.dart';
 import '../../../data/models/vault_item.dart';
@@ -119,7 +120,14 @@ class _VaultDetailScreenState extends State<VaultDetailScreen> {
     } else {
       // Lower or pause background music so voice memo is crystal clear
       await context.read<VaultProvider>().stopVaultMusic();
-      await _voicePlayer.play(UrlSource(_vault.voiceNoteUrl!));
+      final cached = await AudioCacheService.getCachedAudioPath(_vault.voiceNoteUrl!);
+      Source source;
+      if (cached.startsWith('http://') || cached.startsWith('https://')) {
+        source = UrlSource(cached);
+      } else {
+        source = DeviceFileSource(cached);
+      }
+      await _voicePlayer.play(source);
     }
   }
 

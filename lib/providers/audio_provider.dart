@@ -847,12 +847,14 @@ class AudioProvider extends ChangeNotifier {
   void duckForMedia() {
     if (_isSongPlaying) {
       _wasSongPlayingBeforeDuck = true;
-      _songPlayer.pause();
       _isSongPlaying = false;
+      _songPlayer.pause().catchError((_) {});
     }
     if (_isAtmospherePlaying) {
       _wasAtmospherePlayingBeforeDuck = true;
-      pauseAtmosphere();
+      _isAtmospherePlaying = false;
+      // Pause atmosphere stems asynchronously without blocking the UI thread
+      Future.microtask(() => pauseAtmosphere());
     }
     notifyListeners();
   }

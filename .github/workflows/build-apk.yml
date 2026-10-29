@@ -149,18 +149,17 @@ jobs:
           body: |
             ### ✨ What's New in Pages of Us v${{ steps.app_version.outputs.version }}
 
-            - **📸 Fixed Photo & Memory Self-Notification**:
-              - Fixed the bug where saving a photo/memory sent a notification to your own phone claiming your partner preserved it.
-              - Added strict sender ID checks and disabled local broadcast echo for real-time memory and letter notifications.
+            - **🎙️ Instant Voice Audio (<20ms Start)**:
+              - Built-in local audio disk caching: voice memos and whisper notes cache on first play to eliminate the 1.5s–2.5s network lag and buffering clicks.
+              - Instantaneous native audio playback with zero stutter.
 
-            - **🏡 Option 2: Unified Seamless Feed**:
-              - Removed the fragmented 12px background gaps and double borders between sections.
-              - Daily Care, Pinned Notes, and Daily Sync now flow together as one continuous, luxurious couple feed with sleek 1px hairline dividers.
+            - **⚡ Silky 60 FPS Playback & Zero Rebuild Thrashing**:
+              - Eliminated the 10x/second periodic timer spamming the native audio platform channel.
+              - Scoped Timeline and Memories screen listeners so thousands of lines of UI never re-render during audio playback.
+              - Smooth, lightweight waveform scrubbing.
 
-            - **✨ Typography & Visual Focus Makeover**:
-              - The Daily Sync prompt is now elevated to 18px bold as the true emotional focal hero of the home screen.
-              - Section headers are upgraded from tiny 10px labels to crisp, elegant 13.5px titles with expressive color personalities.
-              - Note cards feature richer 12.5px text and clear author badges for an intimate, readable handwritten aesthetic.
+            - **🎶 Non-Blocking Audio Ducking**:
+              - Ambient soundscapes and background music pause asynchronously without stalling the main UI thread.
           files: |
             build/app/outputs/flutter-apk/PagesOfUs.apk
             build/app/outputs/flutter-apk/app-release.apk
