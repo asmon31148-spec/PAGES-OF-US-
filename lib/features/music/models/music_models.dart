@@ -110,4 +110,7 @@ class AtmosphereStem {
     required this.iconColor,
     this.volume = 0.5,
   });
+
+  bool get isActive => volume > 0.0;
+  int get percentage => (volume * 100).round();
 }
