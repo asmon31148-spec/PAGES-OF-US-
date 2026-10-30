@@ -66,7 +66,7 @@ class _SanctuaryVoicePlayerState extends State<SanctuaryVoicePlayer> {
   }
 
   void _seekToFraction(VoicePlaybackService service, double fraction) {
-    if (!service.isActive(widget.id)) {
+    if (service.activeId != widget.id) {
       _handleToggle(service);
       return;
     }

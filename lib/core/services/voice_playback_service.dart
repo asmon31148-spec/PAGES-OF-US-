@@ -37,6 +37,7 @@ class VoicePlaybackService extends ChangeNotifier {
   final ValueNotifier<Duration> positionNotifier = ValueNotifier<Duration>(Duration.zero);
 
   String? get activeId => _activeId;
+  bool isActive(String id) => _activeId == id;
   String? get activeUrl => _activeUrl;
   PlayerState get playerState => _playerState;
   bool get isPlaying => _playerState == PlayerState.playing;
