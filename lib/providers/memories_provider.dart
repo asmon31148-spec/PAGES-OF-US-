@@ -316,7 +316,7 @@ class MemoriesProvider extends ChangeNotifier {
 
       // Background prefetch for instant 0ms voice whisper playback
       final voiceUrls = _memories
-          .where((m) => m.type == 'voice' || (m.voiceUrl != null && m.voiceUrl!.isNotEmpty))
+          .where((m) => m.mediaType == 'audio' || (m.voiceUrl != null && m.voiceUrl!.isNotEmpty))
           .map((m) => (m.voiceUrl != null && m.voiceUrl!.isNotEmpty) ? m.voiceUrl! : m.mediaUrl)
           .toList();
       AudioCacheService.prefetchList(voiceUrls);
