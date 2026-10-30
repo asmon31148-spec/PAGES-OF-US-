@@ -66,6 +66,11 @@ class _SanctuaryVoicePlayerState extends State<SanctuaryVoicePlayer> {
   }
 
   void _seekToFraction(VoicePlaybackService service, double fraction) {
+    if (!service.isActive(widget.id)) {
+      _handleToggle(service);
+      return;
+    }
+
     Duration dur = service.duration;
     if (dur.inMilliseconds == 0 && widget.durationSeconds != null && widget.durationSeconds! > 0) {
       dur = Duration(seconds: widget.durationSeconds!);

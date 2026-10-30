@@ -421,6 +421,8 @@ class _TimelineSubviewState extends State<TimelineSubview> {
                               borderRadius: BorderRadius.circular(8),
                               child: CachedNetworkImage(
                                 imageUrl: milestone.imageUrl!,
+                                memCacheWidth: 120,
+                                memCacheHeight: 120,
                                 width: 44,
                                 height: 44,
                                 fit: BoxFit.cover,
@@ -624,6 +626,7 @@ class _TimelineSubviewState extends State<TimelineSubview> {
                           borderRadius: BorderRadius.circular(16),
                           child: CachedNetworkImage(
                             imageUrl: milestone.imageUrl!,
+                            memCacheWidth: 800,
                             width: double.infinity,
                             fit: BoxFit.cover,
                             placeholder: (_, __) => Container(
@@ -642,10 +645,10 @@ class _TimelineSubviewState extends State<TimelineSubview> {
                       ],
 
                       // Attached Audio Voice Whisper Player
-                      if (milestone.hasAudio) ...[
+                      if (milestone.hasAudio && milestone.audioUrl != null && milestone.audioUrl!.isNotEmpty) ...[
                         SanctuaryVoicePlayer(
                           id: 'milestone_' + milestone.id,
-                          audioUrl: milestone.audioUrl!,
+                          audioUrl: milestone.audioUrl ?? '',
                           durationSeconds: milestone.audioDuration,
                           isDark: isDark,
                           ambientAudio: audioProvider,
@@ -768,6 +771,9 @@ class _AddMilestoneModalSheetState extends State<_AddMilestoneModalSheet> {
   @override
   void dispose() {
     _recordTimer?.cancel();
+    if (_isRecording) {
+      _audioRecorder.stop().catchError((_) => null);
+    }
     _audioRecorder.dispose();
     _titleCtrl.dispose();
     _storyCtrl.dispose();
@@ -825,6 +831,15 @@ class _AddMilestoneModalSheetState extends State<_AddMilestoneModalSheet> {
               await _toggleAudioRecording();
             }
           });
+        } else {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Please grant microphone permission in Settings to record voice notes.'),
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          }
         }
       } catch (_) {}
     }

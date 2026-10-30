@@ -135,6 +135,7 @@ class MainNavigationScaffold extends StatefulWidget {
 
 class _MainNavigationScaffoldState extends State<MainNavigationScaffold> with WidgetsBindingObserver {
   int _currentIndex = 0;
+  final Set<int> _loadedTabs = {0};
   String? _syncedSpaceId;
   String? _syncedPartnerId;
   StreamSubscription? _notifSub;
@@ -148,13 +149,25 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold> with Wi
     _notifSub = NotificationService.selectNotificationStream.stream.listen((payload) {
       if (!mounted || payload == null) return;
       if (payload == 'tab_0' || payload == 'daily_sync' || payload == 'pairing_success' || payload == 'couple_goals') {
-        setState(() => _currentIndex = 0);
+        setState(() {
+          _currentIndex = 0;
+          _loadedTabs.add(0);
+        });
       } else if (payload == 'tab_1' || payload == 'partner_weather') {
-        setState(() => _currentIndex = 1);
+        setState(() {
+          _currentIndex = 1;
+          _loadedTabs.add(1);
+        });
       } else if (payload == 'tab_2' || payload.startsWith('memory_') || payload.startsWith('letter_')) {
-        setState(() => _currentIndex = 2);
+        setState(() {
+          _currentIndex = 2;
+          _loadedTabs.add(2);
+        });
       } else if (payload == 'tab_3' || payload.startsWith('vault_')) {
-        setState(() => _currentIndex = 3);
+        setState(() {
+          _currentIndex = 3;
+          _loadedTabs.add(3);
+        });
       } else if (payload == 'listen_together') {
         Navigator.of(context).push(
           MaterialPageRoute(builder: (_) => const ListenTogetherScreen()),
@@ -242,12 +255,18 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold> with Wi
 
     final screens = [
       StageScreen(
-        onGoToMemories: () => setState(() => _currentIndex = 2),
-        onSelectTab: (index) => setState(() => _currentIndex = index),
+        onGoToMemories: () => setState(() {
+          _currentIndex = 2;
+          _loadedTabs.add(2);
+        }),
+        onSelectTab: (index) => setState(() {
+          _currentIndex = index;
+          _loadedTabs.add(index);
+        }),
       ),
-      const WorldScreen(),
-      const MemoriesScreen(),
-      const VaultScreen(),
+      _loadedTabs.contains(1) ? const WorldScreen() : const SizedBox.shrink(),
+      _loadedTabs.contains(2) ? const MemoriesScreen() : const SizedBox.shrink(),
+      _loadedTabs.contains(3) ? const VaultScreen() : const SizedBox.shrink(),
     ];
 
     return PopScope(
@@ -255,7 +274,10 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold> with Wi
       onPopInvokedWithResult: (didPop, result) {
         if (didPop) return;
         if (_currentIndex != 0) {
-          setState(() => _currentIndex = 0);
+          setState(() {
+            _currentIndex = 0;
+            _loadedTabs.add(0);
+          });
         } else {
           SystemNavigator.pop();
         }
@@ -269,7 +291,10 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold> with Wi
           ),
           bottomNavigationBar: CustomBottomNav(
             currentIndex: _currentIndex,
-            onTabSelected: (index) => setState(() => _currentIndex = index),
+            onTabSelected: (index) => setState(() {
+              _currentIndex = index;
+              _loadedTabs.add(index);
+            }),
           ),
         ),
       ),

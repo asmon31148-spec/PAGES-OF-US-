@@ -30,6 +30,7 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
   final MapController _mapController = MapController();
   AnimationController? _mapAnimationController;
   bool _isMapReady = false;
+  bool _hasInitialMapCentered = false;
   bool _isFullScreenMap = false;
   MapBasemapStyle _mapStyle = MapBasemapStyle.dark;
 
@@ -54,16 +55,17 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
     final user = auth.user;
     final partner = auth.partner;
 
-    if (spaceId.isNotEmpty && user != null && !world.isLiveTrackingActive) {
+    if (user != null && !world.isLiveTrackingActive) {
+      final effectiveSpaceId = spaceId.isNotEmpty ? spaceId : 'solo_${user.id}';
       world.initWorldSync(
-        spaceId: spaceId,
+        spaceId: effectiveSpaceId,
         currentUserId: user.id,
         partnerId: partner?.id,
       );
 
       // Automatically acquire GPS and begin continuous real-time movement streaming
       world.startLiveTracking(
-        spaceId: spaceId,
+        spaceId: effectiveSpaceId,
         currentUserId: user.id,
         nickname: user.nickname,
         avatarUrl: user.avatarUrl,
@@ -136,6 +138,16 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
         : (hasPartner && partnerLoc != null && (partnerLoc.lat != 0.0 || partnerLoc.lng != 0.0))
             ? LatLng(partnerLoc.lat, partnerLoc.lng)
             : const LatLng(20.0, 0.0);
+
+    // Automatic camera fly-to when user's location is first acquired
+    if (_isMapReady && !_hasInitialMapCentered && myLoc != null && (myLoc.lat != 0.0 || myLoc.lng != 0.0)) {
+      _hasInitialMapCentered = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _animatedMapMove(LatLng(myLoc.lat, myLoc.lng), 15.0);
+        }
+      });
+    }
 
     return PopScope(
       canPop: !_isFullScreenMap,
@@ -220,9 +232,10 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
                               color: AppColors.sage,
                               isDark: isDark,
                               onTap: () {
-                                if (user != null && spaceId.isNotEmpty) {
+                                if (user != null) {
+                                  final effectiveSpaceId = spaceId.isNotEmpty ? spaceId : 'solo_${user.id}';
                                   worldProvider.updateMyPosition(
-                                    spaceId: spaceId,
+                                    spaceId: effectiveSpaceId,
                                     currentUserId: user.id,
                                     nickname: user.nickname,
                                     avatarUrl: user.avatarUrl,
@@ -685,6 +698,15 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
                       );
                     } else {
                       _startLiveWorldTracking();
+                      if (user != null) {
+                        final effectiveSpaceId = spaceId.isNotEmpty ? spaceId : 'solo_${user.id}';
+                        worldProvider.updateMyPosition(
+                          spaceId: effectiveSpaceId,
+                          currentUserId: user.id,
+                          nickname: user.nickname,
+                          avatarUrl: user.avatarUrl,
+                        );
+                      }
                     }
                   },
                   tooltip: 'Center on Me',

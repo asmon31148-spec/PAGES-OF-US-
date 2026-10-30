@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../providers/theme_provider.dart';
 import '../../../providers/audio_provider.dart';
@@ -273,7 +274,7 @@ class AppTopBar extends StatelessWidget {
                     backgroundColor: forceDark
                         ? AppColors.romanceCard
                         : (isDark ? AppColors.darkCard : AppColors.lightSurface),
-                    backgroundImage: user?.avatarUrl != null ? NetworkImage(user!.avatarUrl!) : null,
+                    backgroundImage: user?.avatarUrl != null ? CachedNetworkImageProvider(user!.avatarUrl!) : null,
                     child: user?.avatarUrl == null
                         ? Text(
                             user?.nickname.isNotEmpty == true

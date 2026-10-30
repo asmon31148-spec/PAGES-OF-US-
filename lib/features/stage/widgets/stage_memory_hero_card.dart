@@ -5,6 +5,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/full_screen_video_player.dart';
+import '../../../data/models/user_profile.dart';
 import '../../../data/models/memory_item.dart';
 import '../../../data/models/vault_item.dart';
 import '../../../providers/theme_provider.dart';
@@ -301,11 +302,17 @@ class _StageMemoryHeroCardState extends State<StageMemoryHeroCard> {
   @override
   Widget build(BuildContext context) {
     final isDark = context.watch<ThemeProvider>().isDark;
-    final auth = context.watch<AuthProvider>();
-    final stage = context.watch<StageProvider>();
-    final vault = context.watch<VaultProvider>();
-    final memories = context.watch<MemoriesProvider>();
-    final world = context.watch<WorldProvider>();
+    final partner = context.select<AuthProvider, UserProfile?>((a) => a.partner);
+    final vaultCount = context.select<VaultProvider, int>((v) => v.vaults.length);
+    final memoryCount = context.select<MemoriesProvider, int>((m) => m.memories.length);
+    final noteCount = context.select<StageProvider, int>((s) => s.pinnedNotes.length);
+    final weatherCondition = context.select<WorldProvider, String?>((w) => w.partnerWeather?.condition);
+
+    final auth = context.read<AuthProvider>();
+    final stage = context.read<StageProvider>();
+    final vault = context.read<VaultProvider>();
+    final memories = context.read<MemoriesProvider>();
+    final world = context.read<WorldProvider>();
 
     final feed = _buildSpotlightFeed(
       context: context,

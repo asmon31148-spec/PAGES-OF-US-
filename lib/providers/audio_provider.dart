@@ -58,6 +58,7 @@ class AudioProvider extends ChangeNotifier {
   int _currentSongIndex = 0;
   bool _isSongPlaying = false;
   Duration _songPosition = Duration.zero;
+  final ValueNotifier<Duration> songPositionNotifier = ValueNotifier<Duration>(Duration.zero);
   Duration _songDuration = const Duration(minutes: 3, seconds: 42);
   bool _isShuffle = false;
   bool _allowBackgroundPlayback = false;
@@ -266,6 +267,7 @@ class AudioProvider extends ChangeNotifier {
 
     _songPlayer.onPositionChanged.listen((pos) {
       _songPosition = pos;
+      songPositionNotifier.value = pos;
       if (audioHandler != null && _isSongPlaying) {
         audioHandler!.updatePlaybackState(
           isPlaying: _isSongPlaying,
@@ -273,7 +275,7 @@ class AudioProvider extends ChangeNotifier {
           duration: _songDuration,
         );
       }
-      notifyListeners();
+      // Zero UI jank: do NOT call notifyListeners() here to prevent entire app rebuild cascades!
     });
 
     _songPlayer.onDurationChanged.listen((dur) {
@@ -401,6 +403,7 @@ class AudioProvider extends ChangeNotifier {
     if (index < 0 || index >= _songs.length) return;
     _currentSongIndex = index;
     _songPosition = Duration.zero;
+    songPositionNotifier.value = Duration.zero;
     _songDuration = Duration(seconds: _songs[index].durationSeconds);
     await _playCurrentSongWithCrossfade();
     notifyListeners();
@@ -428,6 +431,7 @@ class AudioProvider extends ChangeNotifier {
   Future<void> seekSong(Duration position) async {
     await _songPlayer.seek(position);
     _songPosition = position;
+    songPositionNotifier.value = position;
     if (audioHandler != null && _isSongPlaying) {
       audioHandler!.updatePlaybackState(
         isPlaying: _isSongPlaying,

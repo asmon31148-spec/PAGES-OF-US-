@@ -330,11 +330,6 @@ class _MemoryStackViewState extends State<MemoryStackView> {
                     ),
                   ),
                 );
-              } else if (memory.mediaType == 'audio') {
-                final url = memory.voiceUrl != null && memory.voiceUrl!.isNotEmpty
-                    ? memory.voiceUrl!
-                    : memory.mediaUrl;
-                memoriesProvider.playVoiceWhisper(memory.id, url, ambientAudio: audioProvider);
               }
             },
             child: Container(
@@ -360,6 +355,7 @@ class _MemoryStackViewState extends State<MemoryStackView> {
                   if (memory.mediaType == 'photo' && memory.mediaUrl.isNotEmpty)
                     CachedNetworkImage(
                       imageUrl: memory.mediaUrl,
+                      memCacheWidth: 600,
                       fit: BoxFit.cover,
                       placeholder: (_, __) => Container(
                         color: isDark ? AppColors.darkCard : AppColors.lightCard,
@@ -377,6 +373,7 @@ class _MemoryStackViewState extends State<MemoryStackView> {
                         if (videoThumb.isNotEmpty)
                           CachedNetworkImage(
                             imageUrl: videoThumb,
+                            memCacheWidth: 600,
                             fit: BoxFit.cover,
                             placeholder: (_, __) => _buildFilmFallback(memory, isDark),
                             errorWidget: (_, __, ___) => _buildFilmFallback(memory, isDark),
@@ -532,6 +529,7 @@ class _MemoryStackViewState extends State<MemoryStackView> {
                 aspectRatio: 4 / 3,
                 child: CachedNetworkImage(
                   imageUrl: memory.mediaUrl,
+                  memCacheWidth: 800,
                   fit: BoxFit.cover,
                   placeholder: (context, url) => Container(
                     color: isDark ? AppColors.darkCard : AppColors.lightCard,
@@ -642,7 +640,7 @@ class _MemoryStackViewState extends State<MemoryStackView> {
             InteractiveViewer(
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(20),
-                child: CachedNetworkImage(imageUrl: imageUrl, fit: BoxFit.contain),
+                child: CachedNetworkImage(imageUrl: imageUrl, memCacheWidth: 1080, fit: BoxFit.contain),
               ),
             ),
             IconButton(
@@ -688,6 +686,7 @@ class _MemoryStackViewState extends State<MemoryStackView> {
                     imageFilter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
                     child: CachedNetworkImage(
                       imageUrl: thumbnailUrl,
+                      memCacheWidth: 200,
                       fit: BoxFit.cover,
                       color: Colors.black.withOpacity(0.4),
                       colorBlendMode: BlendMode.darken,
@@ -704,6 +703,7 @@ class _MemoryStackViewState extends State<MemoryStackView> {
                 Center(
                   child: CachedNetworkImage(
                     imageUrl: thumbnailUrl,
+                    memCacheWidth: 800,
                     fit: BoxFit.contain, // Keeps native aspect ratio completely intact!
                     placeholder: (_, __) => _buildFilmFallback(memory, isDark),
                     errorWidget: (_, __, ___) => _buildFilmFallback(memory, isDark),
