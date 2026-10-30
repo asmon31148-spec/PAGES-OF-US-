@@ -9,6 +9,8 @@ class SongItem {
   final Color coverColor;
   final bool isLocal;
   final String addedBy;
+  final String? thumbnailUrl;
+  final String? youtubeId;
 
   SongItem({
     required this.id,
@@ -19,6 +21,8 @@ class SongItem {
     required this.coverColor,
     this.isLocal = false,
     this.addedBy = 'Sanctuary',
+    this.thumbnailUrl,
+    this.youtubeId,
   });
 
   String get durationFormatted {
@@ -37,6 +41,8 @@ class SongItem {
       'coverColor': coverColor.value,
       'isLocal': isLocal,
       'addedBy': addedBy,
+      'thumbnailUrl': thumbnailUrl,
+      'youtubeId': youtubeId,
     };
   }
 
@@ -50,6 +56,8 @@ class SongItem {
       coverColor: Color(json['coverColor'] as int? ?? 0xFF86EFAC),
       isLocal: json['isLocal'] as bool? ?? false,
       addedBy: json['addedBy'] as String? ?? 'Sanctuary',
+      thumbnailUrl: json['thumbnailUrl'] as String?,
+      youtubeId: json['youtubeId'] as String?,
     );
   }
 }
@@ -100,9 +108,6 @@ class AtmosphereStem {
     required this.icon,
     required this.audioUrl,
     required this.iconColor,
-    this.volume = 0.0,
+    this.volume = 0.5,
   });
-
-  bool get isActive => volume > 0.01;
-  int get percentage => (volume * 100).round();
 }

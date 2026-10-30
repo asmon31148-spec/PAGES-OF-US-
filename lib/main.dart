@@ -10,6 +10,7 @@ import 'core/theme/app_colors.dart';
 import 'core/services/local_cache_service.dart';
 import 'core/services/audio_handler.dart';
 import 'core/services/notification_service.dart';
+import 'core/services/music_download_service.dart';
 import 'data/services/supabase_service.dart';
 import 'providers/theme_provider.dart';
 import 'providers/auth_provider.dart';
@@ -84,6 +85,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => WorldProvider()),
         ChangeNotifierProvider(create: (_) => MemoriesProvider()),
         ChangeNotifierProvider(create: (_) => VaultProvider()),
+        ChangeNotifierProvider.value(value: MusicDownloadService.instance),
       ],
       child: const PagesOfUsApp(),
     ),

@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../features/music/models/music_models.dart';
+import '../core/services/youtube_music_service.dart';
+import '../core/services/music_download_service.dart';
 import '../core/services/audio_handler.dart';
 import '../core/services/local_cache_service.dart';
 import '../data/services/firebase_service.dart';
@@ -223,6 +225,7 @@ class AudioProvider extends ChangeNotifier {
         title: currentSong.title,
         artist: currentSong.artist,
         duration: _songDuration,
+        artUri: currentSong.thumbnailUrl != null ? Uri.tryParse(currentSong.thumbnailUrl!) : null,
       );
       audioHandler!.updatePlaybackState(
         isPlaying: _isSongPlaying,
@@ -340,6 +343,48 @@ class AudioProvider extends ChangeNotifier {
       _syncNotificationState();
       _broadcastSync('PAUSE', _songPosition.inSeconds);
     } catch (_) {}
+  }
+
+  /// Plays a track from YouTube Music or local offline cache
+  Future<void> playYoutubeTrack(YoutubeTrack track) async {
+    final localPath = MusicDownloadService.instance.getLocalFilePath(track.id);
+    String audioUrl;
+    bool isLocal = false;
+
+    if (localPath != null) {
+      audioUrl = localPath;
+      isLocal = true;
+    } else {
+      final streamUrl = await YoutubeMusicService.instance.getAudioStreamUrl(track.id);
+      if (streamUrl == null) {
+        debugPrint('[AudioProvider] Could not resolve audio stream for ${track.id}');
+        return;
+      }
+      audioUrl = streamUrl;
+      isLocal = false;
+    }
+
+    final newSong = SongItem(
+      id: track.id,
+      youtubeId: track.id,
+      title: track.title,
+      artist: track.artist,
+      durationSeconds: track.durationSeconds,
+      audioUrl: audioUrl,
+      coverColor: const Color(0xFFD97706),
+      isLocal: isLocal,
+      addedBy: 'YouTube Music',
+      thumbnailUrl: track.thumbnailUrl,
+    );
+
+    final existingIdx = _songs.indexWhere((s) => s.id == newSong.id || s.youtubeId == newSong.id);
+    if (existingIdx != -1) {
+      _songs[existingIdx] = newSong;
+      await selectSong(existingIdx);
+    } else {
+      _songs.insert(0, newSong);
+      await selectSong(0);
+    }
   }
 
   Future<void> selectSong(int index) async {

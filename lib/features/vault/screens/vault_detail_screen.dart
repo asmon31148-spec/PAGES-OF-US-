@@ -16,6 +16,8 @@ import '../../../data/models/vault_item.dart';
 import '../../../providers/audio_provider.dart';
 import '../../../providers/vault_provider.dart';
 import '../widgets/vault_emblem.dart';
+import '../widgets/downloaded_music_picker_sheet.dart';
+import '../../../core/services/youtube_music_service.dart';
 import 'new_vault_screen.dart';
 
 class VaultDetailScreen extends StatefulWidget {
@@ -185,6 +187,45 @@ class _VaultDetailScreenState extends State<VaultDetailScreen> {
               }
             }
 
+            Future<void> setDownloadedTrackAsVaultMusic(YoutubeTrack track) async {
+              if (track.localFilePath == null) return;
+              final file = File(track.localFilePath!);
+              setSheetState(() {
+                isUploading = true;
+                uploadStatusText = 'Setting "${track.title}"...';
+              });
+
+              try {
+                final uploadRes = await MediaUploadService.uploadFile(
+                  file,
+                  folder: 'vault_music',
+                );
+
+                final updated = _vault.copyWith(backgroundSong: uploadRes.url);
+                setState(() => _vault = updated);
+                await context.read<VaultProvider>().updateVault(updated, widget.spaceId);
+
+                if (mounted) {
+                  setState(() => _isMusicMuted = false);
+                  await context.read<VaultProvider>().startVaultMusic(uploadRes.url);
+                  Navigator.pop(ctx);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Vault Theme Music set to: ${track.title} 🎵'),
+                      backgroundColor: const Color(0xFF1F1B2C),
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (mounted) {
+                  setSheetState(() => isUploading = false);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Failed to set theme song: $e')),
+                  );
+                }
+              }
+            }
+
             Future<void> pickAndUploadCustomMusic() async {
               try {
                 final result = await FilePicker.platform.pickFiles(
@@ -295,6 +336,76 @@ class _VaultDetailScreenState extends State<VaultDetailScreen> {
                   Expanded(
                     child: ListView(
                       children: [
+                        // --- 0. Select From In-App Downloaded Music ---
+                        GestureDetector(
+                          onTap: isUploading
+                              ? null
+                              : () async {
+                                  final track = await DownloadedMusicPickerSheet.show(context);
+                                  if (track != null) {
+                                    await setDownloadedTrackAsVaultMusic(track);
+                                  }
+                                },
+                          child: Container(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  const Color(0xFFA3E635).withOpacity(0.18),
+                                  const Color(0xFFA3E635).withOpacity(0.06),
+                                ],
+                              ),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: const Color(0xFFA3E635).withOpacity(0.5),
+                                width: 1.2,
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFA3E635).withOpacity(0.2),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(
+                                    Icons.download_done_rounded,
+                                    color: Color(0xFFA3E635),
+                                    size: 22,
+                                  ),
+                                ),
+                                const SizedBox(width: 14),
+                                const Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'From Downloaded Music 🎵',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                      SizedBox(height: 2),
+                                      Text(
+                                        'Pick any YouTube Music song you downloaded',
+                                        style: TextStyle(
+                                          color: Color(0xFF94A3B8),
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const Icon(Icons.chevron_right_rounded, color: Color(0xFFA3E635), size: 20),
+                              ],
+                            ),
+                          ),
+                        ),
+
                         // --- 1. Upload Custom Audio from Device ---
                         GestureDetector(
                           onTap: isUploading ? null : pickAndUploadCustomMusic,
