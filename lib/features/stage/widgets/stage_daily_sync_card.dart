@@ -90,8 +90,6 @@ class _StageDailySyncCardState extends State<StageDailySyncCard> {
 
     final bothAnswered = myAnswer != null && partnerAnswer != null;
     final canSubmit = !_isSubmitting && _answerController.text.trim().isNotEmpty;
-    final partner = authProvider.partner;
-    final partnerNickname = partner?.nickname ?? 'Partner';
 
     return Container(
       margin: EdgeInsets.zero,
