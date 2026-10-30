@@ -486,11 +486,11 @@ class _VaultScreenState extends State<VaultScreen> {
       onLongPress: onLongPress,
       child: Container(
         decoration: BoxDecoration(
-          color: Color(vault.colorValue),
+          color: const Color(0xFF14121A),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: const Color(0xFFD4AF37).withOpacity(0.35),
-            width: 1.1,
+            color: Colors.white.withOpacity(0.12),
+            width: 1.0,
           ),
           boxShadow: [
             BoxShadow(
@@ -506,86 +506,89 @@ class _VaultScreenState extends State<VaultScreen> {
           children: [
             // Upper Box: Covers whole upper area up to title and date
             Expanded(
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  if (hasCoverImage)
-                    CachedNetworkImage(
-                      imageUrl: vault.coverImageUrl!,
-                      fit: BoxFit.cover,
-                      placeholder: (_, __) => Container(
-                        color: Color(vault.colorValue),
-                        child: const Center(
-                          child: CircularProgressIndicator(
-                            strokeWidth: 1.5,
-                            color: Color(0xFFD4AF37),
+              child: ClipRRect(
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    if (hasCoverImage)
+                      CachedNetworkImage(
+                        imageUrl: vault.coverImageUrl!,
+                        fit: BoxFit.cover,
+                        placeholder: (_, __) => Container(
+                          color: Color(vault.colorValue),
+                          child: const Center(
+                            child: CircularProgressIndicator(
+                              strokeWidth: 1.5,
+                              color: Color(0xFFD4AF37),
+                            ),
                           ),
                         ),
-                      ),
-                      errorWidget: (_, __, ___) => Container(
+                        errorWidget: (_, __, ___) => Container(
+                          color: Color(vault.colorValue),
+                          child: Center(
+                            child: VaultEmblem(shape: vault.emblemShape, size: 52),
+                          ),
+                        ),
+                      )
+                    else
+                      Container(
                         color: Color(vault.colorValue),
                         child: Center(
                           child: VaultEmblem(shape: vault.emblemShape, size: 52),
                         ),
                       ),
-                    )
-                  else
-                    Container(
-                      color: Color(vault.colorValue),
-                      child: Center(
-                        child: VaultEmblem(shape: vault.emblemShape, size: 52),
+
+                    // Top gradient shadow for badge clarity
+                    Positioned(
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      height: 42,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Colors.black.withOpacity(0.48),
+                              Colors.transparent,
+                            ],
+                          ),
+                        ),
                       ),
                     ),
 
-                  // Top gradient shadow for badge clarity
-                  Positioned(
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    height: 42,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.black.withOpacity(0.48),
-                            Colors.transparent,
+                    // Top Right Badge
+                    Positioned(
+                      top: 9,
+                      right: 9,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3.5),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withOpacity(0.65),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: Colors.white12),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(badgeIcon, size: 9.5, color: const Color(0xFFD4AF37)),
+                            const SizedBox(width: 3.5),
+                            Text(
+                              badgeText,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 9,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
                           ],
                         ),
                       ),
                     ),
-                  ),
-
-                  // Top Right Badge
-                  Positioned(
-                    top: 9,
-                    right: 9,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3.5),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.65),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: Colors.white12),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(badgeIcon, size: 9.5, color: const Color(0xFFD4AF37)),
-                          const SizedBox(width: 3.5),
-                          Text(
-                            badgeText,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 9,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
 
