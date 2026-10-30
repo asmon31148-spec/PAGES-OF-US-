@@ -1,0 +1,13 @@
+=== FLUTTER PUB GET ===
+Resolving dependencies...
+Because flutter_map >=3.0.0 <8.3.0 depends on proj4dart ^2.1.0 which depends on mgrs_dart ^2.0.0, flutter_map >=3.0.0 <8.3.0 requires mgrs_dart ^2.0.0.
+And because mgrs_dart ^2.0.0 depends on unicode ^0.3.0 and youtube_explode_dart >=2.3.10 depends on unicode ^1.0.0, flutter_map >=3.0.0 <8.3.0 is incompatible with youtube_explode_dart >=2.3.10.
+So, because pages_of_us depends on both youtube_explode_dart 3.0.0 and flutter_map ^7.0.2, version solving failed.
+
+
+You can try one of the following suggestions to make the pubspec resolve:
+* Try upgrading your constraint on flutter_map: flutter pub add flutter_map:^8.3.2
+* Consider downgrading your constraint on youtube_explode_dart: flutter pub add youtube_explode_dart:^2.3.9
+Failed to update packages.
+=== FLUTTER ANALYZE ===
+=== FLUTTER BUILD LOG ===
