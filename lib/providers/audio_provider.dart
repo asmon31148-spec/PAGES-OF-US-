@@ -351,7 +351,7 @@ class AudioProvider extends ChangeNotifier {
     String audioUrl;
     bool isLocal = false;
 
-    if (localPath != null) {
+    if (localPath != null && File(localPath).existsSync()) {
       audioUrl = localPath;
       isLocal = true;
     } else {
@@ -384,6 +384,15 @@ class AudioProvider extends ChangeNotifier {
     } else {
       _songs.insert(0, newSong);
       await selectSong(0);
+    }
+
+    // Auto-cache in background so subsequent plays are instant offline without buffering!
+    if (!isLocal) {
+      MusicDownloadService.instance.downloadTrack(track).then((ok) {
+        if (ok) {
+          debugPrint('[AudioProvider] Auto-cached "${track.title}" offline');
+        }
+      });
     }
   }
 
@@ -440,37 +449,26 @@ class AudioProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Smooth crossfade between songs (fade-out old, fade-in new)
+  /// Robust song player start (clean state reset and immediate full volume)
   Future<void> _playCurrentSongWithCrossfade() async {
     try {
       final targetSource = _resolveSource(currentSong.audioUrl, isLocal: currentSong.isLocal);
 
-      // 1. Fade out current player smoothly if playing
       if (_songPlayer.state == PlayerState.playing) {
-        for (double v = 1.0; v >= 0.0; v -= 0.25) {
-          await _songPlayer.setVolume(v);
-          await Future.delayed(const Duration(milliseconds: 20));
-        }
+        await _songPlayer.stop();
       }
-      await _songPlayer.stop();
 
-      // 2. Start at volume 0
-      await _songPlayer.setVolume(0.0);
+      await _songPlayer.setVolume(1.0);
       await _songPlayer.play(targetSource);
       _isSongPlaying = true;
-
-      // 3. Fade in smoothly
-      for (double v = 0.1; v <= 1.0; v += 0.15) {
-        await _songPlayer.setVolume(v);
-        await Future.delayed(const Duration(milliseconds: 25));
-      }
-      await _songPlayer.setVolume(1.0);
+      _syncNotificationState();
     } catch (e) {
-      debugPrint('Crossfade error: $e, falling back to direct play');
+      debugPrint('Play error: $e, retrying at full volume');
       try {
         await _songPlayer.setVolume(1.0);
         await _songPlayer.play(_resolveSource(currentSong.audioUrl, isLocal: currentSong.isLocal));
         _isSongPlaying = true;
+        _syncNotificationState();
       } catch (err) {
         debugPrint('Direct play fallback error: $err');
       }

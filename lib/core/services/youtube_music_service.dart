@@ -246,7 +246,7 @@ class YoutubeMusicService {
     return tracks;
   }
 
-  /// Extracts direct audio-only stream URL (up to 256kbps AAC / Opus)
+  /// Extracts direct audio-only stream URL (prefers MP4/AAC for 100% Android/iOS native player compatibility)
   Future<String?> getAudioStreamUrl(String videoId) async {
     // Check in-memory cache (valid for 4 hours before URL expires)
     if (_streamCache.containsKey(videoId)) {
@@ -257,9 +257,22 @@ class YoutubeMusicService {
     }
 
     try {
-      final manifest = await _client.videos.streamsClient.getManifest(videoId);
+      final manifest = await _client.videos.streamsClient.getManifest(
+        videoId,
+        ytClients: [
+          YoutubeApiClient.ios,
+          YoutubeApiClient.androidVr,
+          YoutubeApiClient.safari,
+        ],
+      );
 
-      final audioStream = manifest.audioOnly.withHighestBitrate();
+      final mp4Streams = manifest.audioOnly.where(
+        (s) => s.container.name.toLowerCase() == 'mp4' || s.codec.mimeType.contains('mp4') || s.codec.mimeType.contains('aac'),
+      );
+      final audioStream = mp4Streams.isNotEmpty
+          ? mp4Streams.withHighestBitrate()
+          : manifest.audioOnly.withHighestBitrate();
+
       final streamUrl = audioStream.url.toString();
 
       _streamCache[videoId] = streamUrl;
@@ -272,11 +285,24 @@ class YoutubeMusicService {
     }
   }
 
-  /// Retrieves an audio stream for downloading
+  /// Retrieves an audio stream for downloading (MP4/AAC container for zero-glitch playback)
   Future<Stream<List<int>>?> getDownloadAudioStream(String videoId) async {
     try {
-      final manifest = await _client.videos.streamsClient.getManifest(videoId);
-      final audioStream = manifest.audioOnly.withHighestBitrate();
+      final manifest = await _client.videos.streamsClient.getManifest(
+        videoId,
+        ytClients: [
+          YoutubeApiClient.ios,
+          YoutubeApiClient.androidVr,
+          YoutubeApiClient.safari,
+        ],
+      );
+      final mp4Streams = manifest.audioOnly.where(
+        (s) => s.container.name.toLowerCase() == 'mp4' || s.codec.mimeType.contains('mp4') || s.codec.mimeType.contains('aac'),
+      );
+      final audioStream = mp4Streams.isNotEmpty
+          ? mp4Streams.withHighestBitrate()
+          : manifest.audioOnly.withHighestBitrate();
+
       return _client.videos.streamsClient.get(audioStream);
     } catch (e) {
       debugPrint('[YoutubeMusicService] Failed to get download stream for $videoId: $e');
