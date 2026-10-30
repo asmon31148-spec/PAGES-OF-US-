@@ -699,7 +699,9 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
                     } else {
                       _startLiveWorldTracking();
                       if (user != null) {
-                        final effectiveSpaceId = spaceId.isNotEmpty ? spaceId : 'solo_${user.id}';
+                        final auth = context.read<AuthProvider>();
+                        final currSpaceId = auth.space?.id ?? auth.user?.spaceId ?? '';
+                        final effectiveSpaceId = currSpaceId.isNotEmpty ? currSpaceId : 'solo_${user.id}';
                         worldProvider.updateMyPosition(
                           spaceId: effectiveSpaceId,
                           currentUserId: user.id,
