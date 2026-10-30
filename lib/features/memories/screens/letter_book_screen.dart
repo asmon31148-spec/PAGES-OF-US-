@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/models/letter_item.dart';
+import '../../../widgets/sanctuary_voice_player.dart';
 
 class LetterBookScreen extends StatefulWidget {
   final List<LetterItem> letters;
@@ -433,6 +434,15 @@ class _LetterBookScreenState extends State<LetterBookScreen> {
                     color: textColor.withOpacity(0.92),
                   ),
                 ),
+
+                if (letter.voiceUrl != null && letter.voiceUrl!.isNotEmpty) ...[
+                  const SizedBox(height: 24),
+                  SanctuaryVoicePlayer(
+                    id: 'letter_${letter.id}',
+                    audioUrl: letter.voiceUrl!,
+                    isDark: isDark,
+                  ),
+                ],
 
                 const SizedBox(height: 36),
 
