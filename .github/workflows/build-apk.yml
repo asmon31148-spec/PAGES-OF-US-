@@ -149,17 +149,26 @@ jobs:
           body: |
             ### ✨ What's New in Pages of Us v${{ steps.app_version.outputs.version }}
 
-            - **🎙️ Instant Voice Audio (<20ms Start)**:
-              - Built-in local audio disk caching: voice memos and whisper notes cache on first play to eliminate the 1.5s–2.5s network lag and buffering clicks.
-              - Instantaneous native audio playback with zero stutter.
+            - **🎵 Echo YouTube Music Streaming**:
+              - Search and stream any song, artist, album, or link from YouTube Music directly inside the app with zero ads and high-bitrate audio.
+              - Audio-only streaming engine keeping battery and memory footprint tiny (<25 MB).
 
-            - **⚡ Silky 60 FPS Playback & Zero Rebuild Thrashing**:
-              - Eliminated the 10x/second periodic timer spamming the native audio platform channel.
-              - Scoped Timeline and Memories screen listeners so thousands of lines of UI never re-render during audio playback.
-              - Smooth, lightweight waveform scrubbing.
+            - **💾 In-App Offline Music Downloader**:
+              - One-tap download to store favorite songs locally on your phone for offline playback anytime with 0ms buffer and zero data usage.
+              - Dedicated "Offline" tab in Music Sanctuary with storage manager.
 
-            - **🎶 Non-Blocking Audio Ducking**:
-              - Ambient soundscapes and background music pause asynchronously without stalling the main UI thread.
+            - **🔐 Direct Vault Theme Music Integration**:
+              - Select any downloaded YouTube Music track directly as the background theme song for your memory Vaults.
+              - Multi-cloud synchronization so both partners hear the soundtrack when unlocking that Vault.
+
+            - **🎤 Synchronized Lyrics (LRCLIB)**:
+              - Real-time time-coded lyrics auto-scrolling with the singer's voice.
+              - Tap any lyric line to jump directly to that point in the song.
+
+            - **🌟 Living Stage Screen Widgets**:
+              - Interactive Milestones & Dreams progress widget.
+              - One-tap Daily Care & Routine checkoff chips.
+              - Romantic weather hook & partner atmospheric sky glow.
           files: |
             build/app/outputs/flutter-apk/PagesOfUs.apk
             build/app/outputs/flutter-apk/app-release.apk
