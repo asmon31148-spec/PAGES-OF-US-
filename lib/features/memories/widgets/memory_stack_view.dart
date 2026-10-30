@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'voice_whisper_player_card.dart';
+import '../../../widgets/sanctuary_voice_player.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/full_screen_video_player.dart';
 import '../../../providers/theme_provider.dart';
@@ -598,56 +599,17 @@ class _MemoryStackViewState extends State<MemoryStackView> {
                     ),
                   ),
 
-                // Attached voice whisper button for photo memories
+                // Attached voice whisper player for photo memories
                 if (memory.voiceUrl != null &&
                     memory.voiceUrl!.isNotEmpty &&
                     memory.mediaType != 'audio')
                   Padding(
-                    padding: const EdgeInsets.only(top: 6, bottom: 10),
-                    child: InkWell(
-                      onTap: () {
-                        memoriesProvider.playVoiceWhisper(
-                          memory.id,
-                          memory.voiceUrl!,
-                          ambientAudio: audioProvider,
-                        );
-                      },
-                      borderRadius: BorderRadius.circular(16),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: isPlayingThisWhisper
-                              ? AppColors.terra.withOpacity(0.2)
-                              : (isDark ? AppColors.darkCard : AppColors.lightCard),
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: isPlayingThisWhisper
-                                ? AppColors.terra
-                                : (isDark ? AppColors.darkBorder : AppColors.lightBorder),
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              isPlayingThisWhisper ? Icons.pause_circle : Icons.volume_up,
-                              size: 18,
-                              color: AppColors.terra,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              isPlayingThisWhisper
-                                  ? 'Playing Voice Note...'
-                                  : 'Play Voice Whisper 🎙️',
-                              style: const TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.terra,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
+                    padding: const EdgeInsets.only(top: 8, bottom: 12),
+                    child: SanctuaryVoicePlayer(
+                      id: 'whisper_' + memory.id,
+                      audioUrl: memory.voiceUrl!,
+                      isDark: isDark,
+                      ambientAudio: audioProvider,
                     ),
                   ),
 

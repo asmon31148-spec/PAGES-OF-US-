@@ -7,6 +7,7 @@ import 'package:path_provider/path_provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/services/media_upload_service.dart';
 import '../../../providers/memories_provider.dart';
+import '../../../widgets/sanctuary_voice_player.dart';
 
 enum AddMemoryType { none, photo, video, voice }
 
@@ -487,6 +488,15 @@ class _AddMemoryDialogState extends State<AddMemoryDialog> {
                     ),
                 ],
               ),
+              if (_recordedAudioFile != null && !_isRecording) ...[
+                const SizedBox(height: 8),
+                SanctuaryVoicePlayer(
+                  id: 'preview_attached_whisper',
+                  audioUrl: _recordedAudioFile!.path,
+                  durationSeconds: _recordDurationSeconds > 0 ? _recordDurationSeconds : null,
+                  isDark: isDark,
+                ),
+              ],
             ),
           ],
 
@@ -572,6 +582,15 @@ class _AddMemoryDialogState extends State<AddMemoryDialog> {
                     'Plays in the upper sanctuary audio track',
                     style: TextStyle(fontSize: 11, color: isDark ? AppColors.darkSoft : AppColors.lightSoft),
                   ),
+                  if (_recordedAudioFile != null && !_isRecording) ...[
+                    const SizedBox(height: 14),
+                    SanctuaryVoicePlayer(
+                      id: 'preview_standalone_voice',
+                      audioUrl: _recordedAudioFile!.path,
+                      durationSeconds: _recordDurationSeconds > 0 ? _recordDurationSeconds : null,
+                      isDark: isDark,
+                    ),
+                  ],
                 ],
               ),
             ),

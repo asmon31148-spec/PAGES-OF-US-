@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:audioplayers/audioplayers.dart';
+import '../../../widgets/sanctuary_voice_player.dart';
 
 import '../../../core/services/media_upload_service.dart';
 import '../../../core/services/audio_cache_service.dart';
@@ -45,14 +46,6 @@ class _VaultDetailScreenState extends State<VaultDetailScreen> {
   final PageController _photoPageController = PageController();
   int _currentPhotoIndex = 0;
 
-  // Voice note player
-  final AudioPlayer _voicePlayer = AudioPlayer();
-  bool _isVoicePlaying = false;
-  Duration _voicePosition = Duration.zero;
-  Duration _voiceDuration = Duration.zero;
-  StreamSubscription? _posSub;
-  StreamSubscription? _durSub;
-  StreamSubscription? _stateSub;
 
   bool _isMusicMuted = false;
 
@@ -67,38 +60,12 @@ class _VaultDetailScreenState extends State<VaultDetailScreen> {
       vp.startVaultMusic(_vault.backgroundSong);
     });
 
-    _initVoicePlayer();
   }
 
-  void _initVoicePlayer() {
-    if (_vault.voiceNoteUrl == null || _vault.voiceNoteUrl!.isEmpty) return;
-
-    _posSub = _voicePlayer.onPositionChanged.listen((pos) {
-      if (mounted) setState(() => _voicePosition = pos);
-    });
-
-    _durSub = _voicePlayer.onDurationChanged.listen((dur) {
-      if (mounted) setState(() => _voiceDuration = dur);
-    });
-
-    _stateSub = _voicePlayer.onPlayerStateChanged.listen((state) {
-      if (mounted) {
-        setState(() => _isVoicePlaying = state == PlayerState.playing);
-        // If voice memo completed, resume background music
-        if (state == PlayerState.completed) {
-          context.read<VaultProvider>().startVaultMusic(_vault.backgroundSong);
-        }
-      }
-    });
-  }
 
   @override
   void dispose() {
     _photoPageController.dispose();
-    _posSub?.cancel();
-    _durSub?.cancel();
-    _stateSub?.cancel();
-    _voicePlayer.dispose();
 
     // Background music is stopped when exiting this screen
     // (Handled also in onWillPop / back arrow)
@@ -110,28 +77,6 @@ class _VaultDetailScreenState extends State<VaultDetailScreen> {
     if (mounted) Navigator.pop(context);
   }
 
-  Future<void> _toggleVoicePlay() async {
-    if (_vault.voiceNoteUrl == null) return;
-
-    if (_isVoicePlaying) {
-      await _voicePlayer.pause();
-      // Resume background music
-      if (!_isMusicMuted && mounted) {
-        context.read<VaultProvider>().startVaultMusic(_vault.backgroundSong);
-      }
-    } else {
-      // Lower or pause background music so voice memo is crystal clear
-      await context.read<VaultProvider>().stopVaultMusic();
-      final cached = await AudioCacheService.getCachedAudioPath(_vault.voiceNoteUrl!);
-      Source source;
-      if (cached.startsWith('http://') || cached.startsWith('https://')) {
-        source = UrlSource(cached);
-      } else {
-        source = DeviceFileSource(cached);
-      }
-      await _voicePlayer.play(source);
-    }
-  }
 
   void _toggleMuteMusic() {
     final vp = context.read<VaultProvider>();
@@ -1368,68 +1313,22 @@ class _VaultDetailScreenState extends State<VaultDetailScreen> {
   }
 
   Widget _buildVoiceNoteCard() {
-    final posStr = '${_voicePosition.inMinutes}:${(_voicePosition.inSeconds % 60).toString().padLeft(2, '0')}';
-    final durSec = _voiceDuration.inSeconds > 0
-        ? _voiceDuration.inSeconds
-        : (_vault.voiceNoteDurationSeconds ?? 30);
-    final durStr = '${durSec ~/ 60}:${(durSec % 60).toString().padLeft(2, '0')}';
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: BoxDecoration(
-        color: const Color(0xFF16141F),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white12),
-      ),
-      child: Row(
-        children: [
-          GestureDetector(
-            onTap: _toggleVoicePlay,
-            child: Container(
-              width: 44,
-              height: 44,
-              decoration: const BoxDecoration(
-                color: Color(0xFFD4AF37),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                _isVoicePlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
-                color: Colors.black,
-                size: 26,
-              ),
-            ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      _isVoicePlaying ? 'Playing voice note...' : 'Voice note from ${_vault.creatorName}',
-                      style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
-                    ),
-                    Text(
-                      _isVoicePlaying ? posStr : durStr,
-                      style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                LinearProgressIndicator(
-                  value: _voiceDuration.inMilliseconds > 0
-                      ? (_voicePosition.inMilliseconds / _voiceDuration.inMilliseconds).clamp(0.0, 1.0)
-                      : 0.0,
-                  backgroundColor: Colors.white12,
-                  color: const Color(0xFFD4AF37),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+    if (_vault.voiceNoteUrl == null || _vault.voiceNoteUrl!.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    return SanctuaryVoicePlayer(
+      id: 'vault_' + _vault.id,
+      audioUrl: _vault.voiceNoteUrl!,
+      durationSeconds: _vault.voiceNoteDurationSeconds,
+      isDark: true,
+      onPlayStarted: () {
+        context.read<VaultProvider>().stopVaultMusic();
+      },
+      onPlaybackCompleted: () {
+        if (!_isMusicMuted && mounted) {
+          context.read<VaultProvider>().startVaultMusic(_vault.backgroundSong);
+        }
+      },
     );
   }
 }

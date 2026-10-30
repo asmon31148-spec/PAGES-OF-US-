@@ -12,6 +12,7 @@ import '../data/services/firebase_service.dart';
 import '../core/services/notification_service.dart';
 import '../core/services/audio_cache_service.dart';
 import 'audio_provider.dart';
+import '../core/services/voice_playback_service.dart';
 
 class MemoriesProvider extends ChangeNotifier {
   List<MemoryItem> _memories = [];
@@ -22,14 +23,14 @@ class MemoriesProvider extends ChangeNotifier {
   String _searchQuery = '';
   int _activeStackIndex = 0;
 
-  // Voice whisper playback
-  final AudioPlayer _voicePlayer = AudioPlayer();
-  String? _playingVoiceId;
-  Duration _voicePosition = Duration.zero;
-  Duration _voiceDuration = Duration.zero;
-  PlayerState _playerState = PlayerState.stopped;
-  Timer? _positionTicker;
-  double _playbackSpeed = 1.0;
+  // Voice whisper playback via VoicePlaybackService
+  VoicePlaybackService get _voiceService => VoicePlaybackService.instance;
+  String? get playingVoiceId => _voiceService.activeId;
+  Duration get voicePosition => _voiceService.position;
+  Duration get voiceDuration => _voiceService.duration;
+  bool get isVoicePlaying => _voiceService.isPlaying;
+  double get playbackSpeed => _voiceService.playbackSpeed;
+  ValueNotifier<Duration> get voicePositionNotifier => _voiceService.positionNotifier;
 
   List<MemoryItem> get memories => _memories;
   List<LetterItem> get letters => _letters;
@@ -38,11 +39,6 @@ class MemoriesProvider extends ChangeNotifier {
   String get mediaFilter => _mediaFilter;
   String get searchQuery => _searchQuery;
   int get activeStackIndex => _activeStackIndex;
-  String? get playingVoiceId => _playingVoiceId;
-  Duration get voicePosition => _voicePosition;
-  Duration get voiceDuration => _voiceDuration;
-  bool get isVoicePlaying => _playerState == PlayerState.playing;
-  double get playbackSpeed => _playbackSpeed;
 
   StreamSubscription? _voicePosSub;
   StreamSubscription? _voiceDurSub;
@@ -57,55 +53,17 @@ class MemoriesProvider extends ChangeNotifier {
   String? _lastSentLetterId;
 
   MemoriesProvider() {
-    _initVoicePlayerListeners();
+    _voiceService.addListener(_onVoicePlaybackChanged);
   }
 
-  /// Dedicated 60 FPS position notifier for isolated waveform rendering
-  final ValueNotifier<Duration> voicePositionNotifier = ValueNotifier<Duration>(Duration.zero);
-
-  void _initVoicePlayerListeners() {
-    _voicePosSub = _voicePlayer.onPositionChanged.listen((pos) {
-      _voicePosition = pos;
-      voicePositionNotifier.value = pos;
-      // Position updates are delivered directly via voicePositionNotifier.
-      // We purposefully DO NOT call notifyListeners() here to prevent
-      // screen-wide rebuilds of heavy 1,280-line views during audio playback.
-    });
-    _voiceDurSub = _voicePlayer.onDurationChanged.listen((dur) {
-      if (dur.inMilliseconds > 0 && dur != _voiceDuration) {
-        _voiceDuration = dur;
-        notifyListeners();
-      }
-    });
-    _voiceStateSub = _voicePlayer.onPlayerStateChanged.listen((state) {
-      _playerState = state;
-      if (state == PlayerState.completed || state == PlayerState.stopped) {
-        _playingVoiceId = null;
-        _voicePosition = Duration.zero;
-        voicePositionNotifier.value = Duration.zero;
-      }
-      notifyListeners();
-    });
-  }
-
-  void _startPositionTicker() {
-    // Ticker removed to eliminate 10x/sec platform channel spam and widget rebuild thrashing
-  }
-
-  void _stopPositionTicker() {
-    _positionTicker?.cancel();
-    _positionTicker = null;
+  void _onVoicePlaybackChanged() {
+    notifyListeners();
   }
 
   @override
   void dispose() {
-    _stopPositionTicker();
-    voicePositionNotifier.dispose();
-    _voicePosSub?.cancel();
-    _voiceDurSub?.cancel();
-    _voiceStateSub?.cancel();
+    _voiceService.removeListener(_onVoicePlaybackChanged);
     _firestoreMilestonesSub?.cancel();
-    _voicePlayer.dispose();
     final supabase = SupabaseService.client;
     if (supabase != null) {
       if (_memoriesChannel != null) supabase.removeChannel(_memoriesChannel!);
@@ -397,103 +355,31 @@ class MemoriesProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Voice whisper playback with ambient audio ducking & seamless pause/resume
+  // Voice whisper playback with unified VoicePlaybackService
   Future<void> playVoiceWhisper(
     String id,
     String url, {
     AudioProvider? ambientAudio,
+    int? durationSeconds,
   }) async {
-    // 1. If currently playing this exact note -> Smooth Pause
-    if (_playingVoiceId == id && _playerState == PlayerState.playing) {
-      _stopPositionTicker();
-      await _voicePlayer.pause();
-      _playerState = PlayerState.paused;
-      ambientAudio?.restoreFromMedia();
-      notifyListeners();
-      return;
-    }
-
-    // 2. If currently paused on this exact note -> Smooth Resume
-    if (_playingVoiceId == id && _playerState == PlayerState.paused) {
-      ambientAudio?.duckForMedia();
-      await _voicePlayer.resume();
-      _playerState = PlayerState.playing;
-      notifyListeners();
-      return;
-    }
-
-    // 3. New voice note -> Start fresh from 0
-    try {
-      ambientAudio?.duckForMedia();
-      _playingVoiceId = id;
-      _voicePosition = Duration.zero;
-      voicePositionNotifier.value = Duration.zero;
-      _voiceDuration = Duration.zero;
-      _playerState = PlayerState.playing;
-      notifyListeners();
-
-      await _voicePlayer.stop();
-
-      final cleanUrl = url.trim();
-      final localOrCached = await AudioCacheService.getCachedAudioPath(cleanUrl);
-
-      Source source;
-      if (localOrCached.startsWith('http://') || localOrCached.startsWith('https://')) {
-        source = UrlSource(localOrCached);
-      } else if (localOrCached.startsWith('assets/')) {
-        source = AssetSource(localOrCached);
-      } else {
-        source = DeviceFileSource(localOrCached.replaceFirst('file://', ''));
-      }
-
-      await _voicePlayer.setPlaybackRate(_playbackSpeed);
-      await _voicePlayer.play(source);
-
-      try {
-        final d = await _voicePlayer.getDuration();
-        if (d != null && d.inMilliseconds > 0) {
-          _voiceDuration = d;
-          notifyListeners();
-        }
-      } catch (_) {}
-    } catch (_) {
-      ambientAudio?.restoreFromMedia();
-      _playingVoiceId = null;
-      _playerState = PlayerState.stopped;
-      notifyListeners();
-    }
+    await _voiceService.togglePlay(
+      id: id,
+      url: url,
+      durationSeconds: durationSeconds,
+      ambientAudio: ambientAudio,
+    );
   }
 
   Future<void> togglePlaybackSpeed() async {
-    if (_playbackSpeed == 1.0) {
-      _playbackSpeed = 1.5;
-    } else if (_playbackSpeed == 1.5) {
-      _playbackSpeed = 2.0;
-    } else {
-      _playbackSpeed = 1.0;
-    }
-    await _voicePlayer.setPlaybackRate(_playbackSpeed);
-    notifyListeners();
+    await _voiceService.togglePlaybackSpeed();
   }
 
   Future<void> seekVoiceWhisper(Duration target) async {
-    try {
-      await _voicePlayer.seek(target);
-      _voicePosition = target;
-      voicePositionNotifier.value = target;
-      notifyListeners();
-    } catch (_) {}
+    await _voiceService.seek(target);
   }
 
   Future<void> stopVoiceWhisper({AudioProvider? ambientAudio}) async {
-    _stopPositionTicker();
-    await _voicePlayer.stop();
-    ambientAudio?.restoreFromMedia();
-    _playingVoiceId = null;
-    _playerState = PlayerState.stopped;
-    _voicePosition = Duration.zero;
-    voicePositionNotifier.value = Duration.zero;
-    notifyListeners();
+    await _voiceService.stop();
   }
 
   Future<void> addMemory({

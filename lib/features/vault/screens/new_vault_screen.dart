@@ -16,6 +16,7 @@ import '../../../core/services/media_upload_service.dart';
 import '../../../data/models/vault_item.dart';
 import '../../../providers/vault_provider.dart';
 import '../widgets/vault_emblem.dart';
+import '../../../widgets/sanctuary_voice_player.dart';
 import '../widgets/downloaded_music_picker_sheet.dart';
 
 class NewVaultScreen extends StatefulWidget {
@@ -1243,6 +1244,15 @@ class _NewVaultScreenState extends State<NewVaultScreen> {
               : null,
           onTap: _toggleVoiceRecording,
         ),
+        if (_localVoiceFile != null || (_remoteVoiceUrl != null && _remoteVoiceUrl!.isNotEmpty)) ...[
+          const SizedBox(height: 8),
+          SanctuaryVoicePlayer(
+            id: 'new_vault_voice_preview',
+            audioUrl: _localVoiceFile?.path ?? _remoteVoiceUrl!,
+            durationSeconds: _voiceDurationSeconds > 0 ? _voiceDurationSeconds : null,
+            isDark: true,
+          ),
+        ],
         const SizedBox(height: 10),
 
         // Background Music Selector

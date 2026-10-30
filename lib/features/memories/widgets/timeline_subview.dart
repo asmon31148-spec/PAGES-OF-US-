@@ -16,6 +16,7 @@ import '../../../providers/auth_provider.dart';
 import '../../../providers/memories_provider.dart';
 import '../../../providers/audio_provider.dart';
 import '../../../data/models/milestone_item.dart';
+import '../../../widgets/sanctuary_voice_player.dart';
 
 class TimelineSubview extends StatefulWidget {
   const TimelineSubview({super.key});
@@ -507,11 +508,6 @@ class _TimelineSubviewState extends State<TimelineSubview> {
         final audioProvider = ctx.watch<AudioProvider>();
         final branchColor = milestone.isMine ? AppColors.sage : AppColors.terra;
 
-        final isPlayingAudio = memoriesProvider.playingVoiceId == milestone.id && memoriesProvider.isVoicePlaying;
-        final audioPos = memoriesProvider.playingVoiceId == milestone.id ? memoriesProvider.voicePosition : Duration.zero;
-        final audioDur = memoriesProvider.playingVoiceId == milestone.id && memoriesProvider.voiceDuration.inMilliseconds > 0
-            ? memoriesProvider.voiceDuration
-            : Duration(seconds: milestone.audioDuration ?? 30);
 
         return Container(
           constraints: BoxConstraints(maxHeight: MediaQuery.of(ctx).size.height * 0.85),
@@ -647,86 +643,12 @@ class _TimelineSubviewState extends State<TimelineSubview> {
 
                       // Attached Audio Voice Whisper Player
                       if (milestone.hasAudio) ...[
-                        Container(
-                          padding: const EdgeInsets.all(14),
-                          decoration: BoxDecoration(
-                            color: isDark ? AppColors.darkCard : AppColors.lightCard,
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(
-                              color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
-                            ),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  IconButton.filled(
-                                    style: IconButton.styleFrom(
-                                      backgroundColor: branchColor,
-                                      foregroundColor: Colors.white,
-                                    ),
-                                    icon: Icon(
-                                      isPlayingAudio ? Icons.pause_rounded : Icons.play_arrow_rounded,
-                                      size: 22,
-                                    ),
-                                    onPressed: () {
-                                      memoriesProvider.playVoiceWhisper(
-                                        milestone.id,
-                                        milestone.audioUrl!,
-                                        ambientAudio: audioProvider,
-                                      );
-                                    },
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          'Voice Whisper Moment',
-                                          style: TextStyle(
-                                            fontSize: 12.5,
-                                            fontWeight: FontWeight.bold,
-                                            color: isDark ? AppColors.darkInk : AppColors.lightInk,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 2),
-                                        ValueListenableBuilder<Duration>(
-                                          valueListenable: memoriesProvider.voicePositionNotifier,
-                                          builder: (context, livePos, _) {
-                                            final currentPos = isPlayingAudio ? livePos : Duration.zero;
-                                            return Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
-                                              children: [
-                                                Text(
-                                                  '${currentPos.inMinutes}:${(currentPos.inSeconds % 60).toString().padLeft(2, '0')} / ${audioDur.inMinutes}:${(audioDur.inSeconds % 60).toString().padLeft(2, '0')}',
-                                                  style: TextStyle(
-                                                    fontSize: 11,
-                                                    color: isDark ? AppColors.darkSoft : AppColors.lightSoft,
-                                                  ),
-                                                ),
-                                                if (isPlayingAudio) ...[
-                                                  const SizedBox(height: 10),
-                                                  LinearProgressIndicator(
-                                                    value: audioDur.inMilliseconds > 0
-                                                        ? (currentPos.inMilliseconds / audioDur.inMilliseconds).clamp(0.0, 1.0)
-                                                        : 0.0,
-                                                    backgroundColor: isDark ? Colors.white12 : Colors.black12,
-                                                    color: branchColor,
-                                                  ),
-                                                ],
-                                              ],
-                                            );
-                                          },
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
+                        SanctuaryVoicePlayer(
+                          id: 'milestone_' + milestone.id,
+                          audioUrl: milestone.audioUrl!,
+                          durationSeconds: milestone.audioDuration,
+                          isDark: isDark,
+                          ambientAudio: audioProvider,
                         ),
                         const SizedBox(height: 16),
                       ],
