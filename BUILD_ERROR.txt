@@ -78,18 +78,19 @@ warning • The value of the local variable 'currentFilter' isn't used. Try remo
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/memories/widgets/timeline_subview.dart:344:48 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/memories/widgets/timeline_subview.dart:472:48 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/memories/widgets/timeline_subview.dart:479:46 • deprecated_member_use
+warning • The value of the local variable 'audioPos' isn't used. Try removing the variable or using it • lib/features/memories/widgets/timeline_subview.dart:511:15 • unused_local_variable
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/memories/widgets/timeline_subview.dart:538:42 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/memories/widgets/timeline_subview.dart:565:50 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/memories/widgets/timeline_subview.dart:1159:74 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/memories/widgets/timeline_subview.dart:1221:69 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/memories/widgets/voice_whisper_player_card.dart:113:24 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/memories/widgets/voice_whisper_player_card.dart:114:24 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/memories/widgets/voice_whisper_player_card.dart:138:38 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/memories/widgets/voice_whisper_player_card.dart:198:57 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/memories/widgets/voice_whisper_player_card.dart:198:89 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/memories/widgets/voice_whisper_player_card.dart:231:44 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/memories/widgets/voice_whisper_player_card.dart:308:70 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/memories/widgets/voice_whisper_player_card.dart:331:62 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/memories/widgets/timeline_subview.dart:1170:74 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/memories/widgets/timeline_subview.dart:1232:69 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/memories/widgets/voice_whisper_player_card.dart:103:24 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/memories/widgets/voice_whisper_player_card.dart:104:24 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/memories/widgets/voice_whisper_player_card.dart:128:38 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/memories/widgets/voice_whisper_player_card.dart:188:57 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/memories/widgets/voice_whisper_player_card.dart:188:89 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/memories/widgets/voice_whisper_player_card.dart:221:44 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/memories/widgets/voice_whisper_player_card.dart:308:74 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/memories/widgets/voice_whisper_player_card.dart:331:66 • deprecated_member_use
    info • 'value' is deprecated and shouldn't be used. Use component accessors like .r or .g, or toARGB32 for an explicit conversion. Try replacing the use of the deprecated member with the replacement • lib/features/music/models/music_models.dart:37:32 • deprecated_member_use
    info • 'value' is deprecated and shouldn't be used. Use component accessors like .r or .g, or toARGB32 for an explicit conversion. Try replacing the use of the deprecated member with the replacement • lib/features/music/models/music_models.dart:74:32 • deprecated_member_use
 warning • The value of the local variable 'progress' isn't used. Try removing the variable or using it • lib/features/music/screens/listen_together_screen.dart:47:11 • unused_local_variable
@@ -232,18 +233,14 @@ warning • The '!' will have no effect because the receiver can't be null. Try 
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/stage/widgets/stage_daily_care_card.dart:222:53 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/stage/widgets/stage_daily_care_card.dart:258:42 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/stage/widgets/stage_daily_care_card.dart:259:43 • deprecated_member_use
-warning • The value of the local variable 'partner' isn't used. Try removing the variable or using it • lib/features/stage/widgets/stage_daily_sync_card.dart:93:11 • unused_local_variable
-  error • The name 'partner' is already defined. Try renaming one of the declarations • lib/features/stage/widgets/stage_daily_sync_card.dart:93:11 • duplicate_definition
-warning • The value of the local variable 'partnerNickname' isn't used. Try removing the variable or using it • lib/features/stage/widgets/stage_daily_sync_card.dart:94:11 • unused_local_variable
-  error • The name 'partnerNickname' is already defined. Try renaming one of the declarations • lib/features/stage/widgets/stage_daily_sync_card.dart:94:11 • duplicate_definition
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/stage/widgets/stage_daily_sync_card.dart:112:44 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/stage/widgets/stage_daily_sync_card.dart:143:48 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/stage/widgets/stage_daily_sync_card.dart:145:67 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/stage/widgets/stage_daily_sync_card.dart:175:71 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/stage/widgets/stage_daily_sync_card.dart:210:71 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/stage/widgets/stage_daily_sync_card.dart:313:82 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/stage/widgets/stage_daily_sync_card.dart:344:41 • deprecated_member_use
-warning • The '!' will have no effect because the receiver can't be null. Try removing the '!' operator • lib/features/stage/widgets/stage_daily_sync_card.dart:435:46 • unnecessary_non_null_assertion
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/stage/widgets/stage_daily_sync_card.dart:110:44 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/stage/widgets/stage_daily_sync_card.dart:141:48 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/stage/widgets/stage_daily_sync_card.dart:143:67 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/stage/widgets/stage_daily_sync_card.dart:173:71 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/stage/widgets/stage_daily_sync_card.dart:208:71 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/stage/widgets/stage_daily_sync_card.dart:311:82 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/stage/widgets/stage_daily_sync_card.dart:342:41 • deprecated_member_use
+warning • The '!' will have no effect because the receiver can't be null. Try removing the '!' operator • lib/features/stage/widgets/stage_daily_sync_card.dart:433:46 • unnecessary_non_null_assertion
 warning • Unused import: '../../../data/models/memory_item.dart'. Try removing the import directive • lib/features/stage/widgets/stage_memory_hero_card.dart:8:8 • unused_import
 warning • Unused import: '../../../data/models/vault_item.dart'. Try removing the import directive • lib/features/stage/widgets/stage_memory_hero_card.dart:9:8 • unused_import
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/stage/widgets/stage_memory_hero_card.dart:341:106 • deprecated_member_use
@@ -432,8 +429,9 @@ warning • The operand can't be 'null', so the condition is always 'true'. Remo
 warning • The value of the field '_defaultTemplateSongs' isn't used. Try removing the field, or using it • lib/providers/audio_provider.dart:34:31 • unused_field
 warning • Unused import: 'package:cloud_firestore/cloud_firestore.dart'. Try removing the import directive • lib/providers/memories_provider.dart:6:8 • unused_import
 warning • The declaration '_startPositionTicker' isn't referenced. Try removing the declaration of '_startPositionTicker' • lib/providers/memories_provider.dart:91:8 • unused_element
+  error • The getter 'type' isn't defined for the type 'MemoryItem'. Try importing the library that defines 'type', correcting the name to the name of an existing getter, or defining a getter or field named 'type' • lib/providers/memories_provider.dart:319:27 • undefined_getter
 
-431 issues found. (ran in 11.1s)
+429 issues found. (ran in 11.6s)
 === FLUTTER BUILD LOG ===
 Upgrading build.gradle
 Upgrading gradle.properties
@@ -531,18 +529,11 @@ Loading local repository...
 [=====================                  ] 55% Unzipping... android-ndk-r28c/CHAN
 [=======================================] 100% Unzipping... android-ndk-r28c/CHA
 
-lib/features/stage/widgets/stage_daily_sync_card.dart:93:11: Error: 'partner' is already declared in this scope.
-    final partner = authProvider.partner;
-          ^^^^^^^
-lib/features/stage/widgets/stage_daily_sync_card.dart:69:11: Context: Previous declaration of 'partner'.
-    final partner = authProvider.partner;
-          ^^^^^^^
-lib/features/stage/widgets/stage_daily_sync_card.dart:94:11: Error: 'partnerNickname' is already declared in this scope.
-    final partnerNickname = partner?.nickname ?? 'Partner';
-          ^^^^^^^^^^^^^^^
-lib/features/stage/widgets/stage_daily_sync_card.dart:70:11: Context: Previous declaration of 'partnerNickname'.
-    final partnerNickname = partner?.nickname ?? 'Partner';
-          ^^^^^^^^^^^^^^^
+lib/providers/memories_provider.dart:319:27: Error: The getter 'type' isn't defined for the type 'MemoryItem'.
+ - 'MemoryItem' is from 'package:pages_of_us/data/models/memory_item.dart' ('lib/data/models/memory_item.dart').
+Try correcting the name to the name of an existing getter, or defining a getter or field named 'type'.
+          .where((m) => m.type == 'voice' || (m.voiceUrl != null && m.voiceUrl!.isNotEmpty))
+                          ^^^^
 Target kernel_snapshot_program failed: Exception
 
 
@@ -558,6 +549,6 @@ Execution failed for task ':app:compileFlutterBuildRelease'.
 > Run with --scan to get full insights.
 > Get more help at https://help.gradle.org.
 
-BUILD FAILED in 3m 32s
-Running Gradle task 'assembleRelease'...                          213.3s
+BUILD FAILED in 3m 35s
+Running Gradle task 'assembleRelease'...                          216.3s
 Gradle task assembleRelease failed with exit code 1
