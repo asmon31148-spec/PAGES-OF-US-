@@ -201,13 +201,19 @@ class YoutubeMusicService {
               final flexCols = item['flexColumns'] as List?;
               if (flexCols == null || flexCols.isEmpty) continue;
 
-              final titleRuns = flexCols[0]?['musicResponsiveListItemFlexColumnRenderer']?['text']?['runs'] as List?;
-              final title = titleRuns?.map((r) => r['text']?.toString() ?? '').join('') ?? '';
+              final col0 = flexCols.isNotEmpty && flexCols[0] is Map ? flexCols[0] as Map : null;
+              final col0Renderer = col0?['musicResponsiveListItemFlexColumnRenderer'] as Map?;
+              final titleRuns = col0Renderer?['text']?['runs'] as List?;
+              final title = titleRuns != null
+                  ? titleRuns.map((r) => (r is Map ? r['text']?.toString() : null) ?? '').join('')
+                  : '';
 
-              final subRuns = flexCols.length > 1
-                  ? flexCols[1]?['musicResponsiveListItemFlexColumnRenderer']?['text']?['runs'] as List?
-                  : null;
-              final subtitle = subRuns?.map((r) => r['text']?.toString() ?? '').join('') ?? '';
+              final col1 = flexCols.length > 1 && flexCols[1] is Map ? flexCols[1] as Map : null;
+              final col1Renderer = col1?['musicResponsiveListItemFlexColumnRenderer'] as Map?;
+              final subRuns = col1Renderer?['text']?['runs'] as List?;
+              final subtitle = subRuns != null
+                  ? subRuns.map((r) => (r is Map ? r['text']?.toString() : null) ?? '').join('')
+                  : '';
 
               final thumbs = item['thumbnail']?['musicThumbnailRenderer']?['thumbnail']?['thumbnails'] as List?;
               final thumb = thumbs?.isNotEmpty == true ? thumbs!.last['url']?.toString() ?? '' : '';
