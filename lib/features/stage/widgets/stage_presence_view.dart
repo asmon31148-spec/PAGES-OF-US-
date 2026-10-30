@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../providers/theme_provider.dart';
 import '../../../providers/auth_provider.dart';
@@ -178,7 +179,7 @@ class StagePresenceView extends StatelessWidget {
                           backgroundColor:
                               isDark ? AppColors.darkCard : AppColors.lightCard,
                           backgroundImage: user?.avatarUrl != null
-                              ? NetworkImage(user!.avatarUrl!)
+                              ? CachedNetworkImageProvider(user!.avatarUrl!)
                               : null,
                           child: user?.avatarUrl == null
                               ? Text(
@@ -284,7 +285,7 @@ class StagePresenceView extends StatelessWidget {
                                   ? AppColors.darkCard
                                   : AppColors.lightCard,
                               backgroundImage: partner.avatarUrl != null
-                                  ? NetworkImage(partner.avatarUrl!)
+                                  ? CachedNetworkImageProvider(partner.avatarUrl!)
                                   : null,
                               child: partner.avatarUrl == null
                                   ? Text(

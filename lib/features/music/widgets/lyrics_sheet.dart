@@ -87,15 +87,17 @@ class _LyricsSheetState extends State<LyricsSheet> {
 
     if (activeIdx != _activeLineIndex) {
       _activeLineIndex = activeIdx;
-      if (activeIdx >= 0 && _scrollController.hasClients) {
-        // Auto-scroll to center active line
-        const itemHeight = 44.0;
-        final targetOffset = (activeIdx * itemHeight) - 160.0;
-        _scrollController.animateTo(
-          targetOffset.clamp(0.0, _scrollController.position.maxScrollExtent),
-          duration: const Duration(milliseconds: 350),
-          curve: Curves.easeOutCubic,
-        );
+      if (activeIdx >= 0) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted || !_scrollController.hasClients) return;
+          const itemHeight = 44.0;
+          final targetOffset = (activeIdx * itemHeight) - 160.0;
+          _scrollController.animateTo(
+            targetOffset.clamp(0.0, _scrollController.position.maxScrollExtent),
+            duration: const Duration(milliseconds: 350),
+            curve: Curves.easeOutCubic,
+          );
+        });
       }
     }
   }
@@ -103,7 +105,6 @@ class _LyricsSheetState extends State<LyricsSheet> {
   @override
   Widget build(BuildContext context) {
     final audio = context.watch<AudioProvider>();
-    _syncActiveLine(audio.songPosition);
 
     return Container(
       height: MediaQuery.of(context).size.height * 0.8,
@@ -190,34 +191,40 @@ class _LyricsSheetState extends State<LyricsSheet> {
                           style: TextStyle(color: Colors.white54, fontSize: 13, height: 1.5),
                         ),
                       )
-                    : ListView.builder(
-                        controller: _scrollController,
-                        physics: const BouncingScrollPhysics(),
-                        itemCount: _lyrics.length,
-                        itemBuilder: (context, idx) {
-                          final line = _lyrics[idx];
-                          final isActive = idx == _activeLineIndex;
+                    : ValueListenableBuilder<Duration>(
+                        valueListenable: audio.songPositionNotifier,
+                        builder: (context, livePos, _) {
+                          _syncActiveLine(livePos);
+                          return ListView.builder(
+                            controller: _scrollController,
+                            physics: const BouncingScrollPhysics(),
+                            itemCount: _lyrics.length,
+                            itemBuilder: (context, idx) {
+                              final line = _lyrics[idx];
+                              final isActive = idx == _activeLineIndex;
 
-                          return GestureDetector(
-                            onTap: () {
-                              HapticFeedback.lightImpact();
-                              audio.seekSong(line.timestamp);
-                            },
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 250),
-                              padding: const EdgeInsets.symmetric(vertical: 8),
-                              child: Text(
-                                line.text,
-                                style: TextStyle(
-                                  fontSize: isActive ? 22 : 16,
-                                  fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
-                                  color: isActive
-                                      ? const Color(0xFFFDE047) // Glowing warm yellow/gold
-                                      : (idx < _activeLineIndex ? Colors.white38 : Colors.white60),
-                                  height: 1.4,
+                              return GestureDetector(
+                                onTap: () {
+                                  HapticFeedback.lightImpact();
+                                  audio.seekSong(line.timestamp);
+                                },
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 250),
+                                  padding: const EdgeInsets.symmetric(vertical: 8),
+                                  child: Text(
+                                    line.text,
+                                    style: TextStyle(
+                                      fontSize: isActive ? 22 : 16,
+                                      fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
+                                      color: isActive
+                                          ? const Color(0xFFFDE047) // Glowing warm yellow/gold
+                                          : (idx < _activeLineIndex ? Colors.white38 : Colors.white60),
+                                      height: 1.4,
+                                    ),
+                                  ),
                                 ),
-                              ),
-                            ),
+                              );
+                            },
                           );
                         },
                       ),

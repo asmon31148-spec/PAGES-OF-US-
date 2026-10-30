@@ -310,6 +310,8 @@ class WorldProvider extends ChangeNotifier {
     } catch (_) {}
   }
 
+  final Map<String, Map<String, String>> _geocodeCache = {};
+
   /// Starts continuous real-time high-accuracy GPS movement tracking
   Future<void> startLiveTracking({
     required String spaceId,
@@ -327,6 +329,12 @@ class WorldProvider extends ChangeNotifier {
       _currentNickname = nickname;
       _currentAvatarUrl = avatarUrl;
 
+      // Check location service toggle on device
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        _gpsStatus = 'Location Service Off';
+      }
+
       // Check location permission
       LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
@@ -338,7 +346,9 @@ class WorldProvider extends ChangeNotifier {
         }
       }
 
-      _gpsStatus = 'Acquiring GPS...';
+      if (_gpsStatus != 'Location Service Off') {
+        _gpsStatus = 'Acquiring GPS...';
+      }
       notifyListeners();
 
       // 1. Immediate initial fix
@@ -359,11 +369,11 @@ class WorldProvider extends ChangeNotifier {
         } catch (_) {}
       }
 
-      // 2. High-performance continuous position stream (fires on 3m movement)
+      // 2. High-performance continuous position stream (fires on 25m movement for battery & quota safety)
       _positionStreamSub?.cancel();
       const settings = LocationSettings(
         accuracy: LocationAccuracy.high,
-        distanceFilter: 3,
+        distanceFilter: 25,
       );
 
       _positionStreamSub = Geolocator.getPositionStream(locationSettings: settings).listen(
@@ -435,11 +445,13 @@ class WorldProvider extends ChangeNotifier {
     notifyListeners();
 
     // Instant WebSocket broadcast to partner (0-50ms)
-    SupabaseService.broadcastEvent(
-      spaceId: _spaceId!,
-      eventType: 'LOCATION_UPDATE',
-      payload: {'location': myLocation.toJson()},
-    );
+    if (!_spaceId!.startsWith('solo_')) {
+      SupabaseService.broadcastEvent(
+        spaceId: _spaceId!,
+        eventType: 'LOCATION_UPDATE',
+        payload: {'location': myLocation.toJson()},
+      );
+    }
 
     // Debounced Firestore sync to preserve free quotas
     _scheduleCloudPersist(myLocation);
@@ -448,7 +460,7 @@ class WorldProvider extends ChangeNotifier {
   void _scheduleCloudPersist(UserLocationData location) {
     _cloudDebounce?.cancel();
     _cloudDebounce = Timer(const Duration(seconds: 4), () async {
-      if (_spaceId == null || _spaceId!.isEmpty) return;
+      if (_spaceId == null || _spaceId!.isEmpty || _spaceId!.startsWith('solo_')) return;
 
       try {
         // Multi-device safe dot-notation update: never clobbers partner!
@@ -475,11 +487,28 @@ class WorldProvider extends ChangeNotifier {
   }
 
   Future<void> _reverseGeocode(double lat, double lng) async {
+    final cacheKey = '${lat.toStringAsFixed(3)},${lng.toStringAsFixed(3)}';
+    if (_geocodeCache.containsKey(cacheKey)) {
+      final cached = _geocodeCache[cacheKey]!;
+      _cachedPlaceName = cached['place'] ?? '';
+      _cachedNeighborhood = cached['neighborhood'] ?? '';
+      _cachedCity = cached['city'] ?? '';
+      if (_currentUserId != null && _locations.containsKey(_currentUserId)) {
+        _locations[_currentUserId!] = _locations[_currentUserId!]!.copyWith(
+          placeName: _cachedPlaceName,
+          neighborhood: _cachedNeighborhood,
+          city: _cachedCity,
+        );
+        notifyListeners();
+      }
+      return;
+    }
+
     try {
       final geoUrl = Uri.parse(
         'https://nominatim.openstreetmap.org/reverse?format=json&lat=$lat&lon=$lng',
       );
-      final resp = await http.get(geoUrl, headers: {'User-Agent': 'PagesOfUs/1.0'});
+      final resp = await http.get(geoUrl, headers: {'User-Agent': 'PagesOfUsApp/1.0 (contact@pagesofus.app)'});
       if (resp.statusCode == 200) {
         final geoData = jsonDecode(resp.body) as Map<String, dynamic>;
         final addr = geoData['address'] as Map<String, dynamic>?;
@@ -489,6 +518,12 @@ class WorldProvider extends ChangeNotifier {
           _cachedPlaceName = _cachedNeighborhood.isNotEmpty
               ? '$_cachedNeighborhood, $_cachedCity'
               : (geoData['display_name']?.toString().split(',').first ?? 'Nearby');
+
+          _geocodeCache[cacheKey] = {
+            'place': _cachedPlaceName,
+            'neighborhood': _cachedNeighborhood,
+            'city': _cachedCity,
+          };
 
           if (_currentUserId != null && _locations.containsKey(_currentUserId)) {
             _locations[_currentUserId!] = _locations[_currentUserId!]!.copyWith(

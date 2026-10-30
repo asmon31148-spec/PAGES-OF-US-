@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:audioplayers/audioplayers.dart';
@@ -139,9 +140,14 @@ class VoicePlaybackService extends ChangeNotifier {
       // Check if another play request intervened
       if (_sessionId != currentSession) return;
 
-      // 2. Resolve audio source (Local file, Asset, or Stream)
+      // 2. Resolve audio source (Local file, Asset, Stream, or Base64 Data URI)
       Source source;
-      if (!cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://')) {
+      if (cleanUrl.startsWith('data:audio') || cleanUrl.startsWith('data:application')) {
+        final commaIdx = cleanUrl.indexOf(',');
+        final base64Str = commaIdx != -1 ? cleanUrl.substring(commaIdx + 1) : cleanUrl;
+        final bytes = base64Decode(base64Str.replaceAll('\n', '').replaceAll('\r', '').trim());
+        source = BytesSource(bytes);
+      } else if (!cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://')) {
         final filePath = cleanUrl.replaceFirst('file://', '');
         source = DeviceFileSource(filePath);
       } else {
@@ -219,11 +225,14 @@ class VoicePlaybackService extends ChangeNotifier {
     } catch (_) {}
   }
 
-  /// Seeks to a specific target position
+  /// Seeks to a specific target position safely without corrupting native player
   Future<void> seek(Duration target) async {
+    _position = target;
+    positionNotifier.value = target;
+    if (_activeId == null || _playerState == PlayerState.stopped) {
+      return;
+    }
     try {
-      _position = target;
-      positionNotifier.value = target;
       await _player.seek(target);
       notifyListeners();
     } catch (_) {}

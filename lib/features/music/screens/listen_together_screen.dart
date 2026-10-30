@@ -269,10 +269,15 @@ class _ListenTogetherScreenState extends State<ListenTogetherScreen> {
                               const SizedBox(height: 16),
 
                               // Smooth Interactive Music Scrubber (Finger dragging to any sec)
-                              MusicInteractiveScrubber(
-                                position: pos,
-                                duration: dur,
-                                onSeek: (target) => audioProvider.seekSong(target),
+                              ValueListenableBuilder<Duration>(
+                                valueListenable: audioProvider.songPositionNotifier,
+                                builder: (context, livePos, _) {
+                                  return MusicInteractiveScrubber(
+                                    position: livePos,
+                                    duration: dur,
+                                    onSeek: (target) => audioProvider.seekSong(target),
+                                  );
+                                },
                               ),
                               const SizedBox(height: 10),
 

@@ -119,6 +119,9 @@ class _NewVaultScreenState extends State<NewVaultScreen> {
     _pinController.dispose();
     _letterController.dispose();
     _recordTimer?.cancel();
+    if (_isRecordingVoice) {
+      _audioRecorder.stop().catchError((_) => null);
+    }
     _audioRecorder.dispose();
     super.dispose();
   }
@@ -187,6 +190,15 @@ class _NewVaultScreenState extends State<NewVaultScreen> {
           _recordTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
             setState(() => _voiceDurationSeconds++);
           });
+        } else {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Please grant microphone permission in Settings to record voice notes.'),
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          }
         }
       } catch (_) {}
     }

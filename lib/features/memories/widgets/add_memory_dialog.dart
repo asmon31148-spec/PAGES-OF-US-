@@ -68,6 +68,9 @@ class _AddMemoryDialogState extends State<AddMemoryDialog> {
   @override
   void dispose() {
     _recordTimer?.cancel();
+    if (_isRecording) {
+      _audioRecorder.stop().catchError((_) => null);
+    }
     _audioRecorder.dispose();
     _titleController.dispose();
     _captionController.dispose();
@@ -121,6 +124,15 @@ class _AddMemoryDialogState extends State<AddMemoryDialog> {
             await _stopAudioRecording();
           }
         });
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Please grant microphone permission in Settings to record voice notes.'),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
       }
     } catch (_) {}
   }

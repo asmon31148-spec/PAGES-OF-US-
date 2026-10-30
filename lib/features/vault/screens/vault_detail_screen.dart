@@ -963,6 +963,7 @@ class _VaultDetailScreenState extends State<VaultDetailScreen> {
     if (_vault.coverImageUrl != null && _vault.coverImageUrl!.isNotEmpty) {
       return CachedNetworkImage(
         imageUrl: _vault.coverImageUrl!,
+        memCacheWidth: 800,
         fit: BoxFit.cover,
         placeholder: (_, __) => Container(
           color: Color(_vault.colorValue),
@@ -995,6 +996,7 @@ class _VaultDetailScreenState extends State<VaultDetailScreen> {
           videoThumb.isNotEmpty
               ? CachedNetworkImage(
                   imageUrl: videoThumb,
+                  memCacheWidth: 800,
                   fit: BoxFit.cover,
                   placeholder: (_, __) => Container(color: Colors.black54),
                   errorWidget: (_, __, ___) => Container(color: Colors.black54),
@@ -1124,6 +1126,7 @@ class _VaultDetailScreenState extends State<VaultDetailScreen> {
             if (videoThumb.isNotEmpty)
               CachedNetworkImage(
                 imageUrl: videoThumb,
+                memCacheWidth: 600,
                 fit: BoxFit.cover,
                 placeholder: (_, __) => Container(color: const Color(0xFF161420)),
                 errorWidget: (_, __, ___) => Container(
@@ -1276,6 +1279,7 @@ class _VaultDetailScreenState extends State<VaultDetailScreen> {
                     borderRadius: BorderRadius.circular(15),
                     child: CachedNetworkImage(
                       imageUrl: photoUrl,
+                      memCacheWidth: 600,
                       fit: BoxFit.cover,
                       placeholder: (_, __) => const Center(
                         child: CircularProgressIndicator(color: Color(0xFFD4AF37)),
@@ -1321,6 +1325,7 @@ class _VaultDetailScreenState extends State<VaultDetailScreen> {
       audioUrl: _vault.voiceNoteUrl!,
       durationSeconds: _vault.voiceNoteDurationSeconds,
       isDark: true,
+      ambientAudio: context.read<AudioProvider>(),
       onPlayStarted: () {
         context.read<VaultProvider>().stopVaultMusic();
       },

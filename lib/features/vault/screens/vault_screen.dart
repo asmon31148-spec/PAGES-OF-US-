@@ -29,12 +29,6 @@ class _VaultScreenState extends State<VaultScreen> {
     });
   }
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _syncVaults();
-  }
-
   void _syncVaults() {
     final auth = context.read<AuthProvider>();
     final spaceId = auth.space?.id ?? auth.user?.spaceId;
