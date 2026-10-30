@@ -7,11 +7,26 @@ import '../data/services/firebase_service.dart';
 import '../core/services/local_cache_service.dart';
 import '../core/services/notification_service.dart';
 
+class PairingResult {
+  final bool isSuccess;
+  final String? errorMessage;
+  final SpaceModel? space;
+
+  const PairingResult._({required this.isSuccess, this.errorMessage, this.space});
+
+  factory PairingResult.success(SpaceModel space) =>
+      PairingResult._(isSuccess: true, space: space);
+
+  factory PairingResult.failure(String message) =>
+      PairingResult._(isSuccess: false, errorMessage: message);
+}
+
 class AuthProvider extends ChangeNotifier {
   UserProfile? _user;
   SpaceModel? _space;
   UserProfile? _partner;
   bool _isLoading = true;
+  bool _isCreatingSpace = false;
   String? _errorMessage;
 
   StreamSubscription<User?>? _authSub;
@@ -24,6 +39,7 @@ class AuthProvider extends ChangeNotifier {
   UserProfile? get partner => _partner;
   UserProfile? get partnerUser => _partner;
   bool get isLoading => _isLoading;
+  bool get isCreatingSpace => _isCreatingSpace;
   String? get errorMessage => _errorMessage;
   bool get isAuthenticated => _user != null;
   bool get isPaired => _space != null && _space!.members.length > 1;
@@ -102,34 +118,44 @@ class AuthProvider extends ChangeNotifier {
   Future<void> refreshUserData(String uid) async {
     try {
       NotificationService.syncDeviceToken(uid);
-      final profile = await FirebaseService.getUserProfile(uid);
+      var profile = await FirebaseService.getUserProfile(uid);
       if (profile != null) {
-        _user = profile;
-        await LocalCacheService.setCachedUser(profile.toJson());
-
+        // Automatically ensure the user has a permanent sanctuary space & invite code
+        SpaceModel? spaceData;
         if (profile.spaceId != null && profile.spaceId!.isNotEmpty) {
-          _listenToSpace(profile.spaceId!, uid);
-          final spaceData = await FirebaseService.getSpace(profile.spaceId!);
-          if (spaceData != null) {
-            _space = spaceData;
-            await LocalCacheService.setCachedSpace(spaceData.toJson());
+          spaceData = await FirebaseService.getSpace(profile.spaceId!);
+        }
 
-            // Fetch partner if present
-            final partnerId = spaceData.members.firstWhere(
-              (m) => m != uid,
-              orElse: () => '',
-            );
-            if (partnerId.isNotEmpty) {
-              final partnerData = await FirebaseService.getUserProfile(partnerId);
-              if (partnerData != null) {
-                _partner = partnerData;
-                await LocalCacheService.setCachedPartner(partnerData.toJson());
-              }
-            }
+        if (spaceData == null) {
+          spaceData = await FirebaseService.ensureUserSpace(profile);
+          profile = profile.copyWith(spaceId: spaceData.id);
+        }
+
+        _user = profile;
+        _space = spaceData;
+        await LocalCacheService.setCachedUser(profile.toJson());
+        await LocalCacheService.setCachedSpace(spaceData.toJson());
+        _listenToSpace(spaceData.id, uid);
+
+        // Fetch partner if present
+        final partnerId = spaceData.members.firstWhere(
+          (m) => m != uid,
+          orElse: () => '',
+        );
+        if (partnerId.isNotEmpty) {
+          final partnerData = await FirebaseService.getUserProfile(partnerId);
+          if (partnerData != null) {
+            _partner = partnerData;
+            await LocalCacheService.setCachedPartner(partnerData.toJson());
           }
+        } else {
+          _partner = null;
+          await LocalCacheService.setCachedPartner(null);
         }
       }
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('Error in refreshUserData: $e');
+    }
     notifyListeners();
   }
 
@@ -200,8 +226,8 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> createSpace() async {
-    if (_user == null) return;
-    _isLoading = true;
+    if (_user == null || _isCreatingSpace) return;
+    _isCreatingSpace = true;
     notifyListeners();
     try {
       final newSpace = await FirebaseService.createSpace(_user!);
@@ -210,48 +236,80 @@ class AuthProvider extends ChangeNotifier {
       await LocalCacheService.setCachedSpace(newSpace.toJson());
       await LocalCacheService.setCachedUser(_user!.toJson());
       _listenToSpace(newSpace.id, _user!.id);
-    } catch (_) {}
-    _isLoading = false;
-    notifyListeners();
+    } catch (e) {
+      debugPrint('createSpace error: $e');
+    } finally {
+      _isCreatingSpace = false;
+      notifyListeners();
+    }
   }
 
-  Future<bool> joinSpace(String pairCode) async {
-    if (_user == null) return false;
+  Future<void> ensureSpace() async {
+    if (_user == null || _isCreatingSpace) return;
+    _isCreatingSpace = true;
+    notifyListeners();
+    try {
+      final space = await FirebaseService.ensureUserSpace(_user!);
+      _space = space;
+      _user = _user!.copyWith(spaceId: space.id);
+      await LocalCacheService.setCachedSpace(space.toJson());
+      await LocalCacheService.setCachedUser(_user!.toJson());
+      _listenToSpace(space.id, _user!.id);
+    } catch (e) {
+      debugPrint('ensureSpace error: $e');
+    } finally {
+      _isCreatingSpace = false;
+      notifyListeners();
+    }
+  }
+
+  Future<PairingResult> joinSpace(String pairCode) async {
+    if (_user == null) {
+      return PairingResult.failure('You must be signed in to connect.');
+    }
     _isLoading = true;
+    _errorMessage = null;
     notifyListeners();
     try {
       final joinedSpace = await FirebaseService.joinSpace(pairCode, _user!);
-      if (joinedSpace != null) {
-        _space = joinedSpace;
-        _user = _user!.copyWith(spaceId: joinedSpace.id);
-        await LocalCacheService.setCachedSpace(joinedSpace.toJson());
-        await LocalCacheService.setCachedUser(_user!.toJson());
-        _listenToSpace(joinedSpace.id, _user!.id);
+      _space = joinedSpace;
+      _user = _user!.copyWith(spaceId: joinedSpace.id);
+      await LocalCacheService.setCachedSpace(joinedSpace.toJson());
+      await LocalCacheService.setCachedUser(_user!.toJson());
+      _listenToSpace(joinedSpace.id, _user!.id);
 
-        // Refresh partner
-        final partnerId = joinedSpace.members.firstWhere(
-          (m) => m != _user!.id,
-          orElse: () => '',
-        );
-        if (partnerId.isNotEmpty) {
-          final partnerData = await FirebaseService.getUserProfile(partnerId);
-          if (partnerData != null) {
-            _partner = partnerData;
-            await LocalCacheService.setCachedPartner(partnerData.toJson());
-            // 1st: Pairing Successful notification
-            NotificationService.showPairingSuccessNotification(
-              partnerNickname: partnerData.nickname,
-            );
-          }
+      // Refresh partner
+      final partnerId = joinedSpace.members.firstWhere(
+        (m) => m != _user!.id,
+        orElse: () => '',
+      );
+      if (partnerId.isNotEmpty) {
+        final partnerData = await FirebaseService.getUserProfile(partnerId);
+        if (partnerData != null) {
+          _partner = partnerData;
+          await LocalCacheService.setCachedPartner(partnerData.toJson());
+          // 1st: Pairing Successful notification
+          NotificationService.showPairingSuccessNotification(
+            partnerNickname: partnerData.nickname,
+          );
         }
-        _isLoading = false;
-        notifyListeners();
-        return true;
       }
-    } catch (_) {}
-    _isLoading = false;
-    notifyListeners();
-    return false;
+      _isLoading = false;
+      notifyListeners();
+      return PairingResult.success(joinedSpace);
+    } on PairingException catch (e) {
+      _isLoading = false;
+      _errorMessage = e.message;
+      notifyListeners();
+      return PairingResult.failure(e.message);
+    } catch (e) {
+      debugPrint('joinSpace exception: $e');
+      _isLoading = false;
+      final msg = e.toString().replaceAll('Exception: ', '');
+      _errorMessage = msg;
+      notifyListeners();
+      return PairingResult.failure(msg);
+    }
   }
 
   Future<bool> disconnectPartner() async {

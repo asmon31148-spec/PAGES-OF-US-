@@ -1,8 +1,18 @@
+import 'dart:math' as math;
+import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import '../models/user_profile.dart';
 import '../models/space_model.dart';
+
+class PairingException implements Exception {
+  final String message;
+  const PairingException(this.message);
+
+  @override
+  String toString() => message;
+}
 
 class FirebaseService {
   static final FirebaseAuth auth = FirebaseAuth.instance;
@@ -41,6 +51,8 @@ class FirebaseService {
         createdAt: DateTime.now().toIso8601String(),
       );
       await saveUserProfile(profile);
+      // Automatically ensure permanent Sanctuary space & pair code
+      await ensureUserSpace(profile);
     }
     return cred;
   }
@@ -83,8 +95,9 @@ class FirebaseService {
       final user = cred.user;
       if (user != null) {
         final doc = await firestore.collection('users').doc(user.uid).get();
+        UserProfile profile;
         if (!doc.exists) {
-          final profile = UserProfile(
+          profile = UserProfile(
             id: user.uid,
             email: user.email ?? '',
             nickname: (user.displayName != null && user.displayName!.trim().isNotEmpty)
@@ -96,7 +109,11 @@ class FirebaseService {
             createdAt: DateTime.now().toIso8601String(),
           );
           await saveUserProfile(profile);
+        } else {
+          profile = UserProfile.fromJson(doc.data()!);
         }
+        // Automatically ensure permanent Sanctuary space & pair code
+        await ensureUserSpace(profile);
       }
       return cred;
     } catch (e) {
@@ -146,60 +163,253 @@ class FirebaseService {
     return SpaceModel.fromJson(doc.data()!);
   }
 
+  static Future<String> _generateUniquePairCode() async {
+    final rng = math.Random.secure();
+    for (int attempt = 0; attempt < 10; attempt++) {
+      final code = (rng.nextInt(900000) + 100000).toString();
+      try {
+        final doc = await firestore.collection('pair_codes').doc(code).get();
+        if (!doc.exists) {
+          return code;
+        }
+      } catch (_) {
+        return code;
+      }
+    }
+    return (DateTime.now().millisecondsSinceEpoch % 900000 + 100000).toString();
+  }
+
+  static Future<SpaceModel> ensureUserSpace(UserProfile user) async {
+    final effectiveUid = user.id.isNotEmpty ? user.id : (auth.currentUser?.uid ?? '');
+    if (effectiveUid.isEmpty) {
+      throw const PairingException('User is not authenticated.');
+    }
+
+    // 1. If user already has spaceId, check if it exists in Firestore
+    if (user.spaceId != null && user.spaceId!.isNotEmpty) {
+      try {
+        final existing = await getSpace(user.spaceId!);
+        if (existing != null) {
+          // Verify pair_codes collection mapping; repair if missing
+          if (existing.pairCode.isNotEmpty) {
+            try {
+              final codeDoc = await firestore.collection('pair_codes').doc(existing.pairCode).get();
+              if (!codeDoc.exists) {
+                await firestore.collection('pair_codes').doc(existing.pairCode).set({
+                  'spaceId': existing.id,
+                  'space_id': existing.id,
+                  'creatorId': effectiveUid,
+                  'createdAt': FieldValue.serverTimestamp(),
+                }, SetOptions(merge: true));
+              }
+            } catch (_) {}
+          }
+          return existing;
+        }
+      } catch (e) {
+        debugPrint('Error fetching existing space: $e');
+      }
+    }
+
+    // 2. Check if an existing space has this user in members
+    try {
+      final query = await firestore
+          .collection('spaces')
+          .where('members', arrayContains: effectiveUid)
+          .limit(1)
+          .get();
+      if (query.docs.isNotEmpty) {
+        final found = SpaceModel.fromJson(query.docs.first.data());
+        // Link user profile to this space
+        await firestore.collection('users').doc(effectiveUid).set({
+          'spaceId': found.id,
+          'space_id': found.id,
+        }, SetOptions(merge: true));
+        return found;
+      }
+    } catch (_) {}
+
+    // 3. Create fresh permanent sanctuary space
+    return await createSpace(user);
+  }
+
   static Future<SpaceModel> createSpace(UserProfile user) async {
+    final effectiveUid = user.id.isNotEmpty ? user.id : (auth.currentUser?.uid ?? '');
+    if (effectiveUid.isEmpty) {
+      throw const PairingException('User is not authenticated.');
+    }
+
     final spaceId = 'space_${DateTime.now().millisecondsSinceEpoch}';
-    final pairCode = (spaceId.hashCode.abs() % 900000 + 100000).toString();
+    final pairCode = await _generateUniquePairCode();
 
     final space = SpaceModel(
       id: spaceId,
       name: 'Our Sanctuary',
       pairCode: pairCode,
-      members: [user.id],
+      members: [effectiveUid],
       createdAt: DateTime.now().toIso8601String(),
     );
 
+    // Save space
     await firestore.collection('spaces').doc(spaceId).set(space.toJson());
-    await firestore.collection('pair_codes').doc(pairCode).set({'spaceId': spaceId});
+
+    // Map pair code
+    await firestore.collection('pair_codes').doc(pairCode).set({
+      'spaceId': spaceId,
+      'space_id': spaceId,
+      'creatorId': effectiveUid,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
 
     // Link user to space
-    final updated = user.copyWith(spaceId: spaceId);
-    await saveUserProfile(updated);
+    await firestore.collection('users').doc(effectiveUid).set({
+      'spaceId': spaceId,
+      'space_id': spaceId,
+    }, SetOptions(merge: true));
 
     return space;
   }
 
-  static Future<SpaceModel?> joinSpace(String pairCode, UserProfile user) async {
-    final codeDoc = await firestore.collection('pair_codes').doc(pairCode.trim()).get();
-    if (!codeDoc.exists || codeDoc.data() == null) return null;
-
-    final spaceId = codeDoc.data()!['spaceId'] as String?;
-    if (spaceId == null) return null;
-
-    final spaceDoc = await firestore.collection('spaces').doc(spaceId).get();
-    if (!spaceDoc.exists || spaceDoc.data() == null) return null;
-
-    final existingSpace = SpaceModel.fromJson(spaceDoc.data()!);
-    final members = List<String>.from(existingSpace.members);
-    if (!members.contains(user.id)) {
-      members.add(user.id);
+  static Future<SpaceModel> joinSpace(String rawCode, UserProfile user) async {
+    final cleanCode = rawCode.trim().replaceAll(RegExp(r'[\s\-_]'), '').toUpperCase();
+    if (cleanCode.isEmpty) {
+      throw const PairingException('Please enter a valid 6-digit pair code.');
     }
 
+    final currentUid = user.id.isNotEmpty ? user.id : (auth.currentUser?.uid ?? '');
+    if (currentUid.isEmpty) {
+      throw const PairingException('You must be signed in to connect.');
+    }
+
+    // 1. Resolve pairCode -> spaceId
+    String? targetSpaceId;
+    try {
+      final codeDoc = await firestore.collection('pair_codes').doc(cleanCode).get();
+      if (codeDoc.exists && codeDoc.data() != null) {
+        targetSpaceId = codeDoc.data()!['spaceId'] as String? ?? codeDoc.data()!['space_id'] as String?;
+      }
+    } catch (e) {
+      debugPrint('Error reading pair_codes doc: $e');
+    }
+
+    // Fallback: search spaces directly by pairCode or pair_code
+    if (targetSpaceId == null || targetSpaceId.isEmpty) {
+      try {
+        final q1 = await firestore
+            .collection('spaces')
+            .where('pairCode', isEqualTo: cleanCode)
+            .limit(1)
+            .get();
+        if (q1.docs.isNotEmpty) {
+          targetSpaceId = q1.docs.first.id;
+        } else {
+          final q2 = await firestore
+              .collection('spaces')
+              .where('pair_code', isEqualTo: cleanCode)
+              .limit(1)
+              .get();
+          if (q2.docs.isNotEmpty) {
+            targetSpaceId = q2.docs.first.id;
+          }
+        }
+
+        // Repair pair_codes mapping
+        if (targetSpaceId != null && targetSpaceId.isNotEmpty) {
+          await firestore.collection('pair_codes').doc(cleanCode).set({
+            'spaceId': targetSpaceId,
+            'space_id': targetSpaceId,
+            'repairedAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
+        }
+      } catch (e) {
+        debugPrint('Fallback space lookup error: $e');
+      }
+    }
+
+    if (targetSpaceId == null || targetSpaceId.isEmpty) {
+      throw PairingException('Invalid pair code. No sanctuary found with code "$cleanCode". Please verify with your partner.');
+    }
+
+    // 2. Fetch the target space
+    final spaceDoc = await firestore.collection('spaces').doc(targetSpaceId).get();
+    if (!spaceDoc.exists || spaceDoc.data() == null) {
+      throw const PairingException('Sanctuary space data not found. Please try again.');
+    }
+
+    final existingSpace = SpaceModel.fromJson(spaceDoc.data()!);
+
+    // Check if trying to pair with own code
+    if (existingSpace.members.contains(currentUid) && existingSpace.members.length == 1) {
+      throw const PairingException('That is your own invite code! Share this code with your partner so they can connect with you.');
+    }
+
+    // If already paired to this exact space with partner
+    if (existingSpace.members.contains(currentUid) && existingSpace.members.length > 1) {
+      return existingSpace;
+    }
+
+    // Check if space is already full with 2 other members
+    if (existingSpace.members.length >= 2 && !existingSpace.members.contains(currentUid)) {
+      throw const PairingException('This sanctuary is already shared by two partners.');
+    }
+
+    // 3. Add current user to space members
+    final updatedMembers = List<String>.from(existingSpace.members);
+    if (!updatedMembers.contains(currentUid)) {
+      updatedMembers.add(currentUid);
+    }
+
+    final partnerUid = updatedMembers.firstWhere((id) => id != currentUid, orElse: () => '');
+
     final updatedSpace = SpaceModel(
-      id: existingSpace.id,
-      name: existingSpace.name,
+      id: targetSpaceId,
+      name: existingSpace.name.isNotEmpty ? existingSpace.name : 'Our Sanctuary',
       pairCode: existingSpace.pairCode,
-      partnerId: members.firstWhere((m) => m != user.id, orElse: () => ''),
-      members: members,
+      partnerId: partnerUid,
+      members: updatedMembers,
       createdAt: existingSpace.createdAt,
     );
 
-    await firestore
-        .collection('spaces')
-        .doc(spaceId)
-        .set(updatedSpace.toJson(), SetOptions(merge: true));
+    // Save updated space
+    await firestore.collection('spaces').doc(targetSpaceId).set({
+      'id': targetSpaceId,
+      'members': updatedMembers,
+      'partnerId': partnerUid,
+      'partner_id': partnerUid,
+      'lastPairedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
 
-    final updatedUser = user.copyWith(spaceId: spaceId);
-    await saveUserProfile(updatedUser);
+    // Update current user's profile
+    await firestore.collection('users').doc(currentUid).set({
+      'spaceId': targetSpaceId,
+      'space_id': targetSpaceId,
+    }, SetOptions(merge: true));
+
+    // Update partner's profile
+    if (partnerUid.isNotEmpty) {
+      await firestore.collection('users').doc(partnerUid).set({
+        'spaceId': targetSpaceId,
+        'space_id': targetSpaceId,
+      }, SetOptions(merge: true));
+    }
+
+    // Bi-directional code redirect: If current user had an old solo space code, redirect it to targetSpaceId
+    if (user.spaceId != null && user.spaceId!.isNotEmpty && user.spaceId != targetSpaceId) {
+      try {
+        final oldSpaceDoc = await firestore.collection('spaces').doc(user.spaceId!).get();
+        if (oldSpaceDoc.exists) {
+          final oldCode = oldSpaceDoc.data()?['pairCode'] ?? oldSpaceDoc.data()?['pair_code'];
+          if (oldCode != null && oldCode.toString().isNotEmpty) {
+            await firestore.collection('pair_codes').doc(oldCode.toString()).set({
+              'spaceId': targetSpaceId,
+              'space_id': targetSpaceId,
+              'redirectedTo': targetSpaceId,
+              'updatedAt': FieldValue.serverTimestamp(),
+            }, SetOptions(merge: true));
+          }
+        }
+      } catch (_) {}
+    }
 
     return updatedSpace;
   }
@@ -208,8 +418,10 @@ class FirebaseService {
     required UserProfile currentUser,
     required SpaceModel currentSpace,
   }) async {
+    final effectiveUid = currentUser.id.isNotEmpty ? currentUser.id : (auth.currentUser?.uid ?? '');
+
     // 1. Remove currentUser from currentSpace.members in Firestore
-    final remainingMembers = currentSpace.members.where((id) => id != currentUser.id).toList();
+    final remainingMembers = currentSpace.members.where((id) => id != effectiveUid).toList();
     final updatedCurrentSpace = SpaceModel(
       id: currentSpace.id,
       name: currentSpace.name,
@@ -225,21 +437,28 @@ class FirebaseService {
 
     // 2. Create a fresh personal sanctuary space for currentUser
     final newSpaceId = 'space_${DateTime.now().millisecondsSinceEpoch}';
-    final newPairCode = (newSpaceId.hashCode.abs() % 900000 + 100000).toString();
+    final newPairCode = await _generateUniquePairCode();
     final newSpace = SpaceModel(
       id: newSpaceId,
       name: 'Our Sanctuary',
       pairCode: newPairCode,
-      members: [currentUser.id],
+      members: [effectiveUid],
       createdAt: DateTime.now().toIso8601String(),
     );
 
     await firestore.collection('spaces').doc(newSpaceId).set(newSpace.toJson());
-    await firestore.collection('pair_codes').doc(newPairCode).set({'spaceId': newSpaceId});
+    await firestore.collection('pair_codes').doc(newPairCode).set({
+      'spaceId': newSpaceId,
+      'space_id': newSpaceId,
+      'creatorId': effectiveUid,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
 
     // 3. Update currentUser's spaceId to the new space
-    final updatedUser = currentUser.copyWith(spaceId: newSpaceId);
-    await saveUserProfile(updatedUser);
+    await firestore.collection('users').doc(effectiveUid).set({
+      'spaceId': newSpaceId,
+      'space_id': newSpaceId,
+    }, SetOptions(merge: true));
 
     return newSpace;
   }

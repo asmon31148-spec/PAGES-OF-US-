@@ -16,19 +16,60 @@ class SpaceModel {
   });
 
   factory SpaceModel.fromJson(Map<String, dynamic> json) {
-    final rawMembers = (json['members'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [];
-    if (rawMembers.isEmpty) {
-      final creator = json['creator_id'] as String?;
-      final partner = json['partner_id'] as String? ?? json['partnerId'] as String?;
-      if (creator != null && creator.isNotEmpty) rawMembers.add(creator);
-      if (partner != null && partner.isNotEmpty && !rawMembers.contains(partner)) rawMembers.add(partner);
+    List<String> rawMembers = [];
+    final membersData = json['members'];
+    if (membersData is List) {
+      rawMembers = membersData
+          .map((e) => e?.toString() ?? '')
+          .where((e) => e.isNotEmpty)
+          .toList();
+    } else if (membersData is Map) {
+      rawMembers = membersData.keys
+          .map((e) => e.toString())
+          .where((e) => e.isNotEmpty)
+          .toList();
     }
 
+    final creator = json['creator_id'] as String? ??
+        json['creatorId'] as String? ??
+        json['createdBy'] as String?;
+    final partner = json['partner_id'] as String? ??
+        json['partnerId'] as String?;
+
+    if (rawMembers.isEmpty) {
+      if (creator != null && creator.isNotEmpty) rawMembers.add(creator);
+      if (partner != null && partner.isNotEmpty && !rawMembers.contains(partner)) {
+        rawMembers.add(partner);
+      }
+    } else {
+      if (creator != null && creator.isNotEmpty && !rawMembers.contains(creator)) {
+        rawMembers.insert(0, creator);
+      }
+      if (partner != null && partner.isNotEmpty && !rawMembers.contains(partner)) {
+        rawMembers.add(partner);
+      }
+    }
+
+    final name = json['name'] as String? ??
+        json['spaceName'] as String? ??
+        json['space_name'] as String? ??
+        'Our Sanctuary';
+
+    final pairCode = json['pairCode'] as String? ??
+        json['pair_code'] as String? ??
+        json['code'] as String? ??
+        '';
+
+    final id = json['id'] as String? ??
+        json['spaceId'] as String? ??
+        json['space_id'] as String? ??
+        '';
+
     return SpaceModel(
-      id: json['id'] as String? ?? '',
-      name: json['name'] as String? ?? json['space_name'] as String? ?? 'Our Sanctuary',
-      pairCode: json['pairCode'] as String? ?? json['pair_code'] as String? ?? '',
-      partnerId: json['partnerId'] as String? ?? json['partner_id'] as String?,
+      id: id,
+      name: name,
+      pairCode: pairCode,
+      partnerId: partner,
       members: rawMembers,
       createdAt: json['createdAt'] as String? ?? json['created_at'] as String?,
     );
@@ -38,10 +79,17 @@ class SpaceModel {
     return {
       'id': id,
       'name': name,
+      'spaceName': name,
+      'space_name': name,
       'pairCode': pairCode,
-      'partnerId': partnerId,
+      'pair_code': pairCode,
+      if (partnerId != null && partnerId!.isNotEmpty) ...{
+        'partnerId': partnerId,
+        'partner_id': partnerId,
+      },
       'members': members,
       'createdAt': createdAt,
+      'created_at': createdAt,
     };
   }
 }

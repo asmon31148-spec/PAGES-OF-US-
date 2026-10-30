@@ -24,11 +24,11 @@ class UserProfile {
       id: json['id'] as String? ?? json['uid'] as String? ?? '',
       email: json['email'] as String? ?? '',
       nickname: json['nickname'] as String? ?? 'Partner',
-      avatarUrl: json['avatarUrl'] as String?,
+      avatarUrl: json['avatarUrl'] as String? ?? json['avatar_url'] as String? ?? json['photoURL'] as String?,
       thought: json['thought'] as String?,
-      spaceId: json['spaceId'] as String?,
-      fcmToken: json['fcmToken'] as String?,
-      createdAt: json['createdAt'] as String?,
+      spaceId: json['spaceId'] as String? ?? json['space_id'] as String?,
+      fcmToken: json['fcmToken'] as String? ?? json['fcm_token'] as String?,
+      createdAt: json['createdAt'] as String? ?? json['created_at'] as String?,
     );
   }
 
@@ -40,6 +40,7 @@ class UserProfile {
       'avatarUrl': avatarUrl,
       'thought': thought,
       'spaceId': spaceId,
+      if (spaceId != null) 'space_id': spaceId,
       if (fcmToken != null) 'fcmToken': fcmToken,
       'createdAt': createdAt,
     };

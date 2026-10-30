@@ -568,7 +568,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                       ),
                     ],
-                    if (space?.pairCode != null) ...[
+                    if (space != null && space.pairCode.isNotEmpty) ...[
                       const SizedBox(height: 12),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),

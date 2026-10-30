@@ -31,6 +31,17 @@ class _PairingModalState extends State<PairingModal> {
   String? _error;
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final auth = context.read<AuthProvider>();
+      if (auth.space == null && auth.user != null) {
+        auth.ensureSpace();
+      }
+    });
+  }
+
+  @override
   void dispose() {
     _codeController.dispose();
     super.dispose();
@@ -78,28 +89,58 @@ class _PairingModalState extends State<PairingModal> {
               ),
               const SizedBox(height: 4),
               Text(
-                'Share your code or enter their code to link your private stage ✦',
+                'Share your code or enter their code to link your private sanctuary ✦',
                 style: TextStyle(
                   fontSize: 12,
                   color: isDark ? AppColors.darkSoft : AppColors.lightSoft,
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 18),
 
-              // 1. Your Code Card
-              if (space != null) ...[
-                Text(
-                  'YOUR INVITE CODE',
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 1,
-                    color: isDark ? AppColors.darkSoft : AppColors.lightSoft,
+              // Paired Banner if already linked
+              if (authProvider.isPaired && authProvider.partner != null) ...[
+                Container(
+                  margin: const EdgeInsets.only(bottom: 16),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: AppColors.sage.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: AppColors.sage.withOpacity(0.3)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.favorite_rounded, color: AppColors.terra, size: 18),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'Connected with ${authProvider.partner!.nickname} 💕',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            color: isDark ? AppColors.darkInk : AppColors.lightInk,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 8),
+              ],
+
+              // 1. Your Code Card
+              Text(
+                'YOUR INVITE CODE',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1,
+                  color: isDark ? AppColors.darkSoft : AppColors.lightSoft,
+                ),
+              ),
+              const SizedBox(height: 8),
+
+              if (space != null && space.pairCode.isNotEmpty) ...[
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   decoration: BoxDecoration(
                     color: isDark ? AppColors.darkCard : AppColors.lightCard,
                     borderRadius: BorderRadius.circular(16),
@@ -110,10 +151,10 @@ class _PairingModalState extends State<PairingModal> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
+                      SelectableText(
                         space.pairCode,
                         style: const TextStyle(
-                          fontSize: 22,
+                          fontSize: 24,
                           fontFamily: 'monospace',
                           fontWeight: FontWeight.bold,
                           letterSpacing: 4,
@@ -121,16 +162,17 @@ class _PairingModalState extends State<PairingModal> {
                         ),
                       ),
                       IconButton(
+                        tooltip: 'Copy Invite Code',
                         onPressed: () {
                           Clipboard.setData(ClipboardData(text: space.pairCode));
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Invite code copied to clipboard! ✨'),
+                            SnackBar(
+                              content: Text('Invite code ${space.pairCode} copied to clipboard! ✨'),
                               behavior: SnackBarBehavior.floating,
                             ),
                           );
                         },
-                        icon: const Icon(Icons.copy, size: 18),
+                        icon: const Icon(Icons.copy_rounded, size: 20),
                         color: isDark ? AppColors.darkInk : AppColors.lightInk,
                       ),
                     ],
@@ -138,22 +180,37 @@ class _PairingModalState extends State<PairingModal> {
                 ),
                 const SizedBox(height: 20),
               ] else ...[
-                // Create Space button
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () => authProvider.createSpace(),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.sage,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  margin: const EdgeInsets.only(bottom: 20),
+                  decoration: BoxDecoration(
+                    color: isDark ? AppColors.darkCard : AppColors.lightCard,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
                     ),
-                    child: const Text('Generate My Sanctuary Space'),
+                  ),
+                  child: Row(
+                    children: [
+                      const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: AppColors.terra,
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Text(
+                        'Preparing your sanctuary code...',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: isDark ? AppColors.darkSoft : AppColors.lightSoft,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 16),
               ],
 
               // 2. Enter Partner's Code
@@ -169,33 +226,74 @@ class _PairingModalState extends State<PairingModal> {
               const SizedBox(height: 8),
               TextField(
                 controller: _codeController,
+                keyboardType: TextInputType.text,
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9]')),
+                  LengthLimitingTextInputFormatter(6),
+                ],
                 textCapitalization: TextCapitalization.characters,
                 style: const TextStyle(
-                  fontSize: 16,
+                  fontSize: 18,
                   fontFamily: 'monospace',
-                  letterSpacing: 3,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 4,
                 ),
                 decoration: InputDecoration(
                   hintText: 'e.g. 583921',
                   hintStyle: TextStyle(
-                    fontSize: 14,
+                    fontSize: 15,
+                    fontFamily: 'monospace',
+                    letterSpacing: 2,
                     color: isDark ? AppColors.darkSoft : AppColors.lightSoft,
                   ),
                   filled: true,
                   fillColor: isDark ? AppColors.darkCard : AppColors.lightCard,
                   contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(16),
-                    borderSide: BorderSide.none,
+                    borderSide: BorderSide(
+                      color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                    ),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide(
+                      color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: const BorderSide(color: AppColors.terra, width: 1.5),
                   ),
                 ),
               ),
               if (_error != null) ...[
-                const SizedBox(height: 6),
-                Text(
-                  _error!,
-                  style: const TextStyle(fontSize: 11, color: Colors.redAccent),
+                const SizedBox(height: 10),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.redAccent.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.redAccent.withOpacity(0.3)),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(Icons.info_outline, size: 16, color: Colors.redAccent),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          _error!,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Colors.redAccent,
+                            height: 1.3,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ],
               const SizedBox(height: 16),
@@ -207,14 +305,17 @@ class _PairingModalState extends State<PairingModal> {
                       ? null
                       : () async {
                           final code = _codeController.text.trim();
-                          if (code.isEmpty) return;
+                          if (code.isEmpty) {
+                            setState(() => _error = 'Please enter your partner\'s 6-digit code.');
+                            return;
+                          }
                           setState(() {
                             _isLinking = true;
                             _error = null;
                           });
-                          final ok = await authProvider.joinSpace(code);
+                          final result = await authProvider.joinSpace(code);
                           setState(() => _isLinking = false);
-                          if (ok && context.mounted) {
+                          if (result.isSuccess && context.mounted) {
                             final space = authProvider.space;
                             final user = authProvider.user;
                             final partner = authProvider.partner;
@@ -244,7 +345,7 @@ class _PairingModalState extends State<PairingModal> {
                               ),
                             );
                           } else if (mounted) {
-                            setState(() => _error = 'Invalid pair code. Please try again.');
+                            setState(() => _error = result.errorMessage ?? 'Invalid pair code. Please try again.');
                           }
                         },
                   style: ElevatedButton.styleFrom(
