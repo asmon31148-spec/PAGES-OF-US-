@@ -449,54 +449,59 @@ class _AddMemoryDialogState extends State<AddMemoryDialog> {
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
               ),
-              child: Row(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  IconButton(
-                    icon: Icon(
-                      _isRecording ? Icons.stop_circle : Icons.mic,
-                      color: _isRecording ? Colors.redAccent : AppColors.terra,
-                      size: 28,
-                    ),
-                    onPressed: _isRecording ? _stopAudioRecording : () => _startAudioRecording(maxSeconds: 30),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          _isRecording
-                              ? 'Recording... ($_recordDurationSeconds / 30s)'
-                              : (_recordedAudioFile != null ? 'Voice Whisper Attached ✦' : 'Optional: Record 30s Voice Whisper'),
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: _isRecording ? Colors.redAccent : (isDark ? AppColors.darkInk : AppColors.lightInk),
-                          ),
+                  Row(
+                    children: [
+                      IconButton(
+                        icon: Icon(
+                          _isRecording ? Icons.stop_circle : Icons.mic,
+                          color: _isRecording ? Colors.redAccent : AppColors.terra,
+                          size: 28,
                         ),
-                        Text(
-                          'Plays via "Listen Voice Whisper" on this card',
-                          style: TextStyle(fontSize: 10, color: isDark ? AppColors.darkSoft : AppColors.lightSoft),
+                        onPressed: _isRecording ? _stopAudioRecording : () => _startAudioRecording(maxSeconds: 30),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _isRecording
+                                  ? 'Recording... ($_recordDurationSeconds / 30s)'
+                                  : (_recordedAudioFile != null ? 'Voice Whisper Attached ✦' : 'Optional: Record 30s Voice Whisper'),
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: _isRecording ? Colors.redAccent : (isDark ? AppColors.darkInk : AppColors.lightInk),
+                              ),
+                            ),
+                            Text(
+                              'Plays via "Listen Voice Whisper" on this card',
+                              style: TextStyle(fontSize: 10, color: isDark ? AppColors.darkSoft : AppColors.lightSoft),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
+                      ),
+                      if (_recordedAudioFile != null && !_isRecording)
+                        IconButton(
+                          icon: const Icon(Icons.close, size: 18),
+                          onPressed: () => setState(() => _recordedAudioFile = null),
+                        ),
+                    ],
                   ),
-                  if (_recordedAudioFile != null && !_isRecording)
-                    IconButton(
-                      icon: const Icon(Icons.close, size: 18),
-                      onPressed: () => setState(() => _recordedAudioFile = null),
+                  if (_recordedAudioFile != null && !_isRecording) ...[
+                    const SizedBox(height: 8),
+                    SanctuaryVoicePlayer(
+                      id: 'preview_attached_whisper',
+                      audioUrl: _recordedAudioFile!.path,
+                      durationSeconds: _recordDurationSeconds > 0 ? _recordDurationSeconds : null,
+                      isDark: isDark,
                     ),
+                  ],
                 ],
               ),
-              if (_recordedAudioFile != null && !_isRecording) ...[
-                const SizedBox(height: 8),
-                SanctuaryVoicePlayer(
-                  id: 'preview_attached_whisper',
-                  audioUrl: _recordedAudioFile!.path,
-                  durationSeconds: _recordDurationSeconds > 0 ? _recordDurationSeconds : null,
-                  isDark: isDark,
-                ),
-              ],
             ),
           ],
 
