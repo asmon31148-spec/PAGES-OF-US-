@@ -961,13 +961,25 @@ class _AddMilestoneModalSheetState extends State<_AddMilestoneModalSheet> {
                     lastDate: DateTime.now().add(const Duration(days: 3650)),
                     builder: (context, child) {
                       return Theme(
-                        data: Theme.of(context).copyWith(
-                          colorScheme: ColorScheme.light(
-                            primary: AppColors.sage,
-                            onPrimary: Colors.white,
-                            onSurface: isDark ? Colors.white : Colors.black,
-                          ),
-                        ),
+                        data: isDark
+                            ? ThemeData.dark().copyWith(
+                                colorScheme: const ColorScheme.dark(
+                                  primary: AppColors.sage,
+                                  onPrimary: Colors.white,
+                                  surface: Color(0xFF1E2222),
+                                  onSurface: Colors.white,
+                                ),
+                                dialogBackgroundColor: const Color(0xFF1E2222),
+                              )
+                            : ThemeData.light().copyWith(
+                                colorScheme: const ColorScheme.light(
+                                  primary: AppColors.sage,
+                                  onPrimary: Colors.white,
+                                  surface: Colors.white,
+                                  onSurface: Color(0xFF1E2222),
+                                ),
+                                dialogBackgroundColor: Colors.white,
+                              ),
                         child: child!,
                       );
                     },

@@ -789,17 +789,17 @@ class _VaultDetailScreenState extends State<VaultDetailScreen> {
             onPressed: _handleBack,
           ),
           actions: [
-            // Background Music Quick Action & Sheet opener
+            // Background Music Quick Action: Mute / Play toggle
             IconButton(
               icon: Icon(
-                (_vault.backgroundSong == null || _vault.backgroundSong == 'none')
-                    ? Icons.music_off_outlined
-                    : (_isMusicMuted || !vp.isAudioPlaying ? Icons.volume_off_rounded : Icons.music_note_rounded),
+                (_vault.backgroundSong == null || _vault.backgroundSong == 'none' || _isMusicMuted || !vp.isAudioPlaying)
+                    ? Icons.volume_off_rounded
+                    : Icons.volume_up_rounded,
                 color: const Color(0xFFD4AF37),
                 size: 22,
               ),
-              tooltip: 'Vault soundtrack',
-              onPressed: () => _showMusicCustomizationSheet(context),
+              tooltip: _isMusicMuted || !vp.isAudioPlaying ? 'Play soundtrack' : 'Mute soundtrack',
+              onPressed: _toggleMuteMusic,
             ),
 
             // Edit button (available for both partners)
@@ -832,11 +832,7 @@ class _VaultDetailScreenState extends State<VaultDetailScreen> {
             children: [
               // 1. Hero Card (Matching Image 3)
               _buildHeroCard(),
-              const SizedBox(height: 16),
-
-              // Background Soundtrack Banner & Customizer
-              _buildBackgroundMusicBanner(vp),
-              const SizedBox(height: 24),
+              const SizedBox(height: 20),
 
               // 2. The Letter Section
               if (_vault.letter.isNotEmpty) ...[
