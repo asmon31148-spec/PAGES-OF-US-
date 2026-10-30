@@ -147,9 +147,35 @@ class _StageAtmosphereCardState extends State<StageAtmosphereCard> {
             ? 'At ${myLoc!.placeName}'
             : 'Local sky & presence');
 
+    // Living romantic atmosphere headline
+    String romanticHook;
+    final partnerName = partner?.nickname ?? 'Your partner';
+    final city = partnerLoc?.placeName ?? '';
+    if (isPaired) {
+      if ((weather.weatherCode >= 51 && weather.weatherCode <= 67) || (weather.weatherCode >= 80 && weather.weatherCode <= 82)) {
+        romanticHook = '$partnerName is resting under gentle rain ${city.isNotEmpty ? "in $city" : "today"} 🌧️';
+      } else if (weather.weatherCode >= 95) {
+        romanticHook = 'Thunderstorms rolling over $partnerName ${city.isNotEmpty ? "in $city" : ""} ⛈️';
+      } else if (!weather.isDay) {
+        romanticHook = '$partnerName is resting under the quiet night sky 🌙';
+      } else if (weather.temperature >= 32.0) {
+        romanticHook = '$partnerName is in warm afternoon sunshine ☀️';
+      } else {
+        romanticHook = '$partnerName is soaking in the calm daylight ${city.isNotEmpty ? "in $city" : "today"} 🌿';
+      }
+    } else {
+      if (weather.weatherCode >= 51) {
+        romanticHook = 'Listening to soft rain falling outside 🌧️';
+      } else if (!weather.isDay) {
+        romanticHook = 'Resting under the calm night sky 🌙';
+      } else {
+        romanticHook = 'A peaceful, serene sanctuary day ☀️';
+      }
+    }
+
     return Container(
       margin: EdgeInsets.zero,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
         color: isDark ? AppColors.darkBg : AppColors.lightBg,
         border: Border(
@@ -164,8 +190,8 @@ class _StageAtmosphereCardState extends State<StageAtmosphereCard> {
         children: [
           // Weather Emoji Icon
           Container(
-            width: 44,
-            height: 44,
+            width: 46,
+            height: 46,
             decoration: BoxDecoration(
               color: isDark ? AppColors.darkCard : AppColors.lightCard,
               borderRadius: BorderRadius.circular(14),
@@ -177,7 +203,7 @@ class _StageAtmosphereCardState extends State<StageAtmosphereCard> {
             alignment: Alignment.center,
             child: Text(
               weather.emoji,
-              style: const TextStyle(fontSize: 22),
+              style: const TextStyle(fontSize: 24),
             ),
           ),
           const SizedBox(width: 12),
@@ -227,11 +253,24 @@ class _StageAtmosphereCardState extends State<StageAtmosphereCard> {
                 ),
                 const SizedBox(height: 2),
 
+                // Emotional Romantic Headline
+                Text(
+                  romanticHook,
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    fontStyle: FontStyle.italic,
+                    color: isDark ? AppColors.terra.withOpacity(0.9) : AppColors.terra,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 2),
+
                 // Detailed Weather Metrics: Feels Like, Humidity, Wind
                 Text(
                   'Feels like ${weather.apparentTemperature.round()}°C  •  💧 ${weather.humidity}%  •  💨 ${weather.windSpeed.round()} km/h',
                   style: TextStyle(
-                    fontSize: 10.5,
+                    fontSize: 10,
                     color: isDark ? AppColors.darkSoft : AppColors.lightSoft,
                   ),
                   maxLines: 1,

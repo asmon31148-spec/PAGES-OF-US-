@@ -90,18 +90,14 @@ class _StageDailySyncCardState extends State<StageDailySyncCard> {
 
     final bothAnswered = myAnswer != null && partnerAnswer != null;
     final canSubmit = !_isSubmitting && _answerController.text.trim().isNotEmpty;
+    final partner = authProvider.partner;
+    final partnerNickname = partner?.nickname ?? 'Partner';
 
     return Container(
       margin: EdgeInsets.zero,
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 20),
       decoration: BoxDecoration(
         color: isDark ? AppColors.darkBg : AppColors.lightBg,
-        border: Border(
-          bottom: BorderSide(
-            color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
-            width: 0.8,
-          ),
-        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -243,10 +239,11 @@ class _StageDailySyncCardState extends State<StageDailySyncCard> {
 
           // Question Prompt (Hero Focal Point of the Home Page)
           Text(
-            prompt,
+            '“$prompt”',
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.w700,
+              fontStyle: FontStyle.italic,
               color: isDark ? AppColors.darkInk : AppColors.lightInk,
               height: 1.35,
               letterSpacing: -0.2,
@@ -274,14 +271,31 @@ class _StageDailySyncCardState extends State<StageDailySyncCard> {
                 color: isDark ? AppColors.darkInk : AppColors.lightInk,
               ),
               decoration: InputDecoration(
-                hintText: 'Whisper your answer here...',
+                hintText: partner != null
+                    ? 'Whisper your secret thought to ${partner.nickname}...'
+                    : 'Whisper your honest answer here...',
                 hintStyle: TextStyle(
                   fontSize: 13.5,
+                  fontStyle: FontStyle.italic,
                   color: isDark ? AppColors.darkSoft : AppColors.lightSoft,
                 ),
                 filled: true,
                 fillColor: isDark ? AppColors.darkCard : AppColors.lightCard,
                 contentPadding: const EdgeInsets.all(16),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide(
+                    color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                    width: 0.8,
+                  ),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: const BorderSide(
+                    color: AppColors.terra,
+                    width: 1.2,
+                  ),
+                ),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(16),
                   borderSide: BorderSide.none,

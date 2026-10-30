@@ -5,6 +5,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../providers/theme_provider.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../providers/stage_provider.dart';
+import '../../../providers/world_provider.dart';
 
 class StagePresenceView extends StatelessWidget {
   final VoidCallback onOpenMoodModal;
@@ -79,6 +80,7 @@ class StagePresenceView extends StatelessWidget {
     final isDark = context.watch<ThemeProvider>().isDark;
     final authProvider = context.watch<AuthProvider>();
     final stageProvider = context.watch<StageProvider>();
+    final worldProvider = context.watch<WorldProvider>();
 
     final user = authProvider.user;
     final partner = authProvider.partner;
@@ -86,6 +88,20 @@ class StagePresenceView extends StatelessWidget {
     final myMood = stageProvider.myMood;
     final partnerMood = stageProvider.partnerMood;
     final isPulsing = stageProvider.isPulsing;
+
+    // Atmospheric living glow reflecting partner's sky
+    final partnerWeather = worldProvider.partnerWeather;
+    Color skyGlow = Colors.transparent;
+    if (partnerWeather != null) {
+      if ((partnerWeather.weatherCode >= 51 && partnerWeather.weatherCode <= 67) ||
+          (partnerWeather.weatherCode >= 80 && partnerWeather.weatherCode <= 82)) {
+        skyGlow = const Color(0xFF38BDF8); // Soft rain blue
+      } else if (!partnerWeather.isDay) {
+        skyGlow = const Color(0xFF818CF8); // Soft starlight indigo
+      } else {
+        skyGlow = const Color(0xFFFBBF24); // Warm daylight gold
+      }
+    }
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
@@ -246,6 +262,12 @@ class StagePresenceView extends StatelessWidget {
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
                                 boxShadow: [
+                                  if (skyGlow != Colors.transparent)
+                                    BoxShadow(
+                                      color: skyGlow.withOpacity(0.35),
+                                      blurRadius: 26,
+                                      spreadRadius: 6,
+                                    ),
                                   BoxShadow(
                                     color: (partnerMood?.glowColor ??
                                             AppColors.rose)

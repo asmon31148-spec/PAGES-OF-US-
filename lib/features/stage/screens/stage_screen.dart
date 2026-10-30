@@ -12,10 +12,10 @@ import '../widgets/stage_daily_sync_card.dart';
 import '../widgets/stage_pinned_corkboard.dart';
 import '../widgets/stage_memory_hero_card.dart';
 import '../widgets/stage_daily_care_card.dart';
+import '../widgets/stage_milestones_card.dart';
 import '../widgets/mood_aura_modal.dart';
 import '../widgets/anniversary_modal.dart';
 import '../widgets/profile_modal.dart';
-import '../widgets/goal_tracker_modal.dart';
 import '../../auth/widgets/pairing_modal.dart';
 import '../../../core/services/update_service.dart';
 
@@ -178,98 +178,8 @@ class _StageScreenState extends State<StageScreen> {
                         onSelectTab: widget.onSelectTab,
                       ),
 
-                      // Section 3: Milestone & Dream Section (Goals & Milestones Teaser Banner)
-                      GestureDetector(
-                        onTap: () => GoalTrackerModal.show(context),
-                        child: Container(
-                          margin: EdgeInsets.zero,
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 12),
-                          decoration: BoxDecoration(
-                            color: isDark
-                                ? AppColors.darkBg
-                                : AppColors.lightBg,
-                            border: Border(
-                              bottom: BorderSide(
-                                color: isDark
-                                    ? AppColors.darkBorder
-                                    : AppColors.lightBorder,
-                                width: 0.8,
-                              ),
-                            ),
-                          ),
-                          child: Row(
-                            children: [
-                              Container(
-                                width: 36,
-                                height: 36,
-                                decoration: BoxDecoration(
-                                  color: AppColors.terra.withOpacity(0.12),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                alignment: Alignment.center,
-                                child: const Text('🎯',
-                                    style: TextStyle(fontSize: 18)),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        const Text(
-                                          'MILESTONES & DREAMS',
-                                          style: TextStyle(
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.bold,
-                                            color: AppColors.terra,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 6),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                              horizontal: 6, vertical: 1),
-                                          decoration: BoxDecoration(
-                                            color:
-                                                AppColors.sage.withOpacity(0.1),
-                                            borderRadius:
-                                                BorderRadius.circular(8),
-                                          ),
-                                          child: Text(
-                                            'Day ${stageProvider.daysTogether}',
-                                            style: const TextStyle(
-                                              fontSize: 9,
-                                              fontWeight: FontWeight.bold,
-                                              color: AppColors.sage,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    Text(
-                                      'Celebrate couple firsts & set new dreams ✦',
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        color: isDark
-                                            ? AppColors.darkInk
-                                            : AppColors.lightInk,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              Icon(
-                                Icons.chevron_right,
-                                size: 18,
-                                color: isDark
-                                    ? AppColors.darkSoft
-                                    : AppColors.lightSoft,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
+                      // Section 3: Milestone & Dream Section (Living Interactive Widget)
+                      const StageMilestonesCard(),
 
                       // Section 5: Daily Care and Checkup Section
                       const StageDailyCareCard(),

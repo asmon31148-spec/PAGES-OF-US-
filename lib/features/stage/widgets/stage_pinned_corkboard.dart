@@ -109,7 +109,7 @@ class _StagePinnedCorkboardState extends State<StagePinnedCorkboard> {
                 color: isDark ? AppColors.darkInk : AppColors.lightInk,
               ),
               decoration: InputDecoration(
-                hintText: 'Leave a sweet note for today...',
+                hintText: 'Leave a sweet little love note for $partnerDisplayName...',
                 hintStyle: TextStyle(
                   fontSize: 12,
                   color: isDark ? AppColors.darkSoft : AppColors.lightSoft,
@@ -167,38 +167,54 @@ class _StagePinnedCorkboardState extends State<StagePinnedCorkboard> {
                 // You note
                 Expanded(
                   child: Container(
-                    constraints: const BoxConstraints(minHeight: 90),
+                    constraints: const BoxConstraints(minHeight: 96),
                     padding: const EdgeInsets.all(15),
                     decoration: BoxDecoration(
-                      color: isDark ? AppColors.darkCard : AppColors.lightCard,
+                      color: isDark ? const Color(0xFF1B2620) : const Color(0xFFF3F7F4),
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
-                        color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
-                        width: 0.8,
+                        color: AppColors.sage.withOpacity(0.35),
+                        width: 1.0,
                       ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.sage.withOpacity(0.06),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          'From You',
-                          style: TextStyle(
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 0.2,
-                            color: isDark ? AppColors.sageLight : AppColors.sage,
-                          ),
+                        Row(
+                          children: [
+                            const Text('✍️ ', style: TextStyle(fontSize: 11)),
+                            Text(
+                              'From You',
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 0.2,
+                                color: isDark ? AppColors.sageLight : AppColors.sage,
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 6),
+                        const SizedBox(height: 7),
                         Text(
-                          myNote?.isNotEmpty == true ? myNote! : 'Tap write note above...',
+                          myNote?.isNotEmpty == true
+                              ? myNote!
+                              : 'Tap write note to leave a whisper...',
                           style: TextStyle(
                             fontSize: 13.5,
                             height: 1.4,
                             fontStyle: myNote?.isNotEmpty == true
                                 ? FontStyle.normal
                                 : FontStyle.italic,
-                            color: isDark ? AppColors.darkInk : AppColors.lightInk,
+                            color: myNote?.isNotEmpty == true
+                                ? (isDark ? AppColors.darkInk : AppColors.lightInk)
+                                : (isDark ? AppColors.darkSoft : AppColors.lightSoft),
                           ),
                           maxLines: 5,
                           overflow: TextOverflow.ellipsis,
@@ -212,40 +228,58 @@ class _StagePinnedCorkboardState extends State<StagePinnedCorkboard> {
                 // Partner note
                 Expanded(
                   child: Container(
-                    constraints: const BoxConstraints(minHeight: 90),
+                    constraints: const BoxConstraints(minHeight: 96),
                     padding: const EdgeInsets.all(15),
                     decoration: BoxDecoration(
-                      color: isDark ? AppColors.darkCard : AppColors.lightCard,
+                      color: isDark ? const Color(0xFF261D1A) : const Color(0xFFFFF7F2),
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
-                        color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
-                        width: 0.8,
+                        color: AppColors.terra.withOpacity(0.35),
+                        width: 1.0,
                       ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.terra.withOpacity(0.06),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          'From $partnerDisplayName',
-                          style: const TextStyle(
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 0.2,
-                            color: AppColors.terra,
-                          ),
+                        Row(
+                          children: [
+                            const Text('💌 ', style: TextStyle(fontSize: 11)),
+                            Expanded(
+                              child: Text(
+                                'From $partnerDisplayName',
+                                style: const TextStyle(
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 0.2,
+                                  color: AppColors.terra,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 6),
+                        const SizedBox(height: 7),
                         Text(
                           partnerNote?.isNotEmpty == true
                               ? partnerNote!
-                              : 'No note pinned yet 🍃',
+                              : 'Waiting for a sweet note from $partnerDisplayName... 🍃',
                           style: TextStyle(
                             fontSize: 13.5,
                             height: 1.4,
                             fontStyle: partnerNote?.isNotEmpty == true
                                 ? FontStyle.normal
                                 : FontStyle.italic,
-                            color: isDark ? AppColors.darkInk : AppColors.lightInk,
+                            color: partnerNote?.isNotEmpty == true
+                                ? (isDark ? AppColors.darkInk : AppColors.lightInk)
+                                : (isDark ? AppColors.darkSoft : AppColors.lightSoft),
                           ),
                           maxLines: 5,
                           overflow: TextOverflow.ellipsis,
