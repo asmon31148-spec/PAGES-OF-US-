@@ -3,6 +3,9 @@ import 'package:http/http.dart' as http;
 
 class WeatherInfo {
   final double temperature;
+  final double apparentTemperature;
+  final int humidity;
+  final double windSpeed;
   final int weatherCode;
   final bool isDay;
   final String condition;
@@ -10,6 +13,9 @@ class WeatherInfo {
 
   WeatherInfo({
     required this.temperature,
+    this.apparentTemperature = 22.0,
+    this.humidity = 60,
+    this.windSpeed = 8.0,
     required this.weatherCode,
     required this.isDay,
     required this.condition,
@@ -28,6 +34,9 @@ class WeatherInfo {
   factory WeatherInfo.fromJson(Map<String, dynamic> json) {
     final current = json['current'] as Map<String, dynamic>? ?? {};
     final temp = (current['temperature_2m'] as num?)?.toDouble() ?? 22.0;
+    final feelsLike = (current['apparent_temperature'] as num?)?.toDouble() ?? temp;
+    final humidity = (current['relative_humidity_2m'] as num?)?.toInt() ?? 60;
+    final windSpeed = (current['wind_speed_10m'] as num?)?.toDouble() ?? 8.0;
     final code = (current['weather_code'] as num?)?.toInt() ?? 0;
     final isDay = (current['is_day'] as num?)?.toInt() == 1;
 
@@ -56,6 +65,9 @@ class WeatherInfo {
 
     return WeatherInfo(
       temperature: temp,
+      apparentTemperature: feelsLike,
+      humidity: humidity,
+      windSpeed: windSpeed,
       weatherCode: code,
       isDay: isDay,
       condition: condition,
@@ -68,7 +80,7 @@ class WeatherService {
   static Future<WeatherInfo?> fetchWeather(double lat, double lng) async {
     try {
       final url = Uri.parse(
-        'https://api.open-meteo.com/v1/forecast?latitude=$lat&longitude=$lng&current=temperature_2m,weather_code,is_day',
+        'https://api.open-meteo.com/v1/forecast?latitude=$lat&longitude=$lng&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,weather_code,is_day',
       );
       final response = await http.get(url).timeout(const Duration(seconds: 5));
       if (response.statusCode == 200) {

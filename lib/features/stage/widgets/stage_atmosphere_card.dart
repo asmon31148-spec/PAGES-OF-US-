@@ -5,6 +5,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/services/weather_service.dart';
 import '../../../providers/theme_provider.dart';
 import '../../../providers/world_provider.dart';
+import '../../../providers/auth_provider.dart';
 
 class StageAtmosphereCard extends StatefulWidget {
   const StageAtmosphereCard({super.key});
@@ -27,9 +28,26 @@ class _StageAtmosphereCardState extends State<StageAtmosphereCard> {
 
   Future<void> _loadWeather() async {
     try {
+      final auth = context.read<AuthProvider>();
       final world = context.read<WorldProvider>();
-      double? lat = world.myLocation?.lat;
-      double? lng = world.myLocation?.lng;
+      final partner = auth.partner;
+      final isPaired = partner != null && partner.id.isNotEmpty;
+
+      double? lat;
+      double? lng;
+
+      if (isPaired) {
+        final partnerLoc = world.partnerLocation ??
+            (partner.id.isNotEmpty ? world.getUserLocation(partner.id) : null);
+        lat = partnerLoc?.lat;
+        lng = partnerLoc?.lng;
+      }
+
+      // Fallback to my location if partner has no GPS coords yet or if solo
+      if (lat == null || lng == null || (lat == 0.0 && lng == 0.0)) {
+        lat = world.myLocation?.lat;
+        lng = world.myLocation?.lng;
+      }
 
       if (lat == null || lng == null || (lat == 0.0 && lng == 0.0)) {
         try {
@@ -45,9 +63,12 @@ class _StageAtmosphereCardState extends State<StageAtmosphereCard> {
       if (lat != null && lng != null && (lat != 0.0 || lng != 0.0)) {
         info = await WeatherService.fetchWeather(lat, lng);
       } else {
-        info = world.partnerWeather ??
+        info = (isPaired ? world.partnerWeather : null) ??
             WeatherInfo(
-              temperature: 24.0,
+              temperature: 26.0,
+              apparentTemperature: 28.0,
+              humidity: 65,
+              windSpeed: 10.0,
               weatherCode: 0,
               isDay: DateTime.now().hour >= 6 && DateTime.now().hour < 19,
               condition: 'Sanctuary Calm',
@@ -69,6 +90,15 @@ class _StageAtmosphereCardState extends State<StageAtmosphereCard> {
   @override
   Widget build(BuildContext context) {
     final isDark = context.watch<ThemeProvider>().isDark;
+    final auth = context.watch<AuthProvider>();
+    final world = context.watch<WorldProvider>();
+
+    final partner = auth.partner;
+    final isPaired = partner != null && partner.id.isNotEmpty;
+    final partnerLoc = isPaired
+        ? (world.partnerLocation ?? (partner.id.isNotEmpty ? world.getUserLocation(partner.id) : null))
+        : null;
+    final myLoc = world.myLocation;
 
     if (_isLoading) {
       return Container(
@@ -92,18 +122,34 @@ class _StageAtmosphereCardState extends State<StageAtmosphereCard> {
       );
     }
 
-    final weather = _weather ??
-        WeatherInfo(
-          temperature: 24.0,
-          weatherCode: 0,
-          isDay: true,
-          condition: 'Sanctuary Calm',
-          emoji: '🌿',
-        );
+    final weather = (isPaired && world.partnerWeather != null)
+        ? world.partnerWeather!
+        : (_weather ??
+            WeatherInfo(
+              temperature: 26.0,
+              apparentTemperature: 28.0,
+              humidity: 65,
+              windSpeed: 10.0,
+              weatherCode: 0,
+              isDay: true,
+              condition: 'Sanctuary Calm',
+              emoji: '🌿',
+            ));
+
+    final title = isPaired
+        ? "${partner.nickname}'s Atmosphere"
+        : "Your Atmosphere";
+    final locationSubtitle = isPaired
+        ? (partnerLoc?.placeName?.isNotEmpty == true
+            ? 'Over at ${partnerLoc!.placeName}'
+            : 'Awaiting partner GPS signal')
+        : (myLoc?.placeName?.isNotEmpty == true
+            ? 'At ${myLoc!.placeName}'
+            : 'Local sky & presence');
 
     return Container(
       margin: EdgeInsets.zero,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
       decoration: BoxDecoration(
         color: isDark ? AppColors.darkBg : AppColors.lightBg,
         border: Border(
@@ -114,50 +160,111 @@ class _StageAtmosphereCardState extends State<StageAtmosphereCard> {
         ),
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Row(
-            children: [
-              Text(
-                weather.emoji,
-                style: const TextStyle(fontSize: 24),
-              ),
-              const SizedBox(width: 10),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '${weather.temperature.round()}°C · ${weather.condition}',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: isDark ? AppColors.darkInk : AppColors.lightInk,
-                    ),
-                  ),
-                  Text(
-                    'Our shared atmosphere',
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: isDark ? AppColors.darkSoft : AppColors.lightSoft,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
+          // Weather Emoji Icon
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.darkCard : AppColors.lightCard,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                width: 0.8,
+              ),
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              weather.emoji,
+              style: const TextStyle(fontSize: 22),
+            ),
+          ),
+          const SizedBox(width: 12),
+
+          // Detailed Weather & Atmosphere Info
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Top Tag: Partner's Atmosphere · Location
+                Row(
+                  children: [
+                    Text(
+                      title.toUpperCase(),
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.6,
+                        color: isPaired ? AppColors.terra : AppColors.sage,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        '· $locationSubtitle',
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: isDark ? AppColors.darkSoft : AppColors.lightSoft,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 3),
+
+                // Primary Temp & Condition
+                Text(
+                  '${weather.temperature.round()}°C · ${weather.condition}',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: isDark ? AppColors.darkInk : AppColors.lightInk,
+                  ),
+                ),
+                const SizedBox(height: 2),
+
+                // Detailed Weather Metrics: Feels Like, Humidity, Wind
+                Text(
+                  'Feels like ${weather.apparentTemperature.round()}°C  •  💧 ${weather.humidity}%  •  💨 ${weather.windSpeed.round()} km/h',
+                  style: TextStyle(
+                    fontSize: 10.5,
+                    color: isDark ? AppColors.darkSoft : AppColors.lightSoft,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+
+          // Daylight / Nightfall Pill
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
             decoration: BoxDecoration(
               color: isDark ? AppColors.darkCard : AppColors.lightCard,
               borderRadius: BorderRadius.circular(12),
-            ),
-            child: Text(
-              weather.isDay ? 'Daylight ✦' : 'Nightfall ✦',
-              style: const TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.bold,
-                color: AppColors.terra,
+              border: Border.all(
+                color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                width: 0.8,
               ),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  weather.isDay ? '☀️ Daylight' : '🌙 Nightfall',
+                  style: const TextStyle(
+                    fontSize: 9.5,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.terra,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
