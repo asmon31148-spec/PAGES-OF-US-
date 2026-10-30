@@ -251,14 +251,7 @@ class YoutubeMusicService {
     }
 
     try {
-      final manifest = await _client.videos.streamsClient.getManifest(
-        videoId,
-        ytClients: [
-          YoutubeApiClient.androidVr,
-          YoutubeApiClient.safari,
-          YoutubeApiClient.ios,
-        ],
-      );
+      final manifest = await _client.videos.streamsClient.getManifest(videoId);
 
       final audioStream = manifest.audioOnly.withHighestBitrate();
       final streamUrl = audioStream.url.toString();
