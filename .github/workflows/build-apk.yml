@@ -82,7 +82,9 @@ jobs:
           flutter clean
 
       - name: Install Flutter Dependencies
-        run: flutter pub get
+        run: |
+          flutter pub get > pub_get_log.txt 2>&1
+          cat pub_get_log.txt
 
       - name: Analyze Project
         run: |
@@ -104,7 +106,9 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          echo "=== FLUTTER ANALYZE ===" > BUILD_ERROR.txt
+          echo "=== FLUTTER PUB GET ===" > BUILD_ERROR.txt
+          cat pub_get_log.txt >> BUILD_ERROR.txt 2>/dev/null || true
+          echo "=== FLUTTER ANALYZE ===" >> BUILD_ERROR.txt
           cat analyze_log.txt >> BUILD_ERROR.txt 2>/dev/null || true
           echo "=== FLUTTER BUILD LOG ===" >> BUILD_ERROR.txt
           tail -n 250 build_log.txt >> BUILD_ERROR.txt 2>/dev/null || true
