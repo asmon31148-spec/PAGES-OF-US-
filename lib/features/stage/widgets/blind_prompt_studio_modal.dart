@@ -35,7 +35,8 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
 
   // Tab 1: AI Generator State
   String _selectedStage = 'deep';
-  String _selectedMood = 'vulnerable';
+  String _selectedMood = 'bold_romance';
+  String _selectedBoldness = 'bold';
   final TextEditingController _topicController = TextEditingController();
   List<GeneratedPrompt> _generatedPrompts = [];
   bool _isGenerating = false;
@@ -73,7 +74,9 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
       final results = await RelationshipAiService.generatePromptsLive(
         stage: _selectedStage,
         mood: _selectedMood,
+        boldness: _selectedBoldness,
         customTopic: _topicController.text.trim().isNotEmpty ? _topicController.text.trim() : null,
+        customRequest: _topicController.text.trim().isNotEmpty ? _topicController.text.trim() : null,
         partnerNickname: partnerNickname,
       );
 
@@ -377,9 +380,96 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
           ),
           const SizedBox(height: 18),
 
-          // Mood / Vibe Selector
+          // 2. Boldness / Romance Intensity Spectrum Selector
+          Row(
+            children: [
+              const Text(
+                '2. ROMANCE INTENSITY / BOLDNESS',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 0.8,
+                  color: AppColors.terra,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                'SWEET 🍯 ── 😈 WILD',
+                style: TextStyle(
+                  fontSize: 9,
+                  fontWeight: FontWeight.bold,
+                  color: isDark ? Colors.white38 : Colors.black38,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: RelationshipAiService.boldnessLevels.map((b) {
+              final isSelected = _selectedBoldness == b.id;
+              return Expanded(
+                child: GestureDetector(
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    setState(() => _selectedBoldness = b.id);
+                  },
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
+                    margin: const EdgeInsets.symmetric(horizontal: 2.5),
+                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 2),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? AppColors.terra.withOpacity(0.18)
+                          : (isDark ? const Color(0xFF22202E) : const Color(0xFFF5F4F9)),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: isSelected ? AppColors.terra : Colors.transparent,
+                        width: 1.5,
+                      ),
+                    ),
+                    child: Column(
+                      children: [
+                        Text(b.icon, style: const TextStyle(fontSize: 16)),
+                        const SizedBox(height: 3),
+                        Text(
+                          b.label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                            color: isSelected
+                                ? AppColors.terra
+                                : (isDark ? Colors.white70 : Colors.black87),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+          Padding(
+            padding: const EdgeInsets.only(top: 6, left: 2, right: 2),
+            child: Text(
+              RelationshipAiService.boldnessLevels
+                  .firstWhere((b) => b.id == _selectedBoldness,
+                      orElse: () => RelationshipAiService.boldnessLevels[2])
+                  .subtitle,
+              style: TextStyle(
+                fontSize: 10.5,
+                fontStyle: FontStyle.italic,
+                color: isDark ? Colors.white60 : Colors.black54,
+              ),
+            ),
+          ),
+          const SizedBox(height: 18),
+
+          // 3. Desired Vibe Selector
           const Text(
-            '2. DESIRED VIBE',
+            '3. DESIRED VIBE',
             style: TextStyle(
               fontSize: 10,
               fontWeight: FontWeight.bold,
@@ -434,36 +524,87 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
           ),
           const SizedBox(height: 18),
 
-          // Focus Topic (Optional)
-          const Text(
-            '3. OPTIONAL FOCUS TOPIC',
+          // 4. Custom Request / Exact Vibe
+          Row(
+            children: [
+              const Text(
+                '4. CUSTOM REQUEST / EXACT VIBE',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 0.8,
+                  color: AppColors.terra,
+                ),
+              ),
+              const SizedBox(width: 4),
+              Text(
+                '(OPTIONAL)',
+                style: TextStyle(
+                  fontSize: 9,
+                  fontWeight: FontWeight.w500,
+                  color: isDark ? Colors.white38 : Colors.black38,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Type custom instructions or tap an idea below to tailor the AI prompt:',
             style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 0.8,
-              color: AppColors.terra,
+              fontSize: 10.5,
+              color: isDark ? Colors.white54 : Colors.black54,
             ),
           ),
           const SizedBox(height: 6),
           TextField(
             controller: _topicController,
+            minLines: 1,
+            maxLines: 2,
             style: TextStyle(
-              fontSize: 13,
+              fontSize: 12.5,
               color: isDark ? Colors.white : AppColors.lightInk,
             ),
             decoration: InputDecoration(
-              hintText: 'e.g. our future home, first trip, funny habits...',
+              hintText: 'e.g. Ask bold physical chemistry questions, midnight bedroom fantasies...',
               hintStyle: TextStyle(
-                fontSize: 12,
+                fontSize: 11.5,
                 color: isDark ? Colors.white38 : Colors.black38,
               ),
               filled: true,
               fillColor: isDark ? const Color(0xFF22202E) : const Color(0xFFF5F4F9),
               contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              suffixIcon: _topicController.text.isNotEmpty
+                  ? IconButton(
+                      icon: const Icon(Icons.clear, size: 16),
+                      onPressed: () {
+                        setState(() => _topicController.clear());
+                      },
+                    )
+                  : null,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(14),
                 borderSide: BorderSide.none,
               ),
+            ),
+            onChanged: (_) => setState(() {}),
+          ),
+          const SizedBox(height: 8),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                _buildPromptIdeaChip('🍯 Sweet confessions', isDark),
+                const SizedBox(width: 6),
+                _buildPromptIdeaChip('💋 Flirty tension', isDark),
+                const SizedBox(width: 6),
+                _buildPromptIdeaChip('🔥 Physical chemistry', isDark),
+                const SizedBox(width: 6),
+                _buildPromptIdeaChip('😈 Wild midnight fantasies', isDark),
+                const SizedBox(width: 6),
+                _buildPromptIdeaChip('🗝️ Deepest secrets', isDark),
+                const SizedBox(width: 6),
+                _buildPromptIdeaChip('✈️ Future adventures', isDark),
+              ],
             ),
           ),
           const SizedBox(height: 16),
@@ -850,6 +991,35 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildPromptIdeaChip(String idea, bool isDark) {
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.selectionClick();
+        setState(() {
+          _topicController.text = idea;
+        });
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.04),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: isDark ? Colors.white12 : Colors.black12,
+          ),
+        ),
+        child: Text(
+          idea,
+          style: TextStyle(
+            fontSize: 10.5,
+            fontWeight: FontWeight.w500,
+            color: isDark ? Colors.white70 : Colors.black87,
+          ),
+        ),
+      ),
     );
   }
 
