@@ -1,4 +1,8 @@
+import 'dart:convert';
 import 'dart:math';
+import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
+import '../constants/app_constants.dart';
 
 class GeneratedPrompt {
   final String id;
@@ -403,5 +407,169 @@ class RelationshipAiService {
         category: mood,
       );
     }).toList();
+  }
+
+  /// Generates 3 live AI relationship inquiry questions using high-speed Groq LLM (Qwen 2.5 32B / Qwen 3.8 27B).
+  /// Generates bold, intimate, raw, and unfiltered questions tailored to the couple's stage, mood, and custom topic.
+  /// Seamlessly falls back to the curated promptBank if offline or during network timeouts.
+  static Future<List<GeneratedPrompt>> generatePromptsLive({
+    required String stage,
+    required String mood,
+    String? customTopic,
+    String? partnerNickname,
+  }) async {
+    final apiKey = AppConstants.groqApiKey;
+    if (apiKey.isEmpty) {
+      return generatePrompts(
+        stage: stage,
+        mood: mood,
+        customTopic: customTopic,
+        partnerNickname: partnerNickname,
+      );
+    }
+
+    try {
+      final pName = partnerNickname?.trim().isNotEmpty == true ? partnerNickname!.trim() : 'your partner';
+      final stageInfo = stages.firstWhere(
+        (s) => s.id == stage,
+        orElse: () => const RelationshipStageInfo(id: 'deep', label: 'Deeply In Love', icon: '🌿', desc: 'Vulnerable & intimate'),
+      );
+      final moodInfo = moods.firstWhere(
+        (m) => m.id == mood,
+        orElse: () => const MoodVibeInfo(id: 'vulnerable', label: 'Vulnerable', icon: '🕯️', desc: 'Raw feelings'),
+      );
+
+      final systemPrompt = '''
+You are an intimate, unfiltered AI question generator for a lovers sanctuary couple app called "Pages of Us".
+Your goal is to generate 3 provocative, deep, bold, authentic questions for a couple to ask each other.
+No boring generic questions. No corporate or prudish filtering. Keep it passionately real, raw, intimate, or delightfully playful depending on the requested mood.
+Match the vibe:
+- Couple Stage: ${stageInfo.label} (${stageInfo.desc})
+- Desired Vibe: ${moodInfo.label} (${moodInfo.desc})
+- Partner name/nickname: $pName
+${customTopic != null && customTopic.trim().isNotEmpty ? '- Custom Topic / Dynamic to focus on: ${customTopic.trim()}' : ''}
+
+Rules:
+1. Each question must be direct, deeply thought-provoking, and written for two lovers to ask each other.
+2. Return a JSON object with a key "questions" containing a list of exactly 3 strings:
+{"questions": ["Question 1?", "Question 2?", "Question 3?"]}
+3. Do NOT include markdown blocks or any conversational intro/outro text.
+''';
+
+      final response = await http
+          .post(
+            Uri.parse('https://api.groq.com/openai/v1/chat/completions'),
+            headers: {
+              'Authorization': 'Bearer $apiKey',
+              'Content-Type': 'application/json; charset=utf-8',
+            },
+            body: jsonEncode({
+              'model': 'qwen/qwen3.8-27b',
+              'messages': [
+                {'role': 'system', 'content': systemPrompt},
+                {'role': 'user', 'content': 'Generate 3 fresh, bold intimate couple questions now.'},
+              ],
+              'response_format': {'type': 'json_object'},
+              'max_tokens': 350,
+              'temperature': 0.88,
+            }),
+          )
+          .timeout(const Duration(seconds: 5));
+
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+        final choices = decoded['choices'] as List<dynamic>?;
+        if (choices != null && choices.isNotEmpty) {
+          final content = choices[0]['message']?['content']?.toString() ?? '';
+          final questions = _extractQuestions(content);
+          if (questions.isNotEmpty) {
+            final random = Random();
+            return questions.take(3).map((q) {
+              return GeneratedPrompt(
+                id: 'groq_${DateTime.now().millisecondsSinceEpoch}_${random.nextInt(1000)}',
+                question: q.trim(),
+                vibeTag: 'LIVE AI · ${moodInfo.label.toUpperCase()}',
+                category: mood,
+              );
+            }).toList();
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('[RelationshipAiService] Live AI generation fallback: $e');
+    }
+
+    // Graceful offline fallback
+    return generatePrompts(
+      stage: stage,
+      mood: mood,
+      customTopic: customTopic,
+      partnerNickname: partnerNickname,
+    );
+  }
+
+  static List<String> _extractQuestions(String raw) {
+    var cleaned = raw.trim();
+    if (cleaned.startsWith('```json')) {
+      cleaned = cleaned.substring(7);
+    } else if (cleaned.startsWith('```')) {
+      cleaned = cleaned.substring(3);
+    }
+    if (cleaned.endsWith('```')) {
+      cleaned = cleaned.substring(0, cleaned.length - 3);
+    }
+    cleaned = cleaned.trim();
+
+    // 1. Try JSON parsing (either {"questions": [...]} or [...])
+    final startObj = cleaned.indexOf('{');
+    final endObj = cleaned.lastIndexOf('}');
+    if (startObj != -1 && endObj != -1 && endObj > startObj) {
+      try {
+        final obj = jsonDecode(cleaned.substring(startObj, endObj + 1));
+        if (obj is Map && obj['questions'] is List) {
+          final res = (obj['questions'] as List)
+              .map((item) => item.toString().trim())
+              .where((s) => s.isNotEmpty)
+              .toList();
+          if (res.isNotEmpty) return res;
+        }
+      } catch (_) {}
+    }
+
+    final startList = cleaned.indexOf('[');
+    final endList = cleaned.lastIndexOf(']');
+    if (startList != -1 && endList != -1 && endList > startList) {
+      try {
+        final list = jsonDecode(cleaned.substring(startList, endList + 1));
+        if (list is List) {
+          final res = list
+              .map((item) => item.toString().trim())
+              .where((s) => s.isNotEmpty)
+              .toList();
+          if (res.isNotEmpty) return res;
+        }
+      } catch (_) {}
+    }
+
+    // 2. Fallback line parser: strip quotes, bullets, numbers
+    final lines = cleaned.split(RegExp(r'\r?\n'));
+    final results = <String>[];
+    for (var line in lines) {
+      line = line.trim();
+      if (line.isEmpty) continue;
+      line = line.replaceAll(RegExp(r'^\s*(\d+[\.\)]|\-|\*)\s*'), '');
+      line = line.replaceAll(RegExp(r'^[“"`]+|[”"`,]+$'), '').trim();
+      while (line.isNotEmpty && (line.startsWith("'") || line.startsWith('"') || line.startsWith('`'))) {
+        line = line.substring(1).trim();
+      }
+      while (line.isNotEmpty && (line.endsWith("'") || line.endsWith('"') || line.endsWith('`') || line.endsWith(','))) {
+        line = line.substring(0, line.length - 1).trim();
+      }
+      if (line.length > 10 && (line.contains('?') || line.contains('.'))) {
+        results.add(line);
+      }
+    }
+
+    return results;
   }
 }

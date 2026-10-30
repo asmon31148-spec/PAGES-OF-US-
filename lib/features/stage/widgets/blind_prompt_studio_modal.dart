@@ -65,12 +65,12 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
     super.dispose();
   }
 
-  void _generateAiPrompts(String? partnerNickname) {
+  void _generateAiPrompts(String? partnerNickname) async {
     HapticFeedback.mediumImpact();
     setState(() => _isGenerating = true);
 
-    Future.delayed(const Duration(milliseconds: 400), () {
-      final results = RelationshipAiService.generatePrompts(
+    try {
+      final results = await RelationshipAiService.generatePromptsLive(
         stage: _selectedStage,
         mood: _selectedMood,
         customTopic: _topicController.text.trim().isNotEmpty ? _topicController.text.trim() : null,
@@ -83,7 +83,11 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
           _isGenerating = false;
         });
       }
-    });
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isGenerating = false);
+      }
+    }
   }
 
   bool _isPinning = false;
@@ -209,7 +213,7 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: const Text(
-                              'AI Engine ✦',
+                              'Live Groq AI ✦',
                               style: TextStyle(
                                 fontSize: 9,
                                 fontWeight: FontWeight.bold,
@@ -477,7 +481,7 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
                     )
                   : const Icon(Icons.auto_awesome, size: 16),
               label: Text(
-                _isGenerating ? 'Synthesizing tailored questions...' : 'Generate 3 Personal Questions ✦',
+                _isGenerating ? 'Groq AI is crafting questions...' : 'Generate 3 Live AI Questions ✦',
                 style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
               ),
               style: ElevatedButton.styleFrom(
