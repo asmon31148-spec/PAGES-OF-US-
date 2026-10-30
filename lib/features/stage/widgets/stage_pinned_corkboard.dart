@@ -44,13 +44,13 @@ class _StagePinnedCorkboardState extends State<StagePinnedCorkboard> {
 
     return Container(
       margin: EdgeInsets.zero,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+        color: isDark ? AppColors.darkBg : AppColors.lightBg,
         border: Border(
           bottom: BorderSide(
             color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
-            width: 0.6,
+            width: 0.8,
           ),
         ),
       ),
@@ -63,11 +63,11 @@ class _StagePinnedCorkboardState extends State<StagePinnedCorkboard> {
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Text('📌 ', style: TextStyle(fontSize: 13)),
+                  const Text('📌 ', style: TextStyle(fontSize: 14)),
                   Text(
                     'Pinned For Today',
                     style: TextStyle(
-                      fontSize: 13.5,
+                      fontSize: 15,
                       fontWeight: FontWeight.bold,
                       color: isDark ? AppColors.darkInk : AppColors.lightInk,
                     ),
@@ -81,7 +81,7 @@ class _StagePinnedCorkboardState extends State<StagePinnedCorkboard> {
                     setState(() => _isEditing = true);
                   },
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
                       color: AppColors.sage.withOpacity(0.12),
                       borderRadius: BorderRadius.circular(8),
@@ -89,7 +89,7 @@ class _StagePinnedCorkboardState extends State<StagePinnedCorkboard> {
                     child: const Text(
                       'Write Note ✎',
                       style: TextStyle(
-                        fontSize: 11.5,
+                        fontSize: 12,
                         fontWeight: FontWeight.bold,
                         color: AppColors.sage,
                       ),
@@ -167,7 +167,8 @@ class _StagePinnedCorkboardState extends State<StagePinnedCorkboard> {
                 // You note
                 Expanded(
                   child: Container(
-                    padding: const EdgeInsets.all(12),
+                    constraints: const BoxConstraints(minHeight: 90),
+                    padding: const EdgeInsets.all(15),
                     decoration: BoxDecoration(
                       color: isDark ? AppColors.darkCard : AppColors.lightCard,
                       borderRadius: BorderRadius.circular(16),
@@ -182,24 +183,24 @@ class _StagePinnedCorkboardState extends State<StagePinnedCorkboard> {
                         Text(
                           'From You',
                           style: TextStyle(
-                            fontSize: 10.5,
+                            fontSize: 11.5,
                             fontWeight: FontWeight.bold,
                             letterSpacing: 0.2,
                             color: isDark ? AppColors.sageLight : AppColors.sage,
                           ),
                         ),
-                        const SizedBox(height: 5),
+                        const SizedBox(height: 6),
                         Text(
                           myNote?.isNotEmpty == true ? myNote! : 'Tap write note above...',
                           style: TextStyle(
-                            fontSize: 12.5,
-                            height: 1.35,
+                            fontSize: 13.5,
+                            height: 1.4,
                             fontStyle: myNote?.isNotEmpty == true
                                 ? FontStyle.normal
                                 : FontStyle.italic,
                             color: isDark ? AppColors.darkInk : AppColors.lightInk,
                           ),
-                          maxLines: 3,
+                          maxLines: 5,
                           overflow: TextOverflow.ellipsis,
                         ),
                       ],
@@ -211,7 +212,8 @@ class _StagePinnedCorkboardState extends State<StagePinnedCorkboard> {
                 // Partner note
                 Expanded(
                   child: Container(
-                    padding: const EdgeInsets.all(12),
+                    constraints: const BoxConstraints(minHeight: 90),
+                    padding: const EdgeInsets.all(15),
                     decoration: BoxDecoration(
                       color: isDark ? AppColors.darkCard : AppColors.lightCard,
                       borderRadius: BorderRadius.circular(16),
@@ -226,26 +228,26 @@ class _StagePinnedCorkboardState extends State<StagePinnedCorkboard> {
                         Text(
                           'From $partnerDisplayName',
                           style: const TextStyle(
-                            fontSize: 10.5,
+                            fontSize: 11.5,
                             fontWeight: FontWeight.bold,
                             letterSpacing: 0.2,
                             color: AppColors.terra,
                           ),
                         ),
-                        const SizedBox(height: 5),
+                        const SizedBox(height: 6),
                         Text(
                           partnerNote?.isNotEmpty == true
                               ? partnerNote!
                               : 'No note pinned yet 🍃',
                           style: TextStyle(
-                            fontSize: 12.5,
-                            height: 1.35,
+                            fontSize: 13.5,
+                            height: 1.4,
                             fontStyle: partnerNote?.isNotEmpty == true
                                 ? FontStyle.normal
                                 : FontStyle.italic,
                             color: isDark ? AppColors.darkInk : AppColors.lightInk,
                           ),
-                          maxLines: 3,
+                          maxLines: 5,
                           overflow: TextOverflow.ellipsis,
                         ),
                       ],

@@ -154,12 +154,17 @@ class StageProvider extends ChangeNotifier {
     _anniversarySub = FirebaseService.streamFeatureDoc(spaceId, 'anniversary').listen((snap) {
       if (snap.exists && snap.data() != null) {
         final date = snap.data()!['anniversaryDate'] as String?;
-        if (date != null && date != _anniversaryDate) {
+        if (date != null && date.isNotEmpty && date != _anniversaryDate) {
           _anniversaryDate = date;
           LocalCacheService.setCachedAnniversary(date);
           _syncWidget(partnerId);
           notifyListeners();
         }
+      } else if (partnerId != null && partnerId.isNotEmpty && (_anniversaryDate == null || _anniversaryDate!.isEmpty)) {
+        // When paired with partner, automatically start counting from today if no date was set
+        final now = DateTime.now();
+        final todayStr = "${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
+        setAnniversary(spaceId, todayStr);
       }
     });
 

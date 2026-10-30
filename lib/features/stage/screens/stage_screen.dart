@@ -67,10 +67,10 @@ class _StageScreenState extends State<StageScreen> {
 
     final hasAnniversary = stageProvider.anniversaryDate != null &&
         stageProvider.anniversaryDate!.isNotEmpty;
-    final anniversaryYear = hasAnniversary
-        ? DateTime.tryParse(stageProvider.anniversaryDate!)?.year.toString() ??
-            DateTime.now().year.toString()
-        : null;
+    DateTime? parsedAnniversary;
+    if (hasAnniversary) {
+      parsedAnniversary = DateTime.tryParse(stageProvider.anniversaryDate!);
+    }
 
     return Scaffold(
       backgroundColor: isDark ? AppColors.darkBg : AppColors.lightBg,
@@ -106,14 +106,14 @@ class _StageScreenState extends State<StageScreen> {
                 color: AppColors.sage,
                 child: SingleChildScrollView(
                   physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.only(bottom: 4),
+                  padding: const EdgeInsets.only(bottom: 24),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // Greeting & Anniversary Row
                       Padding(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 20.0, vertical: 6.0),
+                            horizontal: 20.0, vertical: 8.0),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
@@ -135,8 +135,8 @@ class _StageScreenState extends State<StageScreen> {
                                 children: [
                                   Text(
                                     hasAnniversary
-                                        ? 'Together since $anniversaryYear ✎'
-                                        : 'Our Special Date ✎',
+                                        ? 'Together since ${parsedAnniversary != null ? DateFormat('MMM d, yyyy').format(parsedAnniversary) : stageProvider.anniversaryDate!} ✎'
+                                        : 'Together from date ✎',
                                     style: TextStyle(
                                       fontSize: 11,
                                       fontWeight: FontWeight.w600,
@@ -148,7 +148,7 @@ class _StageScreenState extends State<StageScreen> {
                                   Text(
                                     hasAnniversary
                                         ? 'Day ${stageProvider.daysTogether} together ✦'
-                                        : 'Set Anniversary ✦',
+                                        : 'Set Date ✦',
                                     style: const TextStyle(
                                       fontSize: 10,
                                       fontWeight: FontWeight.bold,
@@ -162,37 +162,39 @@ class _StageScreenState extends State<StageScreen> {
                         ),
                       ),
 
-                      // 1. Weather Atmosphere Card
-                      const StageAtmosphereCard(),
-
-                      // 2. Presence Avatars + Aura + Live Pulse Button
+                      // Section 2: Partner Connection Status (Presence Avatars + Aura + Live Pulse Button)
                       StagePresenceView(
                         onOpenMoodModal: () => MoodAuraModal.show(context),
                         onOpenPairModal: () => PairingModal.show(context),
                         onOpenProfileModal: () => ProfileModal.show(context),
                       ),
 
-                      // 3. Goals & Milestones Teaser Banner
+                      // Section 1: Weather Status Atmosphere Card
+                      const StageAtmosphereCard(),
+
+                      // Section 4: Highlight Screen Section (Memory Spotlight Hero Deck)
+                      StageMemoryHeroCard(
+                        onGoToMemories: widget.onGoToMemories,
+                        onSelectTab: widget.onSelectTab,
+                      ),
+
+                      // Section 3: Milestone & Dream Section (Goals & Milestones Teaser Banner)
                       GestureDetector(
                         onTap: () => GoalTrackerModal.show(context),
                         child: Container(
-                          margin: const EdgeInsets.symmetric(vertical: 6),
+                          margin: EdgeInsets.zero,
                           padding: const EdgeInsets.symmetric(
                               horizontal: 16, vertical: 12),
                           decoration: BoxDecoration(
                             color: isDark
-                                ? AppColors.darkSurface
-                                : AppColors.lightSurface,
+                                ? AppColors.darkBg
+                                : AppColors.lightBg,
                             border: Border(
-                              top: BorderSide(
-                                color: isDark
-                                    ? AppColors.darkBorder
-                                    : AppColors.lightBorder,
-                              ),
                               bottom: BorderSide(
                                 color: isDark
                                     ? AppColors.darkBorder
                                     : AppColors.lightBorder,
+                                width: 0.8,
                               ),
                             ),
                           ),
@@ -269,19 +271,13 @@ class _StageScreenState extends State<StageScreen> {
                         ),
                       ),
 
-                      // 4. Memory Spotlight Hero Deck (Living Sanctuary Reel)
-                      StageMemoryHeroCard(
-                        onGoToMemories: widget.onGoToMemories,
-                        onSelectTab: widget.onSelectTab,
-                      ),
-
-                      // 4.5 Daily Care Schedule & Partner Checkup Card
+                      // Section 5: Daily Care and Checkup Section
                       const StageDailyCareCard(),
 
-                      // 5. Pinned Corkboard Notes
+                      // Section 6: Pinned Message Section
                       const StagePinnedCorkboard(),
 
-                      // 6. Daily Sync Blind Envelope Connection (Question & Answer)
+                      // Section 7: Question & Answer Section
                       const StageDailySyncCard(),
                     ],
                   ),

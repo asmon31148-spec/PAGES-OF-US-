@@ -606,9 +606,16 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
                               ),
                             ),
                             const SizedBox(height: 3),
-                            Text(
-                              '${pl.songIds.length} songs',
-                              style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
+                            Builder(
+                              builder: (context) {
+                                final songCount = audioProvider.songs
+                                    .where((s) => pl.songIds.contains(s.id))
+                                    .length;
+                                return Text(
+                                  '$songCount ${songCount == 1 ? "song" : "songs"}',
+                                  style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
+                                );
+                              },
                             ),
                           ],
                         ),

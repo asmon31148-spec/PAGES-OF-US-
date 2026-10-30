@@ -93,9 +93,9 @@ class _StageDailySyncCardState extends State<StageDailySyncCard> {
 
     return Container(
       margin: EdgeInsets.zero,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 20),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+        color: isDark ? AppColors.darkBg : AppColors.lightBg,
         border: Border(
           bottom: BorderSide(
             color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
@@ -239,26 +239,26 @@ class _StageDailySyncCardState extends State<StageDailySyncCard> {
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
 
           // Question Prompt (Hero Focal Point of the Home Page)
           Text(
             prompt,
             style: TextStyle(
-              fontSize: 18,
+              fontSize: 20,
               fontWeight: FontWeight.w700,
               color: isDark ? AppColors.darkInk : AppColors.lightInk,
               height: 1.35,
               letterSpacing: -0.2,
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 18),
 
           // User's response state
           if (myAnswer == null) ...[
             TextField(
               controller: _answerController,
-              maxLines: 2,
+              maxLines: 3,
               textInputAction: TextInputAction.send,
               onSubmitted: (_) {
                 if (canSubmit) {
@@ -270,25 +270,25 @@ class _StageDailySyncCardState extends State<StageDailySyncCard> {
                 setState(() {});
               },
               style: TextStyle(
-                fontSize: 13,
+                fontSize: 14.5,
                 color: isDark ? AppColors.darkInk : AppColors.lightInk,
               ),
               decoration: InputDecoration(
                 hintText: 'Whisper your answer here...',
                 hintStyle: TextStyle(
-                  fontSize: 12,
+                  fontSize: 13.5,
                   color: isDark ? AppColors.darkSoft : AppColors.lightSoft,
                 ),
                 filled: true,
                 fillColor: isDark ? AppColors.darkCard : AppColors.lightCard,
-                contentPadding: const EdgeInsets.all(12),
+                contentPadding: const EdgeInsets.all(16),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(16),
                   borderSide: BorderSide.none,
                 ),
               ),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
             Align(
               alignment: Alignment.centerRight,
               child: ElevatedButton(
@@ -299,23 +299,23 @@ class _StageDailySyncCardState extends State<StageDailySyncCard> {
                   backgroundColor: canSubmit ? AppColors.terra : AppColors.terra.withOpacity(0.3),
                   foregroundColor: Colors.white,
                   elevation: canSubmit ? 3 : 0,
-                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                  padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14),
                   ),
                 ),
                 child: _isSubmitting
                     ? const SizedBox(
-                        width: 14,
-                        height: 14,
+                        width: 16,
+                        height: 16,
                         child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                       )
                     : Row(
                         mainAxisSize: MainAxisSize.min,
                         children: const [
-                          Icon(Icons.send_rounded, size: 13, color: Colors.white),
-                          SizedBox(width: 5),
-                          Text('Submit Answer 💌', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                          Icon(Icons.send_rounded, size: 15, color: Colors.white),
+                          SizedBox(width: 6),
+                          Text('Submit Answer 💌', style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold)),
                         ],
                       ),
               ),

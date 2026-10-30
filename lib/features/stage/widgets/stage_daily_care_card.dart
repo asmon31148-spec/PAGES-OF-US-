@@ -28,15 +28,11 @@ class StageDailyCareCard extends StatelessWidget {
         margin: EdgeInsets.zero,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-          color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+          color: isDark ? AppColors.darkBg : AppColors.lightBg,
           border: Border(
-            top: BorderSide(
-              color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
-              width: 0.8,
-            ),
             bottom: BorderSide(
               color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
-              width: 0.6,
+              width: 0.8,
             ),
           ),
         ),

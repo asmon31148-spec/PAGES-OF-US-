@@ -108,12 +108,15 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
     final partner = authProvider.partner;
     final spaceId = authProvider.space?.id ?? authProvider.user?.spaceId ?? '';
 
+    final hasPartner = partner != null && partner.id.isNotEmpty;
     final myLoc = (user != null ? worldProvider.getUserLocation(user.id) : null) ?? worldProvider.myLocation;
-    final partnerLoc = (partner != null ? worldProvider.getUserLocation(partner.id) : null) ?? worldProvider.partnerLocation;
+    final partnerLoc = hasPartner
+        ? ((worldProvider.getUserLocation(partner.id) ?? worldProvider.partnerLocation))
+        : null;
 
-    // Automatic real-time distance calculation between two partners
+    // Automatic real-time distance calculation between two partners (only in paired mode)
     double? distanceKm;
-    if (myLoc != null && partnerLoc != null) {
+    if (hasPartner && myLoc != null && partnerLoc != null) {
       if ((myLoc.lat != 0.0 || myLoc.lng != 0.0) && (partnerLoc.lat != 0.0 || partnerLoc.lng != 0.0)) {
         distanceKm = worldProvider.calculateDistanceKm(
           myLoc.lat,
@@ -123,12 +126,14 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
         );
       }
     }
-    distanceKm ??= worldProvider.liveDistanceKm;
+    if (hasPartner) {
+      distanceKm ??= worldProvider.liveDistanceKm;
+    }
 
     // Default center point: User location, partner location, or global overview
     final defaultCenter = (myLoc != null && (myLoc.lat != 0.0 || myLoc.lng != 0.0))
         ? LatLng(myLoc.lat, myLoc.lng)
-        : (partnerLoc != null && (partnerLoc.lat != 0.0 || partnerLoc.lng != 0.0))
+        : (hasPartner && partnerLoc != null && (partnerLoc.lat != 0.0 || partnerLoc.lng != 0.0))
             ? LatLng(partnerLoc.lat, partnerLoc.lng)
             : const LatLng(20.0, 0.0);
 
@@ -169,7 +174,7 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
                         padding: const EdgeInsets.only(bottom: 24),
                         child: Column(
                           children: [
-                            // 1. Dual World Clocks Header Card
+                            // 1. World Clocks Header Card (Dual if paired, Solo if single)
                             _buildDualClocksCard(
                               isDark: isDark,
                               userNickname: user?.nickname ?? 'You',
@@ -177,16 +182,18 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
                               myLoc: myLoc,
                               partnerLoc: partnerLoc,
                               now: worldProvider.now,
+                              hasPartner: hasPartner,
                             ),
 
-                            // 2. Live Tether Distance Banner
-                            _buildDistanceBanner(
-                              isDark: isDark,
-                              distanceKm: distanceKm,
-                              myLoc: myLoc,
-                              partnerLoc: partnerLoc,
-                              partnerNickname: partner?.nickname ?? 'Partner',
-                            ),
+                            // 2. Live Tether Distance Banner (Only shown when paired with partner)
+                            if (hasPartner && distanceKm != null)
+                              _buildDistanceBanner(
+                                isDark: isDark,
+                                distanceKm: distanceKm,
+                                myLoc: myLoc,
+                                partnerLoc: partnerLoc,
+                                partnerNickname: partner?.nickname ?? 'Partner',
+                              ),
 
                             // 3. Interactive FlutterMap Card (Full-screen toggleable, no big accuracy circles)
                             _buildMapCard(
@@ -635,38 +642,30 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
                 ),
                 const SizedBox(height: 8),
 
-                // 2. Locate Partner Button
-                FloatingActionButton.small(
-                  heroTag: 'zoom_partner',
-                  backgroundColor: AppColors.terra,
-                  foregroundColor: Colors.white,
-                  onPressed: () {
-                    if (partnerLoc != null && (partnerLoc.lat != 0.0 || partnerLoc.lng != 0.0)) {
-                      _animatedMapMove(LatLng(partnerLoc.lat, partnerLoc.lng), 16.0);
-                      ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Centered on ${partner?.nickname ?? "Partner"}'),
-                          duration: const Duration(seconds: 2),
-                          behavior: SnackBarBehavior.floating,
-                        ),
-                      );
-                    } else {
-                      HapticFeedback.mediumImpact();
-                      ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('${partner?.nickname ?? "Partner"} has not shared location yet'),
-                          duration: const Duration(seconds: 2),
-                          behavior: SnackBarBehavior.floating,
-                        ),
-                      );
-                    }
-                  },
-                  tooltip: 'Locate ${partner?.nickname ?? "Partner"}',
-                  child: const Icon(Icons.person_pin_circle_rounded, size: 20),
-                ),
-                const SizedBox(height: 8),
+                // 2. Locate Partner Button (Only shown when paired with partner)
+                if (partner != null && partnerLoc != null) ...[
+                  FloatingActionButton.small(
+                    heroTag: 'zoom_partner',
+                    backgroundColor: AppColors.terra,
+                    foregroundColor: Colors.white,
+                    onPressed: () {
+                      if (partnerLoc != null && (partnerLoc.lat != 0.0 || partnerLoc.lng != 0.0)) {
+                        _animatedMapMove(LatLng(partnerLoc.lat, partnerLoc.lng), 16.0);
+                        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Centered on ${partner?.nickname ?? "Partner"}'),
+                            duration: const Duration(seconds: 2),
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                      }
+                    },
+                    tooltip: 'Locate ${partner?.nickname ?? "Partner"}',
+                    child: const Icon(Icons.person_pin_circle_rounded, size: 20),
+                  ),
+                  const SizedBox(height: 8),
+                ],
 
                 // 3. Locate Me Button
                 FloatingActionButton.small(
@@ -868,6 +867,7 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
     required UserLocationData? myLoc,
     required UserLocationData? partnerLoc,
     required DateTime now,
+    required bool hasPartner,
   }) {
     final myTimeStr = DateFormat('h:mm a').format(now);
     final partnerTimeStr = DateFormat('h:mm a').format(now);
@@ -937,50 +937,86 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
             margin: const EdgeInsets.symmetric(horizontal: 12),
           ),
 
-          // Partner Clock
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    const Text('🌙', style: TextStyle(fontSize: 12)),
-                    const SizedBox(width: 4),
-                    Expanded(
-                      child: Text(
-                        partnerNickname.toUpperCase(),
-                        style: const TextStyle(
+          // Partner Clock (if paired) OR Solo Status
+          if (hasPartner && partnerLoc != null)
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Text('🌙', style: TextStyle(fontSize: 12)),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          partnerNickname.toUpperCase(),
+                          style: const TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.5,
+                            color: AppColors.terra,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                  Text(
+                    partnerTimeStr,
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? AppColors.darkInk : AppColors.lightInk,
+                    ),
+                  ),
+                  Text(
+                    partnerLoc.placeName ?? 'Nearby',
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: isDark ? AppColors.darkSoft : AppColors.lightSoft,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            )
+          else
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Row(
+                    children: const [
+                      Text('✨', style: TextStyle(fontSize: 12)),
+                      SizedBox(width: 4),
+                      Text(
+                        'SOLO PRESENCE',
+                        style: TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.bold,
                           letterSpacing: 0.5,
-                          color: AppColors.terra,
+                          color: AppColors.sageLight,
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
                       ),
+                    ],
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    'Connect partner for mutual live tether',
+                    style: TextStyle(
+                      fontSize: 10.5,
+                      color: isDark ? AppColors.darkSoft : AppColors.lightSoft,
+                      height: 1.25,
                     ),
-                  ],
-                ),
-                Text(
-                  partnerTimeStr,
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: isDark ? AppColors.darkInk : AppColors.lightInk,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                ),
-                Text(
-                  partnerLoc?.placeName ?? (partnerLoc != null ? 'Nearby' : 'Awaiting signal...'),
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: isDark ? AppColors.darkSoft : AppColors.lightSoft,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
         ],
       ),
     );

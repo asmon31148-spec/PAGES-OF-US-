@@ -61,18 +61,14 @@ class WorldProvider extends ChangeNotifier {
   }
 
   UserLocationData? get partnerLocation {
-    if (_partnerId != null && _locations.containsKey(_partnerId)) {
+    if (_partnerId != null && _partnerId!.isNotEmpty && _locations.containsKey(_partnerId)) {
       return _locations[_partnerId];
-    }
-    for (final entry in _locations.entries) {
-      if (entry.key != _currentUserId && entry.value.userId != _currentUserId) {
-        return entry.value;
-      }
     }
     return null;
   }
 
   double? get liveDistanceKm {
+    if (_partnerId == null || _partnerId!.isEmpty) return null;
     final me = myLocation;
     final partner = partnerLocation;
     if (me != null && partner != null) {
@@ -81,6 +77,15 @@ class WorldProvider extends ChangeNotifier {
       }
     }
     return null;
+  }
+
+  void clearPartner() {
+    if (_partnerId != null) {
+      _locations.remove(_partnerId);
+    }
+    _partnerId = null;
+    _partnerWeather = null;
+    notifyListeners();
   }
 
   String get formattedLiveDistance {
@@ -150,7 +155,13 @@ class WorldProvider extends ChangeNotifier {
 
     _spaceId = spaceId;
     _currentUserId = currentUserId;
-    _partnerId = partnerId;
+    _partnerId = (partnerId != null && partnerId.isNotEmpty) ? partnerId : null;
+
+    if (_partnerId == null) {
+      // Solo mode: purge any stale non-self locations
+      _locations.removeWhere((key, _) => key != currentUserId);
+      _partnerWeather = null;
+    }
 
     // 1. Listen to Realtime WebSocket via unified space channel
     SupabaseService.addLocationListener(_handleSupabaseLocationUpdate);
@@ -170,7 +181,12 @@ class WorldProvider extends ChangeNotifier {
             if (val is Map) {
               final loc = UserLocationData.fromJson(Map<String, dynamic>.from(val));
               // Don't overwrite local high-frequency GPS with older Firestore data for self
-              if (key != currentUserId || !_locations.containsKey(key)) {
+              if (key == currentUserId) {
+                if (!_locations.containsKey(key)) {
+                  _locations[key] = loc;
+                  hasChanges = true;
+                }
+              } else if (_partnerId != null && key == _partnerId) {
                 _locations[key] = loc;
                 hasChanges = true;
               }
@@ -178,8 +194,8 @@ class WorldProvider extends ChangeNotifier {
           });
 
           if (hasChanges) {
-            if (partnerId != null && _locations[partnerId] != null) {
-              final pLoc = _locations[partnerId]!;
+            if (_partnerId != null && _locations[_partnerId] != null) {
+              final pLoc = _locations[_partnerId]!;
               _fetchPartnerWeather(pLoc.lat, pLoc.lng);
               _checkPartnerGeofence(pLoc);
             }
@@ -197,8 +213,8 @@ class WorldProvider extends ChangeNotifier {
       }
     });
 
-    if (partnerId != null && _locations[partnerId] != null) {
-      final pLoc = _locations[partnerId]!;
+    if (_partnerId != null && _locations[_partnerId] != null) {
+      final pLoc = _locations[_partnerId]!;
       _fetchPartnerWeather(pLoc.lat, pLoc.lng);
     }
   }
@@ -206,7 +222,7 @@ class WorldProvider extends ChangeNotifier {
   void _handleSupabaseLocationUpdate(Map<String, dynamic> data) {
     if (data['location'] != null && data['location'] is Map) {
       final loc = UserLocationData.fromJson(Map<String, dynamic>.from(data['location'] as Map));
-      if (loc.userId.isNotEmpty && loc.userId != _currentUserId) {
+      if (_partnerId != null && loc.userId == _partnerId) {
         _locations[loc.userId] = loc;
         _checkPartnerGeofence(loc);
         if (_partnerWeather == null) {
@@ -233,7 +249,11 @@ class WorldProvider extends ChangeNotifier {
         content.forEach((key, val) {
           if (val is Map) {
             final loc = UserLocationData.fromJson(Map<String, dynamic>.from(val));
-            if (key != _currentUserId || !_locations.containsKey(key)) {
+            if (key == _currentUserId) {
+              if (!_locations.containsKey(key)) {
+                _locations[key] = loc;
+              }
+            } else if (_partnerId != null && key == _partnerId) {
               _locations[key] = loc;
             }
           }
@@ -370,7 +390,7 @@ class WorldProvider extends ChangeNotifier {
   Future<void> _handleNewPosition(Position position) async {
     if (_currentUserId == null || _spaceId == null) return;
 
-    _gpsStatus = 'Live Tethered';
+    _gpsStatus = (_partnerId != null && _partnerId!.isNotEmpty) ? 'Live Tethered' : 'Live Presence';
 
     // Reverse geocoding only when moved > 60m or > 2 minutes
     final now = DateTime.now();

@@ -317,13 +317,15 @@ class _StageMemoryHeroCardState extends State<StageMemoryHeroCard> {
     );
 
     return Container(
-      margin: const EdgeInsets.symmetric(vertical: 6),
+      margin: EdgeInsets.zero,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+        color: isDark ? AppColors.darkBg : AppColors.lightBg,
         border: Border(
-          top: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
-          bottom: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+          bottom: BorderSide(
+            color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+            width: 0.8,
+          ),
         ),
       ),
       child: Column(

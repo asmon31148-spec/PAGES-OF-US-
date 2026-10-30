@@ -31,53 +31,7 @@ class AudioProvider extends ChangeNotifier {
     }
   }
 
-  static final List<SongItem> _defaultTemplateSongs = [
-    SongItem(
-      id: 'song_1',
-      title: 'Slow Morning Lofi',
-      artist: 'Pages of Us · Sanctuary',
-      durationSeconds: 222,
-      audioUrl: 'audio/lofi_sanctuary.mp3',
-      coverColor: const Color(0xFF86EFAC),
-      addedBy: 'Sanctuary',
-    ),
-    SongItem(
-      id: 'song_2',
-      title: 'Gentle Rain on Leaves',
-      artist: 'Pages of Us · Atmosphere',
-      durationSeconds: 180,
-      audioUrl: 'audio/rain.mp3',
-      coverColor: const Color(0xFF2DD4BF),
-      addedBy: 'Sanctuary',
-    ),
-    SongItem(
-      id: 'song_3',
-      title: 'Midnight Ocean Tide',
-      artist: 'Pages of Us · Atmosphere',
-      durationSeconds: 240,
-      audioUrl: 'audio/ocean.mp3',
-      coverColor: const Color(0xFF38BDF8),
-      addedBy: 'Sanctuary',
-    ),
-    SongItem(
-      id: 'song_4',
-      title: 'Morning Songbirds',
-      artist: 'Pages of Us · Nature',
-      durationSeconds: 195,
-      audioUrl: 'audio/birds.mp3',
-      coverColor: const Color(0xFFFBBF24),
-      addedBy: 'Sanctuary',
-    ),
-    SongItem(
-      id: 'song_5',
-      title: 'Cozy Hearth Fireplace',
-      artist: 'Pages of Us · Sanctuary',
-      durationSeconds: 210,
-      audioUrl: 'audio/fireplace.mp3',
-      coverColor: const Color(0xFFFB7185),
-      addedBy: 'Sanctuary',
-    ),
-  ];
+  static final List<SongItem> _defaultTemplateSongs = [];
 
   List<SongItem> _songs = [];
   final Set<String> _deletedSongIds = {};
@@ -88,13 +42,13 @@ class AudioProvider extends ChangeNotifier {
       id: 'pl_1',
       title: 'Calm evenings',
       coverColor: const Color(0xFF2DD4BF),
-      songIds: ['song_1', 'song_2', 'song_3', 'song_4'],
+      songIds: [],
     ),
     PlaylistItem(
       id: 'pl_2',
       title: 'Night Sanctuary',
       coverColor: const Color(0xFFF97316),
-      songIds: ['song_3', 'song_2'],
+      songIds: [],
     ),
   ];
 
@@ -233,9 +187,7 @@ class AudioProvider extends ChangeNotifier {
             .where((s) => !_deletedSongIds.contains(s.id))
             .toList();
       } else {
-        _songs = _defaultTemplateSongs
-            .where((s) => !_deletedSongIds.contains(s.id))
-            .toList();
+        _songs = [];
       }
 
       final cachedPlaylists = LocalCacheService.getCachedPlaylists();
@@ -243,8 +195,13 @@ class AudioProvider extends ChangeNotifier {
         _playlists.clear();
         _playlists.addAll(cachedPlaylists.map((e) => PlaylistItem.fromJson(e)));
       }
+
+      // Clean up any stale/deleted song IDs from playlists
+      for (final pl in _playlists) {
+        pl.songIds.removeWhere((id) => !_songs.any((s) => s.id == id));
+      }
     } catch (_) {
-      _songs = List.from(_defaultTemplateSongs);
+      _songs = [];
     }
   }
 
@@ -508,6 +465,18 @@ class AudioProvider extends ChangeNotifier {
         _currentSongIndex = _songs.length - 1;
       }
       await _persistSongs();
+
+      // Remove deleted song from all playlists
+      bool playlistsChanged = false;
+      for (final pl in _playlists) {
+        if (pl.songIds.remove(id)) {
+          playlistsChanged = true;
+        }
+      }
+      if (playlistsChanged) {
+        _savePlaylistsLocally();
+      }
+
       notifyListeners();
     }
   }
