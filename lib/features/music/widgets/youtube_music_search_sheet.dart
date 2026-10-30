@@ -366,10 +366,14 @@ class _YoutubeMusicSearchSheetState extends State<YoutubeMusicSearchSheet> {
                                             ),
                                           );
                                           final ok = await downloader.downloadTrack(track);
-                                          if (ok && context.mounted) {
+                                          if (context.mounted) {
                                             ScaffoldMessenger.of(context).showSnackBar(
                                               SnackBar(
-                                                content: Text('Saved "${track.title}" offline! 🎵'),
+                                                content: Text(
+                                                  ok
+                                                      ? 'Saved "${track.title}" offline! 🎵'
+                                                      : 'Could not download "${track.title}". Please try another track.',
+                                                ),
                                                 duration: const Duration(seconds: 2),
                                                 behavior: SnackBarBehavior.floating,
                                               ),

@@ -64,13 +64,14 @@ class MusicDownloadService extends ChangeNotifier {
     return null;
   }
 
-  /// Downloads a YouTube Music track directly to local app storage
+  /// Downloads a YouTube Music track directly to local app storage with atomic file writing
   Future<bool> downloadTrack(
     YoutubeTrack track, {
     void Function(double progress)? onProgress,
   }) async {
     if (isDownloaded(track.id)) return true;
 
+    File? tempFile;
     try {
       _downloadProgress[track.id] = 0.05;
       notifyListeners();
@@ -82,21 +83,38 @@ class MusicDownloadService extends ChangeNotifier {
         await musicDir.create(recursive: true);
       }
 
-      final targetFile = File('${musicDir.path}/${track.id}.m4a');
+      tempFile = File('${musicDir.path}/${track.id}.tmp');
+      final finalFile = File('${musicDir.path}/${track.id}.m4a');
 
-      // 1. Fetch audio stream from YouTube
-      final audioStream = await YoutubeMusicService.instance.getDownloadAudioStream(track.id);
+      // 1. Fetch audio stream from YouTube with multi-client fallback
+      Stream<List<int>>? audioStream =
+          await YoutubeMusicService.instance.getDownloadAudioStream(track.id);
+
+      if (audioStream == null) {
+        // Fallback: try resolving stream URL directly
+        final streamUrl = await YoutubeMusicService.instance.getAudioStreamUrl(track.id);
+        if (streamUrl != null && streamUrl.isNotEmpty) {
+          final client = HttpClient();
+          final request = await client.getUrl(Uri.parse(streamUrl));
+          request.headers.set('User-Agent', 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36');
+          final response = await request.close();
+          if (response.statusCode >= 200 && response.statusCode < 300) {
+            audioStream = response;
+          }
+        }
+      }
+
       if (audioStream == null) {
         _downloadProgress.remove(track.id);
         notifyListeners();
         return false;
       }
 
-      // 2. Stream chunks to disk with progress calculation
-      final fileSink = targetFile.openWrite();
+      // 2. Stream chunks to temp disk file with progress tracking
+      final fileSink = tempFile.openWrite();
       int receivedBytes = 0;
-      // Approximate size based on duration (128kbps = 16KB/s)
-      final estimatedTotalBytes = (track.durationSeconds > 0 ? track.durationSeconds : 200) * 16000;
+      final estimatedTotalBytes =
+          (track.durationSeconds > 0 ? track.durationSeconds : 200) * 16000;
 
       await for (final chunk in audioStream) {
         fileSink.add(chunk);
@@ -110,10 +128,21 @@ class MusicDownloadService extends ChangeNotifier {
       await fileSink.flush();
       await fileSink.close();
 
-      // 3. Mark complete and save to manifest
+      // Ensure file has content (> 10 KB)
+      if (await tempFile.length() < 10240) {
+        throw Exception('Downloaded file too small: ${await tempFile.length()} bytes');
+      }
+
+      // 3. Atomically promote to final .m4a file
+      if (await finalFile.exists()) {
+        await finalFile.delete();
+      }
+      await tempFile.rename(finalFile.path);
+
+      // 4. Mark complete and save to manifest
       final completedTrack = track.copyWith(
         isDownloaded: true,
-        localFilePath: targetFile.path,
+        localFilePath: finalFile.path,
       );
 
       _downloadedTracks[track.id] = completedTrack;
@@ -125,6 +154,11 @@ class MusicDownloadService extends ChangeNotifier {
       return true;
     } catch (e) {
       debugPrint('[MusicDownloadService] Download failed for ${track.id}: $e');
+      if (tempFile != null && tempFile.existsSync()) {
+        try {
+          tempFile.deleteSync();
+        } catch (_) {}
+      }
       _downloadProgress.remove(track.id);
       notifyListeners();
       return false;
