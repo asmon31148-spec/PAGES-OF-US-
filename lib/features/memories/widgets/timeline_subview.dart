@@ -692,28 +692,39 @@ class _TimelineSubviewState extends State<TimelineSubview> {
                                           ),
                                         ),
                                         const SizedBox(height: 2),
-                                        Text(
-                                          '${audioPos.inMinutes}:${(audioPos.inSeconds % 60).toString().padLeft(2, '0')} / ${audioDur.inMinutes}:${(audioDur.inSeconds % 60).toString().padLeft(2, '0')}',
-                                          style: TextStyle(
-                                            fontSize: 11,
-                                            color: isDark ? AppColors.darkSoft : AppColors.lightSoft,
-                                          ),
+                                        ValueListenableBuilder<Duration>(
+                                          valueListenable: memoriesProvider.voicePositionNotifier,
+                                          builder: (context, livePos, _) {
+                                            final currentPos = isPlayingAudio ? livePos : Duration.zero;
+                                            return Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  '${currentPos.inMinutes}:${(currentPos.inSeconds % 60).toString().padLeft(2, '0')} / ${audioDur.inMinutes}:${(audioDur.inSeconds % 60).toString().padLeft(2, '0')}',
+                                                  style: TextStyle(
+                                                    fontSize: 11,
+                                                    color: isDark ? AppColors.darkSoft : AppColors.lightSoft,
+                                                  ),
+                                                ),
+                                                if (isPlayingAudio) ...[
+                                                  const SizedBox(height: 10),
+                                                  LinearProgressIndicator(
+                                                    value: audioDur.inMilliseconds > 0
+                                                        ? (currentPos.inMilliseconds / audioDur.inMilliseconds).clamp(0.0, 1.0)
+                                                        : 0.0,
+                                                    backgroundColor: isDark ? Colors.white12 : Colors.black12,
+                                                    color: branchColor,
+                                                  ),
+                                                ],
+                                              ],
+                                            );
+                                          },
                                         ),
                                       ],
                                     ),
                                   ),
                                 ],
                               ),
-                              if (isPlayingAudio) ...[
-                                const SizedBox(height: 10),
-                                LinearProgressIndicator(
-                                  value: audioDur.inMilliseconds > 0
-                                      ? (audioPos.inMilliseconds / audioDur.inMilliseconds).clamp(0.0, 1.0)
-                                      : 0.0,
-                                  backgroundColor: isDark ? Colors.white12 : Colors.black12,
-                                  color: branchColor,
-                                ),
-                              ],
                             ],
                           ),
                         ),

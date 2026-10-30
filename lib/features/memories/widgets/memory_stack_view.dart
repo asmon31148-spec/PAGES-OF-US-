@@ -637,7 +637,7 @@ class _MemoryStackViewState extends State<MemoryStackView> {
                             const SizedBox(width: 8),
                             Text(
                               isPlayingThisWhisper
-                                  ? 'Playing Voice Note (${memoriesProvider.voicePosition.inSeconds}s)...'
+                                  ? 'Playing Voice Note...'
                                   : 'Play Voice Whisper 🎙️',
                               style: const TextStyle(
                                 fontSize: 11,
