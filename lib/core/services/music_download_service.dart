@@ -96,7 +96,9 @@ class MusicDownloadService extends ChangeNotifier {
         if (streamUrl != null && streamUrl.isNotEmpty) {
           final client = HttpClient();
           final request = await client.getUrl(Uri.parse(streamUrl));
-          request.headers.set('User-Agent', 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36');
+          // Use Safari/iOS client matching stream manifest tokens to prevent YouTube 403 Forbidden
+          request.headers.set('User-Agent', 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1');
+          request.headers.set('Accept', '*/*');
           final response = await request.close();
           if (response.statusCode >= 200 && response.statusCode < 300) {
             audioStream = response;
@@ -110,19 +112,28 @@ class MusicDownloadService extends ChangeNotifier {
         return false;
       }
 
-      // 2. Stream chunks to temp disk file with progress tracking
+      // 2. Stream chunks to temp disk file with throttled progress tracking (max ~8-10 updates/sec)
       final fileSink = tempFile.openWrite();
       int receivedBytes = 0;
       final estimatedTotalBytes =
           (track.durationSeconds > 0 ? track.durationSeconds : 200) * 16000;
+
+      int lastNotifyMs = 0;
+      double lastNotifiedProg = 0.05;
 
       await for (final chunk in audioStream) {
         fileSink.add(chunk);
         receivedBytes += chunk.length;
         final prog = (receivedBytes / estimatedTotalBytes).clamp(0.05, 0.95);
         _downloadProgress[track.id] = prog;
-        notifyListeners();
-        onProgress?.call(prog);
+
+        final nowMs = DateTime.now().millisecondsSinceEpoch;
+        if (nowMs - lastNotifyMs >= 150 || (prog - lastNotifiedProg) >= 0.03) {
+          lastNotifyMs = nowMs;
+          lastNotifiedProg = prog;
+          notifyListeners();
+          onProgress?.call(prog);
+        }
       }
 
       await fileSink.flush();

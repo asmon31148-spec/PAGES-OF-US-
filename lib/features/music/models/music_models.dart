@@ -60,6 +60,32 @@ class SongItem {
       youtubeId: json['youtubeId'] as String?,
     );
   }
+
+  SongItem copyWith({
+    String? id,
+    String? title,
+    String? artist,
+    int? durationSeconds,
+    String? audioUrl,
+    Color? coverColor,
+    bool? isLocal,
+    String? addedBy,
+    String? thumbnailUrl,
+    String? youtubeId,
+  }) {
+    return SongItem(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      artist: artist ?? this.artist,
+      durationSeconds: durationSeconds ?? this.durationSeconds,
+      audioUrl: audioUrl ?? this.audioUrl,
+      coverColor: coverColor ?? this.coverColor,
+      isLocal: isLocal ?? this.isLocal,
+      addedBy: addedBy ?? this.addedBy,
+      thumbnailUrl: thumbnailUrl ?? this.thumbnailUrl,
+      youtubeId: youtubeId ?? this.youtubeId,
+    );
+  }
 }
 
 class PlaylistItem {
