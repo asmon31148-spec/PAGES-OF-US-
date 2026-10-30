@@ -60,17 +60,16 @@ class MemoriesProvider extends ChangeNotifier {
     _initVoicePlayerListeners();
   }
 
-  int _lastPositionNotifyMs = 0;
+  /// Dedicated 60 FPS position notifier for isolated waveform rendering
+  final ValueNotifier<Duration> voicePositionNotifier = ValueNotifier<Duration>(Duration.zero);
 
   void _initVoicePlayerListeners() {
     _voicePosSub = _voicePlayer.onPositionChanged.listen((pos) {
       _voicePosition = pos;
-      final now = DateTime.now().millisecondsSinceEpoch;
-      // Throttle position updates to 4-5 fps (~220ms) to eliminate main-thread stuttering
-      if (now - _lastPositionNotifyMs > 220) {
-        _lastPositionNotifyMs = now;
-        notifyListeners();
-      }
+      voicePositionNotifier.value = pos;
+      // Position updates are delivered directly via voicePositionNotifier.
+      // We purposefully DO NOT call notifyListeners() here to prevent
+      // screen-wide rebuilds of heavy 1,280-line views during audio playback.
     });
     _voiceDurSub = _voicePlayer.onDurationChanged.listen((dur) {
       if (dur.inMilliseconds > 0 && dur != _voiceDuration) {
@@ -83,6 +82,7 @@ class MemoriesProvider extends ChangeNotifier {
       if (state == PlayerState.completed || state == PlayerState.stopped) {
         _playingVoiceId = null;
         _voicePosition = Duration.zero;
+        voicePositionNotifier.value = Duration.zero;
       }
       notifyListeners();
     });
@@ -100,6 +100,7 @@ class MemoriesProvider extends ChangeNotifier {
   @override
   void dispose() {
     _stopPositionTicker();
+    voicePositionNotifier.dispose();
     _voicePosSub?.cancel();
     _voiceDurSub?.cancel();
     _voiceStateSub?.cancel();
@@ -313,6 +314,13 @@ class MemoriesProvider extends ChangeNotifier {
               ))
           .toList();
 
+      // Background prefetch for instant 0ms voice whisper playback
+      final voiceUrls = _memories
+          .where((m) => m.type == 'voice' || (m.voiceUrl != null && m.voiceUrl!.isNotEmpty))
+          .map((m) => (m.voiceUrl != null && m.voiceUrl!.isNotEmpty) ? m.voiceUrl! : m.mediaUrl)
+          .toList();
+      AudioCacheService.prefetchList(voiceUrls);
+
       // 2nd: Schedule weekly random old memories recap
       if (_memories.isNotEmpty) {
         final randomItem = _memories[Random().nextInt(_memories.length)];
@@ -419,6 +427,7 @@ class MemoriesProvider extends ChangeNotifier {
       ambientAudio?.duckForMedia();
       _playingVoiceId = id;
       _voicePosition = Duration.zero;
+      voicePositionNotifier.value = Duration.zero;
       _voiceDuration = Duration.zero;
       _playerState = PlayerState.playing;
       notifyListeners();
@@ -471,6 +480,7 @@ class MemoriesProvider extends ChangeNotifier {
     try {
       await _voicePlayer.seek(target);
       _voicePosition = target;
+      voicePositionNotifier.value = target;
       notifyListeners();
     } catch (_) {}
   }
@@ -482,6 +492,7 @@ class MemoriesProvider extends ChangeNotifier {
     _playingVoiceId = null;
     _playerState = PlayerState.stopped;
     _voicePosition = Duration.zero;
+    voicePositionNotifier.value = Duration.zero;
     notifyListeners();
   }
 

@@ -89,10 +89,6 @@ class _VoiceWhisperPlayerCardState extends State<VoiceWhisperPlayerCard> {
     final isPlaying = memoriesProvider.playingVoiceId == widget.memory.id &&
         memoriesProvider.isVoicePlaying;
 
-    final position = memoriesProvider.playingVoiceId == widget.memory.id
-        ? memoriesProvider.voicePosition
-        : Duration.zero;
-
     Duration duration = Duration.zero;
     if (memoriesProvider.playingVoiceId == widget.memory.id &&
         memoriesProvider.voiceDuration.inMilliseconds > 0) {
@@ -100,12 +96,6 @@ class _VoiceWhisperPlayerCardState extends State<VoiceWhisperPlayerCard> {
     } else {
       duration = const Duration(seconds: 15); // Default visual estimation
     }
-
-    final double progressFraction = _isDragging
-        ? _dragFraction
-        : (duration.inMilliseconds > 0
-            ? (position.inMilliseconds / duration.inMilliseconds).clamp(0.0, 1.0)
-            : 0.0);
 
     final cardBg = widget.isDark ? const Color(0xFF141C18) : const Color(0xFFF3F5F3);
     final activeColor = AppColors.terra;
@@ -246,131 +236,143 @@ class _VoiceWhisperPlayerCardState extends State<VoiceWhisperPlayerCard> {
               ),
               const SizedBox(width: 12),
 
-              // Interactive Waveform & Smooth Timestamps
+              // Interactive Waveform & Smooth Timestamps (60 FPS Isolated ValueListenable)
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Waveform scrubber container
-                    GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onHorizontalDragStart: (details) {
-                        setState(() => _isDragging = true);
-                        _updateDragPosition(details.localPosition, memoriesProvider);
-                      },
-                      onHorizontalDragUpdate: (details) {
-                        _updateDragPosition(details.localPosition, memoriesProvider);
-                      },
-                      onHorizontalDragEnd: (details) {
-                        setState(() => _isDragging = false);
-                        _seekToFraction(memoriesProvider, _dragFraction);
-                        HapticFeedback.selectionClick();
-                      },
-                      onTapDown: (details) {
-                        final RenderBox? renderBox = _waveformKey.currentContext?.findRenderObject() as RenderBox?;
-                        if (renderBox != null) {
-                          final fraction = (details.localPosition.dx / renderBox.size.width).clamp(0.0, 1.0);
-                          _seekToFraction(memoriesProvider, fraction);
-                          HapticFeedback.selectionClick();
-                        }
-                      },
-                      child: Container(
-                        key: _waveformKey,
-                        height: 46,
-                        alignment: Alignment.center,
-                        child: LayoutBuilder(
-                          builder: (context, constraints) {
-                            final totalWidth = constraints.maxWidth;
-                            final thumbX = (progressFraction * totalWidth).clamp(0.0, totalWidth);
+                child: ValueListenableBuilder<Duration>(
+                  valueListenable: widget.memoriesProvider.voicePositionNotifier,
+                  builder: (context, livePos, _) {
+                    final position = isPlaying ? livePos : Duration.zero;
+                    final double progressFraction = _isDragging
+                        ? _dragFraction
+                        : (duration.inMilliseconds > 0
+                            ? (position.inMilliseconds / duration.inMilliseconds).clamp(0.0, 1.0)
+                            : 0.0);
 
-                            return Stack(
-                              alignment: Alignment.centerLeft,
-                              clipBehavior: Clip.none,
-                              children: [
-                                // Pitch Waveform Bars
-                                Row(
-                                  crossAxisAlignment: CrossAxisAlignment.center,
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: List.generate(_waveformHeights.length, (idx) {
-                                    final barFraction = (idx + 0.5) / _waveformHeights.length;
-                                    final isPlayed = barFraction <= progressFraction;
-
-                                    return AnimatedContainer(
-                                      duration: const Duration(milliseconds: 60),
-                                      width: 3.2,
-                                      height: _waveformHeights[idx],
-                                      decoration: BoxDecoration(
-                                        color: isPlayed ? activeColor : inactiveColor,
-                                        borderRadius: BorderRadius.circular(3),
-                                        boxShadow: isPlayed && isPlaying
-                                            ? [
-                                                BoxShadow(
-                                                  color: activeColor.withOpacity(0.35),
-                                                  blurRadius: 3,
-                                                  spreadRadius: 0.5,
-                                                ),
-                                              ]
-                                            : null,
-                                      ),
-                                    );
-                                  }),
-                                ),
-
-                                // Active WhatsApp-style Scrubber Thumb Dot
-                                Positioned(
-                                  left: (thumbX - 5).clamp(0.0, totalWidth - 10),
-                                  child: Container(
-                                    width: 10,
-                                    height: 10,
-                                    decoration: BoxDecoration(
-                                      color: activeColor,
-                                      shape: BoxShape.circle,
-                                      border: Border.all(color: Colors.white, width: 1.5),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: activeColor.withOpacity(0.6),
-                                          blurRadius: 5,
-                                          spreadRadius: 1,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            );
-                          },
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 3),
-
-                    // WhatsApp Timestamps row: Running Time (left) / Total Duration (right)
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          _formatDuration(position),
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            color: isPlaying
-                                ? activeColor
-                                : (widget.isDark ? Colors.white70 : Colors.black87),
-                            letterSpacing: 0.3,
+                        // Waveform scrubber container
+                        GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onHorizontalDragStart: (details) {
+                            setState(() => _isDragging = true);
+                            _updateDragPosition(details.localPosition, memoriesProvider);
+                          },
+                          onHorizontalDragUpdate: (details) {
+                            _updateDragPosition(details.localPosition, memoriesProvider);
+                          },
+                          onHorizontalDragEnd: (details) {
+                            setState(() => _isDragging = false);
+                            _seekToFraction(memoriesProvider, _dragFraction);
+                            HapticFeedback.selectionClick();
+                          },
+                          onTapDown: (details) {
+                            final RenderBox? renderBox = _waveformKey.currentContext?.findRenderObject() as RenderBox?;
+                            if (renderBox != null) {
+                              final fraction = (details.localPosition.dx / renderBox.size.width).clamp(0.0, 1.0);
+                              _seekToFraction(memoriesProvider, fraction);
+                              HapticFeedback.selectionClick();
+                            }
+                          },
+                          child: Container(
+                            key: _waveformKey,
+                            height: 46,
+                            alignment: Alignment.center,
+                            child: LayoutBuilder(
+                              builder: (context, constraints) {
+                                final totalWidth = constraints.maxWidth;
+                                final thumbX = (progressFraction * totalWidth).clamp(0.0, totalWidth);
+
+                                return Stack(
+                                  alignment: Alignment.centerLeft,
+                                  clipBehavior: Clip.none,
+                                  children: [
+                                    // Pitch Waveform Bars
+                                    Row(
+                                      crossAxisAlignment: CrossAxisAlignment.center,
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: List.generate(_waveformHeights.length, (idx) {
+                                        final barFraction = (idx + 0.5) / _waveformHeights.length;
+                                        final isPlayed = barFraction <= progressFraction;
+
+                                        return AnimatedContainer(
+                                          duration: const Duration(milliseconds: 60),
+                                          width: 3.2,
+                                          height: _waveformHeights[idx],
+                                          decoration: BoxDecoration(
+                                            color: isPlayed ? activeColor : inactiveColor,
+                                            borderRadius: BorderRadius.circular(3),
+                                            boxShadow: isPlayed && isPlaying
+                                                ? [
+                                                    BoxShadow(
+                                                      color: activeColor.withOpacity(0.35),
+                                                      blurRadius: 3,
+                                                      spreadRadius: 0.5,
+                                                    ),
+                                                  ]
+                                                : null,
+                                          ),
+                                        );
+                                      }),
+                                    ),
+
+                                    // Active WhatsApp-style Scrubber Thumb Dot
+                                    Positioned(
+                                      left: (thumbX - 5).clamp(0.0, totalWidth - 10),
+                                      child: Container(
+                                        width: 10,
+                                        height: 10,
+                                        decoration: BoxDecoration(
+                                          color: activeColor,
+                                          shape: BoxShape.circle,
+                                          border: Border.all(color: Colors.white, width: 1.5),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: activeColor.withOpacity(0.6),
+                                              blurRadius: 5,
+                                              spreadRadius: 1,
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                );
+                              },
+                            ),
                           ),
                         ),
-                        Text(
-                          _formatDuration(duration),
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w500,
-                            color: widget.isDark ? Colors.white38 : Colors.black45,
-                            letterSpacing: 0.3,
-                          ),
+                        const SizedBox(height: 3),
+
+                        // WhatsApp Timestamps row: Running Time (left) / Total Duration (right)
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              _formatDuration(position),
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: isPlaying
+                                    ? activeColor
+                                    : (widget.isDark ? Colors.white70 : Colors.black87),
+                                letterSpacing: 0.3,
+                              ),
+                            ),
+                            Text(
+                              _formatDuration(duration),
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w500,
+                                color: widget.isDark ? Colors.white38 : Colors.black45,
+                                letterSpacing: 0.3,
+                              ),
+                            ),
+                          ],
                         ),
                       ],
-                    ),
-                  ],
+                    );
+                  },
                 ),
               ),
             ],
