@@ -90,6 +90,23 @@ class _YoutubeMusicSearchSheetState extends State<YoutubeMusicSearchSheet> {
     }
   }
 
+  void _playTrack(BuildContext context, AudioProvider audio, YoutubeTrack track) async {
+    HapticFeedback.mediumImpact();
+    final messenger = ScaffoldMessenger.of(context);
+    Navigator.pop(context);
+    await audio.playYoutubeTrack(track);
+    if (audio.lastPlayError != null) {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(audio.lastPlayError!),
+          backgroundColor: const Color(0xFF2E1A1A),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      audio.clearPlayError();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final audio = context.watch<AudioProvider>();
@@ -389,19 +406,11 @@ class _YoutubeMusicSearchSheetState extends State<YoutubeMusicSearchSheet> {
                                         color: Color(0xFFA3E635),
                                         size: 32,
                                       ),
-                                      onPressed: () async {
-                                        HapticFeedback.mediumImpact();
-                                        Navigator.pop(context);
-                                        await audio.playYoutubeTrack(track);
-                                      },
+                                      onPressed: () => _playTrack(context, audio, track),
                                     ),
                                   ],
                                 ),
-                                onTap: () async {
-                                  HapticFeedback.mediumImpact();
-                                  Navigator.pop(context);
-                                  await audio.playYoutubeTrack(track);
-                                },
+                                onTap: () => _playTrack(context, audio, track),
                               );
                             },
                           ),

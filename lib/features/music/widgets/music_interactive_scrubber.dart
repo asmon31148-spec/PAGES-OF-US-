@@ -36,13 +36,13 @@ class _MusicInteractiveScrubberState extends State<MusicInteractiveScrubber> {
     final durMs = widget.duration.inMilliseconds > 0
         ? widget.duration.inMilliseconds.toDouble()
         : 0.0;
+    final maxMs = durMs > 0 ? durMs : 1.0;
 
-    final currentMs = _isDragging
-        ? _dragPositionMs
-        : widget.position.inMilliseconds.toDouble().clamp(0.0, durMs > 0 ? durMs : 1.0);
+    final currentMs = (_isDragging ? _dragPositionMs : widget.position.inMilliseconds.toDouble())
+        .clamp(0.0, maxMs);
 
     final displayPos = _isDragging
-        ? Duration(milliseconds: _dragPositionMs.toInt())
+        ? Duration(milliseconds: currentMs.toInt())
         : widget.position;
 
     return Column(
@@ -64,23 +64,25 @@ class _MusicInteractiveScrubberState extends State<MusicInteractiveScrubber> {
           child: Slider(
             value: durMs > 0 ? currentMs : 0.0,
             min: 0.0,
-            max: durMs > 0 ? durMs : 1.0,
+            max: maxMs,
             onChangeStart: (val) {
               setState(() {
                 _isDragging = true;
-                _dragPositionMs = val;
+                _dragPositionMs = val.clamp(0.0, maxMs);
               });
             },
             onChanged: (val) {
               setState(() {
-                _dragPositionMs = val;
+                _dragPositionMs = val.clamp(0.0, maxMs);
               });
             },
             onChangeEnd: (val) {
-              final target = Duration(milliseconds: val.toInt());
+              final clampedVal = val.clamp(0.0, maxMs);
+              final target = Duration(milliseconds: clampedVal.toInt());
               widget.onSeek(target);
               setState(() {
                 _isDragging = false;
+                _dragPositionMs = clampedVal;
               });
             },
           ),

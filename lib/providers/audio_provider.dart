@@ -57,6 +57,9 @@ class AudioProvider extends ChangeNotifier {
 
   int _currentSongIndex = 0;
   bool _isSongPlaying = false;
+  bool _isSongBuffering = false;
+  String? _bufferingSongTitle;
+  String? _lastPlayError;
   Duration _songPosition = Duration.zero;
   final ValueNotifier<Duration> songPositionNotifier = ValueNotifier<Duration>(Duration.zero);
   Duration _songDuration = const Duration(minutes: 3, seconds: 42);
@@ -157,6 +160,10 @@ class AudioProvider extends ChangeNotifier {
     return _songs[safeIndex];
   }
   bool get isSongPlaying => _isSongPlaying && _songs.isNotEmpty;
+  bool get isSongBuffering => _isSongBuffering;
+  String? get bufferingSongTitle => _bufferingSongTitle;
+  String? get lastPlayError => _lastPlayError;
+  void clearPlayError() => _lastPlayError = null;
   bool get isPlaying => (_isSongPlaying && _songs.isNotEmpty) || _isAtmospherePlaying;
   String get currentTrackTitle => currentSong.title;
   Duration get songPosition => _songPosition;
@@ -350,52 +357,92 @@ class AudioProvider extends ChangeNotifier {
 
   /// Plays a track from YouTube Music or local offline cache
   Future<void> playYoutubeTrack(YoutubeTrack track) async {
-    final localPath = MusicDownloadService.instance.getLocalFilePath(track.id);
-    String audioUrl;
-    bool isLocal = false;
+    _isSongBuffering = true;
+    _bufferingSongTitle = track.title;
+    _lastPlayError = null;
+    notifyListeners();
 
-    if (localPath != null && File(localPath).existsSync()) {
-      audioUrl = localPath;
-      isLocal = true;
-    } else {
-      final streamUrl = await YoutubeMusicService.instance.getAudioStreamUrl(track.id);
-      if (streamUrl == null) {
-        debugPrint('[AudioProvider] Could not resolve audio stream for ${track.id}');
-        return;
-      }
-      audioUrl = streamUrl;
-      isLocal = false;
-    }
+    try {
+      final localPath = MusicDownloadService.instance.getLocalFilePath(track.id);
+      String audioUrl;
+      bool isLocal = false;
 
-    final newSong = SongItem(
-      id: track.id,
-      youtubeId: track.id,
-      title: track.title,
-      artist: track.artist,
-      durationSeconds: track.durationSeconds,
-      audioUrl: audioUrl,
-      coverColor: const Color(0xFFD97706),
-      isLocal: isLocal,
-      addedBy: 'YouTube Music',
-      thumbnailUrl: track.thumbnailUrl,
-    );
-
-    final existingIdx = _songs.indexWhere((s) => s.id == newSong.id || s.youtubeId == newSong.id);
-    if (existingIdx != -1) {
-      _songs[existingIdx] = newSong;
-      await selectSong(existingIdx);
-    } else {
-      _songs.insert(0, newSong);
-      await selectSong(0);
-    }
-
-    // Auto-cache in background so subsequent plays are instant offline without buffering!
-    if (!isLocal) {
-      MusicDownloadService.instance.downloadTrack(track).then((ok) {
-        if (ok) {
-          debugPrint('[AudioProvider] Auto-cached "${track.title}" offline');
+      if (localPath != null && File(localPath).existsSync()) {
+        audioUrl = localPath;
+        isLocal = true;
+      } else {
+        final streamUrl = await YoutubeMusicService.instance.getAudioStreamUrl(track.id);
+        if (streamUrl == null || streamUrl.isEmpty) {
+          debugPrint('[AudioProvider] Could not resolve audio stream for ${track.id}');
+          _isSongBuffering = false;
+          _bufferingSongTitle = null;
+          _lastPlayError = 'Could not stream "${track.title}". Please try another track.';
+          notifyListeners();
+          return;
         }
-      });
+        audioUrl = streamUrl;
+        isLocal = false;
+      }
+
+      final newSong = SongItem(
+        id: track.id,
+        youtubeId: track.id,
+        title: track.title,
+        artist: track.artist,
+        durationSeconds: track.durationSeconds,
+        audioUrl: audioUrl,
+        coverColor: const Color(0xFFD97706),
+        isLocal: isLocal,
+        addedBy: 'YouTube Music',
+        thumbnailUrl: track.thumbnailUrl,
+      );
+
+      final existingIdx = _songs.indexWhere((s) => s.id == newSong.id || s.youtubeId == newSong.id);
+      if (existingIdx != -1) {
+        _songs[existingIdx] = newSong;
+        _currentSongIndex = existingIdx;
+      } else {
+        _songs.insert(0, newSong);
+        _currentSongIndex = 0;
+      }
+
+      _songPosition = Duration.zero;
+      songPositionNotifier.value = Duration.zero;
+      _songDuration = Duration(seconds: newSong.durationSeconds);
+
+      await _playCurrentSongWithCrossfade();
+      _isSongBuffering = false;
+      _bufferingSongTitle = null;
+      notifyListeners();
+      _broadcastSync('SELECT', 0);
+
+      // Auto-cache ONLY AFTER playback starts without choking initial connection
+      if (!isLocal) {
+        Future.delayed(const Duration(milliseconds: 2000), () {
+          MusicDownloadService.instance.downloadTrack(track).then((ok) {
+            if (ok) {
+              final newLocalPath = MusicDownloadService.instance.getLocalFilePath(track.id);
+              if (newLocalPath != null) {
+                final idx = _songs.indexWhere((s) => s.id == track.id || s.youtubeId == track.id);
+                if (idx != -1) {
+                  _songs[idx] = _songs[idx].copyWith(
+                    audioUrl: newLocalPath,
+                    isLocal: true,
+                  );
+                  debugPrint('[AudioProvider] Promoted "${track.title}" to local disk file');
+                  notifyListeners();
+                }
+              }
+            }
+          });
+        });
+      }
+    } catch (e) {
+      debugPrint('[AudioProvider] Exception playing YouTube track: $e');
+      _isSongBuffering = false;
+      _bufferingSongTitle = null;
+      _lastPlayError = 'Unable to play "${track.title}": $e';
+      notifyListeners();
     }
   }
 
@@ -780,7 +827,7 @@ class AudioProvider extends ChangeNotifier {
       final supabase = Supabase.instance.client;
       _syncChannel = supabase.channel('music_sync_$spaceId');
 
-      // 5th: Broadcast listen together invitation to partner
+      // Broadcast listen together invitation to partner
       SupabaseService.broadcastEvent(
         spaceId: spaceId,
         eventType: 'LISTEN_INVITE',
@@ -791,30 +838,99 @@ class AudioProvider extends ChangeNotifier {
           'artist': currentSong.artist,
         },
       );
+
+      void handleSyncPayload(Map<String, dynamic> payload) async {
+        if (_ignoreIncomingSync) return;
+        final type = payload['type'] as String?;
+        final songId = payload['songId'] as String?;
+        final youtubeId = payload['youtubeId'] as String?;
+        final title = payload['title'] as String?;
+        final artist = payload['artist'] as String?;
+        final remoteAudioUrl = payload['audioUrl'] as String?;
+        final durationSec = payload['durationSeconds'] as int? ?? 180;
+        final thumb = payload['thumbnailUrl'] as String?;
+        final positionSec = payload['positionSec'] as int?;
+
+        // 1. Locate matching song in current partner's playlist
+        int matchIdx = -1;
+        if (songId != null) {
+          matchIdx = _songs.indexWhere((s) => s.id == songId || (s.youtubeId != null && s.youtubeId == songId));
+        }
+        if (matchIdx == -1 && youtubeId != null) {
+          matchIdx = _songs.indexWhere((s) => s.id == youtubeId || s.youtubeId == youtubeId);
+        }
+        if (matchIdx == -1 && title != null) {
+          matchIdx = _songs.indexWhere((s) => s.title.toLowerCase() == title.toLowerCase());
+        }
+
+        // If not found in playlist, dynamically add it
+        if (matchIdx == -1 && title != null) {
+          String resolvedUrl = remoteAudioUrl ?? '';
+          bool resolvedIsLocal = false;
+
+          // Check if partner already has it downloaded locally
+          if (youtubeId != null) {
+            final local = MusicDownloadService.instance.getLocalFilePath(youtubeId);
+            if (local != null && File(local).existsSync()) {
+              resolvedUrl = local;
+              resolvedIsLocal = true;
+            }
+          }
+
+          final syncedSong = SongItem(
+            id: songId ?? 'sync_${DateTime.now().millisecondsSinceEpoch}',
+            youtubeId: youtubeId,
+            title: title,
+            artist: artist ?? 'Partner Queue',
+            durationSeconds: durationSec,
+            audioUrl: resolvedUrl,
+            coverColor: const Color(0xFFD97706),
+            isLocal: resolvedIsLocal,
+            addedBy: 'Partner',
+            thumbnailUrl: thumb,
+          );
+          _songs.insert(0, syncedSong);
+          matchIdx = 0;
+        }
+
+        if (matchIdx != -1 && matchIdx != _currentSongIndex) {
+          _currentSongIndex = matchIdx;
+          _songDuration = Duration(seconds: _songs[matchIdx].durationSeconds);
+        }
+
+        if (type == 'PLAY') {
+          final targetSong = currentSong;
+          if (targetSong.audioUrl.isEmpty && targetSong.youtubeId != null) {
+            final resolvedStream = await YoutubeMusicService.instance.getAudioStreamUrl(targetSong.youtubeId!);
+            if (resolvedStream != null) {
+              _songs[_currentSongIndex] = targetSong.copyWith(audioUrl: resolvedStream, isLocal: false);
+            }
+          }
+          if (currentSong.audioUrl.isNotEmpty) {
+            _isSongPlaying = true;
+            await _songPlayer.play(_resolveSource(currentSong.audioUrl, isLocal: currentSong.isLocal));
+          }
+        } else if (type == 'PAUSE') {
+          _isSongPlaying = false;
+          await _songPlayer.pause();
+        } else if (type == 'SEEK' && positionSec != null) {
+          final target = Duration(seconds: positionSec);
+          _songPosition = target;
+          songPositionNotifier.value = target;
+          await _songPlayer.seek(target);
+        }
+        notifyListeners();
+      }
+
       _syncChannel!.onBroadcast(
         event: 'playback_update',
-        callback: (payload) {
-          if (_ignoreIncomingSync) return;
-          final type = payload['type'] as String?;
-          final songIndex = payload['songIndex'] as int?;
-          final positionSec = payload['positionSec'] as int?;
-
-          if (songIndex != null && songIndex != _currentSongIndex) {
-            _currentSongIndex = songIndex;
-          }
-
-          if (type == 'PLAY') {
-            _isSongPlaying = true;
-            _songPlayer.play(_resolveSource(currentSong.audioUrl, isLocal: currentSong.isLocal));
-          } else if (type == 'PAUSE') {
-            _isSongPlaying = false;
-            _songPlayer.pause();
-          } else if (type == 'SEEK' && positionSec != null) {
-            _songPlayer.seek(Duration(seconds: positionSec));
-          }
-          notifyListeners();
-        },
-      ).subscribe();
+        callback: (payload) => handleSyncPayload(Map<String, dynamic>.from(payload)),
+      );
+      _syncChannel!.onBroadcast(
+        event: 'playback_sync',
+        callback: (payload) => handleSyncPayload(Map<String, dynamic>.from(payload)),
+      );
+      _syncChannel!.subscribe();
     } catch (_) {}
   }
 
@@ -834,15 +950,31 @@ class AudioProvider extends ChangeNotifier {
     if (!_isListenTogetherActive || _syncChannel == null) return;
     try {
       _ignoreIncomingSync = true;
+      final payload = {
+        'type': type,
+        'songIndex': _currentSongIndex,
+        'positionSec': positionSec,
+        'songId': currentSong.id,
+        'youtubeId': currentSong.youtubeId,
+        'title': currentSong.title,
+        'artist': currentSong.artist,
+        'durationSeconds': currentSong.durationSeconds,
+        'thumbnailUrl': currentSong.thumbnailUrl,
+        'isLocal': currentSong.isLocal,
+        // Only send remote URL across network, never device sandbox paths like /data/user/0/...
+        'audioUrl': currentSong.isLocal ? null : currentSong.audioUrl,
+        'timestamp': DateTime.now().millisecondsSinceEpoch,
+      };
+
       _syncChannel!.sendBroadcastMessage(
         event: 'playback_update',
-        payload: {
-          'type': type,
-          'songIndex': _currentSongIndex,
-          'positionSec': positionSec,
-          'timestamp': DateTime.now().millisecondsSinceEpoch,
-        },
+        payload: payload,
       );
+      _syncChannel!.sendBroadcastMessage(
+        event: 'playback_sync',
+        payload: payload,
+      );
+
       Future.delayed(const Duration(milliseconds: 300), () {
         _ignoreIncomingSync = false;
       });
