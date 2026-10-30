@@ -46,7 +46,58 @@ class MoodVibeInfo {
   });
 }
 
+class BoldnessLevel {
+  final String id;
+  final String label;
+  final String icon;
+  final String subtitle;
+  final String promptGuidance;
+
+  const BoldnessLevel({
+    required this.id,
+    required this.label,
+    required this.icon,
+    required this.subtitle,
+    required this.promptGuidance,
+  });
+}
+
 class RelationshipAiService {
+  static const List<BoldnessLevel> boldnessLevels = [
+    BoldnessLevel(
+      id: 'sweet',
+      label: 'Sweet',
+      icon: '🍯',
+      subtitle: 'Wholesome romance & gentle butterflies',
+      promptGuidance:
+          'Wholesome, tender, soft, and focused on cute confessions, cuddles, safe emotional connection, and heartwarming memories.',
+    ),
+    BoldnessLevel(
+      id: 'flirty',
+      label: 'Flirty',
+      icon: '💋',
+      subtitle: 'Cheeky banter & playful romantic tension',
+      promptGuidance:
+          'Electric chemistry, cheeky teasing, playful banter, blushing compliments, and magnetic romantic tension.',
+    ),
+    BoldnessLevel(
+      id: 'bold',
+      label: 'Bold',
+      icon: '🔥',
+      subtitle: 'Deep attraction, sensual touch & chemistry',
+      promptGuidance:
+          'Deeply passionate, sensual, exploring physical touch, magnetic attraction, and spicy romance without holding back.',
+    ),
+    BoldnessLevel(
+      id: 'unfiltered',
+      label: 'Unfiltered',
+      icon: '😈',
+      subtitle: '100% raw, midnight fantasies & zero filters',
+      promptGuidance:
+          'Completely unfiltered, provocative, raw, and bold. Explore midnight desires, bedroom fantasies, taboo confessions, and unfiltered thoughts lovers only whisper in the dark.',
+    ),
+  ];
+
   static const List<RelationshipStageInfo> stages = [
     RelationshipStageInfo(
       id: 'deep',
@@ -82,6 +133,30 @@ class RelationshipAiService {
 
   static const List<MoodVibeInfo> moods = [
     MoodVibeInfo(
+      id: 'bold_romance',
+      label: 'Bold Romance',
+      icon: '🔥',
+      desc: 'Passionate touch, heat & chemistry',
+    ),
+    MoodVibeInfo(
+      id: 'unfiltered',
+      label: 'Unfiltered & Wild',
+      icon: '😈',
+      desc: 'Midnight fantasies & zero taboo',
+    ),
+    MoodVibeInfo(
+      id: 'sweet',
+      label: 'Sweet & Tender',
+      icon: '🍯',
+      desc: 'Soft butterflies & pure romance',
+    ),
+    MoodVibeInfo(
+      id: 'flirty',
+      label: 'Flirty & Teasing',
+      icon: '💋',
+      desc: 'Playful tension & cheeky attraction',
+    ),
+    MoodVibeInfo(
       id: 'vulnerable',
       label: 'Vulnerable',
       icon: '🕯️',
@@ -114,6 +189,134 @@ class RelationshipAiService {
   ];
 
   static const Map<String, Map<String, List<String>>> promptBank = {
+    'bold_romance': {
+      'new_sparks': [
+        'What was the first thing you noticed about me physically that gave you butterflies?',
+        'Where were we the first time you realized the chemistry between us was electric?',
+        'What is a look or gesture of mine that instantly accelerates your heartbeat?',
+        'If we had an empty house for 24 hours with no phones, how would we spend it?'
+      ],
+      'deep': [
+        'What is your favorite way for me to touch you when we have complete privacy?',
+        'What is a physical sensation of mine that completely melts your self-control?',
+        'When was a moment you looked at me and your thoughts immediately turned to pure desire?',
+        'What is something intimate you secretly love about the way our bodies fit together?'
+      ],
+      'long_distance': [
+        'What part of my body do you miss feeling against yours the most right now?',
+        'What is a late-night memory of our touch that keeps you awake when we are miles apart?',
+        'Describe the very first physical thing you are doing to me the moment my flight lands.',
+        'What is a spicy thought you had about us today while you were missing me?'
+      ],
+      'years': [
+        'What is an intimate dynamic or touch between us that has only grown hotter over the years?',
+        'How does the way I look at you when we are alone still make you blush?',
+        'What is something new you have wanted to try with me behind closed doors?',
+        'What is your favorite late-night memory of us after everyone else went to sleep?'
+      ],
+      'soft_reconnect': [
+        'Can you pull me close right now and tell me where you need my hands to be?',
+        'What is an unspoken romantic desire you have been carrying this week?',
+        'When did you last feel that intoxicating electric spark between us?',
+        'What is a slow, sensual moment you want us to steal tonight without any rush?'
+      ],
+    },
+    'unfiltered': {
+      'new_sparks': [
+        'What was the boldest thought you had about me before we ever had our first kiss?',
+        'If we could lock the door right now, what is the first thing you want me to whisper to you?',
+        'What is an unfiltered truth about your attraction to me you have been holding back?',
+        'What is a boundary you secretly want us to push together?'
+      ],
+      'deep': [
+        'What is a midnight fantasy you replay in your mind that you have never confessed out loud?',
+        'If I told you to take complete control in the bedroom right now, what would you do first?',
+        'What turns your attraction to me into an uncontrollable physical craving?',
+        'What is the wildest scenario you have imagined us doing in the dark?'
+      ],
+      'long_distance': [
+        'Describe the exact unedited thought running through your head when you imagine holding me tonight.',
+        'What is something taboo or raw you want to confess to me before we hang up?',
+        'If I were standing in your room right this second, where would your hands go first?',
+        'What is the wildest dream you have ever had about us while apart?'
+      ],
+      'years': [
+        'What is an uncharted sexual fantasy of yours that you want to unlock with me this year?',
+        'What is a wild side of you that only I have ever unlocked in the bedroom?',
+        'What is something provocative you want us to do that we haven’t done yet?',
+        'If there were no inhibitions between us tonight, what would we do?'
+      ],
+      'soft_reconnect': [
+        'Tell me the raw, unfiltered truth: what do you crave most from my body tonight?',
+        'What is a physical secret between us that still gives you shivers to remember?',
+        'If you surrendered all control to me for the next hour, what would you hope I do?',
+        'What is the most intense, unscripted moment of passion we have ever shared?'
+      ],
+    },
+    'sweet': {
+      'new_sparks': [
+        'What is a tiny gesture of mine that gave you the sweetest butterflies?',
+        'What was going through your mind the very first time we held hands?',
+        'What is the cutest thing I do that you think I do completely unintentionally?',
+        'What is a song that instantly makes you think of my smile?'
+      ],
+      'deep': [
+        'If you could bottle up one quiet, cuddly morning of ours forever, which one is it?',
+        'What is something about the way I look at you that makes you feel completely safe?',
+        'What is a gentle truth about how much you mean to me that you need to hear today?',
+        'What does your soul feel like when your head is resting on my chest?'
+      ],
+      'long_distance': [
+        'What is a cute voice note or text of mine that you replay when you feel lonely?',
+        'When you close your eyes and imagine hugging me, what does it feel like?',
+        'What is the first sweet breakfast we are having together when we reunite?',
+        'What is a small promise we can make each other to keep our warmth close today?'
+      ],
+      'years': [
+        'What is an ordinary, quiet routine of ours that brings you the deepest happiness?',
+        'How do you know in your heart that we belong together after all this time?',
+        'What is a sweet memory of us from years ago that still makes you smile like day one?',
+        'What is one way loving you has made me a softer, kinder person?'
+      ],
+      'soft_reconnect': [
+        'Can we just hold each other quietly for five minutes with no words?',
+        'What is something tender you need from me right now to feel completely loved?',
+        'What is a peaceful moment of ours that you carry like a warm blanket in your mind?',
+        'What is one thing about our love that never changes, even when life is hectic?'
+      ],
+    },
+    'flirty': {
+      'new_sparks': [
+        'Be completely honest: who fell harder, and who made the first move?',
+        'What is the most attractive thing I wear that makes it impossible to look away?',
+        'If you had 60 seconds to seduce me with only words, what would you whisper?',
+        'Rate my flirt game on a scale from 1 to dangerously effective.'
+      ],
+      'deep': [
+        'What is a cheeky thought you had about me the last time we were in public?',
+        'What is a look I give you across the room that tells you you are in trouble later?',
+        'What is your favorite way I tease you when no one else is watching?',
+        'If flirting were an Olympic sport, which medal would we take home?'
+      ],
+      'long_distance': [
+        'What outfit of yours should I be mentally preparing myself to see you in?',
+        'Send me a mental kiss right now—where is it landing and how long is it lasting?',
+        'What is the cheekiest message you typed to me and almost deleted before sending?',
+        'On a scale from 1 to 10, how dangerous is our reunion going to be?'
+      ],
+      'years': [
+        'How do I still manage to give you butterflies after all this time?',
+        'What is a playful argument of ours that always ends in giggles or kisses?',
+        'What is your absolute favorite way I get under your skin in the best way?',
+        'What is a spicy dare you want to challenge me to this week?'
+      ],
+      'soft_reconnect': [
+        'Give me your best flirty wink right now and let’s see if you can make me blush.',
+        'What is a playful memory of ours that never fails to spark instant chemistry?',
+        'If tonight were our very first date all over again, how would you charm me?',
+        'What is one cheeky compliment you have been holding back all day?'
+      ],
+    },
     'vulnerable': {
       'new_sparks': [
         'What is something you were nervous to tell me when we first met?',
@@ -278,6 +481,56 @@ class RelationshipAiService {
 
   static const List<Map<String, String>> curatedDeck = [
     {
+      'category': 'bold_romance',
+      'vibeTag': 'BOLD ROMANCE · 🔥',
+      'question': 'What is a physical sensation or touch of mine that completely melts your willpower?',
+    },
+    {
+      'category': 'bold_romance',
+      'vibeTag': 'BOLD ROMANCE · 🔥',
+      'question': 'When was a moment you looked at me and your thoughts immediately turned to pure physical desire?',
+    },
+    {
+      'category': 'bold_romance',
+      'vibeTag': 'BOLD ROMANCE · 🔥',
+      'question': 'What is something intimate you secretly love about the way our bodies fit together?',
+    },
+    {
+      'category': 'unfiltered',
+      'vibeTag': 'UNFILTERED · 😈',
+      'question': 'What is a midnight fantasy you replay in your head that you have never confessed out loud?',
+    },
+    {
+      'category': 'unfiltered',
+      'vibeTag': 'UNFILTERED · 😈',
+      'question': 'If I told you to take complete control in the bedroom right now, what would you do first?',
+    },
+    {
+      'category': 'unfiltered',
+      'vibeTag': 'UNFILTERED · 😈',
+      'question': 'What is the most daring or taboo thought you have had about us when you were alone?',
+    },
+    {
+      'category': 'sweet',
+      'vibeTag': 'SWEET & TENDER · 🍯',
+      'question': 'If you could bottle up one quiet, cuddly morning of ours forever, which one is it?',
+    },
+    {
+      'category': 'sweet',
+      'vibeTag': 'SWEET & TENDER · 🍯',
+      'question': 'What tiny, sweet gesture of mine never fails to give you warm butterflies?',
+    },
+    {
+      'category': 'flirty',
+      'vibeTag': 'FLIRTY & TEASING · 💋',
+      'question': 'What is the most attractive thing I wear that makes it impossible for you to look away?',
+    },
+    {
+      'category': 'flirty',
+      'vibeTag': 'FLIRTY & TEASING · 💋',
+      'question': 'If you had 60 seconds to seduce me with only words, what would you whisper in my ear?',
+    },
+    {
       'category': 'vulnerable',
       'vibeTag': 'VULNERABLE · 🕯️',
       'question': 'When was the exact moment you realized you felt safe with me?',
@@ -410,12 +663,14 @@ class RelationshipAiService {
   }
 
   /// Generates 3 live AI relationship inquiry questions using high-speed Groq LLM (Qwen 2.5 32B / Qwen 3.8 27B).
-  /// Generates bold, intimate, raw, and unfiltered questions tailored to the couple's stage, mood, and custom topic.
+  /// Fully supports romance intensity scaling (sweet to unfiltered bold) and custom prompt requests.
   /// Seamlessly falls back to the curated promptBank if offline or during network timeouts.
   static Future<List<GeneratedPrompt>> generatePromptsLive({
     required String stage,
     required String mood,
+    String boldness = 'bold',
     String? customTopic,
+    String? customRequest,
     String? partnerNickname,
   }) async {
     final apiKey = AppConstants.groqApiKey;
@@ -423,7 +678,7 @@ class RelationshipAiService {
       return generatePrompts(
         stage: stage,
         mood: mood,
-        customTopic: customTopic,
+        customTopic: customRequest ?? customTopic,
         partnerNickname: partnerNickname,
       );
     }
@@ -436,24 +691,39 @@ class RelationshipAiService {
       );
       final moodInfo = moods.firstWhere(
         (m) => m.id == mood,
-        orElse: () => const MoodVibeInfo(id: 'vulnerable', label: 'Vulnerable', icon: '🕯️', desc: 'Raw feelings'),
+        orElse: () => const MoodVibeInfo(id: 'bold_romance', label: 'Bold Romance', icon: '🔥', desc: 'Passionate touch & chemistry'),
       );
+      final bLevel = boldnessLevels.firstWhere(
+        (b) => b.id == boldness,
+        orElse: () => boldnessLevels[2], // default to Bold
+      );
+
+      final combinedCustom = [
+        if (customRequest != null && customRequest.trim().isNotEmpty) customRequest.trim(),
+        if (customTopic != null && customTopic.trim().isNotEmpty && customTopic.trim() != customRequest?.trim()) customTopic.trim(),
+      ].join(' | ');
 
       final systemPrompt = '''
 You are an intimate, unfiltered AI question generator for a lovers sanctuary couple app called "Pages of Us".
-Your goal is to generate 3 provocative, deep, bold, authentic questions for a couple to ask each other.
-No boring generic questions. No corporate or prudish filtering. Keep it passionately real, raw, intimate, or delightfully playful depending on the requested mood.
-Match the vibe:
-- Couple Stage: ${stageInfo.label} (${stageInfo.desc})
-- Desired Vibe: ${moodInfo.label} (${moodInfo.desc})
-- Partner name/nickname: $pName
-${customTopic != null && customTopic.trim().isNotEmpty ? '- Custom Topic / Dynamic to focus on: ${customTopic.trim()}' : ''}
+Your mission is to generate 3 provocative, authentic questions tailored specifically to the couple's desired vibe and intensity.
+No generic corporate fluff. No prudish filtering. Tailor tone precisely to their desired intensity spectrum:
 
-Rules:
-1. Each question must be direct, deeply thought-provoking, and written for two lovers to ask each other.
-2. Return a JSON object with a key "questions" containing a list of exactly 3 strings:
+- Relationship Chapter: ${stageInfo.label} (${stageInfo.desc})
+- Desired Vibe: ${moodInfo.label} (${moodInfo.desc})
+- Romance Intensity: ${bLevel.label} ${bLevel.icon} (${bLevel.subtitle})
+- Intensity Directives: ${bLevel.promptGuidance}
+- Partner name/nickname: $pName
+${combinedCustom.isNotEmpty ? '- Custom User Request / Exact Vibe: "$combinedCustom"' : ''}
+
+Intensity Rules:
+- If Intensity is "Sweet": Focus on pure romantic warmth, cute confessions, tender moments, and emotional safety.
+- If Intensity is "Flirty": Focus on butterflies, cheeky banter, playful tension, and romantic teasing.
+- If Intensity is "Bold": Focus on strong attraction, physical touch, sensual tension, and passionate romance without holding back.
+- If Intensity is "Unfiltered": Be completely unfiltered, bold, provocative, and raw. Ask about midnight desires, bedroom fantasies, taboo confessions, and unfiltered thoughts lovers only whisper in the dark.
+
+Return a JSON object with a key "questions" containing a list of exactly 3 strings:
 {"questions": ["Question 1?", "Question 2?", "Question 3?"]}
-3. Do NOT include markdown blocks or any conversational intro/outro text.
+Do NOT include markdown code blocks or conversational text.
 ''';
 
       final response = await http
@@ -488,7 +758,7 @@ Rules:
               return GeneratedPrompt(
                 id: 'groq_${DateTime.now().millisecondsSinceEpoch}_${random.nextInt(1000)}',
                 question: q.trim(),
-                vibeTag: 'LIVE AI · ${moodInfo.label.toUpperCase()}',
+                vibeTag: '${bLevel.icon} ${moodInfo.label.toUpperCase()} · ${bLevel.label.toUpperCase()}',
                 category: mood,
               );
             }).toList();
@@ -503,7 +773,7 @@ Rules:
     return generatePrompts(
       stage: stage,
       mood: mood,
-      customTopic: customTopic,
+      customTopic: customRequest ?? customTopic,
       partnerNickname: partnerNickname,
     );
   }
