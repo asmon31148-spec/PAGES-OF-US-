@@ -16,6 +16,7 @@ import '../../../core/services/media_upload_service.dart';
 import '../../../data/models/vault_item.dart';
 import '../../../providers/vault_provider.dart';
 import '../widgets/vault_emblem.dart';
+import '../widgets/downloaded_music_picker_sheet.dart';
 
 class NewVaultScreen extends StatefulWidget {
   final VaultItem? initialVault;
@@ -67,6 +68,7 @@ class _NewVaultScreenState extends State<NewVaultScreen> {
 
   String _backgroundSong = 'lofi_sanctuary'; // 'lofi_sanctuary', 'romantic_piano', 'acoustic_warmth', 'none'
   File? _customAudioFile;
+  String? _selectedDownloadedSongTitle;
 
   bool _isSaving = false;
   double _uploadProgress = 0.0;
@@ -186,6 +188,23 @@ class _NewVaultScreenState extends State<NewVaultScreen> {
           });
         }
       } catch (_) {}
+    }
+  }
+
+  Future<void> _pickDownloadedMusic() async {
+    final track = await DownloadedMusicPickerSheet.show(context);
+    if (track != null && track.localFilePath != null) {
+      setState(() {
+        _customAudioFile = File(track.localFilePath!);
+        _backgroundSong = 'custom';
+        _selectedDownloadedSongTitle = track.title;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Selected "${track.title}" as Vault Theme Music ✦'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     }
   }
 
@@ -1261,6 +1280,30 @@ class _NewVaultScreenState extends State<NewVaultScreen> {
                   _buildMusicChip('fireplace', '🔥 Cozy Fireplace'),
                   _buildMusicChip('birds', '🐦 Morning Birds'),
                   _buildMusicChip('none', '🔇 None'),
+                  ActionChip(
+                    backgroundColor: (_selectedDownloadedSongTitle != null)
+                        ? const Color(0xFFD4AF37).withOpacity(0.2)
+                        : const Color(0xFF1E1A29),
+                    side: BorderSide(
+                      color: (_selectedDownloadedSongTitle != null)
+                          ? const Color(0xFFD4AF37)
+                          : Colors.white12,
+                    ),
+                    avatar: const Icon(Icons.download_done_rounded, size: 14, color: Color(0xFFD4AF37)),
+                    label: Text(
+                      _selectedDownloadedSongTitle != null
+                          ? '🎵 $_selectedDownloadedSongTitle ✓'
+                          : '🎵 From Downloaded Music',
+                      style: TextStyle(
+                        color: (_selectedDownloadedSongTitle != null)
+                            ? const Color(0xFFD4AF37)
+                            : Colors.white70,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    onPressed: _pickDownloadedMusic,
+                  ),
                   ActionChip(
                     backgroundColor: (_backgroundSong == 'custom' || (_backgroundSong != null && _backgroundSong!.startsWith('http')))
                         ? const Color(0xFFD4AF37).withOpacity(0.2)

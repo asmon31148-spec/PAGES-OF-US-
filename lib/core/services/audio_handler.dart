@@ -14,6 +14,7 @@ class SanctuaryAudioHandler extends BaseAudioHandler with QueueHandler, SeekHand
     required String title,
     required String artist,
     required Duration duration,
+    Uri? artUri,
   }) {
     mediaItem.add(
       MediaItem(
@@ -22,6 +23,7 @@ class SanctuaryAudioHandler extends BaseAudioHandler with QueueHandler, SeekHand
         title: title,
         artist: artist,
         duration: duration,
+        artUri: artUri,
       ),
     );
   }

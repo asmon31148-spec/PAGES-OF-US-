@@ -5,6 +5,10 @@ import 'package:file_picker/file_picker.dart';
 import '../../../providers/audio_provider.dart';
 import '../models/music_models.dart';
 import 'playlist_detail_screen.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import '../../../core/services/music_download_service.dart';
+import '../widgets/youtube_music_search_sheet.dart';
+import '../widgets/lyrics_sheet.dart';
 import 'listen_together_screen.dart';
 import '../widgets/music_interactive_scrubber.dart';
 
@@ -66,7 +70,7 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
                       ),
                       const SizedBox(width: 14),
                       Text(
-                        _activeTabIndex == 2 ? 'Atmosphere' : 'Music',
+                        _activeTabIndex == 3 ? 'Atmosphere' : (_activeTabIndex == 2 ? 'Downloaded' : 'Music'),
                         style: const TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
@@ -77,7 +81,7 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
                       const Spacer(),
                       _buildCircleIconButton(
                         icon: Icons.search_rounded,
-                        onTap: () => _showSearchModal(context),
+                        onTap: () => YoutubeMusicSearchSheet.show(context),
                       ),
                       const SizedBox(width: 10),
                       GestureDetector(
@@ -111,7 +115,8 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
                       children: [
                         _buildTabPill('Songs', 0),
                         _buildTabPill('Playlists', 1),
-                        _buildTabPill('Atmosphere', 2),
+                        _buildTabPill('Offline', 2),
+                        _buildTabPill('Atmosphere', 3),
                       ],
                     ),
                   ),
@@ -124,6 +129,7 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
                     children: [
                       _buildSongsView(context),
                       _buildPlaylistsView(context),
+                      _buildDownloadedView(context),
                       _buildAtmosphereView(context),
                     ],
                   ),
@@ -192,16 +198,34 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
               children: [
                 Row(
                   children: [
-                    Container(
-                      width: 52,
-                      height: 52,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(16),
-                        color: currentSong.coverColor,
-                      ),
-                      child: const Center(
-                        child: Icon(Icons.music_note_rounded, color: Colors.black87, size: 26),
-                      ),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(16),
+                      child: currentSong.thumbnailUrl != null && currentSong.thumbnailUrl!.isNotEmpty
+                          ? CachedNetworkImage(
+                              imageUrl: currentSong.thumbnailUrl!,
+                              width: 52,
+                              height: 52,
+                              fit: BoxFit.cover,
+                              errorWidget: (_, __, ___) => Container(
+                                width: 52,
+                                height: 52,
+                                color: currentSong.coverColor,
+                                child: const Center(
+                                  child: Icon(Icons.music_note_rounded, color: Colors.black87, size: 26),
+                                ),
+                              ),
+                            )
+                          : Container(
+                              width: 52,
+                              height: 52,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(16),
+                                color: currentSong.coverColor,
+                              ),
+                              child: const Center(
+                                child: Icon(Icons.music_note_rounded, color: Colors.black87, size: 26),
+                              ),
+                            ),
                     ),
                     const SizedBox(width: 14),
                     Expanded(
@@ -210,6 +234,8 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
                         children: [
                           Text(
                             currentSong.title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.bold,
@@ -219,12 +245,40 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
                           const SizedBox(height: 2),
                           Text(
                             currentSong.artist,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
                               fontSize: 11,
                               color: Color(0xFF94A3B8),
                             ),
                           ),
                         ],
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () {
+                        LyricsSheet.show(
+                          context,
+                          title: currentSong.title,
+                          artist: currentSong.artist,
+                          durationSeconds: currentSong.durationSeconds,
+                        );
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF18281E),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: const Color(0xFF243B2C)),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.mic_external_on_rounded, size: 14, color: Color(0xFFFDE047)),
+                            SizedBox(width: 4),
+                            Text('Lyrics', style: TextStyle(fontSize: 11, color: Color(0xFFFDE047), fontWeight: FontWeight.bold)),
+                          ],
+                        ),
                       ),
                     ),
                   ],
@@ -517,6 +571,192 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
   }
 
   // -------------------------------------------------------------
+  // -------------------------------------------------------------
+  // TAB: DOWNLOADED VIEW (Offline Music Player)
+  // -------------------------------------------------------------
+  Widget _buildDownloadedView(BuildContext context) {
+    final downloader = context.watch<MusicDownloadService>();
+    final audio = context.watch<AudioProvider>();
+    final tracks = downloader.downloadedTracks;
+
+    if (tracks.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 70,
+              height: 70,
+              decoration: BoxDecoration(
+                color: const Color(0xFF111E16),
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: const Color(0xFF18281E)),
+              ),
+              alignment: Alignment.center,
+              child: const Text('💾', style: TextStyle(fontSize: 32)),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'No Downloaded Music Yet 🍃',
+              style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 36),
+              child: Text(
+                'Search any song on YouTube Music and tap ⬇ to listen offline anywhere with zero data.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12.5, height: 1.4),
+              ),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton.icon(
+              onPressed: () => YoutubeMusicSearchSheet.show(context),
+              icon: const Icon(Icons.search_rounded, size: 18),
+              label: const Text('Explore YouTube Music'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFA3E635),
+                foregroundColor: Colors.black,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return FutureBuilder<double>(
+      future: downloader.getTotalStorageUsedMb(),
+      builder: (context, snapshot) {
+        final sizeMb = snapshot.data ?? 0.0;
+        return ListView(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+          children: [
+            // Storage Header Banner
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              margin: const EdgeInsets.only(bottom: 14),
+              decoration: BoxDecoration(
+                color: const Color(0xFF111E16),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFF18281E)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.download_done_rounded, color: Color(0xFFA3E635), size: 20),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      '${tracks.length} songs offline • ${sizeMb.toStringAsFixed(1)} MB',
+                      style: const TextStyle(color: Colors.white, fontSize: 12.5, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () => YoutubeMusicSearchSheet.show(context),
+                    style: TextButton.styleFrom(
+                      foregroundColor: const Color(0xFFA3E635),
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                    ),
+                    child: const Text('+ Download More', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                  ),
+                ],
+              ),
+            ),
+
+            // Downloaded Songs List
+            ...tracks.map((track) {
+              final isCurrent = audio.currentSong.id == track.id;
+              return Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                decoration: BoxDecoration(
+                  color: isCurrent ? const Color(0xFF16251B) : const Color(0xFF111E16),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: isCurrent ? const Color(0xFFA3E635).withOpacity(0.5) : const Color(0xFF18281E),
+                  ),
+                ),
+                child: ListTile(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                  leading: ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: track.thumbnailUrl.isNotEmpty
+                        ? CachedNetworkImage(
+                            imageUrl: track.thumbnailUrl,
+                            width: 46,
+                            height: 46,
+                            fit: BoxFit.cover,
+                            errorWidget: (_, __, ___) => Container(
+                              width: 46,
+                              height: 46,
+                              color: const Color(0xFF1E2D22),
+                              child: const Icon(Icons.music_note, color: Colors.white24),
+                            ),
+                          )
+                        : Container(
+                            width: 46,
+                            height: 46,
+                            color: const Color(0xFF1E2D22),
+                            child: const Icon(Icons.music_note, color: Colors.white24),
+                          ),
+                  ),
+                  title: Text(
+                    track.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: isCurrent ? const Color(0xFFA3E635) : Colors.white,
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  subtitle: Text(
+                    '${track.artist}  •  ${track.durationFormatted}  •  Offline ✓',
+                    style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 11),
+                  ),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: Icon(
+                          isCurrent && audio.isSongPlaying ? Icons.pause_circle_filled_rounded : Icons.play_circle_fill_rounded,
+                          color: const Color(0xFFA3E635),
+                          size: 30,
+                        ),
+                        onPressed: () {
+                          if (isCurrent && audio.isSongPlaying) {
+                            audio.pauseSong();
+                          } else {
+                            audio.playYoutubeTrack(track);
+                          }
+                        },
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.delete_outline_rounded, color: Colors.white38, size: 20),
+                        onPressed: () async {
+                          HapticFeedback.lightImpact();
+                          await downloader.deleteTrack(track.id);
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Removed "${track.title}" from downloads')),
+                            );
+                          }
+                        },
+                      ),
+                    ],
+                  ),
+                  onTap: () {
+                    audio.playYoutubeTrack(track);
+                  },
+                ),
+              );
+            }),
+          ],
+        );
+      },
+    );
+  }
+
   // TAB 2: PLAYLISTS VIEW
   // -------------------------------------------------------------
   Widget _buildPlaylistsView(BuildContext context) {
