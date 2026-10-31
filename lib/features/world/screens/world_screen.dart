@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../providers/theme_provider.dart';
 import '../../../providers/auth_provider.dart';
@@ -14,9 +15,10 @@ import '../../../data/models/user_location_model.dart';
 import '../../../data/models/pinned_place.dart';
 
 enum MapBasemapStyle {
-  dark,
   streets,
   satellite,
+  dark,
+  terrain,
 }
 
 class WorldScreen extends StatefulWidget {
@@ -32,14 +34,55 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
   bool _isMapReady = false;
   bool _hasInitialMapCentered = false;
   bool _isFullScreenMap = false;
-  MapBasemapStyle _mapStyle = MapBasemapStyle.dark;
+  MapBasemapStyle _mapStyle = MapBasemapStyle.streets;
 
   @override
   void initState() {
     super.initState();
+    _loadSavedMapStyle();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _startLiveWorldTracking();
     });
+  }
+
+  Future<void> _loadSavedMapStyle() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final saved = prefs.getString('world_map_style_pref');
+      if (saved != null) {
+        final match = MapBasemapStyle.values.where((s) => s.name == saved).firstOrNull;
+        if (match != null && mounted) {
+          setState(() => _mapStyle = match);
+        }
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _changeMapStyle(MapBasemapStyle newStyle) async {
+    setState(() => _mapStyle = newStyle);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('world_map_style_pref', newStyle.name);
+    } catch (_) {}
+  }
+
+  void _cycleMapStyle() {
+    HapticFeedback.selectionClick();
+    final nextIndex = (_mapStyle.index + 1) % MapBasemapStyle.values.length;
+    _changeMapStyle(MapBasemapStyle.values[nextIndex]);
+  }
+
+  String _getStyleLabel(MapBasemapStyle style) {
+    switch (style) {
+      case MapBasemapStyle.streets:
+        return '🗺️ Google Street';
+      case MapBasemapStyle.satellite:
+        return '🛰️ Google Satellite';
+      case MapBasemapStyle.dark:
+        return '🌙 Dark (Detailed)';
+      case MapBasemapStyle.terrain:
+        return '🏔️ Terrain';
+    }
   }
 
   @override
@@ -75,28 +118,40 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
 
   String _getTileUrl(MapBasemapStyle style) {
     switch (style) {
-      case MapBasemapStyle.dark:
-        // Esri World Dark Gray Canvas: 100% free, zero watermark, zero key
-        return 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}';
       case MapBasemapStyle.satellite:
-        // Esri World Imagery: 100% free high-res satellite tiles
-        return 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+        // Google Maps Hybrid: Ultra high-resolution satellite WITH all place names and road networks
+        return 'https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}';
+      case MapBasemapStyle.dark:
+        // CartoDB Dark All: Sleek dark theme WITH full place labels, roads, and building names
+        return 'https://a.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}@2x.png';
+      case MapBasemapStyle.terrain:
+        // Google Maps Terrain: Physical relief with complete place names & roads
+        return 'https://mt{s}.google.com/vt/lyrs=p&x={x}&y={y}&z={z}';
       case MapBasemapStyle.streets:
       default:
-        // OpenStreetMap Standard: 100% free worldwide street map
-        return 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+        // Google Maps Standard: 100% full detail, shops, restaurants, buildings, local landmarks, lanes
+        return 'https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}';
     }
+  }
+
+  List<String> _getSubdomains(MapBasemapStyle style) {
+    if (style == MapBasemapStyle.dark) {
+      return const ['a', 'b', 'c', 'd'];
+    }
+    return const ['0', '1', '2', '3'];
   }
 
   int _getMaxNativeZoom(MapBasemapStyle style) {
     switch (style) {
       case MapBasemapStyle.satellite:
-        return 17; // Esri Imagery max native tile zoom worldwide (prevents white "not available" tiles)
+        return 20;
       case MapBasemapStyle.dark:
-        return 16;
+        return 19;
+      case MapBasemapStyle.terrain:
+        return 18;
       case MapBasemapStyle.streets:
       default:
-        return 18;
+        return 20;
     }
   }
 
@@ -404,8 +459,8 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
             mapController: _mapController,
             options: MapOptions(
               initialCenter: defaultCenter,
-              initialZoom: 14.0,
-              maxZoom: 18.0,
+              initialZoom: 15.0,
+              maxZoom: 21.0,
               minZoom: 3.0,
               onMapReady: () {
                 _isMapReady = true;
@@ -413,11 +468,12 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
               },
             ),
             children: [
-              // Clean verified tile layer
+              // Clean verified high-detail tile layer with Google Maps engine
               TileLayer(
                 urlTemplate: _getTileUrl(_mapStyle),
+                subdomains: _getSubdomains(_mapStyle),
                 userAgentPackageName: 'com.pagesofus.app',
-                maxZoom: 18.0,
+                maxZoom: 21.0,
                 maxNativeZoom: _getMaxNativeZoom(_mapStyle),
               ),
 
@@ -584,45 +640,33 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
             ),
           ),
 
-          // Top-Right Basemap Style Switcher
+          // Top-Right Basemap Style Switcher (Cycles Google Street -> Google Satellite -> Dark -> Terrain)
           Positioned(
             top: 14,
             right: 12,
             child: GestureDetector(
-              onTap: () {
-                setState(() {
-                  if (_mapStyle == MapBasemapStyle.dark) {
-                    _mapStyle = MapBasemapStyle.streets;
-                  } else if (_mapStyle == MapBasemapStyle.streets) {
-                    _mapStyle = MapBasemapStyle.satellite;
-                  } else {
-                    _mapStyle = MapBasemapStyle.dark;
-                  }
-                });
-              },
+              onTap: _cycleMapStyle,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(
-                  color: (isDark ? const Color(0xFF191823) : Colors.white).withOpacity(0.92),
+                  color: (isDark ? const Color(0xFF191823) : Colors.white).withOpacity(0.95),
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
                     color: isDark ? Colors.white12 : Colors.black12,
                   ),
                   boxShadow: const [
-                    BoxShadow(color: Colors.black12, blurRadius: 4),
+                    BoxShadow(color: Colors.black26, blurRadius: 4),
                   ],
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      _mapStyle == MapBasemapStyle.dark
-                          ? '🌙 Dark'
-                          : (_mapStyle == MapBasemapStyle.streets ? '🗺️ Street' : '🛰️ Satellite'),
+                      _getStyleLabel(_mapStyle),
                       style: TextStyle(
-                        fontSize: 10,
+                        fontSize: 10.5,
                         fontWeight: FontWeight.bold,
-                        color: isDark ? Colors.white70 : Colors.black87,
+                        color: isDark ? Colors.white : Colors.black87,
                       ),
                     ),
                   ],

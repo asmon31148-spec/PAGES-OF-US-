@@ -506,18 +506,32 @@ class WorldProvider extends ChangeNotifier {
 
     try {
       final geoUrl = Uri.parse(
-        'https://nominatim.openstreetmap.org/reverse?format=json&lat=$lat&lon=$lng',
+        'https://nominatim.openstreetmap.org/reverse?format=json&lat=$lat&lon=$lng&zoom=18&addressdetails=1',
       );
       final resp = await http.get(geoUrl, headers: {'User-Agent': 'PagesOfUsApp/1.0 (contact@pagesofus.app)'});
       if (resp.statusCode == 200) {
         final geoData = jsonDecode(resp.body) as Map<String, dynamic>;
         final addr = geoData['address'] as Map<String, dynamic>?;
         if (addr != null) {
-          _cachedNeighborhood = addr['suburb'] ?? addr['neighbourhood'] ?? addr['quarter'] ?? '';
-          _cachedCity = addr['city'] ?? addr['town'] ?? addr['state'] ?? '';
-          _cachedPlaceName = _cachedNeighborhood.isNotEmpty
-              ? '$_cachedNeighborhood, $_cachedCity'
-              : (geoData['display_name']?.toString().split(',').first ?? 'Nearby');
+          final road = (addr['road'] ?? addr['pedestrian'] ?? addr['street'] ?? addr['footway'] ?? '').toString().trim();
+          final landmark = (addr['amenity'] ?? addr['building'] ?? addr['shop'] ?? addr['leisure'] ?? addr['tourism'] ?? '').toString().trim();
+          final suburb = (addr['suburb'] ?? addr['neighbourhood'] ?? addr['residential'] ?? addr['quarter'] ?? '').toString().trim();
+          final city = (addr['city'] ?? addr['town'] ?? addr['village'] ?? addr['county'] ?? addr['state_district'] ?? addr['state'] ?? '').toString().trim();
+
+          _cachedNeighborhood = suburb.isNotEmpty ? suburb : (road.isNotEmpty ? road : city);
+          _cachedCity = city;
+
+          if (landmark.isNotEmpty) {
+            _cachedPlaceName = suburb.isNotEmpty ? '$landmark, $suburb' : landmark;
+          } else if (road.isNotEmpty) {
+            _cachedPlaceName = suburb.isNotEmpty ? '$road, $suburb' : (city.isNotEmpty ? '$road, $city' : road);
+          } else if (suburb.isNotEmpty) {
+            _cachedPlaceName = city.isNotEmpty ? '$suburb, $city' : suburb;
+          } else {
+            final displayName = geoData['display_name']?.toString() ?? '';
+            final parts = displayName.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).take(2).toList();
+            _cachedPlaceName = parts.isNotEmpty ? parts.join(', ') : 'Nearby';
+          }
 
           _geocodeCache[cacheKey] = {
             'place': _cachedPlaceName,
