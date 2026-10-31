@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:audio_service/audio_service.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/app_colors.dart';
@@ -32,6 +33,47 @@ import 'widgets/custom_bottom_nav.dart';
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   try {
     await Firebase.initializeApp();
+    final notification = message.notification;
+    final data = message.data;
+    final title = notification?.title ?? data['title'] ?? 'Pages of Us ✦';
+    final body = notification?.body ?? data['body'] ?? 'Your partner shared something special in your sanctuary.';
+    final payload = data['payload'] ?? 'tab_0';
+
+    final localNotifications = FlutterLocalNotificationsPlugin();
+    const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+    await localNotifications.initialize(const InitializationSettings(android: androidSettings));
+
+    const androidDetails = AndroidNotificationDetails(
+      'com.pagesofus.app.partner',
+      'Partner Moments & Letters',
+      importance: Importance.max,
+      priority: Priority.high,
+      icon: '@mipmap/ic_launcher',
+      color: Color(0xFFE07A5F),
+      enableVibration: true,
+      styleInformation: BigTextStyleInformation(''),
+      actions: <AndroidNotificationAction>[
+        AndroidNotificationAction(
+          'action_send_love',
+          '❤️ Send Love',
+          showsUserInterface: false,
+          cancelNotification: true,
+        ),
+        AndroidNotificationAction(
+          'action_open_sanctuary',
+          '✨ Open Sanctuary',
+          showsUserInterface: true,
+        ),
+      ],
+    );
+
+    await localNotifications.show(
+      DateTime.now().millisecondsSinceEpoch % 100000,
+      title,
+      body,
+      const NotificationDetails(android: androidDetails),
+      payload: payload,
+    );
   } catch (_) {}
 }
 

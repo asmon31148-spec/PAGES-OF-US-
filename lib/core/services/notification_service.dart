@@ -1,11 +1,15 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
+
+import 'local_cache_service.dart';
+import '../../data/services/supabase_service.dart';
 
 class NotificationService {
   static final FlutterLocalNotificationsPlugin _localNotifications =
@@ -29,6 +33,21 @@ class NotificationService {
   static final StreamController<String?> selectNotificationStream =
       StreamController<String?>.broadcast();
 
+  // Reusable Interactive Quick Actions (One-Tap Love from Status Bar / Lock Screen)
+  static const List<AndroidNotificationAction> _quickLoveActions = [
+    AndroidNotificationAction(
+      'action_send_love',
+      '❤️ Send Love',
+      showsUserInterface: false,
+      cancelNotification: true,
+    ),
+    AndroidNotificationAction(
+      'action_open_sanctuary',
+      '✨ Open Sanctuary',
+      showsUserInterface: true,
+    ),
+  ];
+
   // Keep track of recent notification triggers to avoid duplicate spam
   static final Set<String> _recentNotifiedKeys = {};
 
@@ -47,8 +66,10 @@ class NotificationService {
     await _localNotifications.initialize(
       initSettings,
       onDidReceiveNotificationResponse: (response) {
-        debugPrint('Notification tapped with payload: ${response.payload}');
-        if (response.payload != null && response.payload!.isNotEmpty) {
+        debugPrint('Notification tapped with action: ${response.actionId}, payload: ${response.payload}');
+        if (response.actionId == 'action_send_love') {
+          handleQuickSendLoveAction();
+        } else if (response.payload != null && response.payload!.isNotEmpty) {
           selectNotificationStream.add(response.payload);
         }
       },
@@ -104,20 +125,192 @@ class NotificationService {
         sound: true,
       );
 
-      // Foreground message handler
+      // 4. Firebase Cloud Messaging (FCM) Foreground Listener
       FirebaseMessaging.onMessage.listen((RemoteMessage message) {
         final notification = message.notification;
-        if (notification != null) {
+        final data = message.data;
+        if (notification != null || data.isNotEmpty) {
           showInstantNotification(
-            title: notification.title ?? 'Pages of Us ✦',
-            body: notification.body ?? 'Your partner shared something special.',
-            payload: message.data['payload'] ?? 'tab_0',
+            title: notification?.title ?? data['title'] ?? 'Pages of Us ✦',
+            body: notification?.body ?? data['body'] ?? 'Your partner shared something special.',
+            payload: data['payload'] ?? 'tab_0',
           );
         }
       });
     } catch (e) {
       debugPrint('FCM init ignored/offline: $e');
     }
+
+    // 5. Automatically schedule living sanctuary daily rhythm from cached profile
+    try {
+      final cachedUser = LocalCacheService.getCachedUser();
+      final cachedPartner = LocalCacheService.getCachedPartner();
+      await scheduleDailyLivingSanctuaryCadence(
+        userNickname: cachedUser?['nickname'] as String?,
+        partnerNickname: cachedPartner?['nickname'] as String?,
+      );
+    } catch (e) {
+      debugPrint('Error scheduling initial sanctuary cadence: $e');
+    }
+  }
+
+  /// Handle Instant "❤️ Send Love" from Android Notification Bar / Lock Screen
+  static Future<void> handleQuickSendLoveAction() async {
+    try {
+      HapticFeedback.heavyImpact();
+      final user = LocalCacheService.getCachedUser();
+      final space = LocalCacheService.getCachedSpace();
+
+      if (space != null && space['id'] != null) {
+        final spaceId = space['id'] as String;
+        final senderNickname = user?['nickname'] ?? 'Your partner';
+
+        await SupabaseService.broadcastEvent(
+          spaceId: spaceId,
+          eventType: 'PULSE',
+          payload: {
+            'senderNickname': senderNickname,
+            'type': 'HEART',
+            'timestamp': DateTime.now().toIso8601String(),
+          },
+        );
+
+        debugPrint('[NotificationService] Quick "Send Love" pulse dispatched to space $spaceId');
+      }
+    } catch (e) {
+      debugPrint('[NotificationService] Error handling quick send love: $e');
+    }
+  }
+
+  // =========================================================================
+  // PILLAR 1: DAILY EMOTIONAL CADENCE (4 DAILY SANCTUARY TETHERS)
+  // =========================================================================
+  static Future<void> scheduleDailyLivingSanctuaryCadence({
+    String? userNickname,
+    String? partnerNickname,
+  }) async {
+    try {
+      final user = (userNickname != null && userNickname.trim().isNotEmpty) ? userNickname.trim() : 'you';
+      final partner = (partnerNickname != null && partnerNickname.trim().isNotEmpty)
+          ? partnerNickname.trim()
+          : 'your partner';
+
+      final now = tz.TZDateTime.now(tz.local);
+
+      const androidDetails = AndroidNotificationDetails(
+        partnerChannelId,
+        partnerChannelName,
+        importance: Importance.high,
+        priority: Priority.high,
+        icon: _smallIcon,
+        largeIcon: _largeAppIcon,
+        color: _brandColor,
+        enableVibration: true,
+        styleInformation: BigTextStyleInformation(''),
+        actions: _quickLoveActions,
+      );
+
+      // 1. 08:30 AM — Morning Tether & Sky
+      var morning = tz.TZDateTime(tz.local, now.year, now.month, now.day, 8, 30);
+      if (morning.isBefore(now)) morning = morning.add(const Duration(days: 1));
+
+      await _localNotifications.zonedSchedule(
+        80001,
+        '🌅 Good morning, $user ✨',
+        'A new day has begun in your sanctuary with $partner. Tap to check their sky & leave a morning thought 🌿',
+        morning,
+        const NotificationDetails(android: androidDetails),
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+        matchDateTimeComponents: DateTimeComponents.time,
+        payload: 'tab_0',
+      );
+
+      // 2. 02:15 PM — Afternoon Intimacy Nudge (Mystery Hook)
+      var afternoon = tz.TZDateTime(tz.local, now.year, now.month, now.day, 14, 15);
+      if (afternoon.isBefore(now)) afternoon = afternoon.add(const Duration(days: 1));
+
+      await _localNotifications.zonedSchedule(
+        80002,
+        '☕ Thinking of you... 💭',
+        'A quiet moment in the afternoon. Send a gentle touch to let $partner know they\'re on your mind ✨',
+        afternoon,
+        const NotificationDetails(android: androidDetails),
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+        matchDateTimeComponents: DateTimeComponents.time,
+        payload: 'touch',
+      );
+
+      // 3. 08:00 PM — Tonight\'s Daily Sync & Wax Seal
+      var evening = tz.TZDateTime(tz.local, now.year, now.month, now.day, 20, 0);
+      if (evening.isBefore(now)) evening = evening.add(const Duration(days: 1));
+
+      await _localNotifications.zonedSchedule(
+        80003,
+        '💌 Tonight\'s Whisper Envelope is Waiting',
+        'Today\'s daily question is ready to be unsealed with $partner. Break the seal together before midnight 🕯️',
+        evening,
+        const NotificationDetails(android: androidDetails),
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+        matchDateTimeComponents: DateTimeComponents.time,
+        payload: 'daily_sync',
+      );
+
+      // 4. 10:45 PM — Nightfall & Sleep Whispers
+      var night = tz.TZDateTime(tz.local, now.year, now.month, now.day, 22, 45);
+      if (night.isBefore(now)) night = night.add(const Duration(days: 1));
+
+      await _localNotifications.zonedSchedule(
+        80004,
+        '🌙 Rest well tonight, $user',
+        'Your sanctuary is quiet and peaceful. Leave a bedtime whisper for $partner to wake up to 💫',
+        night,
+        const NotificationDetails(android: androidDetails),
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+        matchDateTimeComponents: DateTimeComponents.time,
+        payload: 'tab_0',
+      );
+
+      debugPrint('[NotificationService] Scheduled all 4 Daily Living Sanctuary Tethers!');
+    } catch (e) {
+      debugPrint('[NotificationService] Error scheduling daily sanctuary cadence: $e');
+    }
+  }
+
+  // =========================================================================
+  // PILLAR 4: PARTNER RAIN & WEATHER EMPATHY
+  // =========================================================================
+  static Future<void> showPartnerRainEmpathyNotification({
+    required String partnerNickname,
+    required String condition,
+  }) async {
+    final key = 'rain_${DateTime.now().day}_${DateTime.now().hour ~/ 6}';
+    if (_recentNotifiedKeys.contains(key)) return;
+    _recentNotifiedKeys.add(key);
+
+    const androidDetails = AndroidNotificationDetails(
+      alertChannelId,
+      alertChannelName,
+      importance: Importance.high,
+      priority: Priority.high,
+      icon: _smallIcon,
+      largeIcon: _largeAppIcon,
+      color: Color(0xFF38BDF8), // Rain Sky Blue
+      enableVibration: true,
+      styleInformation: BigTextStyleInformation(''),
+      actions: _quickLoveActions,
+    );
+
+    await _localNotifications.show(
+      90010,
+      '🌧️ Soft rain is falling near $partnerNickname',
+      'Gentle rain detected over their sky right now. Warm them up with a sweet whisper or play a cozy track together ☕✨',
+      const NotificationDetails(android: androidDetails),
+      payload: 'tab_1',
+    );
   }
 
   /// Synchronize FCM Device Token to user profile in Firestore
@@ -161,6 +354,7 @@ class NotificationService {
       color: _brandColor,
       enableVibration: true,
       styleInformation: BigTextStyleInformation(''),
+      actions: _quickLoveActions,
     );
 
     await _localNotifications.show(
@@ -300,6 +494,7 @@ class NotificationService {
       color: _brandColor,
       enableVibration: true,
       styleInformation: BigTextStyleInformation(''),
+      actions: _quickLoveActions,
     );
 
     final payload = type.toLowerCase() == 'letter' ? 'letter_$id' : 'memory_$id';
@@ -335,6 +530,7 @@ class NotificationService {
       color: Color(0xFF9D84B7),
       enableVibration: true,
       styleInformation: BigTextStyleInformation(''),
+      actions: _quickLoveActions,
     );
 
     await _localNotifications.show(
@@ -482,6 +678,7 @@ class NotificationService {
       color: _brandColor,
       enableVibration: true,
       styleInformation: BigTextStyleInformation(''),
+      actions: _quickLoveActions,
     );
 
     await _localNotifications.show(
@@ -588,6 +785,7 @@ class NotificationService {
       color: _brandColor,
       enableVibration: true,
       styleInformation: BigTextStyleInformation(''),
+      actions: _quickLoveActions,
     );
 
     const details = NotificationDetails(android: androidDetails);
