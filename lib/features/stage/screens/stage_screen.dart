@@ -18,6 +18,7 @@ import '../widgets/anniversary_modal.dart';
 import '../widgets/profile_modal.dart';
 import '../../auth/widgets/pairing_modal.dart';
 import '../../../core/services/update_service.dart';
+import '../../../core/services/notification_service.dart';
 
 class StageScreen extends StatefulWidget {
   final VoidCallback onGoToMemories;
@@ -45,6 +46,10 @@ class _StageScreenState extends State<StageScreen> {
               auth.user!.id,
               auth.partner?.id,
             );
+        NotificationService.scheduleDailyLivingSanctuaryCadence(
+          userNickname: auth.user!.nickname,
+          partnerNickname: auth.partner?.nickname,
+        );
       }
 
       // Check for App Updates in background

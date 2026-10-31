@@ -299,12 +299,21 @@ class WorldProvider extends ChangeNotifier {
     try {
       final weather = await WeatherService.fetchWeather(lat, lng);
       _partnerWeather = weather;
-      if (weather != null && weather.isUnnatural) {
-        NotificationService.showUnnaturalWeatherAlert(
-          partnerNickname: partnerLocation?.nickname ?? 'Your Partner',
-          condition: weather.condition,
-          tempC: weather.temperature,
-        );
+      if (weather != null) {
+        if (weather.isUnnatural) {
+          NotificationService.showUnnaturalWeatherAlert(
+            partnerNickname: partnerLocation?.nickname ?? 'Your Partner',
+            condition: weather.condition,
+            tempC: weather.temperature,
+          );
+        } else if ((weather.weatherCode >= 51 && weather.weatherCode <= 67) ||
+            (weather.weatherCode >= 80 && weather.weatherCode <= 82)) {
+          // Romantic Rain & Showers Atmospheric Empathy Alert!
+          NotificationService.showPartnerRainEmpathyNotification(
+            partnerNickname: partnerLocation?.nickname ?? 'Your Partner',
+            condition: weather.condition,
+          );
+        }
       }
       notifyListeners();
     } catch (_) {}

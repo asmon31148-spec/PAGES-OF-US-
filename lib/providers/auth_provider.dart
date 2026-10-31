@@ -152,6 +152,11 @@ class AuthProvider extends ChangeNotifier {
           _partner = null;
           await LocalCacheService.setCachedPartner(null);
         }
+
+        NotificationService.scheduleDailyLivingSanctuaryCadence(
+          userNickname: _user?.nickname,
+          partnerNickname: _partner?.nickname,
+        );
       }
     } catch (e) {
       debugPrint('Error in refreshUserData: $e');
