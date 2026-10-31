@@ -10,6 +10,7 @@ import '../../../core/services/music_download_service.dart';
 import '../widgets/youtube_music_search_sheet.dart';
 import '../widgets/lyrics_sheet.dart';
 import 'listen_together_screen.dart';
+import 'now_playing_screen.dart';
 import '../widgets/music_interactive_scrubber.dart';
 
 class MusicSanctuaryScreen extends StatefulWidget {
@@ -231,88 +232,104 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
               children: [
                 Row(
                   children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(16),
-                      child: currentSong.thumbnailUrl != null && currentSong.thumbnailUrl!.isNotEmpty
-                          ? CachedNetworkImage(
-                              imageUrl: currentSong.thumbnailUrl!,
-                              width: 52,
-                              height: 52,
-                              fit: BoxFit.cover,
-                              errorWidget: (_, __, ___) => Container(
-                                width: 52,
-                                height: 52,
-                                color: currentSong.coverColor,
-                                child: const Center(
-                                  child: Icon(Icons.music_note_rounded, color: Colors.black87, size: 26),
-                                ),
-                              ),
-                            )
-                          : Container(
-                              width: 52,
-                              height: 52,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(16),
-                                color: currentSong.coverColor,
-                              ),
-                              child: const Center(
-                                child: Icon(Icons.music_note_rounded, color: Colors.black87, size: 26),
-                              ),
-                            ),
-                    ),
-                    const SizedBox(width: 14),
                     Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            audioProvider.isSongBuffering
-                                ? (audioProvider.bufferingSongTitle ?? currentSong.title)
-                                : currentSong.title,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => const NowPlayingScreen()),
+                          );
+                        },
+                        child: Row(
+                          children: [
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(16),
+                              child: currentSong.thumbnailUrl != null && currentSong.thumbnailUrl!.isNotEmpty
+                                  ? CachedNetworkImage(
+                                      imageUrl: currentSong.thumbnailUrl!,
+                                      width: 52,
+                                      height: 52,
+                                      fit: BoxFit.cover,
+                                      errorWidget: (_, __, ___) => Container(
+                                        width: 52,
+                                        height: 52,
+                                        color: currentSong.coverColor,
+                                        child: const Center(
+                                          child: Icon(Icons.music_note_rounded, color: Colors.black87, size: 26),
+                                        ),
+                                      ),
+                                    )
+                                  : Container(
+                                      width: 52,
+                                      height: 52,
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(16),
+                                        color: currentSong.coverColor,
+                                      ),
+                                      child: const Center(
+                                        child: Icon(Icons.music_note_rounded, color: Colors.black87, size: 26),
+                                      ),
+                                    ),
                             ),
-                          ),
-                          const SizedBox(height: 2),
-                          Row(
-                            children: [
-                              if (audioProvider.isSongBuffering) ...[
-                                const SizedBox(
-                                  width: 10,
-                                  height: 10,
-                                  child: CircularProgressIndicator(strokeWidth: 1.5, color: Color(0xFFA3E635)),
-                                ),
-                                const SizedBox(width: 6),
-                                const Text(
-                                  'Buffering audio...',
-                                  style: TextStyle(fontSize: 11, color: Color(0xFFA3E635), fontWeight: FontWeight.w600),
-                                ),
-                              ] else ...[
-                                if (currentSong.isLocal || MusicDownloadService.instance.isDownloaded(currentSong.id)) ...[
-                                  const Icon(Icons.offline_pin_rounded, size: 12, color: Color(0xFFA3E635)),
-                                  const SizedBox(width: 4),
-                                ],
-                                Expanded(
-                                  child: Text(
-                                    currentSong.artist,
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    audioProvider.isSongBuffering
+                                        ? (audioProvider.bufferingSongTitle ?? currentSong.title)
+                                        : currentSong.title,
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                     style: const TextStyle(
-                                      fontSize: 11,
-                                      color: Color(0xFF94A3B8),
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
                                     ),
                                   ),
-                                ),
-                              ],
-                            ],
-                          ),
-                        ],
+                                  const SizedBox(height: 2),
+                                  Row(
+                                    children: [
+                                      if (audioProvider.isSongBuffering) ...[
+                                        const SizedBox(
+                                          width: 10,
+                                          height: 10,
+                                          child: CircularProgressIndicator(strokeWidth: 1.5, color: Color(0xFFA3E635)),
+                                        ),
+                                        const SizedBox(width: 6),
+                                        const Text(
+                                          'Buffering audio...',
+                                          style: TextStyle(fontSize: 11, color: Color(0xFFA3E635), fontWeight: FontWeight.w600),
+                                        ),
+                                      ] else ...[
+                                        if (currentSong.isLocal || MusicDownloadService.instance.isDownloaded(currentSong.id)) ...[
+                                          const Icon(Icons.offline_pin_rounded, size: 12, color: Color(0xFFA3E635)),
+                                          const SizedBox(width: 4),
+                                        ],
+                                        Expanded(
+                                          child: Text(
+                                            currentSong.artist,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: const TextStyle(
+                                              fontSize: 11,
+                                              color: Color(0xFF94A3B8),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
+                    const SizedBox(width: 6),
                     GestureDetector(
                       onTap: () {
                         LyricsSheet.show(
@@ -336,6 +353,27 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
                             SizedBox(width: 4),
                             Text('Lyrics', style: TextStyle(fontSize: 11, color: Color(0xFFFDE047), fontWeight: FontWeight.bold)),
                           ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const NowPlayingScreen()),
+                        );
+                      },
+                      child: Container(
+                        width: 32,
+                        height: 32,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF18281E),
+                          shape: BoxShape.circle,
+                          border: Border.all(color: const Color(0xFF243B2C)),
+                        ),
+                        child: const Center(
+                          child: Icon(Icons.open_in_full_rounded, size: 14, color: Colors.white70),
                         ),
                       ),
                     ),

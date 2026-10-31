@@ -64,6 +64,7 @@ class AudioProvider extends ChangeNotifier {
   final ValueNotifier<Duration> songPositionNotifier = ValueNotifier<Duration>(Duration.zero);
   Duration _songDuration = const Duration(minutes: 3, seconds: 42);
   bool _isShuffle = false;
+  bool _isRepeatOne = false;
   bool _allowBackgroundPlayback = false;
 
   // -------------------------------------------------------------
@@ -169,6 +170,7 @@ class AudioProvider extends ChangeNotifier {
   Duration get songPosition => _songPosition;
   Duration get songDuration => _songDuration;
   bool get isShuffle => _isShuffle;
+  bool get isRepeatOne => _isRepeatOne;
   bool get allowBackgroundPlayback => _allowBackgroundPlayback;
 
   bool get isListenTogetherActive => _isListenTogetherActive;
@@ -295,7 +297,12 @@ class AudioProvider extends ChangeNotifier {
 
     // Auto-advance with smooth crossfade
     _songPlayer.onPlayerComplete.listen((_) {
-      playNextWithCrossfade();
+      if (_isRepeatOne) {
+        seekSong(Duration.zero);
+        _songPlayer.resume();
+      } else {
+        playNextWithCrossfade();
+      }
     });
   }
 
@@ -472,6 +479,11 @@ class AudioProvider extends ChangeNotifier {
 
   void toggleShuffle() {
     _isShuffle = !_isShuffle;
+    notifyListeners();
+  }
+
+  void toggleRepeat() {
+    _isRepeatOne = !_isRepeatOne;
     notifyListeners();
   }
 
