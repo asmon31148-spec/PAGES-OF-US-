@@ -39,6 +39,7 @@ class WidgetSyncService {
       await HomeWidget.updateWidget(
         name: appWidgetProvider,
         androidName: appWidgetProvider,
+        qualifiedAndroidName: 'com.pagesofus.app.PagesOfUsWidgetProvider',
       );
     } catch (_) {
       // Ignored if widget is not active

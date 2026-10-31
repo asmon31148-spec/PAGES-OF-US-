@@ -7,8 +7,11 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.util.Log;
 import android.view.View;
 import android.widget.RemoteViews;
+
+import es.antonborri.home_widget.HomeWidgetPlugin;
 
 public class PagesOfUsWidgetProvider extends AppWidgetProvider {
 
@@ -19,7 +22,7 @@ public class PagesOfUsWidgetProvider extends AppWidgetProvider {
     public void onReceive(Context context, Intent intent) {
         super.onReceive(context, intent);
 
-        if (ACTION_SWITCH_VIEW.equals(intent.getAction())) {
+        if (intent != null && ACTION_SWITCH_VIEW.equals(intent.getAction())) {
             int targetView = intent.getIntExtra(EXTRA_VIEW_INDEX, 1);
             SharedPreferences statePrefs = context.getSharedPreferences("PagesOfUsWidgetState", Context.MODE_PRIVATE);
             statePrefs.edit().putInt("currentView", targetView).apply();
@@ -27,36 +30,50 @@ public class PagesOfUsWidgetProvider extends AppWidgetProvider {
             AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(context);
             ComponentName thisWidget = new ComponentName(context, PagesOfUsWidgetProvider.class);
             int[] appWidgetIds = appWidgetManager.getAppWidgetIds(thisWidget);
-            for (int widgetId : appWidgetIds) {
-                updateAppWidget(context, appWidgetManager, widgetId);
+            if (appWidgetIds != null) {
+                for (int widgetId : appWidgetIds) {
+                    updateAppWidget(context, appWidgetManager, widgetId);
+                }
             }
         }
     }
 
     @Override
     public void onUpdate(Context context, AppWidgetManager appWidgetManager, int[] appWidgetIds) {
-        for (int appWidgetId : appWidgetIds) {
-            updateAppWidget(context, appWidgetManager, appWidgetId);
+        if (appWidgetIds != null) {
+            for (int appWidgetId : appWidgetIds) {
+                updateAppWidget(context, appWidgetManager, appWidgetId);
+            }
         }
     }
 
     public static void updateAppWidget(Context context, AppWidgetManager appWidgetManager, int appWidgetId) {
         try {
             // Read widget data from home_widget preferences
-            SharedPreferences homeWidgetPrefs = context.getSharedPreferences("HomeWidgetPreferences", Context.MODE_PRIVATE);
+            SharedPreferences homeWidgetPrefs = null;
+            try {
+                homeWidgetPrefs = HomeWidgetPlugin.getData(context);
+            } catch (Throwable t) {
+                Log.w("PagesOfUsWidget", "HomeWidgetPlugin.getData fallback: " + t.getMessage());
+            }
+
             SharedPreferences statePrefs = context.getSharedPreferences("PagesOfUsWidgetState", Context.MODE_PRIVATE);
 
-            String partnerThought = homeWidgetPrefs.getString("partnerThought", null);
+            String partnerThought = homeWidgetPrefs != null ? homeWidgetPrefs.getString("partnerThought", null) : null;
+            if (partnerThought == null || partnerThought.isEmpty()) {
+                SharedPreferences legacyPrefs = context.getSharedPreferences("HomeWidgetPreferences", Context.MODE_PRIVATE);
+                partnerThought = legacyPrefs.getString("partnerThought", null);
+            }
             if (partnerThought == null || partnerThought.isEmpty()) {
                 partnerThought = "“Thinking of you...”";
             }
 
-            String daysTogether = homeWidgetPrefs.getString("daysTogether", "Together ✦");
-            String partnerNickname = homeWidgetPrefs.getString("partnerNickname", "your partner");
-            String missYouCount = homeWidgetPrefs.getString("missYouCount", "14 Touches Today");
-            String careLine1 = homeWidgetPrefs.getString("careLine1", "💧 Morning Hydration");
-            String careLine2 = homeWidgetPrefs.getString("careLine2", "🥗 Mindful Lunch & Breather");
-            String careLine3 = homeWidgetPrefs.getString("careLine3", "🌙 Sweet Sleep & Whispers");
+            String daysTogether = homeWidgetPrefs != null ? homeWidgetPrefs.getString("daysTogether", "Together ✦") : "Together ✦";
+            String partnerNickname = homeWidgetPrefs != null ? homeWidgetPrefs.getString("partnerNickname", "your partner") : "your partner";
+            String missYouCount = homeWidgetPrefs != null ? homeWidgetPrefs.getString("missYouCount", "14 Touches Today ❤️") : "14 Touches Today ❤️";
+            String careLine1 = homeWidgetPrefs != null ? homeWidgetPrefs.getString("careLine1", "💧 Morning Hydration") : "💧 Morning Hydration";
+            String careLine2 = homeWidgetPrefs != null ? homeWidgetPrefs.getString("careLine2", "🥗 Mindful Lunch & Breather") : "🥗 Mindful Lunch & Breather";
+            String careLine3 = homeWidgetPrefs != null ? homeWidgetPrefs.getString("careLine3", "🌙 Sweet Sleep & Whispers") : "🌙 Sweet Sleep & Whispers";
 
             int currentView = statePrefs.getInt("currentView", 1); // 0 = care, 1 = note, 2 = miss you
 
@@ -70,6 +87,15 @@ public class PagesOfUsWidgetProvider extends AppWidgetProvider {
             views.setTextViewText(R.id.widget_care_line1, careLine1);
             views.setTextViewText(R.id.widget_care_line2, careLine2);
             views.setTextViewText(R.id.widget_care_line3, careLine3);
+
+            // Highlight active tab
+            views.setTextColor(R.id.widget_btn_care, currentView == 0 ? 0xFFE07A5F : 0xFFEDEAE5);
+            views.setTextColor(R.id.widget_btn_note, currentView == 1 ? 0xFFE07A5F : 0xFFEDEAE5);
+            views.setTextColor(R.id.widget_btn_miss, currentView == 2 ? 0xFFE07A5F : 0xFFEDEAE5);
+
+            views.setTextViewText(R.id.widget_btn_care, currentView == 0 ? "🌿 Care ✦" : "🌿 Care");
+            views.setTextViewText(R.id.widget_btn_note, currentView == 1 ? "💌 Note ✦" : "💌 Note");
+            views.setTextViewText(R.id.widget_btn_miss, currentView == 2 ? "❤️ Miss ✦" : "❤️ Miss");
 
             // Toggle 3 Switchable Views
             views.setViewVisibility(R.id.widget_view_care, currentView == 0 ? View.VISIBLE : View.GONE);
@@ -109,10 +135,12 @@ public class PagesOfUsWidgetProvider extends AppWidgetProvider {
             PendingIntent appPi = PendingIntent.getActivity(
                 context, 0, appIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
             );
+            views.setOnClickPendingIntent(R.id.widget_root, appPi);
             views.setOnClickPendingIntent(R.id.widget_center_container, appPi);
 
             appWidgetManager.updateAppWidget(appWidgetId, views);
-        } catch (Exception ignored) {
+        } catch (Exception e) {
+            Log.e("PagesOfUsWidget", "Error updating widget: " + e.getMessage(), e);
         }
     }
 }
