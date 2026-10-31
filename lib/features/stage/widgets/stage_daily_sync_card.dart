@@ -239,15 +239,14 @@ class _StageDailySyncCardState extends State<StageDailySyncCard> {
           Text(
             '“$prompt”',
             style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w700,
-              fontStyle: FontStyle.italic,
+              fontSize: 17.5,
+              fontWeight: FontWeight.w600,
               color: isDark ? AppColors.darkInk : AppColors.lightInk,
               height: 1.35,
-              letterSpacing: -0.2,
+              letterSpacing: -0.1,
             ),
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 16),
 
           // User's response state
           if (myAnswer == null) ...[
@@ -274,7 +273,6 @@ class _StageDailySyncCardState extends State<StageDailySyncCard> {
                     : 'Whisper your honest answer here...',
                 hintStyle: TextStyle(
                   fontSize: 13.5,
-                  fontStyle: FontStyle.italic,
                   color: isDark ? AppColors.darkSoft : AppColors.lightSoft,
                 ),
                 filled: true,

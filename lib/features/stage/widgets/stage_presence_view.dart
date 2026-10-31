@@ -105,7 +105,7 @@ class StagePresenceView extends StatelessWidget {
     }
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
       child: Stack(
         alignment: Alignment.center,
         children: [
@@ -156,19 +156,22 @@ class StagePresenceView extends StatelessWidget {
                     Stack(
                       alignment: Alignment.center,
                       children: [
-                        // Mood Aura Glow
+                        // Mood Aura Ring (Crisp, clean, high-definition border ring)
                         AnimatedContainer(
                           duration: const Duration(milliseconds: 300),
-                          width: 72,
-                          height: 72,
+                          width: 66,
+                          height: 66,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
+                            border: Border.all(
+                              color: (myMood?.glowColor ?? AppColors.sageLight).withOpacity(0.85),
+                              width: 2.0,
+                            ),
                             boxShadow: [
                               BoxShadow(
-                                color: (myMood?.glowColor ?? AppColors.sageLight)
-                                    .withOpacity(0.45),
-                                blurRadius: 18,
-                                spreadRadius: 4,
+                                color: (myMood?.glowColor ?? AppColors.sageLight).withOpacity(0.20),
+                                blurRadius: 6,
+                                spreadRadius: 0,
                               ),
                             ],
                           ),
@@ -256,25 +259,28 @@ class StagePresenceView extends StatelessWidget {
                         Stack(
                           alignment: Alignment.center,
                           children: [
+                            // Mood Aura Ring (Crisp, clean, high-definition border ring)
                             AnimatedContainer(
                               duration: const Duration(milliseconds: 300),
-                              width: 72,
-                              height: 72,
+                              width: 66,
+                              height: 66,
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: (partnerMood?.glowColor ?? AppColors.rose).withOpacity(0.85),
+                                  width: 2.0,
+                                ),
                                 boxShadow: [
                                   if (skyGlow != Colors.transparent)
                                     BoxShadow(
-                                      color: skyGlow.withOpacity(0.35),
-                                      blurRadius: 26,
-                                      spreadRadius: 6,
+                                      color: skyGlow.withOpacity(0.25),
+                                      blurRadius: 10,
+                                      spreadRadius: 1,
                                     ),
                                   BoxShadow(
-                                    color: (partnerMood?.glowColor ??
-                                            AppColors.rose)
-                                        .withOpacity(0.45),
-                                    blurRadius: 18,
-                                    spreadRadius: 4,
+                                    color: (partnerMood?.glowColor ?? AppColors.rose).withOpacity(0.20),
+                                    blurRadius: 6,
+                                    spreadRadius: 0,
                                   ),
                                 ],
                               ),

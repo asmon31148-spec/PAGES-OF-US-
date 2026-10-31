@@ -113,7 +113,7 @@ class _StageScreenState extends State<StageScreen> {
                       // Greeting & Anniversary Row
                       Padding(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 20.0, vertical: 8.0),
+                            horizontal: 20.0, vertical: 4.0),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
@@ -146,7 +146,7 @@ class _StageScreenState extends State<StageScreen> {
                                     ),
                                   ),
                                   Text(
-                                    hasAnniversary
+                                    (hasAnniversary && authProvider.partner != null)
                                         ? 'Day ${stageProvider.daysTogether} together ✦'
                                         : 'Set Date ✦',
                                     style: const TextStyle(
