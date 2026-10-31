@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
 import '../../../providers/audio_provider.dart';
+import '../../../providers/auth_provider.dart';
 import '../models/music_models.dart';
 import 'playlist_detail_screen.dart';
 import 'package:cached_network_image/cached_network_image.dart';
