@@ -89,7 +89,7 @@ class NowPlayingScreen extends StatelessWidget {
                               fontSize: 10,
                               fontWeight: FontWeight.w700,
                               letterSpacing: 1.5,
-                              color: Color(0xFFA3E635),
+                              color: Color(0xFFE07A5F),
                             ),
                           ),
                           const SizedBox(height: 2),
@@ -292,10 +292,10 @@ class NowPlayingScreen extends StatelessWidget {
                           width: 36,
                           height: 36,
                           decoration: BoxDecoration(
-                            color: const Color(0xFF1B2C20),
+                            color: const Color(0xFF261E1B),
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
-                              color: isDownloaded ? const Color(0xFFA3E635) : const Color(0xFF2E4D38),
+                              color: isDownloaded ? const Color(0xFFE07A5F) : const Color(0xFF4A342E),
                             ),
                           ),
                           child: Center(
@@ -306,12 +306,12 @@ class NowPlayingScreen extends StatelessWidget {
                                     child: CircularProgressIndicator(
                                       value: downloadProg,
                                       strokeWidth: 2,
-                                      color: const Color(0xFFA3E635),
+                                      color: const Color(0xFFE07A5F),
                                     ),
                                   )
                                 : Icon(
                                     isDownloaded ? Icons.download_done_rounded : Icons.download_rounded,
-                                    color: isDownloaded ? const Color(0xFFA3E635) : Colors.white70,
+                                    color: isDownloaded ? const Color(0xFFE07A5F) : Colors.white70,
                                     size: 18,
                                   ),
                           ),
@@ -344,7 +344,7 @@ class NowPlayingScreen extends StatelessWidget {
                       IconButton(
                         icon: Icon(
                           Icons.shuffle_rounded,
-                          color: audioProvider.isShuffle ? const Color(0xFFA3E635) : Colors.white38,
+                          color: audioProvider.isShuffle ? const Color(0xFFE07A5F) : Colors.white38,
                           size: 24,
                         ),
                         onPressed: () {
@@ -362,7 +362,7 @@ class NowPlayingScreen extends StatelessWidget {
                         },
                       ),
 
-                      // Large Circular Lime Play/Pause Button
+                      // Large Circular Warm Terracotta Play/Pause Button
                       GestureDetector(
                         onTap: () {
                           HapticFeedback.selectionClick();
@@ -373,10 +373,10 @@ class NowPlayingScreen extends StatelessWidget {
                           height: 68,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: const Color(0xFFA3E635),
+                            color: const Color(0xFFE07A5F),
                             boxShadow: [
                               BoxShadow(
-                                color: const Color(0xFFA3E635).withOpacity(0.4),
+                                color: const Color(0xFFE07A5F).withOpacity(0.4),
                                 blurRadius: 20,
                                 offset: const Offset(0, 6),
                               ),
@@ -389,12 +389,12 @@ class NowPlayingScreen extends StatelessWidget {
                                     height: 28,
                                     child: CircularProgressIndicator(
                                       strokeWidth: 2.8,
-                                      color: Colors.black,
+                                      color: Colors.white,
                                     ),
                                   )
                                 : Icon(
                                     isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
-                                    color: Colors.black,
+                                    color: Colors.white,
                                     size: 38,
                                   ),
                           ),
@@ -414,7 +414,7 @@ class NowPlayingScreen extends StatelessWidget {
                       IconButton(
                         icon: Icon(
                           audioProvider.isRepeatOne ? Icons.repeat_one_rounded : Icons.repeat_rounded,
-                          color: audioProvider.isRepeatOne ? const Color(0xFFA3E635) : Colors.white38,
+                          color: audioProvider.isRepeatOne ? const Color(0xFFE07A5F) : Colors.white38,
                           size: 24,
                         ),
                         onPressed: () {
@@ -561,7 +561,7 @@ class NowPlayingScreen extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          color: isCurrent ? const Color(0xFFA3E635) : Colors.white,
+                          color: isCurrent ? const Color(0xFFE07A5F) : Colors.white,
                           fontWeight: isCurrent ? FontWeight.bold : FontWeight.w500,
                           fontSize: 14,
                         ),
@@ -571,12 +571,12 @@ class NowPlayingScreen extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          color: isCurrent ? const Color(0xFFA3E635).withOpacity(0.7) : Colors.white54,
+                          color: isCurrent ? const Color(0xFFE07A5F).withOpacity(0.7) : Colors.white54,
                           fontSize: 12,
                         ),
                       ),
                       trailing: isCurrent
-                          ? const Icon(Icons.graphic_eq_rounded, color: Color(0xFFA3E635), size: 20)
+                          ? const Icon(Icons.graphic_eq_rounded, color: Color(0xFFE07A5F), size: 20)
                           : null,
                       onTap: () {
                         provider.selectSong(idx);

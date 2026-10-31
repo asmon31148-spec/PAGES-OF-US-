@@ -86,7 +86,7 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
                             ? Icons.headphones_rounded
                             : Icons.headphones_outlined,
                         iconColor: context.watch<AudioProvider>().allowBackgroundPlayback
-                            ? const Color(0xFFA3E635)
+                            ? const Color(0xFFE07A5F)
                             : Colors.white70,
                         onTap: () {
                           final prov = context.read<AudioProvider>();
@@ -117,7 +117,7 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
                           height: 42,
                           decoration: const BoxDecoration(
                             shape: BoxShape.circle,
-                            color: Color(0xFFA3E635),
+                            color: Color(0xFFE07A5F),
                           ),
                           child: const Center(
                             child: Icon(Icons.add_rounded, color: Colors.black, size: 24),
@@ -177,7 +177,7 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 10),
           decoration: BoxDecoration(
-            color: isSelected ? const Color(0xFFA3E635) : Colors.transparent,
+            color: isSelected ? const Color(0xFFE07A5F) : Colors.transparent,
             borderRadius: BorderRadius.circular(24),
           ),
           child: Center(
@@ -186,7 +186,7 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
               style: TextStyle(
                 fontSize: 12.5,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                color: isSelected ? Colors.black : const Color(0xFF94A3B8),
+                color: isSelected ? Colors.white : const Color(0xFF94A3B8),
               ),
             ),
           ),
@@ -296,16 +296,16 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
                                         const SizedBox(
                                           width: 10,
                                           height: 10,
-                                          child: CircularProgressIndicator(strokeWidth: 1.5, color: Color(0xFFA3E635)),
+                                          child: CircularProgressIndicator(strokeWidth: 1.5, color: Color(0xFFE07A5F)),
                                         ),
                                         const SizedBox(width: 6),
                                         const Text(
                                           'Buffering audio...',
-                                          style: TextStyle(fontSize: 11, color: Color(0xFFA3E635), fontWeight: FontWeight.w600),
+                                          style: TextStyle(fontSize: 11, color: Color(0xFFE07A5F), fontWeight: FontWeight.w600),
                                         ),
                                       ] else ...[
                                         if (currentSong.isLocal || MusicDownloadService.instance.isDownloaded(currentSong.id)) ...[
-                                          const Icon(Icons.offline_pin_rounded, size: 12, color: Color(0xFFA3E635)),
+                                          const Icon(Icons.offline_pin_rounded, size: 12, color: Color(0xFFE07A5F)),
                                           const SizedBox(width: 4),
                                         ],
                                         Expanded(
@@ -410,7 +410,7 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
                         height: 52,
                         decoration: const BoxDecoration(
                           shape: BoxShape.circle,
-                          color: Color(0xFFA3E635),
+                          color: Color(0xFFE07A5F),
                         ),
                         child: Center(
                           child: audioProvider.isSongBuffering
@@ -521,7 +521,7 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
                     ),
                     child: Text(
                       '${displaySongs.length}',
-                      style: const TextStyle(fontSize: 11, color: Color(0xFFA3E635), fontWeight: FontWeight.bold),
+                      style: const TextStyle(fontSize: 11, color: Color(0xFFE07A5F), fontWeight: FontWeight.bold),
                     ),
                   ),
                 ],
@@ -546,10 +546,10 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
                                 : _sortMode == 'offline'
                                     ? 'Offline Only'
                                     : 'Recent',
-                        style: const TextStyle(fontSize: 11, color: Color(0xFFA3E635), fontWeight: FontWeight.bold),
+                        style: const TextStyle(fontSize: 11, color: Color(0xFFE07A5F), fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(width: 4),
-                      const Icon(Icons.sort_rounded, size: 13, color: Color(0xFFA3E635)),
+                      const Icon(Icons.sort_rounded, size: 13, color: Color(0xFFE07A5F)),
                     ],
                   ),
                 ),
@@ -599,7 +599,7 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
                       color: const Color(0xFF111E16),
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
-                        color: isCurrent ? const Color(0xFFA3E635).withOpacity(0.6) : const Color(0xFF18281E),
+                        color: isCurrent ? const Color(0xFFE07A5F).withOpacity(0.6) : const Color(0xFF18281E),
                       ),
                     ),
                     child: Row(
@@ -629,14 +629,14 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
                                 style: TextStyle(
                                   fontSize: 13,
                                   fontWeight: FontWeight.bold,
-                                  color: isCurrent ? const Color(0xFFA3E635) : Colors.white,
+                                  color: isCurrent ? const Color(0xFFE07A5F) : Colors.white,
                                 ),
                               ),
                               const SizedBox(height: 2),
                               Row(
                                 children: [
                                   if (isOffline) ...[
-                                    const Icon(Icons.offline_pin_rounded, size: 12, color: Color(0xFFA3E635)),
+                                    const Icon(Icons.offline_pin_rounded, size: 12, color: Color(0xFFE07A5F)),
                                     const SizedBox(width: 4),
                                   ],
                                   Expanded(
@@ -716,7 +716,7 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
               icon: const Icon(Icons.search_rounded, size: 18),
               label: const Text('Explore YouTube Music'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFA3E635),
+                backgroundColor: const Color(0xFFE07A5F),
                 foregroundColor: Colors.black,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
@@ -745,7 +745,7 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.download_done_rounded, color: Color(0xFFA3E635), size: 20),
+                  const Icon(Icons.download_done_rounded, color: Color(0xFFE07A5F), size: 20),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
@@ -756,7 +756,7 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
                   TextButton(
                     onPressed: () => YoutubeMusicSearchSheet.show(context),
                     style: TextButton.styleFrom(
-                      foregroundColor: const Color(0xFFA3E635),
+                      foregroundColor: const Color(0xFFE07A5F),
                       padding: const EdgeInsets.symmetric(horizontal: 8),
                     ),
                     child: const Text('+ Download More', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
@@ -774,7 +774,7 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
                   color: isCurrent ? const Color(0xFF16251B) : const Color(0xFF111E16),
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
-                    color: isCurrent ? const Color(0xFFA3E635).withOpacity(0.5) : const Color(0xFF18281E),
+                    color: isCurrent ? const Color(0xFFE07A5F).withOpacity(0.5) : const Color(0xFF18281E),
                   ),
                 ),
                 child: ListTile(
@@ -806,7 +806,7 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      color: isCurrent ? const Color(0xFFA3E635) : Colors.white,
+                      color: isCurrent ? const Color(0xFFE07A5F) : Colors.white,
                       fontSize: 13.5,
                       fontWeight: FontWeight.bold,
                     ),
@@ -821,7 +821,7 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
                       IconButton(
                         icon: Icon(
                           isCurrent && audio.isSongPlaying ? Icons.pause_circle_filled_rounded : Icons.play_circle_fill_rounded,
-                          color: const Color(0xFFA3E635),
+                          color: const Color(0xFFE07A5F),
                           size: 30,
                         ),
                         onPressed: () {
@@ -839,7 +839,16 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
                           await downloader.deleteTrack(track.id);
                           if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Removed "${track.title}" from downloads')),
+                              SnackBar(
+                                content: Text(
+                                  'Removed "${track.title}" from downloads',
+                                  style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
+                                ),
+                                backgroundColor: const Color(0xFF1E212B),
+                                behavior: SnackBarBehavior.floating,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                duration: const Duration(seconds: 2),
+                              ),
                             );
                           }
                         },
@@ -887,7 +896,7 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
                   ),
                   child: Row(
                     children: const [
-                      Icon(Icons.add_rounded, size: 14, color: Color(0xFFA3E635)),
+                      Icon(Icons.add_rounded, size: 14, color: Color(0xFFE07A5F)),
                       SizedBox(width: 4),
                       Text('New Playlist', style: TextStyle(fontSize: 11, color: Colors.white)),
                     ],
@@ -1017,7 +1026,7 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
                         color: isSelected
-                            ? const Color(0xFFA3E635)
+                            ? const Color(0xFFE07A5F)
                             : (isAutoMix ? const Color(0xFF334155) : const Color(0xFF18281E)),
                       ),
                     ),
@@ -1027,7 +1036,7 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
                         style: TextStyle(
                           fontSize: 11.5,
                           fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                          color: isSelected ? const Color(0xFFA3E635) : const Color(0xFFE2E8F0),
+                          color: isSelected ? const Color(0xFFE07A5F) : const Color(0xFFE2E8F0),
                         ),
                       ),
                     ),
@@ -1057,7 +1066,7 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
                         height: 48,
                         decoration: const BoxDecoration(
                           shape: BoxShape.circle,
-                          color: Color(0xFFA3E635),
+                          color: Color(0xFFE07A5F),
                         ),
                         child: Center(
                           child: Icon(
@@ -1117,10 +1126,10 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
                 ),
                 SliderTheme(
                   data: SliderTheme.of(context).copyWith(
-                    activeTrackColor: const Color(0xFFA3E635),
+                    activeTrackColor: const Color(0xFFE07A5F),
                     inactiveTrackColor: const Color(0xFF1E2F23),
                     thumbColor: Colors.white,
-                    overlayColor: const Color(0xFFA3E635).withOpacity(0.2),
+                    overlayColor: const Color(0xFFE07A5F).withOpacity(0.2),
                     trackHeight: 4,
                     thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 8),
                   ),
@@ -1212,7 +1221,7 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
                           ),
                           SliderTheme(
                             data: SliderTheme.of(context).copyWith(
-                              activeTrackColor: const Color(0xFFA3E635),
+                              activeTrackColor: const Color(0xFFE07A5F),
                               inactiveTrackColor: const Color(0xFF1E2F23),
                               thumbColor: Colors.white,
                               trackHeight: 3.5,
@@ -1395,7 +1404,7 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
                                     artist: 'From your device',
                                     durationSeconds: 180,
                                     audioUrl: path,
-                                    coverColor: const Color(0xFFA3E635),
+                                    coverColor: const Color(0xFFE07A5F),
                                     isLocal: true,
                                     addedBy: 'You',
                                   );
@@ -1406,8 +1415,14 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
                                     Navigator.pop(ctx);
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(
-                                        content: Text('Added "$cleanTitle" to your sanctuary ✦'),
-                                        backgroundColor: const Color(0xFF15261C),
+                                        content: Text(
+                                          'Added "$cleanTitle" to your sanctuary ✦',
+                                          style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
+                                        ),
+                                        backgroundColor: const Color(0xFF1E212B),
+                                        behavior: SnackBarBehavior.floating,
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                        duration: const Duration(seconds: 2),
                                       ),
                                     );
                                     // Start playing immediately!
@@ -1428,7 +1443,7 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
                       decoration: BoxDecoration(
                         color: const Color(0xFF16291C),
                         borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: const Color(0xFFA3E635).withOpacity(0.5), width: 1.2),
+                        border: Border.all(color: const Color(0xFFE07A5F).withOpacity(0.5), width: 1.2),
                       ),
                       child: Row(
                         children: [
@@ -1437,7 +1452,7 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
                             height: 44,
                             decoration: const BoxDecoration(
                               shape: BoxShape.circle,
-                              color: Color(0xFFA3E635),
+                              color: Color(0xFFE07A5F),
                             ),
                             child: Center(
                               child: isPickingFile
@@ -1470,7 +1485,7 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
                               ],
                             ),
                           ),
-                          const Icon(Icons.arrow_forward_ios_rounded, color: Color(0xFFA3E635), size: 14),
+                          const Icon(Icons.arrow_forward_ios_rounded, color: Color(0xFFE07A5F), size: 14),
                         ],
                       ),
                     ),
@@ -1529,16 +1544,16 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
     final isSelected = _sortMode == key;
     return ListTile(
       contentPadding: EdgeInsets.zero,
-      leading: Icon(icon, color: isSelected ? const Color(0xFFA3E635) : const Color(0xFF94A3B8), size: 22),
+      leading: Icon(icon, color: isSelected ? const Color(0xFFE07A5F) : const Color(0xFF94A3B8), size: 22),
       title: Text(
         label,
         style: TextStyle(
-          color: isSelected ? const Color(0xFFA3E635) : Colors.white,
+          color: isSelected ? const Color(0xFFE07A5F) : Colors.white,
           fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
           fontSize: 14,
         ),
       ),
-      trailing: isSelected ? const Icon(Icons.check_rounded, color: Color(0xFFA3E635), size: 20) : null,
+      trailing: isSelected ? const Icon(Icons.check_rounded, color: Color(0xFFE07A5F), size: 20) : null,
       onTap: () {
         setState(() => _sortMode = key);
         Navigator.pop(ctx);
@@ -1593,7 +1608,7 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
                     }
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFA3E635),
+                    backgroundColor: const Color(0xFFE07A5F),
                     foregroundColor: Colors.black,
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
@@ -1615,7 +1630,7 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
       builder: (ctx) => Container(
         padding: const EdgeInsets.all(20),
         decoration: const BoxDecoration(
-          color: Color(0xFF111E16),
+          color: Color(0xFF13151B),
           borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         ),
         child: SafeArea(
@@ -1623,22 +1638,34 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               ListTile(
-                leading: const Icon(Icons.playlist_add_rounded, color: Color(0xFFA3E635)),
+                leading: const Icon(Icons.playlist_add_rounded, color: Color(0xFFE07A5F)),
                 title: const Text('Add to playlist', style: TextStyle(color: Colors.white, fontSize: 13)),
                 onTap: () {
                   Navigator.pop(ctx);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Added to Calm evenings ✦')),
-                  );
+                  _showAddToPlaylistPicker(context, song);
                 },
               ),
               ListTile(
-                leading: const Icon(Icons.share_rounded, color: Colors.white),
+                leading: const Icon(Icons.share_rounded, color: Color(0xFFE9C46A)),
                 title: const Text('Share song with partner', style: TextStyle(color: Colors.white, fontSize: 13)),
                 onTap: () {
                   Navigator.pop(ctx);
+                  final auth = context.read<AuthProvider>();
+                  if (auth.space != null) {
+                    context.read<AudioProvider>().startListenTogether(
+                      auth.space!.id,
+                      userId: auth.user?.id,
+                      nickname: auth.user?.nickname,
+                    );
+                  }
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Shared with partner in sanctuary ✦')),
+                    SnackBar(
+                      content: Text('Invited partner to listen to "${song.title}" ✦', style: const TextStyle(color: Colors.white)),
+                      backgroundColor: const Color(0xFF1E212B),
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      duration: const Duration(seconds: 2),
+                    ),
                   );
                 },
               ),
@@ -1650,13 +1677,136 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
                   Navigator.pop(ctx);
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('Permanently removed "${song.title}" ✦'),
+                      content: Text('Permanently removed "${song.title}" ✦', style: const TextStyle(color: Colors.white)),
                       backgroundColor: const Color(0xFF1E1A29),
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                       duration: const Duration(seconds: 2),
                     ),
                   );
                 },
               ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showAddToPlaylistPicker(BuildContext context, SongItem song) {
+    HapticFeedback.lightImpact();
+    final audio = context.read<AudioProvider>();
+    final playlists = audio.playlists;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) => Container(
+        height: MediaQuery.of(context).size.height * 0.72,
+        padding: const EdgeInsets.all(22),
+        decoration: const BoxDecoration(
+          color: Color(0xFF13151B),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        child: SafeArea(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Add to Playlist',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          song.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
+                        ),
+                      ],
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () => Navigator.pop(ctx),
+                    child: const Icon(Icons.close_rounded, color: Color(0xFF94A3B8), size: 22),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              if (playlists.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 24),
+                  child: Center(
+                    child: Text(
+                      'No playlists yet. Go to Playlists tab to create one!',
+                      style: TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
+                    ),
+                  ),
+                )
+              else
+                Expanded(
+                  child: ListView.separated(
+                    itemCount: playlists.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 8),
+                    itemBuilder: (_, i) {
+                      final pl = playlists[i];
+                      final contains = pl.songIds.contains(song.id);
+                      return ListTile(
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        tileColor: const Color(0xFF1B1D26),
+                        leading: Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: pl.coverColor.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Center(
+                            child: Icon(Icons.music_note_rounded, color: pl.coverColor, size: 20),
+                          ),
+                        ),
+                        title: Text(
+                          pl.title,
+                          style: const TextStyle(color: Colors.white, fontSize: 13.5, fontWeight: FontWeight.bold),
+                        ),
+                        subtitle: Text(
+                          '${pl.songIds.length} songs',
+                          style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 11),
+                        ),
+                        trailing: contains
+                            ? const Icon(Icons.check_circle_rounded, color: Color(0xFF81B29A), size: 22)
+                            : const Icon(Icons.add_circle_outline_rounded, color: Color(0xFFE07A5F), size: 22),
+                        onTap: () {
+                          HapticFeedback.mediumImpact();
+                          audio.addSongToPlaylist(pl.id, song.id);
+                          Navigator.pop(ctx);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Added "${song.title}" to ${pl.title} ✦', style: const TextStyle(color: Colors.white)),
+                              backgroundColor: const Color(0xFF1E212B),
+                              behavior: SnackBarBehavior.floating,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                              duration: const Duration(seconds: 2),
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ),
             ],
           ),
         ),
@@ -1712,7 +1862,7 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
                     decoration: InputDecoration(
                       hintText: 'Search songs, moods, atmospheres...',
                       hintStyle: const TextStyle(color: Colors.white38),
-                      prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFFA3E635)),
+                      prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFFE07A5F)),
                       filled: true,
                       fillColor: Colors.white10,
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),

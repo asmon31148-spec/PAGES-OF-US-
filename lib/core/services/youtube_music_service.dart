@@ -337,9 +337,9 @@ class YoutubeMusicService {
         .replaceAll('&nbsp;', ' ');
   }
 
-  /// Filter out spam duplicates and near-identical results
+  /// Filter out spam duplicates so every result has a unique, distinct title
   List<YoutubeTrack> _deduplicateTracks(List<YoutubeTrack> tracks) {
-    final seen = <String>{};
+    final seenTitles = <String>{};
     final unique = <YoutubeTrack>[];
 
     for (final t in tracks) {
@@ -349,16 +349,10 @@ class YoutubeMusicService {
           .replaceAll(RegExp(r'\[[^\]]*\]'), '')
           .replaceAll(RegExp(r'[^\w\s]'), '')
           .trim();
-      final cleanArtist = t.artist
-          .toLowerCase()
-          .replaceAll(RegExp(r'[^\w\s]'), '')
-          .trim();
 
-      final firstArtist = cleanArtist.split(' ').first;
-      final key = '$cleanTitle|$firstArtist';
-
-      if (!seen.contains(key) && cleanTitle.isNotEmpty) {
-        seen.add(key);
+      // Only allow unique song titles - never repeat identical titles!
+      if (!seenTitles.contains(cleanTitle) && cleanTitle.isNotEmpty) {
+        seenTitles.add(cleanTitle);
         unique.add(t);
       }
     }

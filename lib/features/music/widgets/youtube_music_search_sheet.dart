@@ -9,7 +9,7 @@ import '../../../core/services/youtube_music_service.dart';
 import '../../../core/services/music_download_service.dart';
 import '../screens/now_playing_screen.dart';
 
-/// Full-Screen YouTube Music Search & Discovery Screen
+/// Full-Screen YouTube Music Discovery Screen with Curated Recommendations & 3-Dot Menu
 class YoutubeMusicSearchSheet extends StatefulWidget {
   const YoutubeMusicSearchSheet({super.key});
 
@@ -37,18 +37,22 @@ class _YoutubeMusicSearchSheetState extends State<YoutubeMusicSearchSheet> {
   String? _errorMessage;
 
   final List<String> _quickVibes = [
-    'Romantic Acoustic',
+    '✨ Top Hits',
     'Arijit Singh',
     'Ed Sheeran',
-    'Lo-Fi Midnight',
     'Taylor Swift',
+    'Atif Aslam',
     'Coke Studio',
+    'Romantic Bollywood',
+    'Midnight Lo-Fi',
+    'Shreya Ghoshal',
   ];
 
   @override
   void initState() {
     super.initState();
-    _performSearch('Romantic Acoustic');
+    // Load diverse top hits by default
+    _performSearch('Top Romantic Songs');
   }
 
   @override
@@ -94,18 +98,185 @@ class _YoutubeMusicSearchSheetState extends State<YoutubeMusicSearchSheet> {
   void _playTrack(BuildContext context, AudioProvider audio, YoutubeTrack track) async {
     HapticFeedback.mediumImpact();
     final messenger = ScaffoldMessenger.of(context);
-    // Play directly without popping/redirecting!
     await audio.playYoutubeTrack(track);
     if (audio.lastPlayError != null && context.mounted) {
       messenger.showSnackBar(
         SnackBar(
-          content: Text(audio.lastPlayError!),
+          content: Text(audio.lastPlayError!, style: const TextStyle(color: Colors.white)),
           backgroundColor: const Color(0xFF2E1A1A),
           behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         ),
       );
       audio.clearPlayError();
     }
+  }
+
+  void _showTrackOptions(BuildContext context, YoutubeTrack track) {
+    HapticFeedback.lightImpact();
+    final audio = context.read<AudioProvider>();
+    final downloader = context.read<MusicDownloadService>();
+    final isDownloaded = downloader.isDownloaded(track.id);
+    final downloadProg = downloader.getDownloadProgress(track.id);
+    final isDownloading = downloadProg != null && downloadProg < 1.0;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.all(22),
+        decoration: const BoxDecoration(
+          color: Color(0xFF13151B),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        child: SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Track header
+              Row(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: track.thumbnailUrl.isNotEmpty
+                        ? CachedNetworkImage(
+                            imageUrl: track.thumbnailUrl,
+                            width: 48,
+                            height: 48,
+                            fit: BoxFit.cover,
+                          )
+                        : Container(
+                            width: 48,
+                            height: 48,
+                            color: const Color(0xFF20232E),
+                            child: const Icon(Icons.music_note, color: Colors.white24),
+                          ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          track.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '${track.artist}  •  ${track.durationFormatted}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Color(0xFF94A3B8),
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              const Divider(color: Color(0xFF222634), height: 1),
+              const SizedBox(height: 8),
+
+              // Option 1: Add to Playlist
+              ListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+                leading: const Icon(Icons.playlist_add_rounded, color: Color(0xFFE07A5F), size: 24),
+                title: const Text('Add to Playlist', style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600)),
+                subtitle: const Text('Save to your custom playlists', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11)),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _showAddToPlaylistSheet(context, track);
+                },
+              ),
+
+              // Option 2: Queue Next
+              ListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+                leading: const Icon(Icons.queue_music_rounded, color: Color(0xFFE9C46A), size: 24),
+                title: const Text('Play Next in Queue', style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600)),
+                subtitle: const Text('Add to your and partner\'s upcoming queue', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11)),
+                onTap: () {
+                  HapticFeedback.mediumImpact();
+                  audio.queueYoutubeTrack(track);
+                  Navigator.pop(ctx);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Queued "${track.title}" next ✦', style: const TextStyle(color: Colors.white)),
+                      backgroundColor: const Color(0xFF1E212B),
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      duration: const Duration(seconds: 2),
+                    ),
+                  );
+                },
+              ),
+
+              // Option 3: Download Offline
+              ListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+                leading: Icon(
+                  isDownloaded ? Icons.check_circle_rounded : Icons.download_rounded,
+                  color: isDownloaded ? const Color(0xFF81B29A) : const Color(0xFF94A3B8),
+                  size: 24,
+                ),
+                title: Text(
+                  isDownloaded ? 'Downloaded to Sanctuary' : (isDownloading ? 'Downloading...' : 'Download Offline'),
+                  style: TextStyle(
+                    color: isDownloaded ? const Color(0xFF81B29A) : Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                subtitle: Text(
+                  isDownloaded ? 'Available anytime without internet' : 'Save for offline streaming',
+                  style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 11),
+                ),
+                onTap: isDownloaded || isDownloading
+                    ? null
+                    : () async {
+                        Navigator.pop(ctx);
+                        HapticFeedback.lightImpact();
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Downloading "${track.title}"...', style: const TextStyle(color: Colors.white)),
+                            backgroundColor: const Color(0xFF1E212B),
+                            behavior: SnackBarBehavior.floating,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                            duration: const Duration(seconds: 2),
+                          ),
+                        );
+                        final ok = await downloader.downloadTrack(track);
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                ok ? 'Saved "${track.title}" offline! 🎵' : 'Could not download "${track.title}".',
+                                style: const TextStyle(color: Colors.white),
+                              ),
+                              backgroundColor: const Color(0xFF1E212B),
+                              behavior: SnackBarBehavior.floating,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                              duration: const Duration(seconds: 2),
+                            ),
+                          );
+                        }
+                      },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   void _showAddToPlaylistSheet(BuildContext context, YoutubeTrack track) {
@@ -118,14 +289,14 @@ class _YoutubeMusicSearchSheetState extends State<YoutubeMusicSearchSheet> {
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (ctx) => Container(
+        height: MediaQuery.of(context).size.height * 0.72,
         padding: const EdgeInsets.all(22),
         decoration: const BoxDecoration(
-          color: Color(0xFF111E16),
+          color: Color(0xFF13151B),
           borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
         ),
         child: SafeArea(
           child: Column(
-            mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
@@ -138,7 +309,7 @@ class _YoutubeMusicSearchSheetState extends State<YoutubeMusicSearchSheet> {
                         const Text(
                           'Add to Playlist',
                           style: TextStyle(
-                            fontSize: 16,
+                            fontSize: 18,
                             fontWeight: FontWeight.bold,
                             color: Colors.white,
                           ),
@@ -155,70 +326,72 @@ class _YoutubeMusicSearchSheetState extends State<YoutubeMusicSearchSheet> {
                   ),
                   GestureDetector(
                     onTap: () => Navigator.pop(ctx),
-                    child: const Icon(Icons.close_rounded, color: Color(0xFF94A3B8), size: 20),
+                    child: const Icon(Icons.close_rounded, color: Color(0xFF94A3B8), size: 22),
                   ),
                 ],
               ),
               const SizedBox(height: 16),
               if (playlists.isEmpty)
                 const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 20),
+                  padding: EdgeInsets.symmetric(vertical: 24),
                   child: Center(
                     child: Text(
-                      'No playlists yet. Create one in Music Sanctuary!',
+                      'No playlists yet. Go to Playlists tab to create one!',
                       style: TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
                     ),
                   ),
                 )
               else
-                ListView.separated(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: playlists.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 8),
-                  itemBuilder: (_, i) {
-                    final pl = playlists[i];
-                    final contains = pl.songIds.contains(track.id);
-                    return ListTile(
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                      tileColor: const Color(0xFF07100B),
-                      leading: Container(
-                        width: 38,
-                        height: 38,
-                        decoration: BoxDecoration(
-                          color: pl.coverColor.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Center(
-                          child: Icon(Icons.music_note_rounded, color: pl.coverColor, size: 20),
-                        ),
-                      ),
-                      title: Text(
-                        pl.title,
-                        style: const TextStyle(color: Colors.white, fontSize: 13.5, fontWeight: FontWeight.w600),
-                      ),
-                      subtitle: Text(
-                        '${pl.songIds.length} songs',
-                        style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 11),
-                      ),
-                      trailing: contains
-                          ? const Icon(Icons.check_circle_rounded, color: AppColors.sage, size: 22)
-                          : const Icon(Icons.add_circle_outline_rounded, color: Color(0xFFA3E635), size: 22),
-                      onTap: () {
-                        HapticFeedback.mediumImpact();
-                        audio.addYoutubeTrackToPlaylist(pl.id, track);
-                        Navigator.pop(ctx);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Added "${track.title}" to ${pl.title} ✨'),
-                            behavior: SnackBarBehavior.floating,
-                            duration: const Duration(seconds: 2),
+                Expanded(
+                  child: ListView.separated(
+                    itemCount: playlists.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 8),
+                    itemBuilder: (_, i) {
+                      final pl = playlists[i];
+                      final contains = pl.songIds.contains(track.id);
+                      return ListTile(
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        tileColor: const Color(0xFF1B1D26),
+                        leading: Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: pl.coverColor.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(10),
                           ),
-                        );
-                      },
-                    );
-                  },
+                          child: Center(
+                            child: Icon(Icons.music_note_rounded, color: pl.coverColor, size: 20),
+                          ),
+                        ),
+                        title: Text(
+                          pl.title,
+                          style: const TextStyle(color: Colors.white, fontSize: 13.5, fontWeight: FontWeight.bold),
+                        ),
+                        subtitle: Text(
+                          '${pl.songIds.length} songs',
+                          style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 11),
+                        ),
+                        trailing: contains
+                            ? const Icon(Icons.check_circle_rounded, color: Color(0xFF81B29A), size: 22)
+                            : const Icon(Icons.add_circle_outline_rounded, color: Color(0xFFE07A5F), size: 22),
+                        onTap: () {
+                          HapticFeedback.mediumImpact();
+                          audio.addYoutubeTrackToPlaylist(pl.id, track);
+                          Navigator.pop(ctx);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Added "${track.title}" to ${pl.title} ✦', style: const TextStyle(color: Colors.white)),
+                              backgroundColor: const Color(0xFF1E212B),
+                              behavior: SnackBarBehavior.floating,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                              duration: const Duration(seconds: 2),
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  ),
                 ),
             ],
           ),
@@ -230,12 +403,11 @@ class _YoutubeMusicSearchSheetState extends State<YoutubeMusicSearchSheet> {
   @override
   Widget build(BuildContext context) {
     final audio = context.watch<AudioProvider>();
-    final downloader = context.watch<MusicDownloadService>();
     final currentSong = audio.currentSong;
     final isPlaying = audio.isSongPlaying;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0C140F),
+      backgroundColor: const Color(0xFF0F1116),
       body: SafeArea(
         child: Column(
           children: [
@@ -253,7 +425,7 @@ class _YoutubeMusicSearchSheetState extends State<YoutubeMusicSearchSheet> {
                     width: 34,
                     height: 34,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFD97706).withOpacity(0.18),
+                      color: const Color(0xFFE07A5F).withOpacity(0.18),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     alignment: Alignment.center,
@@ -300,7 +472,7 @@ class _YoutubeMusicSearchSheetState extends State<YoutubeMusicSearchSheet> {
                 decoration: InputDecoration(
                   hintText: 'Search songs, artists, or paste link...',
                   hintStyle: const TextStyle(color: Color(0xFF64748B), fontSize: 13.5),
-                  prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFFA3E635), size: 22),
+                  prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFFE07A5F), size: 22),
                   suffixIcon: _searchController.text.isNotEmpty
                       ? IconButton(
                           icon: const Icon(Icons.clear_rounded, color: Colors.white54, size: 18),
@@ -311,7 +483,7 @@ class _YoutubeMusicSearchSheetState extends State<YoutubeMusicSearchSheet> {
                         )
                       : null,
                   filled: true,
-                  fillColor: const Color(0xFF142018),
+                  fillColor: const Color(0xFF171922),
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(16),
@@ -335,20 +507,21 @@ class _YoutubeMusicSearchSheetState extends State<YoutubeMusicSearchSheet> {
                   return GestureDetector(
                     onTap: () {
                       HapticFeedback.selectionClick();
-                      _searchController.text = vibe;
-                      _performSearch(vibe);
+                      final query = vibe.startsWith('✨') ? 'Top Romantic Songs' : vibe;
+                      _searchController.text = query;
+                      _performSearch(query);
                     },
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF16251B),
+                        color: const Color(0xFF1C1F2A),
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: const Color(0xFF243B2C)),
+                        border: Border.all(color: const Color(0xFF2B2F40)),
                       ),
                       alignment: Alignment.center,
                       child: Text(
                         vibe,
-                        style: const TextStyle(fontSize: 11.5, color: Color(0xFFCBD5E1)),
+                        style: const TextStyle(fontSize: 12, color: Color(0xFFEDEAE5), fontWeight: FontWeight.w500),
                       ),
                     ),
                   );
@@ -364,7 +537,7 @@ class _YoutubeMusicSearchSheetState extends State<YoutubeMusicSearchSheet> {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          CircularProgressIndicator(strokeWidth: 2.5, color: Color(0xFFA3E635)),
+                          CircularProgressIndicator(strokeWidth: 2.5, color: Color(0xFFE07A5F)),
                           SizedBox(height: 12),
                           Text(
                             'Searching YouTube Music...',
@@ -391,14 +564,11 @@ class _YoutubeMusicSearchSheetState extends State<YoutubeMusicSearchSheet> {
                               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                               itemCount: _searchResults.length,
                               separatorBuilder: (_, __) => const Divider(
-                                color: Color(0xFF18281E),
+                                color: Color(0xFF1C1F2B),
                                 height: 1,
                               ),
                               itemBuilder: (context, idx) {
                                 final track = _searchResults[idx];
-                                final isDownloaded = downloader.isDownloaded(track.id);
-                                final downloadProg = downloader.getDownloadProgress(track.id);
-                                final isDownloading = downloadProg != null && downloadProg < 1.0;
                                 final isThisPlaying = (currentSong.id == track.id || currentSong.youtubeId == track.id) && isPlaying;
                                 final isThisBuffering = audio.isSongBuffering && audio.bufferingSongTitle == track.title;
 
@@ -409,22 +579,22 @@ class _YoutubeMusicSearchSheetState extends State<YoutubeMusicSearchSheet> {
                                     child: track.thumbnailUrl.isNotEmpty
                                         ? CachedNetworkImage(
                                             imageUrl: track.thumbnailUrl,
-                                            width: 50,
-                                            height: 50,
+                                            width: 48,
+                                            height: 48,
                                             fit: BoxFit.cover,
                                             placeholder: (_, __) => Container(
-                                              color: const Color(0xFF1E2D22),
+                                              color: const Color(0xFF1E212D),
                                               child: const Icon(Icons.music_note, color: Colors.white24),
                                             ),
                                             errorWidget: (_, __, ___) => Container(
-                                              color: const Color(0xFF1E2D22),
+                                              color: const Color(0xFF1E212D),
                                               child: const Icon(Icons.music_note, color: Colors.white24),
                                             ),
                                           )
                                         : Container(
-                                            width: 50,
-                                            height: 50,
-                                            color: const Color(0xFF1E2D22),
+                                            width: 48,
+                                            height: 48,
+                                            color: const Color(0xFF1E212D),
                                             child: const Icon(Icons.music_note, color: Colors.white24),
                                           ),
                                   ),
@@ -433,8 +603,8 @@ class _YoutubeMusicSearchSheetState extends State<YoutubeMusicSearchSheet> {
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                     style: TextStyle(
-                                      color: isThisPlaying ? const Color(0xFFA3E635) : Colors.white,
-                                      fontSize: 13.5,
+                                      color: isThisPlaying ? const Color(0xFFE07A5F) : Colors.white,
+                                      fontSize: 14,
                                       fontWeight: FontWeight.w600,
                                     ),
                                   ),
@@ -444,111 +614,22 @@ class _YoutubeMusicSearchSheetState extends State<YoutubeMusicSearchSheet> {
                                     overflow: TextOverflow.ellipsis,
                                     style: const TextStyle(
                                       color: Color(0xFF94A3B8),
-                                      fontSize: 11.5,
+                                      fontSize: 12,
                                     ),
                                   ),
                                   trailing: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      // Add to Playlist Button
-                                      IconButton(
-                                        icon: const Icon(
-                                          Icons.playlist_add_rounded,
-                                          color: Color(0xFF94A3B8),
-                                          size: 22,
-                                        ),
-                                        tooltip: 'Add to Playlist',
-                                        onPressed: () => _showAddToPlaylistSheet(context, track),
-                                      ),
-
-                                      // Add to Queue Button
-                                      IconButton(
-                                        icon: const Icon(
-                                          Icons.queue_music_rounded,
-                                          color: Color(0xFF94A3B8),
-                                          size: 20,
-                                        ),
-                                        tooltip: 'Queue Next',
-                                        onPressed: () {
-                                          HapticFeedback.lightImpact();
-                                          audio.queueYoutubeTrack(track);
-                                          ScaffoldMessenger.of(context).showSnackBar(
-                                            SnackBar(
-                                              content: Text('Queued "${track.title}" next ✦'),
-                                              behavior: SnackBarBehavior.floating,
-                                              duration: const Duration(seconds: 2),
-                                            ),
-                                          );
-                                        },
-                                      ),
-
-                                      // Download Button / Status
-                                      if (isDownloaded)
-                                        const Padding(
-                                          padding: EdgeInsets.all(8.0),
-                                          child: Icon(
-                                            Icons.check_circle_rounded,
-                                            color: AppColors.sage,
-                                            size: 20,
-                                          ),
-                                        )
-                                      else if (isDownloading)
-                                        Padding(
-                                          padding: const EdgeInsets.all(10.0),
-                                          child: SizedBox(
-                                            width: 18,
-                                            height: 18,
-                                            child: CircularProgressIndicator(
-                                              value: downloadProg,
-                                              strokeWidth: 2,
-                                              color: const Color(0xFFA3E635),
-                                            ),
-                                          ),
-                                        )
-                                      else
-                                        IconButton(
-                                          icon: const Icon(
-                                            Icons.download_rounded,
-                                            color: Color(0xFF94A3B8),
-                                            size: 20,
-                                          ),
-                                          tooltip: 'Download Offline',
-                                          onPressed: () async {
-                                            HapticFeedback.lightImpact();
-                                            ScaffoldMessenger.of(context).showSnackBar(
-                                              SnackBar(
-                                                content: Text('Downloading "${track.title}"...'),
-                                                duration: const Duration(seconds: 2),
-                                                behavior: SnackBarBehavior.floating,
-                                              ),
-                                            );
-                                            final ok = await downloader.downloadTrack(track);
-                                            if (context.mounted) {
-                                              ScaffoldMessenger.of(context).showSnackBar(
-                                                SnackBar(
-                                                  content: Text(
-                                                    ok
-                                                        ? 'Saved "${track.title}" offline! 🎵'
-                                                        : 'Could not download "${track.title}". Please try another track.',
-                                                  ),
-                                                  duration: const Duration(seconds: 2),
-                                                  behavior: SnackBarBehavior.floating,
-                                                ),
-                                              );
-                                            }
-                                          },
-                                        ),
-
                                       // Play / Pause Button
                                       if (isThisBuffering)
                                         const Padding(
                                           padding: EdgeInsets.all(8.0),
                                           child: SizedBox(
-                                            width: 24,
-                                            height: 24,
+                                            width: 22,
+                                            height: 22,
                                             child: CircularProgressIndicator(
                                               strokeWidth: 2,
-                                              color: Color(0xFFA3E635),
+                                              color: Color(0xFFE07A5F),
                                             ),
                                           ),
                                         )
@@ -556,8 +637,8 @@ class _YoutubeMusicSearchSheetState extends State<YoutubeMusicSearchSheet> {
                                         IconButton(
                                           icon: Icon(
                                             isThisPlaying ? Icons.pause_circle_filled_rounded : Icons.play_circle_fill_rounded,
-                                            color: const Color(0xFFA3E635),
-                                            size: 32,
+                                            color: const Color(0xFFE07A5F),
+                                            size: 34,
                                           ),
                                           onPressed: () {
                                             if (isThisPlaying) {
@@ -567,6 +648,17 @@ class _YoutubeMusicSearchSheetState extends State<YoutubeMusicSearchSheet> {
                                             }
                                           },
                                         ),
+
+                                      // 3-Dot More Menu
+                                      IconButton(
+                                        icon: const Icon(
+                                          Icons.more_vert_rounded,
+                                          color: Colors.white70,
+                                          size: 22,
+                                        ),
+                                        tooltip: 'More Options',
+                                        onPressed: () => _showTrackOptions(context, track),
+                                      ),
                                     ],
                                   ),
                                   onTap: () => _playTrack(context, audio, track),
@@ -590,9 +682,9 @@ class _YoutubeMusicSearchSheetState extends State<YoutubeMusicSearchSheet> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                   decoration: const BoxDecoration(
-                    color: Color(0xFF142018),
+                    color: Color(0xFF161922),
                     border: Border(
-                      top: BorderSide(color: Color(0xFF1E2F23)),
+                      top: BorderSide(color: Color(0xFF222634)),
                     ),
                   ),
                   child: Row(
@@ -643,7 +735,7 @@ class _YoutubeMusicSearchSheetState extends State<YoutubeMusicSearchSheet> {
                       IconButton(
                         icon: Icon(
                           isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
-                          color: const Color(0xFFA3E635),
+                          color: const Color(0xFFE07A5F),
                           size: 26,
                         ),
                         onPressed: () {

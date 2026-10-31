@@ -12,7 +12,7 @@ class MusicInteractiveScrubber extends StatefulWidget {
     required this.position,
     required this.duration,
     required this.onSeek,
-    this.activeColor = const Color(0xFFA3E635), // Echo Music signature lime
+    this.activeColor = const Color(0xFFE07A5F), // Pages of Us warm terracotta
     this.inactiveColor = const Color(0xFF1E2F23),
   });
 

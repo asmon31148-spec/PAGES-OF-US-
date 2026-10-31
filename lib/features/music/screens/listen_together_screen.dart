@@ -143,13 +143,13 @@ class _ListenTogetherScreenState extends State<ListenTogetherScreen> {
                             child: const Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(Icons.search_rounded, size: 14, color: Color(0xFFA3E635)),
+                                Icon(Icons.search_rounded, size: 14, color: Color(0xFFE07A5F)),
                                 SizedBox(width: 4),
                                 Text(
                                   'Find Song',
                                   style: TextStyle(
                                     fontSize: 11,
-                                    color: Color(0xFFA3E635),
+                                    color: Color(0xFFE07A5F),
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
@@ -219,7 +219,7 @@ class _ListenTogetherScreenState extends State<ListenTogetherScreen> {
                                       height: 8,
                                       decoration: const BoxDecoration(
                                         shape: BoxShape.circle,
-                                        color: Color(0xFFA3E635),
+                                        color: Color(0xFFE07A5F),
                                       ),
                                     ),
                                     const SizedBox(width: 6),
@@ -348,7 +348,7 @@ class _ListenTogetherScreenState extends State<ListenTogetherScreen> {
                                             overflow: TextOverflow.ellipsis,
                                             style: TextStyle(
                                               fontSize: 11.5,
-                                              color: isPlaying ? const Color(0xFFA3E635) : const Color(0xFF94A3B8),
+                                              color: isPlaying ? const Color(0xFFE07A5F) : const Color(0xFF94A3B8),
                                               fontWeight: isPlaying ? FontWeight.w600 : FontWeight.normal,
                                             ),
                                           ),
@@ -394,7 +394,7 @@ class _ListenTogetherScreenState extends State<ListenTogetherScreen> {
                                         height: 52,
                                         decoration: const BoxDecoration(
                                           shape: BoxShape.circle,
-                                          color: Color(0xFFA3E635),
+                                          color: Color(0xFFE07A5F),
                                         ),
                                         child: Center(
                                           child: audioProvider.isSongBuffering
@@ -403,12 +403,12 @@ class _ListenTogetherScreenState extends State<ListenTogetherScreen> {
                                                   height: 22,
                                                   child: CircularProgressIndicator(
                                                     strokeWidth: 2.2,
-                                                    color: Colors.black,
+                                                    color: Colors.white,
                                                   ),
                                                 )
                                               : Icon(
                                                   isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
-                                                  color: Colors.black,
+                                                  color: Colors.white,
                                                   size: 28,
                                                 ),
                                         ),
@@ -459,7 +459,7 @@ class _ListenTogetherScreenState extends State<ListenTogetherScreen> {
                                       padding: const EdgeInsets.symmetric(vertical: 10),
                                       decoration: BoxDecoration(
                                         color: audioProvider.listenController == 'both'
-                                            ? const Color(0xFFA3E635)
+                                            ? const Color(0xFFE07A5F)
                                             : Colors.transparent,
                                         borderRadius: BorderRadius.circular(20),
                                       ),
@@ -470,7 +470,7 @@ class _ListenTogetherScreenState extends State<ListenTogetherScreen> {
                                             fontSize: 12,
                                             fontWeight: FontWeight.bold,
                                             color: audioProvider.listenController == 'both'
-                                                ? Colors.black
+                                                ? Colors.white
                                                 : const Color(0xFF94A3B8),
                                           ),
                                         ),
@@ -489,7 +489,7 @@ class _ListenTogetherScreenState extends State<ListenTogetherScreen> {
                                       padding: const EdgeInsets.symmetric(vertical: 10),
                                       decoration: BoxDecoration(
                                         color: audioProvider.listenController == 'me'
-                                            ? const Color(0xFFA3E635)
+                                            ? const Color(0xFFE07A5F)
                                             : Colors.transparent,
                                         borderRadius: BorderRadius.circular(20),
                                       ),
@@ -500,7 +500,7 @@ class _ListenTogetherScreenState extends State<ListenTogetherScreen> {
                                             fontSize: 12,
                                             fontWeight: FontWeight.bold,
                                             color: audioProvider.listenController == 'me'
-                                                ? Colors.black
+                                                ? Colors.white
                                                 : const Color(0xFF94A3B8),
                                           ),
                                         ),
@@ -540,20 +540,20 @@ class _ListenTogetherScreenState extends State<ListenTogetherScreen> {
                                     child: Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                       decoration: BoxDecoration(
-                                        color: const Color(0xFF1E2F23),
+                                        color: const Color(0xFF261E1B),
                                         borderRadius: BorderRadius.circular(12),
-                                        border: Border.all(color: const Color(0xFFA3E635).withOpacity(0.3)),
+                                        border: Border.all(color: const Color(0xFFE07A5F).withOpacity(0.3)),
                                       ),
                                       child: const Row(
                                         children: [
-                                          Icon(Icons.add_rounded, size: 14, color: Color(0xFFA3E635)),
+                                          Icon(Icons.add_rounded, size: 14, color: Color(0xFFE07A5F)),
                                           SizedBox(width: 4),
                                           Text(
                                             'Add to Queue',
                                             style: TextStyle(
                                               fontSize: 11,
                                               fontWeight: FontWeight.bold,
-                                              color: Color(0xFFA3E635),
+                                              color: Color(0xFFE07A5F),
                                             ),
                                           ),
                                         ],
@@ -595,8 +595,8 @@ class _ListenTogetherScreenState extends State<ListenTogetherScreen> {
                                     icon: const Icon(Icons.add_rounded, size: 16),
                                     label: const Text('Add Songs'),
                                     style: ElevatedButton.styleFrom(
-                                      backgroundColor: const Color(0xFFA3E635),
-                                      foregroundColor: Colors.black,
+                                      backgroundColor: const Color(0xFFE07A5F),
+                                      foregroundColor: Colors.white,
                                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                                     ),
@@ -658,7 +658,7 @@ class _ListenTogetherScreenState extends State<ListenTogetherScreen> {
                                     ),
                                   ),
                                   trailing: IconButton(
-                                    icon: const Icon(Icons.play_circle_outline_rounded, color: Color(0xFFA3E635), size: 26),
+                                    icon: const Icon(Icons.play_circle_outline_rounded, color: Color(0xFFE07A5F), size: 26),
                                     onPressed: () {
                                       HapticFeedback.mediumImpact();
                                       audioProvider.selectSong(originalIndex);

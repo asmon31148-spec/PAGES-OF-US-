@@ -297,13 +297,13 @@ class _VaultDetailScreenState extends State<VaultDetailScreen> {
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
                                 colors: [
-                                  const Color(0xFFA3E635).withOpacity(0.18),
-                                  const Color(0xFFA3E635).withOpacity(0.06),
+                                  const Color(0xFFE07A5F).withOpacity(0.18),
+                                  const Color(0xFFE07A5F).withOpacity(0.06),
                                 ],
                               ),
                               borderRadius: BorderRadius.circular(16),
                               border: Border.all(
-                                color: const Color(0xFFA3E635).withOpacity(0.5),
+                                color: const Color(0xFFE07A5F).withOpacity(0.5),
                                 width: 1.2,
                               ),
                             ),
@@ -312,12 +312,12 @@ class _VaultDetailScreenState extends State<VaultDetailScreen> {
                                 Container(
                                   padding: const EdgeInsets.all(10),
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFFA3E635).withOpacity(0.2),
+                                    color: const Color(0xFFE07A5F).withOpacity(0.2),
                                     shape: BoxShape.circle,
                                   ),
                                   child: const Icon(
                                     Icons.download_done_rounded,
-                                    color: Color(0xFFA3E635),
+                                    color: Color(0xFFE07A5F),
                                     size: 22,
                                   ),
                                 ),
@@ -345,7 +345,7 @@ class _VaultDetailScreenState extends State<VaultDetailScreen> {
                                     ],
                                   ),
                                 ),
-                                const Icon(Icons.chevron_right_rounded, color: Color(0xFFA3E635), size: 20),
+                                const Icon(Icons.chevron_right_rounded, color: Color(0xFFE07A5F), size: 20),
                               ],
                             ),
                           ),

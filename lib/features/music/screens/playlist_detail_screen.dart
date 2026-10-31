@@ -137,17 +137,17 @@ class PlaylistDetailScreen extends StatelessWidget {
                                     if (idx != -1) audioProvider.selectSong(idx);
                                   }
                                 },
-                                icon: const Icon(Icons.play_arrow_rounded, color: Colors.black, size: 22),
+                                icon: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 22),
                                 label: const Text(
                                   'Play',
                                   style: TextStyle(
-                                    color: Colors.black,
+                                    color: Colors.white,
                                     fontWeight: FontWeight.bold,
                                     fontSize: 14,
                                   ),
                                 ),
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFFA3E635),
+                                  backgroundColor: const Color(0xFFE07A5F),
                                   padding: const EdgeInsets.symmetric(vertical: 14),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(28),
@@ -360,13 +360,13 @@ class PlaylistDetailScreen extends StatelessWidget {
                   Navigator.pop(ctx);
                   YoutubeMusicSearchSheet.show(context);
                 },
-                icon: const Icon(Icons.search_rounded, size: 18, color: Colors.black),
+                icon: const Icon(Icons.search_rounded, size: 18, color: Colors.white),
                 label: const Text(
                   'Search & Add from YouTube Music',
-                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.black),
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.white),
                 ),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFA3E635),
+                  backgroundColor: const Color(0xFFE07A5F),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   minimumSize: const Size(double.infinity, 46),
                 ),
@@ -410,14 +410,20 @@ class PlaylistDetailScreen extends StatelessWidget {
                             ),
                             title: Text(song.title, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)),
                             subtitle: Text(song.artist, style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 11)),
-                            trailing: const Icon(Icons.add_circle_outline_rounded, color: Color(0xFFA3E635), size: 22),
+                            trailing: const Icon(Icons.add_circle_outline_rounded, color: Color(0xFFE07A5F), size: 22),
                             onTap: () {
                               provider.addSongToPlaylist(playlist.id, song.id);
                               Navigator.pop(ctx);
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
-                                  content: Text('Added "${song.title}" to ${playlist.title} ✦'),
-                                  backgroundColor: const Color(0xFF15261C),
+                                  content: Text(
+                                    'Added "${song.title}" to ${playlist.title} ✦',
+                                    style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
+                                  ),
+                                  backgroundColor: const Color(0xFF1E212B),
+                                  behavior: SnackBarBehavior.floating,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                  duration: const Duration(seconds: 2),
                                 ),
                               );
                             },

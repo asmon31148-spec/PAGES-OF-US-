@@ -20,7 +20,7 @@ class BlindPromptStudioModal extends StatefulWidget {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      useSafeArea: false,
+      useSafeArea: true,
       backgroundColor: Colors.transparent,
       builder: (_) => BlindPromptStudioModal(initialTab: initialTab),
     );
@@ -162,16 +162,15 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
     final partner = auth.partner;
     final partnerNickname = partner?.nickname ?? 'Partner';
 
+    final topPadding = MediaQuery.of(context).padding.top;
     return Container(
       height: MediaQuery.of(context).size.height,
+      padding: EdgeInsets.only(top: topPadding > 0 ? topPadding + 8 : 28),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF16151E) : Colors.white,
       ),
-      child: SafeArea(
-        bottom: false,
-        child: Column(
-          children: [
-            const SizedBox(height: 8),
+      child: Column(
+        children: [
 
           // Header
           Padding(
@@ -296,9 +295,8 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
           ),
         ],
       ),
-    ),
-  );
-}
+    );
+  }
 
   // -------------------------------------------------------------
   // TAB 1: AI GENERATOR
