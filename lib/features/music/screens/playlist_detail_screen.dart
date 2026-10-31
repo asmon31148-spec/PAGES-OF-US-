@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../../providers/audio_provider.dart';
 import '../models/music_models.dart';
+import '../widgets/youtube_music_search_sheet.dart';
 
 class PlaylistDetailScreen extends StatelessWidget {
   final PlaylistItem playlist;
@@ -327,7 +328,9 @@ class PlaylistDetailScreen extends StatelessWidget {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
+      isScrollControlled: true,
       builder: (ctx) => Container(
+        height: MediaQuery.of(context).size.height * 0.82,
         padding: const EdgeInsets.all(22),
         decoration: const BoxDecoration(
           color: Color(0xFF111E16),
@@ -335,7 +338,6 @@ class PlaylistDetailScreen extends StatelessWidget {
         ),
         child: SafeArea(
           child: Column(
-            mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
@@ -343,64 +345,86 @@ class PlaylistDetailScreen extends StatelessWidget {
                 children: [
                   const Text(
                     'Add to this Playlist',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
                   ),
                   GestureDetector(
                     onTap: () => Navigator.pop(ctx),
-                    child: const Icon(Icons.close_rounded, color: Color(0xFF94A3B8), size: 20),
+                    child: const Icon(Icons.close_rounded, color: Color(0xFF94A3B8), size: 22),
                   ),
                 ],
               ),
-              const SizedBox(height: 14),
-              if (availableSongs.isEmpty)
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 24),
-                  child: Center(
-                    child: Text(
-                      'All sanctuary songs are already in this playlist ✦',
-                      style: TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
-                    ),
-                  ),
-                )
-              else
-                ListView.separated(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: availableSongs.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 8),
-                  itemBuilder: (_, i) {
-                    final song = availableSongs[i];
-                    return ListTile(
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                      tileColor: const Color(0xFF07100B),
-                      leading: Container(
-                        width: 38,
-                        height: 38,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(10),
-                          color: song.coverColor,
-                        ),
-                        child: const Center(
-                          child: Icon(Icons.music_note_rounded, color: Colors.black87, size: 18),
-                        ),
-                      ),
-                      title: Text(song.title, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)),
-                      subtitle: Text(song.artist, style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 11)),
-                      trailing: const Icon(Icons.add_circle_outline_rounded, color: Color(0xFFA3E635), size: 22),
-                      onTap: () {
-                        provider.addSongToPlaylist(playlist.id, song.id);
-                        Navigator.pop(ctx);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Added "${song.title}" to ${playlist.title} ✦'),
-                            backgroundColor: const Color(0xFF15261C),
-                          ),
-                        );
-                      },
-                    );
-                  },
+              const SizedBox(height: 16),
+              // Search YouTube Music to Add button
+              ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  YoutubeMusicSearchSheet.show(context);
+                },
+                icon: const Icon(Icons.search_rounded, size: 18, color: Colors.black),
+                label: const Text(
+                  'Search & Add from YouTube Music',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.black),
                 ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFA3E635),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  minimumSize: const Size(double.infinity, 46),
+                ),
+              ),
+              const SizedBox(height: 18),
+              const Text(
+                'FROM YOUR LIBRARY',
+                style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 0.8, color: Color(0xFF94A3B8)),
+              ),
+              const SizedBox(height: 8),
+              Expanded(
+                child: availableSongs.isEmpty
+                    ? const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 24),
+                        child: Center(
+                          child: Text(
+                            'All library songs are already in this playlist ✦',
+                            style: TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
+                          ),
+                        ),
+                      )
+                    : ListView.separated(
+                        itemCount: availableSongs.length,
+                        separatorBuilder: (_, __) => const SizedBox(height: 8),
+                        itemBuilder: (_, i) {
+                          final song = availableSongs[i];
+                          return ListTile(
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                            tileColor: const Color(0xFF07100B),
+                            leading: Container(
+                              width: 38,
+                              height: 38,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(10),
+                                color: song.coverColor,
+                              ),
+                              child: const Center(
+                                child: Icon(Icons.music_note_rounded, color: Colors.black87, size: 18),
+                              ),
+                            ),
+                            title: Text(song.title, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)),
+                            subtitle: Text(song.artist, style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 11)),
+                            trailing: const Icon(Icons.add_circle_outline_rounded, color: Color(0xFFA3E635), size: 22),
+                            onTap: () {
+                              provider.addSongToPlaylist(playlist.id, song.id);
+                              Navigator.pop(ctx);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Added "${song.title}" to ${playlist.title} ✦'),
+                                  backgroundColor: const Color(0xFF15261C),
+                                ),
+                              );
+                            },
+                          );
+                        },
+                      ),
+              ),
             ],
           ),
         ),

@@ -5,9 +5,9 @@
     android:layout_height="match_parent"
     android:background="@drawable/widget_bg"
     android:orientation="vertical"
-    android:padding="16dp">
+    android:padding="12dp">
 
-    <!-- Top Row: App wordmark and Days Together Counter -->
+    <!-- Top Row: Title and Counter -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -20,8 +20,8 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:text="PAGES OF US"
-            android:textColor="#8A8B83"
-            android:textSize="10.5sp"
+            android:textColor="#A09DA8"
+            android:textSize="10sp"
             android:textStyle="bold" />
 
         <TextView
@@ -37,38 +37,202 @@
     <View
         android:layout_width="match_parent"
         android:layout_height="1dp"
-        android:layout_marginTop="8dp"
-        android:layout_marginBottom="10dp"
-        android:background="#EAE7E0" />
+        android:layout_marginTop="6dp"
+        android:layout_marginBottom="6dp"
+        android:background="#262434" />
 
-    <!-- Center Content: Clean Thought / Whisper -->
-    <LinearLayout
+    <!-- Center Interactive Container (Switches between 3 Views) -->
+    <FrameLayout
+        android:id="@+id/widget_center_container"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1"
-        android:gravity="center"
-        android:orientation="vertical">
+        android:layout_weight="1">
 
-        <TextView
-            android:id="@+id/widget_partner_thought"
+        <!-- VIEW 1: Daily Care List -->
+        <LinearLayout
+            android:id="@+id/widget_view_care"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:ellipsize="end"
-            android:gravity="center"
-            android:maxLines="3"
-            android:text="“Thinking of you...”"
-            android:textColor="#2D312E"
-            android:textSize="13.5sp"
-            android:textStyle="bold" />
-    </LinearLayout>
+            android:layout_height="match_parent"
+            android:gravity="center_vertical"
+            android:orientation="vertical"
+            android:visibility="gone">
 
-    <!-- Bottom Indicator -->
-    <TextView
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="🌿 DAILY CARE"
+                android:textColor="#A3E635"
+                android:textSize="10sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/widget_care_line1"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:text="💧 Morning Hydration"
+                android:textColor="#EDEAE5"
+                android:textSize="11sp" />
+
+            <TextView
+                android:id="@+id/widget_care_line2"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:text="🥗 Mindful Lunch &amp; Breather"
+                android:textColor="#EDEAE5"
+                android:textSize="11sp" />
+
+            <TextView
+                android:id="@+id/widget_care_line3"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:text="🌙 Sweet Sleep &amp; Whispers"
+                android:textColor="#EDEAE5"
+                android:textSize="11sp" />
+        </LinearLayout>
+
+        <!-- VIEW 2: Pinned Note / Sanctuary Whisper (Default) -->
+        <LinearLayout
+            android:id="@+id/widget_view_note"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:visibility="visible">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:text="💌 PINNED WHISPER"
+                android:textColor="#F4A261"
+                android:textSize="10sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/widget_partner_thought"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:ellipsize="end"
+                android:gravity="center"
+                android:maxLines="3"
+                android:text="“Thinking of you...”"
+                android:textColor="#FFFFFF"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/widget_note_author"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:gravity="center"
+                android:text="— from your partner"
+                android:textColor="#9E9AA7"
+                android:textSize="10sp" />
+        </LinearLayout>
+
+        <!-- VIEW 3: Miss You / Partner Touches -->
+        <LinearLayout
+            android:id="@+id/widget_view_miss_you"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:text="❤️ LIVE TETHER"
+                android:textColor="#E07A5F"
+                android:textSize="10sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/widget_miss_you_count"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:gravity="center"
+                android:text="14 Touches Today"
+                android:textColor="#FFFFFF"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:gravity="center"
+                android:text="Connected in sanctuary ✦"
+                android:textColor="#9E9AA7"
+                android:textSize="10sp" />
+        </LinearLayout>
+    </FrameLayout>
+
+    <!-- Bottom Interactive Switcher Tabs: 3 Slidable/Tappable Views -->
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="6dp"
-        android:gravity="center_horizontal"
-        android:text="Our Private Sanctuary ✦"
-        android:textColor="#A0A29D"
-        android:textSize="9.5sp" />
+        android:gravity="center"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/widget_btn_care"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="3dp"
+            android:layout_weight="1"
+            android:background="@drawable/widget_tab_bg"
+            android:gravity="center"
+            android:paddingTop="4dp"
+            android:paddingBottom="4dp"
+            android:text="🌿 Care"
+            android:textColor="#EDEAE5"
+            android:textSize="10sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/widget_btn_note"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="2dp"
+            android:layout_marginEnd="2dp"
+            android:layout_weight="1"
+            android:background="@drawable/widget_tab_bg"
+            android:gravity="center"
+            android:paddingTop="4dp"
+            android:paddingBottom="4dp"
+            android:text="💌 Note"
+            android:textColor="#EDEAE5"
+            android:textSize="10sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/widget_btn_miss"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="3dp"
+            android:layout_weight="1"
+            android:background="@drawable/widget_tab_bg"
+            android:gravity="center"
+            android:paddingTop="4dp"
+            android:paddingBottom="4dp"
+            android:text="❤️ Miss"
+            android:textColor="#EDEAE5"
+            android:textSize="10sp"
+            android:textStyle="bold" />
+    </LinearLayout>
 </LinearLayout>

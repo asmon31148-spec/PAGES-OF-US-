@@ -265,7 +265,7 @@ class NowPlayingScreen extends StatelessWidget {
                             title: currentSong.title,
                             artist: currentSong.artist,
                             durationSeconds: currentSong.durationSeconds,
-                            thumbnailUrl: currentSong.thumbnailUrl,
+                            thumbnailUrl: currentSong.thumbnailUrl ?? '',
                             audioStreamUrl: currentSong.audioUrl,
                           );
                           ScaffoldMessenger.of(context).showSnackBar(
