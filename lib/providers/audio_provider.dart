@@ -371,7 +371,9 @@ class AudioProvider extends ChangeNotifier {
         audioUrl = localPath;
         isLocal = true;
       } else {
-        final streamUrl = await YoutubeMusicService.instance.getAudioStreamUrl(track.id);
+        final streamUrl = (track.audioStreamUrl != null && track.audioStreamUrl!.isNotEmpty)
+            ? track.audioStreamUrl
+            : await YoutubeMusicService.instance.getAudioStreamUrl(track.id);
         if (streamUrl == null || streamUrl.isEmpty) {
           debugPrint('[AudioProvider] Could not resolve audio stream for ${track.id}');
           _isSongBuffering = false;

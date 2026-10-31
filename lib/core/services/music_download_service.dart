@@ -86,25 +86,37 @@ class MusicDownloadService extends ChangeNotifier {
       tempFile = File('${musicDir.path}/${track.id}.tmp');
       final finalFile = File('${musicDir.path}/${track.id}.m4a');
 
-      // 1. Fetch audio stream from YouTube with multi-client fallback
-      Stream<List<int>>? audioStream =
-          await YoutubeMusicService.instance.getDownloadAudioStream(track.id);
+      // 1. Resolve audio stream URL with priority to direct high-bitrate stream
+      String? streamUrl = track.audioStreamUrl;
+      if (streamUrl == null || streamUrl.isEmpty) {
+        streamUrl = await YoutubeMusicService.instance.getAudioStreamUrl(track.id);
+      }
 
-      if (audioStream == null) {
-        // Fallback: try resolving stream URL directly
-        final streamUrl = await YoutubeMusicService.instance.getAudioStreamUrl(track.id);
-        if (streamUrl != null && streamUrl.isNotEmpty) {
+      Stream<List<int>>? audioStream;
+      int actualContentLength = -1;
+
+      if (streamUrl != null && streamUrl.isNotEmpty) {
+        try {
           final client = HttpClient();
+          client.connectionTimeout = const Duration(seconds: 15);
           final request = await client.getUrl(Uri.parse(streamUrl));
-          // Use Safari/iOS client matching stream manifest tokens to prevent YouTube 403 Forbidden
-          request.headers.set('User-Agent', 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1');
+          request.headers.set(
+            'User-Agent',
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+          );
           request.headers.set('Accept', '*/*');
           final response = await request.close();
           if (response.statusCode >= 200 && response.statusCode < 300) {
             audioStream = response;
+            actualContentLength = response.contentLength;
           }
+        } catch (e) {
+          debugPrint('[MusicDownloadService] Direct stream connection failed: $e');
         }
       }
+
+      // Fallback if direct stream was not resolved
+      audioStream ??= await YoutubeMusicService.instance.getDownloadAudioStream(track.id);
 
       if (audioStream == null) {
         _downloadProgress.remove(track.id);
@@ -115,8 +127,9 @@ class MusicDownloadService extends ChangeNotifier {
       // 2. Stream chunks to temp disk file with throttled progress tracking (max ~8-10 updates/sec)
       final fileSink = tempFile.openWrite();
       int receivedBytes = 0;
-      final estimatedTotalBytes =
-          (track.durationSeconds > 0 ? track.durationSeconds : 200) * 16000;
+      final estimatedTotalBytes = actualContentLength > 0
+          ? actualContentLength
+          : ((track.durationSeconds > 0 ? track.durationSeconds : 200) * 16000);
 
       int lastNotifyMs = 0;
       double lastNotifiedProg = 0.05;
