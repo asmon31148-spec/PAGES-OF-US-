@@ -525,14 +525,43 @@ class _ListenTogetherScreenState extends State<ListenTogetherScreen> {
                                   color: Colors.white,
                                 ),
                               ),
-                              if (queueSongs.isNotEmpty)
-                                Text(
-                                  '${queueSongs.length} upcoming',
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    color: Color(0xFF94A3B8),
+                              Row(
+                                children: [
+                                  if (queueSongs.isNotEmpty)
+                                    Text(
+                                      '${queueSongs.length} upcoming  •  ',
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        color: Color(0xFF94A3B8),
+                                      ),
+                                    ),
+                                  GestureDetector(
+                                    onTap: () => YoutubeMusicSearchSheet.show(context),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFF1E2F23),
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(color: const Color(0xFFA3E635).withOpacity(0.3)),
+                                      ),
+                                      child: const Row(
+                                        children: [
+                                          Icon(Icons.add_rounded, size: 14, color: Color(0xFFA3E635)),
+                                          SizedBox(width: 4),
+                                          Text(
+                                            'Add to Queue',
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.bold,
+                                              color: Color(0xFFA3E635),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
                                   ),
-                                ),
+                                ],
+                              ),
                             ],
                           ),
                           const SizedBox(height: 12),

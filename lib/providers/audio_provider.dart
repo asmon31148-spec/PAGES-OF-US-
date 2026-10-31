@@ -679,6 +679,80 @@ class AudioProvider extends ChangeNotifier {
     }
   }
 
+  /// Add YouTube Track directly to existing playlist
+  void addYoutubeTrackToPlaylist(String playlistId, YoutubeTrack track) {
+    final song = SongItem(
+      id: track.id,
+      youtubeId: track.id,
+      title: track.title,
+      artist: track.artist,
+      durationSeconds: track.durationSeconds,
+      audioUrl: track.audioStreamUrl ?? '',
+      coverColor: const Color(0xFFD97706),
+      isLocal: false,
+      addedBy: 'YouTube Music',
+      thumbnailUrl: track.thumbnailUrl,
+    );
+
+    final existingIdx = _songs.indexWhere((s) => s.id == song.id || s.youtubeId == song.id);
+    if (existingIdx == -1) {
+      _songs.add(song);
+      _saveSongsLocally();
+    } else {
+      _songs[existingIdx] = song;
+    }
+
+    addSongToPlaylist(playlistId, song.id);
+  }
+
+  /// Add YouTube Track directly to shared/local playback queue
+  void queueYoutubeTrack(YoutubeTrack track) {
+    final song = SongItem(
+      id: track.id,
+      youtubeId: track.id,
+      title: track.title,
+      artist: track.artist,
+      durationSeconds: track.durationSeconds,
+      audioUrl: track.audioStreamUrl ?? '',
+      coverColor: const Color(0xFFD97706),
+      isLocal: false,
+      addedBy: 'Shared Queue',
+      thumbnailUrl: track.thumbnailUrl,
+    );
+
+    final existingIdx = _songs.indexWhere((s) => s.id == song.id || s.youtubeId == song.id);
+    if (existingIdx != -1) {
+      _songs.removeAt(existingIdx);
+    }
+    final insertIdx = (_currentSongIndex + 1).clamp(0, _songs.length);
+    _songs.insert(insertIdx, song);
+    _saveSongsLocally();
+    notifyListeners();
+
+    // Broadcast queue addition to partner in Listen Together
+    if (_isListenTogetherActive && _syncChannel != null) {
+      final payload = {
+        'type': 'QUEUE_ADD',
+        'songId': song.id,
+        'youtubeId': song.youtubeId,
+        'title': song.title,
+        'artist': song.artist,
+        'durationSeconds': song.durationSeconds,
+        'thumbnailUrl': song.thumbnailUrl,
+        'audioUrl': song.audioUrl,
+        'timestamp': DateTime.now().millisecondsSinceEpoch,
+      };
+      _syncChannel!.sendBroadcastMessage(
+        event: 'playback_update',
+        payload: payload,
+      );
+      _syncChannel!.sendBroadcastMessage(
+        event: 'playback_sync',
+        payload: payload,
+      );
+    }
+  }
+
   // -------------------------------------------------------------
   // ATMOSPHERE SOUNDSCAPES MULTI-STEM MIXER & SMART DUCKING
   // -------------------------------------------------------------
@@ -842,6 +916,30 @@ class AudioProvider extends ChangeNotifier {
         final durationSec = payload['durationSeconds'] as int? ?? 180;
         final thumb = payload['thumbnailUrl'] as String?;
         final positionSec = payload['positionSec'] as int?;
+
+        // Handle Partner Shared Queue Insertion
+        if (type == 'QUEUE_ADD') {
+          final qSong = SongItem(
+            id: songId ?? 'sync_${DateTime.now().millisecondsSinceEpoch}',
+            youtubeId: youtubeId,
+            title: title ?? 'Queued Track',
+            artist: artist ?? 'Partner Queue',
+            durationSeconds: durationSec,
+            audioUrl: remoteAudioUrl ?? '',
+            coverColor: const Color(0xFFD97706),
+            isLocal: false,
+            addedBy: 'Partner Queue',
+            thumbnailUrl: thumb,
+          );
+          final existing = _songs.indexWhere((s) => s.id == qSong.id || (s.youtubeId != null && s.youtubeId == qSong.youtubeId));
+          if (existing != -1) {
+            _songs.removeAt(existing);
+          }
+          final insertIdx = (_currentSongIndex + 1).clamp(0, _songs.length);
+          _songs.insert(insertIdx, qSong);
+          notifyListeners();
+          return;
+        }
 
         // 1. Locate matching song in current partner's playlist
         int matchIdx = -1;

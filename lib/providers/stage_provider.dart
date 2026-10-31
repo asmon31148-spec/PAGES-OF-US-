@@ -309,6 +309,7 @@ class StageProvider extends ChangeNotifier {
           }
         }
         _weeklyTouches = _myDailyTouches + _partnerDailyTouches;
+        _syncWidget(partnerId);
         notifyListeners();
       }
     });
@@ -473,9 +474,12 @@ class StageProvider extends ChangeNotifier {
     if (partnerId != null && _pinnedNotes.containsKey(partnerId)) {
       thought = _pinnedNotes[partnerId]?.text;
     }
+    final careLines = _dailyCareItems.map((c) => '${c.icon} ${c.title}').take(3).toList();
     WidgetSyncService.syncWidget(
       partnerThought: thought,
       daysTogether: daysTogether,
+      missYouCount: _partnerDailyTouches + _myDailyTouches,
+      careLines: careLines.isNotEmpty ? careLines : null,
     );
   }
 

@@ -337,6 +337,34 @@ class YoutubeMusicService {
         .replaceAll('&nbsp;', ' ');
   }
 
+  /// Filter out spam duplicates and near-identical results
+  List<YoutubeTrack> _deduplicateTracks(List<YoutubeTrack> tracks) {
+    final seen = <String>{};
+    final unique = <YoutubeTrack>[];
+
+    for (final t in tracks) {
+      final cleanTitle = t.title
+          .toLowerCase()
+          .replaceAll(RegExp(r'\([^)]*\)'), '')
+          .replaceAll(RegExp(r'\[[^\]]*\]'), '')
+          .replaceAll(RegExp(r'[^\w\s]'), '')
+          .trim();
+      final cleanArtist = t.artist
+          .toLowerCase()
+          .replaceAll(RegExp(r'[^\w\s]'), '')
+          .trim();
+
+      final firstArtist = cleanArtist.split(' ').first;
+      final key = '$cleanTitle|$firstArtist';
+
+      if (!seen.contains(key) && cleanTitle.isNotEmpty) {
+        seen.add(key);
+        unique.add(t);
+      }
+    }
+    return unique;
+  }
+
   /// High-speed global song search: JioSaavn 320kbps Primary + YouTube InnerTube Fallback
   Future<List<YoutubeTrack>> search(String query) async {
     final cleanQuery = query.trim();
@@ -347,7 +375,7 @@ class YoutubeMusicService {
       final saavnResults = await _searchSaavn(cleanQuery);
       if (saavnResults.isNotEmpty) {
         debugPrint('[YoutubeMusicService] Found ${saavnResults.length} tracks via Saavn network');
-        return saavnResults;
+        return _deduplicateTracks(saavnResults);
       }
     } catch (e) {
       debugPrint('[YoutubeMusicService] Saavn search fallback: $e');
@@ -356,7 +384,7 @@ class YoutubeMusicService {
     try {
       // 2. Secondary: InnerTube WEB_REMIX API
       final innerTubeResults = await _searchInnerTube(cleanQuery);
-      if (innerTubeResults.isNotEmpty) return innerTubeResults;
+      if (innerTubeResults.isNotEmpty) return _deduplicateTracks(innerTubeResults);
     } catch (e) {
       debugPrint('[YoutubeMusicService] InnerTube search fallback: $e');
     }
@@ -377,7 +405,7 @@ class YoutubeMusicService {
           ),
         );
       }
-      return tracks;
+      return _deduplicateTracks(tracks);
     } catch (e) {
       debugPrint('[YoutubeMusicService] Final search fallback error: $e');
       return [];
