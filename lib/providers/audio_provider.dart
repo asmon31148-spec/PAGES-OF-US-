@@ -697,7 +697,7 @@ class AudioProvider extends ChangeNotifier {
     final existingIdx = _songs.indexWhere((s) => s.id == song.id || s.youtubeId == song.id);
     if (existingIdx == -1) {
       _songs.add(song);
-      _saveSongsLocally();
+      _persistSongs();
     } else {
       _songs[existingIdx] = song;
     }
@@ -726,7 +726,7 @@ class AudioProvider extends ChangeNotifier {
     }
     final insertIdx = (_currentSongIndex + 1).clamp(0, _songs.length);
     _songs.insert(insertIdx, song);
-    _saveSongsLocally();
+    _persistSongs();
     notifyListeners();
 
     // Broadcast queue addition to partner in Listen Together
