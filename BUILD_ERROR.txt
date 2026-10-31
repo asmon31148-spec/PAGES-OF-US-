@@ -309,6 +309,7 @@ warning • The value of the local variable 'memoriesProvider' isn't used. Try r
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/listen_together_screen.dart:88:47 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/listen_together_screen.dart:195:72 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/listen_together_screen.dart:258:94 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/listen_together_screen.dart:545:91 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/music_sanctuary_screen.dart:52:45 • deprecated_member_use
 warning • The value of the local variable 'progress' isn't used. Try removing the variable or using it • lib/features/music/screens/music_sanctuary_screen.dart:207:11 • unused_local_variable
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/music_sanctuary_screen.dart:567:70 • deprecated_member_use
@@ -330,14 +331,14 @@ warning • Unused import: '../../../core/theme/app_colors.dart'. Try removing t
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/now_playing_screen.dart:139:47 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/now_playing_screen.dart:145:49 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/now_playing_screen.dart:203:53 • deprecated_member_use
-  error • The argument type 'String?' can't be assigned to the parameter type 'String'.  • lib/features/music/screens/now_playing_screen.dart:268:43 • argument_type_not_assignable
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/now_playing_screen.dart:379:64 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/now_playing_screen.dart:492:33 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/now_playing_screen.dart:574:70 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/playlist_detail_screen.dart:41:45 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/playlist_detail_screen.dart:90:64 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/playlist_detail_screen.dart:42:45 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/playlist_detail_screen.dart:91:64 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/widgets/music_interactive_scrubber.dart:57:46 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/widgets/youtube_music_search_sheet.dart:149:52 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/widgets/youtube_music_search_sheet.dart:190:48 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/widgets/youtube_music_search_sheet.dart:256:54 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/profile/screens/profile_screen.dart:284:51 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/profile/screens/profile_screen.dart:326:51 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/profile/screens/profile_screen.dart:565:66 • deprecated_member_use
@@ -431,17 +432,16 @@ warning • The '!' will have no effect because the receiver can't be null. Try 
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/stage/screens/touch_sanctuary_screen.dart:1657:45 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/stage/widgets/app_top_bar.dart:126:53 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/stage/widgets/app_top_bar.dart:185:45 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/stage/widgets/blind_prompt_studio_modal.dart:171:33 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/stage/widgets/blind_prompt_studio_modal.dart:215:54 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/stage/widgets/blind_prompt_studio_modal.dart:248:69 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/stage/widgets/blind_prompt_studio_modal.dart:280:44 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/stage/widgets/blind_prompt_studio_modal.dart:352:43 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/stage/widgets/blind_prompt_studio_modal.dart:423:45 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/stage/widgets/blind_prompt_studio_modal.dart:496:42 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/stage/widgets/blind_prompt_studio_modal.dart:793:43 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/stage/widgets/blind_prompt_studio_modal.dart:1008:40 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/stage/widgets/blind_prompt_studio_modal.dart:1008:73 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/stage/widgets/blind_prompt_studio_modal.dart:1076:42 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/stage/widgets/blind_prompt_studio_modal.dart:200:54 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/stage/widgets/blind_prompt_studio_modal.dart:233:69 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/stage/widgets/blind_prompt_studio_modal.dart:265:44 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/stage/widgets/blind_prompt_studio_modal.dart:338:43 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/stage/widgets/blind_prompt_studio_modal.dart:409:45 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/stage/widgets/blind_prompt_studio_modal.dart:482:42 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/stage/widgets/blind_prompt_studio_modal.dart:779:43 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/stage/widgets/blind_prompt_studio_modal.dart:994:40 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/stage/widgets/blind_prompt_studio_modal.dart:994:73 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/stage/widgets/blind_prompt_studio_modal.dart:1062:42 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/stage/widgets/goal_tracker_modal.dart:158:45 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/stage/widgets/goal_tracker_modal.dart:169:49 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/stage/widgets/goal_tracker_modal.dart:233:50 • deprecated_member_use
@@ -685,6 +685,8 @@ warning • The operand can't be 'null', so the condition is always 'true'. Remo
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/world/screens/world_screen.dart:1209:46 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/world/screens/world_screen.dart:1253:66 • deprecated_member_use
 warning • The value of the field '_defaultTemplateSongs' isn't used. Try removing the field, or using it • lib/providers/audio_provider.dart:37:31 • unused_field
+  error • The method '_saveSongsLocally' isn't defined for the type 'AudioProvider'. Try correcting the name to the name of an existing method, or defining a method named '_saveSongsLocally' • lib/providers/audio_provider.dart:700:7 • undefined_method
+  error • The method '_saveSongsLocally' isn't defined for the type 'AudioProvider'. Try correcting the name to the name of an existing method, or defining a method named '_saveSongsLocally' • lib/providers/audio_provider.dart:729:5 • undefined_method
 warning • Unused import: 'package:audioplayers/audioplayers.dart'. Try removing the import directive • lib/providers/memories_provider.dart:4:8 • unused_import
 warning • Unused import: 'package:cloud_firestore/cloud_firestore.dart'. Try removing the import directive • lib/providers/memories_provider.dart:6:8 • unused_import
 warning • The value of the field '_voicePosSub' isn't used. Try removing the field, or using it • lib/providers/memories_provider.dart:43:23 • unused_field
@@ -697,7 +699,7 @@ warning • The value of the local variable 'isPaused' isn't used. Try removing 
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/widgets/sanctuary_voice_player.dart:152:37 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/widgets/sanctuary_voice_player.dart:172:43 • deprecated_member_use
 
-481 issues found. (ran in 11.8s)
+483 issues found. (ran in 11.8s)
 === FLUTTER BUILD LOG ===
 Upgrading build.gradle
 Upgrading gradle.properties
@@ -795,9 +797,16 @@ Loading local repository...
 [=====================                  ] 55% Unzipping... android-ndk-r28c/CHAN
 [=======================================] 100% Unzipping... android-ndk-r28c/CHA
 
-lib/features/music/screens/now_playing_screen.dart:268:55: Error: The argument type 'String?' can't be assigned to the parameter type 'String'.
-                            thumbnailUrl: currentSong.thumbnailUrl,
-                                                      ^
+lib/providers/audio_provider.dart:700:7: Error: The method '_saveSongsLocally' isn't defined for the type 'AudioProvider'.
+ - 'AudioProvider' is from 'package:pages_of_us/providers/audio_provider.dart' ('lib/providers/audio_provider.dart').
+Try correcting the name to the name of an existing method, or defining a method named '_saveSongsLocally'.
+      _saveSongsLocally();
+      ^^^^^^^^^^^^^^^^^
+lib/providers/audio_provider.dart:729:5: Error: The method '_saveSongsLocally' isn't defined for the type 'AudioProvider'.
+ - 'AudioProvider' is from 'package:pages_of_us/providers/audio_provider.dart' ('lib/providers/audio_provider.dart').
+Try correcting the name to the name of an existing method, or defining a method named '_saveSongsLocally'.
+    _saveSongsLocally();
+    ^^^^^^^^^^^^^^^^^
 Target kernel_snapshot_program failed: Exception
 
 
@@ -813,6 +822,6 @@ Execution failed for task ':app:compileFlutterBuildRelease'.
 > Run with --scan to get full insights.
 > Get more help at https://help.gradle.org.
 
-BUILD FAILED in 3m 25s
-Running Gradle task 'assembleRelease'...                          206.4s
+BUILD FAILED in 3m 29s
+Running Gradle task 'assembleRelease'...                          209.6s
 Gradle task assembleRelease failed with exit code 1
