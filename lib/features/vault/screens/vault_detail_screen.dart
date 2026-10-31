@@ -893,6 +893,137 @@ class _VaultDetailScreenState extends State<VaultDetailScreen> {
       subtitle = '${DateFormat("MMMM d, yyyy").format(_vault.specialDate!)} · ${days > 0 ? "$days days to go" : "Opened"}';
     }
 
+    final hasCover = _vault.coverImageUrl != null && _vault.coverImageUrl!.isNotEmpty;
+
+    if (hasCover) {
+      return GestureDetector(
+        onTap: () => _openFullScreenPhotos(context, [_vault.coverImageUrl!], 0),
+        child: Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: Color(_vault.colorValue),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: const Color(0xFFD4AF37).withOpacity(0.4),
+              width: 1.2,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Color(_vault.colorValue).withOpacity(0.4),
+                blurRadius: 24,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Stack(
+            children: [
+              // Portrait-Friendly Aspect Ratio so top & bottom are NOT sliced off!
+              AspectRatio(
+                aspectRatio: 1.08,
+                child: CachedNetworkImage(
+                  imageUrl: _vault.coverImageUrl!,
+                  fit: BoxFit.cover,
+                  alignment: Alignment.topCenter,
+                  placeholder: (_, __) => Container(
+                    color: Color(_vault.colorValue),
+                    child: const Center(
+                      child: CircularProgressIndicator(strokeWidth: 1.5, color: Color(0xFFD4AF37)),
+                    ),
+                  ),
+                  errorWidget: (_, __, ___) => Container(
+                    color: Color(_vault.colorValue),
+                    child: Center(
+                      child: VaultEmblem(shape: _vault.emblemShape, size: 70),
+                    ),
+                  ),
+                ),
+              ),
+
+              // Soft Vignette Scrim at Bottom
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                height: 110,
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.transparent,
+                        Colors.black.withOpacity(0.65),
+                        Colors.black.withOpacity(0.92),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+
+              // Titles & Metadata with clean shadow
+              Positioned(
+                left: 18,
+                right: 18,
+                bottom: 16,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      _vault.title,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.2,
+                        shadows: [
+                          Shadow(color: Colors.black87, blurRadius: 6, offset: Offset(0, 2)),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Text(
+                          subtitle,
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.85),
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w500,
+                            shadows: const [
+                              Shadow(color: Colors.black87, blurRadius: 4, offset: Offset(0, 1)),
+                            ],
+                          ),
+                        ),
+                        const Spacer(),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.45),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: Colors.white24, width: 0.8),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.zoom_in_rounded, size: 12, color: Color(0xFFD4AF37)),
+                              SizedBox(width: 4),
+                              Text('Tap to zoom', style: TextStyle(color: Colors.white70, fontSize: 10)),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
@@ -1252,11 +1383,24 @@ class _VaultDetailScreenState extends State<VaultDetailScreen> {
     );
   }
 
+  void _openFullScreenPhotos(BuildContext context, List<String> urls, int initialIndex) {
+    if (urls.isEmpty) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => _FullScreenPhotoGallery(
+          urls: urls,
+          initialIndex: initialIndex,
+        ),
+      ),
+    );
+  }
+
   Widget _buildPhotoCarousel() {
     return Column(
       children: [
         SizedBox(
-          height: 240,
+          height: 380, // Portrait-friendly height so heads & dresses are never cut off
           child: PageView.builder(
             controller: _photoPageController,
             itemCount: _vault.photoUrls.length,
@@ -1265,23 +1409,52 @@ class _VaultDetailScreenState extends State<VaultDetailScreen> {
               final photoUrl = _vault.photoUrls[index];
               return Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 4),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF16141F),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Colors.white12),
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(15),
-                    child: CachedNetworkImage(
-                      imageUrl: photoUrl,
-                      memCacheWidth: 600,
-                      fit: BoxFit.cover,
-                      placeholder: (_, __) => const Center(
-                        child: CircularProgressIndicator(color: Color(0xFFD4AF37)),
-                      ),
-                      errorWidget: (_, __, ___) => const Center(
-                        child: Icon(Icons.broken_image_rounded, color: Colors.white24, size: 40),
+                child: GestureDetector(
+                  onTap: () => _openFullScreenPhotos(context, _vault.photoUrls, index),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF16141F),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: Colors.white12),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(19),
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          CachedNetworkImage(
+                            imageUrl: photoUrl,
+                            fit: BoxFit.cover,
+                            alignment: Alignment.topCenter,
+                            placeholder: (_, __) => const Center(
+                              child: CircularProgressIndicator(color: Color(0xFFD4AF37)),
+                            ),
+                            errorWidget: (_, __, ___) => const Center(
+                              child: Icon(Icons.broken_image_rounded, color: Colors.white24, size: 40),
+                            ),
+                          ),
+                          // Subtle tap-to-zoom indicator badge
+                          Positioned(
+                            bottom: 12,
+                            right: 12,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withOpacity(0.55),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(color: Colors.white24, width: 0.8),
+                              ),
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.zoom_in_rounded, size: 12, color: Color(0xFFD4AF37)),
+                                  SizedBox(width: 4),
+                                  Text('Tap to zoom', style: TextStyle(color: Colors.white, fontSize: 10)),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
@@ -1321,6 +1494,9 @@ class _VaultDetailScreenState extends State<VaultDetailScreen> {
       audioUrl: _vault.voiceNoteUrl!,
       durationSeconds: _vault.voiceNoteDurationSeconds,
       isDark: true,
+      customCardColor: const Color(0xFF16141F), // Matches Letter card perfectly
+      customAccentColor: const Color(0xFFD4AF37), // Luxury champagne gold button & bars
+      customBorderColor: const Color(0xFFD4AF37).withOpacity(0.35),
       ambientAudio: context.read<AudioProvider>(),
       onPlayStarted: () {
         context.read<VaultProvider>().stopVaultMusic();
@@ -1330,6 +1506,116 @@ class _VaultDetailScreenState extends State<VaultDetailScreen> {
           context.read<VaultProvider>().startVaultMusic(_vault.backgroundSong);
         }
       },
+    );
+  }
+}
+
+/// Fullscreen zoomable photo gallery with pinch-to-zoom and swipe
+class _FullScreenPhotoGallery extends StatefulWidget {
+  final List<String> urls;
+  final int initialIndex;
+
+  const _FullScreenPhotoGallery({
+    required this.urls,
+    this.initialIndex = 0,
+  });
+
+  @override
+  State<_FullScreenPhotoGallery> createState() => _FullScreenPhotoGalleryState();
+}
+
+class _FullScreenPhotoGalleryState extends State<_FullScreenPhotoGallery> {
+  late PageController _pageController;
+  late int _currentIndex;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentIndex = widget.initialIndex;
+    _pageController = PageController(initialPage: widget.initialIndex);
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: SafeArea(
+        child: Stack(
+          children: [
+            PageView.builder(
+              controller: _pageController,
+              itemCount: widget.urls.length,
+              onPageChanged: (idx) => setState(() => _currentIndex = idx),
+              itemBuilder: (context, index) {
+                return Center(
+                  child: InteractiveViewer(
+                    minScale: 0.8,
+                    maxScale: 4.0,
+                    child: CachedNetworkImage(
+                      imageUrl: widget.urls[index],
+                      fit: BoxFit.contain,
+                      placeholder: (_, __) => const Center(
+                        child: CircularProgressIndicator(color: Color(0xFFD4AF37)),
+                      ),
+                      errorWidget: (_, __, ___) => const Center(
+                        child: Icon(Icons.broken_image_rounded, color: Colors.white24, size: 48),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+
+            // Top Bar: Back & Counter
+            Positioned(
+              top: 12,
+              left: 16,
+              right: 16,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  GestureDetector(
+                    onTap: () => Navigator.pop(context),
+                    child: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.6),
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white24),
+                      ),
+                      child: const Icon(Icons.close_rounded, color: Colors.white, size: 22),
+                    ),
+                  ),
+                  if (widget.urls.length > 1)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.6),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: Colors.white24),
+                      ),
+                      child: Text(
+                        '${_currentIndex + 1} / ${widget.urls.length}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

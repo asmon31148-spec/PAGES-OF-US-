@@ -81,13 +81,13 @@ class StageProvider extends ChangeNotifier {
   int get weeklyTouches => _weeklyTouches;
 
   int get daysTogether {
-    if (_anniversaryDate == null || _anniversaryDate!.isEmpty) return 1;
+    if (_anniversaryDate == null || _anniversaryDate!.isEmpty) return 0;
     try {
       final start = DateTime.parse(_anniversaryDate!);
       final diff = DateTime.now().difference(start).inDays;
-      return diff > 0 ? diff : 1;
+      return diff >= 0 ? diff : 0;
     } catch (_) {
-      return 1;
+      return 0;
     }
   }
 

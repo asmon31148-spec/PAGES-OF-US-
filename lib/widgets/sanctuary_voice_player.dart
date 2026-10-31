@@ -17,6 +17,9 @@ class SanctuaryVoicePlayer extends StatefulWidget {
   final VoidCallback? onPlaybackCompleted;
   final EdgeInsetsGeometry? margin;
   final EdgeInsetsGeometry? padding;
+  final Color? customCardColor;
+  final Color? customAccentColor;
+  final Color? customBorderColor;
 
   const SanctuaryVoicePlayer({
     super.key,
@@ -29,6 +32,9 @@ class SanctuaryVoicePlayer extends StatefulWidget {
     this.onPlaybackCompleted,
     this.margin,
     this.padding,
+    this.customCardColor,
+    this.customAccentColor,
+    this.customBorderColor,
   });
 
   @override
@@ -120,16 +126,18 @@ class _SanctuaryVoicePlayerState extends State<SanctuaryVoicePlayer> {
           totalDuration = const Duration(seconds: 30);
         }
 
-        final cardBg = widget.isDark
-            ? const Color(0xFF1E2222)
-            : const Color(0xFFF1F3F1);
-        final borderColor = widget.isDark
-            ? Colors.white.withOpacity(0.08)
-            : Colors.black.withOpacity(0.06);
+        final cardBg = widget.customCardColor ??
+            (widget.isDark
+                ? const Color(0xFF1E2222)
+                : const Color(0xFFF1F3F1));
+        final borderColor = widget.customBorderColor ??
+            (widget.isDark
+                ? Colors.white.withOpacity(0.08)
+                : Colors.black.withOpacity(0.06));
 
-        const terraColor = AppColors.terra; // #E07A5F
+        final terraColor = widget.customAccentColor ?? AppColors.terra; // #E07A5F
         final inactiveBarColor = widget.isDark
-            ? const Color(0xFF3E3636)
+            ? (widget.customAccentColor != null ? Colors.white.withOpacity(0.18) : const Color(0xFF3E3636))
             : const Color(0xFFD6CBC8);
 
         return Container(

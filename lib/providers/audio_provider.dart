@@ -417,28 +417,6 @@ class AudioProvider extends ChangeNotifier {
       _bufferingSongTitle = null;
       notifyListeners();
       _broadcastSync('SELECT', 0);
-
-      // Auto-cache ONLY AFTER playback starts without choking initial connection
-      if (!isLocal) {
-        Future.delayed(const Duration(milliseconds: 2000), () {
-          MusicDownloadService.instance.downloadTrack(track).then((ok) {
-            if (ok) {
-              final newLocalPath = MusicDownloadService.instance.getLocalFilePath(track.id);
-              if (newLocalPath != null) {
-                final idx = _songs.indexWhere((s) => s.id == track.id || s.youtubeId == track.id);
-                if (idx != -1) {
-                  _songs[idx] = _songs[idx].copyWith(
-                    audioUrl: newLocalPath,
-                    isLocal: true,
-                  );
-                  debugPrint('[AudioProvider] Promoted "${track.title}" to local disk file');
-                  notifyListeners();
-                }
-              }
-            }
-          });
-        });
-      }
     } catch (e) {
       debugPrint('[AudioProvider] Exception playing YouTube track: $e');
       _isSongBuffering = false;

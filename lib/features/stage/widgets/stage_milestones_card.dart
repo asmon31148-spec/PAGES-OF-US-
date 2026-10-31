@@ -69,26 +69,6 @@ class StageMilestonesCard extends StatelessWidget {
                     letterSpacing: 0.8,
                   ),
                 ),
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: AppColors.gold.withOpacity(0.14),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: AppColors.gold.withOpacity(0.35),
-                      width: 0.8,
-                    ),
-                  ),
-                  child: Text(
-                    'Day ${stageProvider.daysTogether} Together ✨',
-                    style: const TextStyle(
-                      fontSize: 9.5,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.gold,
-                    ),
-                  ),
-                ),
                 const Spacer(),
                 const Row(
                   children: [

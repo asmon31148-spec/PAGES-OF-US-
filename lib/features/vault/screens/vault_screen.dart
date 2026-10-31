@@ -463,9 +463,9 @@ class _VaultScreenState extends State<VaultScreen> {
     final isOwner = vault.creatorId.isEmpty || vault.creatorId == currentUserId;
     final creatorLabel = isOwner ? 'By You' : 'By $partnerNickname';
 
-    // Badge styling & content
-    String badgeText;
-    IconData badgeIcon;
+    // Badge styling & content (Only show lock status; NEVER show count badges)
+    String? badgeText;
+    IconData? badgeIcon;
 
     if (isLocked && vault.accessMode == 'timer') {
       final days = vault.daysRemaining;
@@ -474,9 +474,6 @@ class _VaultScreenState extends State<VaultScreen> {
     } else if (isLocked && vault.accessMode == 'pin') {
       badgeText = 'PIN locked';
       badgeIcon = Icons.lock_outline_rounded;
-    } else {
-      badgeText = '${vault.totalMemoriesCount} memories';
-      badgeIcon = Icons.photo_library_outlined;
     }
 
     final hasCoverImage = vault.coverImageUrl != null && vault.coverImageUrl!.isNotEmpty;
@@ -501,101 +498,65 @@ class _VaultScreenState extends State<VaultScreen> {
           ],
         ),
         clipBehavior: Clip.antiAlias, // Clean corners for image
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+        child: Stack(
+          fit: StackFit.expand,
           children: [
-            // Upper Box: Covers whole upper area up to title and date
-            Expanded(
-              child: ClipRRect(
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    if (hasCoverImage)
-                      CachedNetworkImage(
-                        imageUrl: vault.coverImageUrl!,
-                        fit: BoxFit.cover,
-                        placeholder: (_, __) => Container(
-                          color: Color(vault.colorValue),
-                          child: const Center(
-                            child: CircularProgressIndicator(
-                              strokeWidth: 1.5,
-                              color: Color(0xFFD4AF37),
-                            ),
-                          ),
-                        ),
-                        errorWidget: (_, __, ___) => Container(
-                          color: Color(vault.colorValue),
-                          child: Center(
-                            child: VaultEmblem(shape: vault.emblemShape, size: 52),
-                          ),
-                        ),
-                      )
-                    else
-                      Container(
-                        color: Color(vault.colorValue),
-                        child: Center(
-                          child: VaultEmblem(shape: vault.emblemShape, size: 52),
-                        ),
-                      ),
-
-                    // Top gradient shadow for badge clarity
-                    Positioned(
-                      top: 0,
-                      left: 0,
-                      right: 0,
-                      height: 42,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [
-                              Colors.black.withOpacity(0.48),
-                              Colors.transparent,
-                            ],
-                          ),
-                        ),
-                      ),
+            // Background Cover Image or Color/Emblem
+            if (hasCoverImage)
+              CachedNetworkImage(
+                imageUrl: vault.coverImageUrl!,
+                fit: BoxFit.cover,
+                alignment: Alignment.topCenter,
+                placeholder: (_, __) => Container(
+                  color: Color(vault.colorValue),
+                  child: const Center(
+                    child: CircularProgressIndicator(
+                      strokeWidth: 1.5,
+                      color: Color(0xFFD4AF37),
                     ),
+                  ),
+                ),
+                errorWidget: (_, __, ___) => Container(
+                  color: Color(vault.colorValue),
+                  child: Center(
+                    child: VaultEmblem(shape: vault.emblemShape, size: 52),
+                  ),
+                ),
+              )
+            else
+              Container(
+                color: Color(vault.colorValue),
+                child: Center(
+                  child: VaultEmblem(shape: vault.emblemShape, size: 52),
+                ),
+              ),
 
-                    // Top Right Badge
-                    Positioned(
-                      top: 9,
-                      right: 9,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3.5),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.65),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: Colors.white12),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(badgeIcon, size: 9.5, color: const Color(0xFFD4AF37)),
-                            const SizedBox(width: 3.5),
-                            Text(
-                              badgeText,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 9,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
+            // Smooth Dark Scrim at Bottom for Clean Text Readability
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              height: 100,
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.transparent,
+                      Colors.black.withOpacity(0.55),
+                      Colors.black.withOpacity(0.88),
+                    ],
+                  ),
                 ),
               ),
             ),
 
-            // Bottom Section: Title & Date (No overlap with image)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              color: const Color(0xFF14121A),
+            // Bottom Section: Title & Date Floating Gracefully
+            Positioned(
+              left: 12,
+              right: 12,
+              bottom: 12,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
@@ -609,7 +570,9 @@ class _VaultScreenState extends State<VaultScreen> {
                       fontSize: 13.5,
                       fontWeight: FontWeight.bold,
                       letterSpacing: 0.1,
-                      height: 1.2,
+                      shadows: [
+                        Shadow(color: Colors.black87, blurRadius: 4, offset: Offset(0, 1)),
+                      ],
                     ),
                   ),
                   const SizedBox(height: 3),
@@ -618,13 +581,46 @@ class _VaultScreenState extends State<VaultScreen> {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      color: Colors.white.withOpacity(0.65),
+                      color: Colors.white.withOpacity(0.85),
                       fontSize: 10.5,
+                      shadows: const [
+                        Shadow(color: Colors.black87, blurRadius: 4, offset: Offset(0, 1)),
+                      ],
                     ),
                   ),
                 ],
               ),
             ),
+
+            // Top Right Badge (ONLY if locked by PIN or countdown timer)
+            if (badgeText != null)
+              Positioned(
+                top: 9,
+                right: 9,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3.5),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.70),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.white24),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(badgeIcon, size: 9.5, color: const Color(0xFFD4AF37)),
+                      const SizedBox(width: 3.5),
+                      Text(
+                        badgeText,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 9,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
           ],
         ),
       ),
