@@ -113,6 +113,7 @@ class StageProvider extends ChangeNotifier {
       );
     }
     _loadTouchMetrics();
+    _syncWidget(null);
   }
 
   void _loadTouchMetrics() {
