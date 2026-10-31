@@ -22,7 +22,7 @@ class UpdateInfo {
 }
 
 class UpdateService {
-  static const String currentVersion = '1.0.39';
+  static const String currentVersion = '1.0.40';
   static const String githubRepo = 'asmon31148-spec/PAGES-OF-US-';
 
   /// Checks Firestore remote config and GitHub releases for a newer APK version
