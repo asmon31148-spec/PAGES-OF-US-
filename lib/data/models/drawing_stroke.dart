@@ -21,6 +21,7 @@ class DrawingStroke {
   final double strokeWidth;
   final String tool; // 'pen', 'stardust', 'eraser'
   final bool isPartner;
+  final String? senderId;
 
   double get width => strokeWidth;
 
@@ -30,7 +31,25 @@ class DrawingStroke {
     this.strokeWidth = 3.0,
     this.tool = 'pen',
     this.isPartner = false,
+    this.senderId,
   });
+
+  DrawingStroke copyWith({
+    List<StrokePoint>? points,
+    int? colorValue,
+    double? strokeWidth,
+    String? tool,
+    bool? isPartner,
+    String? senderId,
+  }) =>
+      DrawingStroke(
+        points: points ?? this.points,
+        colorValue: colorValue ?? this.colorValue,
+        strokeWidth: strokeWidth ?? this.strokeWidth,
+        tool: tool ?? this.tool,
+        isPartner: isPartner ?? this.isPartner,
+        senderId: senderId ?? this.senderId,
+      );
 
   Map<String, dynamic> toJson() {
     List<StrokePoint> toSerialize = points;
@@ -50,11 +69,14 @@ class DrawingStroke {
       'color': colorValue,
       'width': strokeWidth,
       'tool': tool,
+      if (senderId != null) 'senderId': senderId,
     };
   }
 
-  factory DrawingStroke.fromJson(Map<String, dynamic> json, {bool isPartner = false}) {
+  factory DrawingStroke.fromJson(Map<String, dynamic> json, {bool isPartner = false, String? currentUserId}) {
     final rawPoints = json['points'] as List? ?? [];
+    final sender = json['senderId']?.toString();
+    final effectiveIsPartner = isPartner || (currentUserId != null && sender != null && sender != currentUserId);
     return DrawingStroke(
       points: rawPoints
           .map((p) => StrokePoint.fromJson(Map<String, dynamic>.from(p as Map)))
@@ -62,7 +84,8 @@ class DrawingStroke {
       colorValue: (json['color'] as num?)?.toInt() ?? 0xFFE2847A,
       strokeWidth: (json['width'] as num?)?.toDouble() ?? 3.0,
       tool: json['tool']?.toString() ?? 'pen',
-      isPartner: isPartner,
+      isPartner: effectiveIsPartner,
+      senderId: sender,
     );
   }
 }

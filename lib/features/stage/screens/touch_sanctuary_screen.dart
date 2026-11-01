@@ -845,6 +845,8 @@ class _TouchSanctuaryScreenState extends State<TouchSanctuaryScreen>
                 colorValue: _selectedColor.value,
                 strokeWidth: _selectedWidth,
                 tool: _selectedTool,
+                isPartner: false,
+                senderId: userId,
               );
               if (spaceId.isNotEmpty && userId.isNotEmpty) {
                 stageProvider.addDrawingStroke(newStroke, spaceId, userId);
@@ -988,10 +990,7 @@ class _TouchSanctuaryScreenState extends State<TouchSanctuaryScreen>
           // 3. Clear Canvas Button
           GestureDetector(
             onTap: () {
-              HapticFeedback.mediumImpact();
-              if (spaceId.isNotEmpty) {
-                stageProvider.clearDrawing(spaceId, userId);
-              }
+              _showClearDrawingSheet(context, stageProvider, spaceId, userId);
             },
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
@@ -1019,6 +1018,213 @@ class _TouchSanctuaryScreenState extends State<TouchSanctuaryScreen>
           ),
         ],
       ),
+    );
+  }
+
+  void _showClearDrawingSheet(
+    BuildContext context,
+    StageProvider stageProvider,
+    String spaceId,
+    String userId,
+  ) {
+    HapticFeedback.selectionClick();
+    final myStrokes = stageProvider.drawingStrokes.where((s) => !s.isPartner).length;
+    final totalStrokes = stageProvider.drawingStrokes.length;
+
+    if (totalStrokes == 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Canvas is already clear ✨'),
+          duration: Duration(seconds: 1),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return Container(
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: const Color(0xFF1E1A29),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: const Color(0xFF383147), width: 1.2),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.terra.withOpacity(0.18),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.brush_rounded, size: 16, color: AppColors.terra),
+                  ),
+                  const SizedBox(width: 10),
+                  const Text(
+                    'Clear Canvas',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Choose whether to erase only what you drew or wipe the full shared canvas.',
+                style: TextStyle(fontSize: 12, color: Colors.white70, height: 1.3),
+              ),
+              const SizedBox(height: 18),
+
+              // Option 1: Erase My Drawing Only
+              InkWell(
+                onTap: () {
+                  Navigator.pop(ctx);
+                  HapticFeedback.lightImpact();
+                  if (spaceId.isNotEmpty && userId.isNotEmpty) {
+                    stageProvider.clearMyDrawing(spaceId, userId);
+                  }
+                },
+                borderRadius: BorderRadius.circular(16),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.06),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.white.withOpacity(0.08)),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: AppColors.terra.withOpacity(0.2),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.person_rounded, color: AppColors.terra, size: 18),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                const Text(
+                                  'Erase My Art Only',
+                                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.white),
+                                ),
+                                if (myStrokes > 0) ...[
+                                  const SizedBox(width: 6),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.terra.withOpacity(0.25),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Text(
+                                      '$myStrokes',
+                                      style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.terraLight),
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                            const SizedBox(height: 2),
+                            const Text(
+                              'Clears only your strokes · Keeps partner’s art intact ✨',
+                              style: TextStyle(fontSize: 11, color: Colors.white60),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 10),
+
+              // Option 2: Wipe Entire Canvas
+              InkWell(
+                onTap: () {
+                  Navigator.pop(ctx);
+                  HapticFeedback.mediumImpact();
+                  if (spaceId.isNotEmpty && userId.isNotEmpty) {
+                    stageProvider.clearDrawing(spaceId, userId);
+                  }
+                },
+                borderRadius: BorderRadius.circular(16),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF43F5E).withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: const Color(0xFFF43F5E).withOpacity(0.25)),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF43F5E).withOpacity(0.2),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.delete_sweep_rounded, color: Color(0xFFF43F5E), size: 18),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                const Text(
+                                  'Wipe Entire Canvas',
+                                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFFFFA4B2)),
+                                ),
+                                if (totalStrokes > 0) ...[
+                                  const SizedBox(width: 6),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFF43F5E).withOpacity(0.25),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Text(
+                                      '$totalStrokes',
+                                      style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFFFFA4B2)),
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                            const SizedBox(height: 2),
+                            const Text(
+                              'Clears both your drawings to start fresh together',
+                              style: TextStyle(fontSize: 11, color: Colors.white60),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
