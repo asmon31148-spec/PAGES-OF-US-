@@ -1333,45 +1333,13 @@ class _FullScreenThumbKissPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    // 1. Dual Touch Luminous Filament (when both touch at the same time)
-    if (isMyThumbDown && myThumb != null && partnerThumb != null) {
+    // 1. Collision Heart Bloom (when thumbs meet and kiss)
+    if (isMyThumbDown && myThumb != null && partnerThumb != null && isColliding) {
       final midPoint = Offset(
         (myThumb!.dx + partnerThumb!.dx) / 2,
         (myThumb!.dy + partnerThumb!.dy) / 2,
       );
-      final dist = (myThumb! - partnerThumb!).distance;
-
-      if (!isColliding) {
-        // Soft glowing light thread connecting both thumbs
-        final proximity = (1.0 - (dist / 400.0)).clamp(0.2, 1.0);
-
-        final threadGlow = Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 3.0
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4)
-          ..color = const Color(0xFFFF4B72).withOpacity(0.4 * proximity);
-        canvas.drawLine(myThumb!, partnerThumb!, threadGlow);
-
-        final threadCore = Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 1.2
-          ..color = Colors.white.withOpacity(0.6 * proximity);
-        canvas.drawLine(myThumb!, partnerThumb!, threadCore);
-
-        // Subtle traveling light motes along the connection thread
-        for (int i = 0; i < 2; i++) {
-          final travel = (pulseVal + (i * 0.5)) % 1.0;
-          final motePos = Offset(
-            myThumb!.dx + (partnerThumb!.dx - myThumb!.dx) * travel,
-            myThumb!.dy + (partnerThumb!.dy - myThumb!.dy) * travel,
-          );
-          final motePaint = Paint()..color = Colors.white.withOpacity(0.75 * proximity);
-          canvas.drawCircle(motePos, 2.0, motePaint);
-        }
-      } else {
-        // Colliding: Soft Heart Bloom between both thumbs
-        _drawCollisionHeartBloom(canvas, midPoint);
-      }
+      _drawCollisionHeartBloom(canvas, midPoint);
     }
 
     // 2. Render Partner's Thumb aura (Electric Cyan)
