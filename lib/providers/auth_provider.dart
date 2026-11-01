@@ -31,6 +31,8 @@ class AuthProvider extends ChangeNotifier {
 
   StreamSubscription<User?>? _authSub;
   StreamSubscription? _spaceSub;
+  StreamSubscription? _partnerSub;
+  StreamSubscription? _userSub;
 
   UserProfile? get user => _user;
   UserProfile? get currentUser => _user;
@@ -93,22 +95,60 @@ class AuthProvider extends ChangeNotifier {
           (m) => m != currentUid,
           orElse: () => '',
         );
-        if (partnerId.isNotEmpty && (_partner == null || _partner!.id != partnerId)) {
-          final partnerData = await FirebaseService.getUserProfile(partnerId);
-          if (partnerData != null) {
-            final wasUnpaired = _partner == null;
-            _partner = partnerData;
-            await LocalCacheService.setCachedPartner(partnerData.toJson());
-            if (wasUnpaired) {
-              // 1st: Pairing Successful notification
-              NotificationService.showPairingSuccessNotification(
-                partnerNickname: partnerData.nickname,
-              );
-            }
+        _listenToPartner(partnerId);
+        notifyListeners();
+      }
+    });
+  }
+
+  void _listenToPartner(String partnerId) {
+    if (partnerId.isEmpty) {
+      _partnerSub?.cancel();
+      _partnerSub = null;
+      if (_partner != null) {
+        _partner = null;
+        LocalCacheService.setCachedPartner(null);
+        notifyListeners();
+      }
+      return;
+    }
+
+    _partnerSub?.cancel();
+    _partnerSub = FirebaseService.streamUserProfile(partnerId).listen((partnerData) {
+      if (partnerData != null) {
+        final wasUnpaired = _partner == null;
+        _partner = partnerData;
+        LocalCacheService.setCachedPartner(partnerData.toJson());
+        if (wasUnpaired) {
+          NotificationService.showPairingSuccessNotification(
+            partnerNickname: partnerData.nickname,
+          );
+        }
+        notifyListeners();
+      }
+    });
+  }
+
+  void _listenToUser(String uid) {
+    if (uid.isEmpty) return;
+    _userSub?.cancel();
+    _userSub = FirebaseService.streamUserProfile(uid).listen((profile) async {
+      if (profile != null) {
+        if (_user != null &&
+            profile.spaceId != null &&
+            profile.spaceId!.isNotEmpty &&
+            profile.spaceId != _user!.spaceId) {
+          _user = profile;
+          await LocalCacheService.setCachedUser(profile.toJson());
+          final spaceData = await FirebaseService.getSpace(profile.spaceId!);
+          if (spaceData != null) {
+            _space = spaceData;
+            await LocalCacheService.setCachedSpace(spaceData.toJson());
+            _listenToSpace(spaceData.id, uid);
           }
-        } else if (partnerId.isEmpty && _partner != null) {
-          _partner = null;
-          await LocalCacheService.setCachedPartner(null);
+        } else {
+          _user = profile;
+          await LocalCacheService.setCachedUser(profile.toJson());
         }
         notifyListeners();
       }
@@ -136,22 +176,14 @@ class AuthProvider extends ChangeNotifier {
         await LocalCacheService.setCachedUser(profile.toJson());
         await LocalCacheService.setCachedSpace(spaceData.toJson());
         _listenToSpace(spaceData.id, uid);
+        _listenToUser(uid);
 
         // Fetch partner if present
         final partnerId = spaceData.members.firstWhere(
           (m) => m != uid,
           orElse: () => '',
         );
-        if (partnerId.isNotEmpty) {
-          final partnerData = await FirebaseService.getUserProfile(partnerId);
-          if (partnerData != null) {
-            _partner = partnerData;
-            await LocalCacheService.setCachedPartner(partnerData.toJson());
-          }
-        } else {
-          _partner = null;
-          await LocalCacheService.setCachedPartner(null);
-        }
+        _listenToPartner(partnerId);
 
         NotificationService.scheduleDailyLivingSanctuaryCadence(
           userNickname: _user?.nickname,
@@ -359,12 +391,16 @@ class AuthProvider extends ChangeNotifier {
 
   Future<void> signOut() async {
     _spaceSub?.cancel();
+    _partnerSub?.cancel();
+    _userSub?.cancel();
     await FirebaseService.signOut();
   }
 
   @override
   void dispose() {
     _spaceSub?.cancel();
+    _partnerSub?.cancel();
+    _userSub?.cancel();
     _authSub?.cancel();
     super.dispose();
   }

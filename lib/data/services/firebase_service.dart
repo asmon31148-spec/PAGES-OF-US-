@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import '../models/user_profile.dart';
 import '../models/space_model.dart';
+import 'supabase_service.dart';
 
 class PairingException implements Exception {
   final String message;
@@ -110,7 +111,32 @@ class FirebaseService {
           );
           await saveUserProfile(profile);
         } else {
-          profile = UserProfile.fromJson(doc.data()!);
+          final data = doc.data()!;
+          final existingNick = data['nickname'] as String?;
+          final existingAvatar = data['avatarUrl'] as String? ?? data['avatar_url'] as String?;
+          final existingEmail = data['email'] as String?;
+
+          final cleanNick = (existingNick != null && existingNick.trim().isNotEmpty)
+              ? existingNick.trim()
+              : ((user.displayName != null && user.displayName!.trim().isNotEmpty)
+                  ? user.displayName!.trim()
+                  : (user.email != null && user.email!.contains('@') ? user.email!.split('@')[0] : 'Partner'));
+          final cleanAvatar = (existingAvatar != null && existingAvatar.trim().isNotEmpty)
+              ? existingAvatar
+              : user.photoURL;
+          final cleanEmail = (existingEmail != null && existingEmail.trim().isNotEmpty)
+              ? existingEmail
+              : (user.email ?? '');
+
+          profile = UserProfile.fromJson({
+            ...data,
+            'id': user.uid,
+            'nickname': cleanNick,
+            'avatarUrl': cleanAvatar,
+            'email': cleanEmail,
+          });
+          // Ensure healed profile is persisted so partner sees real name & avatar immediately
+          await saveUserProfile(profile);
         }
         // Automatically ensure permanent Sanctuary space & pair code
         await ensureUserSpace(profile);
@@ -147,6 +173,14 @@ class FirebaseService {
     final doc = await firestore.collection('users').doc(uid).get();
     if (!doc.exists || doc.data() == null) return null;
     return UserProfile.fromJson(doc.data()!);
+  }
+
+  static Stream<UserProfile?> streamUserProfile(String uid) {
+    if (uid.isEmpty) return const Stream.empty();
+    return firestore.collection('users').doc(uid).snapshots().map((doc) {
+      if (!doc.exists || doc.data() == null) return null;
+      return UserProfile.fromJson(doc.data()!);
+    });
   }
 
   static Future<void> saveUserProfile(UserProfile profile) async {
@@ -395,6 +429,12 @@ class FirebaseService {
 
     // Bi-directional code redirect: If current user had an old solo space code, redirect it to targetSpaceId
     if (user.spaceId != null && user.spaceId!.isNotEmpty && user.spaceId != targetSpaceId) {
+      // Migrate all memories, vaults, places, goals, prompts seamlessly to targetSpaceId
+      await migrateSpaceData(
+        oldSpaceId: user.spaceId!,
+        targetSpaceId: targetSpaceId,
+      );
+
       try {
         final oldSpaceDoc = await firestore.collection('spaces').doc(user.spaceId!).get();
         if (oldSpaceDoc.exists) {
@@ -412,6 +452,135 @@ class FirebaseService {
     }
 
     return updatedSpace;
+  }
+
+  /// Migrates and merges all content from an old space into the shared sanctuary space
+  /// so that no memories, vaults, places, goals, or notes are ever lost when connecting
+  static Future<void> migrateSpaceData({
+    required String oldSpaceId,
+    required String targetSpaceId,
+  }) async {
+    if (oldSpaceId.isEmpty || targetSpaceId.isEmpty || oldSpaceId == targetSpaceId) return;
+    try {
+      final client = SupabaseService.client;
+      if (client != null) {
+        // 1. Migrate memories
+        await client
+            .from('memories')
+            .update({'space_id': targetSpaceId})
+            .eq('space_id', oldSpaceId);
+
+        // 2. Migrate vaults
+        final oldVaultsRow = await client
+            .from('app_content')
+            .select()
+            .eq('id', 'vaults_$oldSpaceId')
+            .maybeSingle();
+
+        if (oldVaultsRow != null && oldVaultsRow['content'] != null) {
+          final oldVaultList = List.from(oldVaultsRow['content'] as List);
+          if (oldVaultList.isNotEmpty) {
+            final targetVaultsRow = await client
+                .from('app_content')
+                .select()
+                .eq('id', 'vaults_$targetSpaceId')
+                .maybeSingle();
+
+            List mergedVaults = List.from(oldVaultList);
+            if (targetVaultsRow != null && targetVaultsRow['content'] is List) {
+              final targetList = targetVaultsRow['content'] as List;
+              for (final v in targetList) {
+                if (v is Map && !mergedVaults.any((m) => m['id'] == v['id'])) {
+                  mergedVaults.add(v);
+                }
+              }
+            }
+
+            await client.from('app_content').upsert({
+              'id': 'vaults_$targetSpaceId',
+              'content': mergedVaults,
+              'updated_at': DateTime.now().toIso8601String(),
+            });
+          }
+        }
+
+        // 3. Migrate places
+        final oldPlacesRow = await client
+            .from('app_content')
+            .select()
+            .eq('id', 'places_$oldSpaceId')
+            .maybeSingle();
+        if (oldPlacesRow != null && oldPlacesRow['content'] != null) {
+          final oldPlaces = List.from(oldPlacesRow['content'] as List);
+          if (oldPlaces.isNotEmpty) {
+            final targetPlacesRow = await client
+                .from('app_content')
+                .select()
+                .eq('id', 'places_$targetSpaceId')
+                .maybeSingle();
+            List mergedPlaces = List.from(oldPlaces);
+            if (targetPlacesRow != null && targetPlacesRow['content'] is List) {
+              for (final p in targetPlacesRow['content'] as List) {
+                if (p is Map && !mergedPlaces.any((m) => m['id'] == p['id'])) {
+                  mergedPlaces.add(p);
+                }
+              }
+            }
+            await client.from('app_content').upsert({
+              'id': 'places_$targetSpaceId',
+              'content': mergedPlaces,
+              'updated_at': DateTime.now().toIso8601String(),
+            });
+          }
+        }
+
+        // 4. Migrate couple_goals / firsts & dreams
+        final oldGoalsRow = await client
+            .from('app_content')
+            .select()
+            .eq('id', 'couple_goals_$oldSpaceId')
+            .maybeSingle();
+        if (oldGoalsRow != null && oldGoalsRow['content'] != null) {
+          final targetGoalsRow = await client
+              .from('app_content')
+              .select()
+              .eq('id', 'couple_goals_$targetSpaceId')
+              .maybeSingle();
+          if (targetGoalsRow == null) {
+            await client.from('app_content').upsert({
+              'id': 'couple_goals_$targetSpaceId',
+              'content': oldGoalsRow['content'],
+              'updated_at': DateTime.now().toIso8601String(),
+            });
+          }
+        }
+
+        // 5. Migrate daily care & daily prompt if target is empty
+        for (final feature in ['daily_care', 'daily_prompt', 'location']) {
+          final oldDoc = await client
+              .from('app_content')
+              .select()
+              .eq('id', '${feature}_$oldSpaceId')
+              .maybeSingle();
+          if (oldDoc != null && oldDoc['content'] != null) {
+            final targetDoc = await client
+                .from('app_content')
+                .select()
+                .eq('id', '${feature}_$targetSpaceId')
+                .maybeSingle();
+            if (targetDoc == null) {
+              await client.from('app_content').upsert({
+                'id': '${feature}_$targetSpaceId',
+                'content': oldDoc['content'],
+                'updated_at': DateTime.now().toIso8601String(),
+              });
+            }
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Error migrating space data: $e');
+    }
   }
 
   static Future<SpaceModel> disconnectPartner({
