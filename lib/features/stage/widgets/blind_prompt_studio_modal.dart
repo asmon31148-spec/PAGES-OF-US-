@@ -162,10 +162,14 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
     final partner = auth.partner;
     final partnerNickname = partner?.nickname ?? 'Partner';
 
-    final topPadding = MediaQuery.of(context).padding.top;
+    final safeTop = MediaQuery.of(context).viewPadding.top > 0
+        ? MediaQuery.of(context).viewPadding.top
+        : MediaQuery.of(context).padding.top;
+    final topInset = (safeTop > 0 ? safeTop : 44.0) + 14.0;
+
     return Container(
       height: MediaQuery.of(context).size.height,
-      padding: EdgeInsets.only(top: topPadding > 0 ? topPadding + 8 : 28),
+      padding: EdgeInsets.only(top: topInset),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF16151E) : Colors.white,
       ),

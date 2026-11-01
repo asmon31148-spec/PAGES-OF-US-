@@ -121,7 +121,7 @@ class PagesOfUsWidgetProvider : AppWidgetProvider() {
                 )
                 views.setOnClickPendingIntent(R.id.widget_btn_miss, missPi)
 
-                // Click on root or center container opens MainActivity
+                // Click on root opens MainActivity
                 val appIntent = Intent(context, MainActivity::class.java).apply {
                     flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
                 }
@@ -129,7 +129,6 @@ class PagesOfUsWidgetProvider : AppWidgetProvider() {
                     context, 0, appIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
                 )
                 views.setOnClickPendingIntent(R.id.widget_root, appPi)
-                views.setOnClickPendingIntent(R.id.widget_center_container, appPi)
 
                 appWidgetManager.updateAppWidget(appWidgetId, views)
             } catch (e: Exception) {

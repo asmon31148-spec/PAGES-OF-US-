@@ -279,6 +279,79 @@ class _YoutubeMusicSearchSheetState extends State<YoutubeMusicSearchSheet> {
     );
   }
 
+  void _showCreatePlaylistForTrackDialog(BuildContext context, YoutubeTrack track) {
+    final titleCtrl = TextEditingController();
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          decoration: const BoxDecoration(
+            color: Color(0xFF13151B),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Create New Playlist',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+              ),
+              const SizedBox(height: 14),
+              TextField(
+                controller: titleCtrl,
+                style: const TextStyle(fontSize: 13, color: Colors.white),
+                decoration: InputDecoration(
+                  hintText: 'Playlist Name (e.g. Calm Nights, Acoustic)',
+                  hintStyle: const TextStyle(color: Color(0xFF64748B)),
+                  filled: true,
+                  fillColor: const Color(0xFF0F1115),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
+                ),
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    final title = titleCtrl.text.trim();
+                    if (title.isNotEmpty) {
+                      final audio = context.read<AudioProvider>();
+                      final plId = 'pl_${DateTime.now().millisecondsSinceEpoch}';
+                      audio.createPlaylist(title, []);
+                      audio.addYoutubeTrackToPlaylist(plId, track);
+                      Navigator.pop(ctx);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Created "$title" and added "${track.title}" ✦', style: const TextStyle(color: Colors.white)),
+                          backgroundColor: const Color(0xFF1E212B),
+                          behavior: SnackBarBehavior.floating,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          duration: const Duration(seconds: 2),
+                        ),
+                      );
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFE07A5F),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  ),
+                  child: const Text('Create Playlist & Add ✦', style: TextStyle(fontWeight: FontWeight.bold)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   void _showAddToPlaylistSheet(BuildContext context, YoutubeTrack track) {
     HapticFeedback.lightImpact();
     final audio = context.read<AudioProvider>();
@@ -331,6 +404,36 @@ class _YoutubeMusicSearchSheetState extends State<YoutubeMusicSearchSheet> {
                 ],
               ),
               const SizedBox(height: 16),
+              // + Create New Playlist Action Button
+              GestureDetector(
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _showCreatePlaylistForTrackDialog(context, track);
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  margin: const EdgeInsets.only(bottom: 12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE07A5F).withOpacity(0.14),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: const Color(0xFFE07A5F).withOpacity(0.4)),
+                  ),
+                  child: Row(
+                    children: const [
+                      Icon(Icons.add_circle_outline_rounded, color: Color(0xFFE07A5F), size: 22),
+                      SizedBox(width: 12),
+                      Text(
+                        'Create New Playlist',
+                        style: TextStyle(
+                          color: Color(0xFFE07A5F),
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
               if (playlists.isEmpty)
                 const Padding(
                   padding: EdgeInsets.symmetric(vertical: 24),

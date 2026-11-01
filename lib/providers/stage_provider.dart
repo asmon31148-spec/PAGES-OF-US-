@@ -231,8 +231,44 @@ class StageProvider extends ChangeNotifier {
         _dailyPrompt = DailyPrompt.fromJson(snap.data()!);
         LocalCacheService.setCachedDailyPrompt(snap.data()!);
         notifyListeners();
+      } else if (partnerId != null && partnerId.isNotEmpty && _dailyPrompt == null) {
+        // Paired, but no prompt exists yet in space: establish shared prompt
+        final defaultPrompt = DailyPrompt(
+          id: DateTime.now().toIso8601String().split('T').first,
+          prompt: 'What was the sweetest little thought you had about us today?',
+          category: 'Soft Affection',
+          vibeTag: 'Gentle Whisper',
+          answers: {},
+          reveals: {},
+          careChecks: {},
+        );
+        _dailyPrompt = defaultPrompt;
+        LocalCacheService.setCachedDailyPrompt(defaultPrompt.toJson());
+        FirebaseService.saveFeatureDoc(spaceId, 'daily_prompt', defaultPrompt.toJson());
+        SupabaseService.upsertAppContent('daily_prompt_$spaceId', defaultPrompt.toJson());
+        notifyListeners();
       }
     });
+
+    // Supabase app_content fast-fetch for daily_prompt
+    try {
+      final client = SupabaseService.client;
+      if (client != null) {
+        client
+            .from('app_content')
+            .select('content')
+            .eq('id', 'daily_prompt_$spaceId')
+            .maybeSingle()
+            .then((res) {
+          if (res != null && res['content'] != null && res['content'] is Map) {
+            final promptMap = Map<String, dynamic>.from(res['content'] as Map);
+            _dailyPrompt = DailyPrompt.fromJson(promptMap);
+            LocalCacheService.setCachedDailyPrompt(promptMap);
+            notifyListeners();
+          }
+        });
+      }
+    } catch (_) {}
 
     // 4b. Listen to Prompt History
     _promptHistorySub?.cancel();

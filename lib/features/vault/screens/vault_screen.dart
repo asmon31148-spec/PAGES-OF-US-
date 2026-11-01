@@ -32,8 +32,14 @@ class _VaultScreenState extends State<VaultScreen> {
   void _syncVaults() {
     final auth = context.read<AuthProvider>();
     final spaceId = auth.space?.id ?? auth.user?.spaceId;
-    if (spaceId != null && spaceId.isNotEmpty) {
-      context.read<VaultProvider>().initVaultSync(spaceId);
+    final user = auth.user;
+    if (spaceId != null && spaceId.isNotEmpty && user != null) {
+      context.read<VaultProvider>().initVaultSync(
+        spaceId: spaceId,
+        currentUserId: user.id,
+        partnerId: auth.partner?.id,
+        partnerNickname: auth.partner?.nickname,
+      );
     }
   }
 

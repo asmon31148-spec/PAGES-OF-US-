@@ -103,19 +103,42 @@ class MemoriesProvider extends ChangeNotifier {
     }).toList();
   }
 
+  String? _currentPartnerId;
+  String? _currentPartnerNickname;
+  String? _currentSpaceId;
+
   Future<void> initMemoriesSync({
     required String spaceId,
     required String currentUserId,
+    String? partnerId,
     String? partnerNickname,
   }) async {
     _currentUserId = currentUserId;
+    _currentPartnerId = partnerId;
+    _currentPartnerNickname = partnerNickname;
+    _currentSpaceId = spaceId;
     _isLoading = true;
     notifyListeners();
 
     await Future.wait([
-      fetchMemories(spaceId, currentUserId, partnerNickname),
-      fetchLetters(spaceId, currentUserId, partnerNickname),
-      fetchMilestones(spaceId, currentUserId, partnerNickname),
+      fetchMemories(
+        spaceId: spaceId,
+        currentUserId: currentUserId,
+        partnerId: partnerId,
+        partnerNickname: partnerNickname,
+      ),
+      fetchLetters(
+        spaceId: spaceId,
+        currentUserId: currentUserId,
+        partnerId: partnerId,
+        partnerNickname: partnerNickname,
+      ),
+      fetchMilestones(
+        spaceId: spaceId,
+        currentUserId: currentUserId,
+        partnerId: partnerId,
+        partnerNickname: partnerNickname,
+      ),
     ]);
 
     _isLoading = false;
@@ -157,12 +180,12 @@ class MemoriesProvider extends ChangeNotifier {
             event: PostgresChangeEvent.all,
             schema: 'public',
             table: 'memories',
-            filter: PostgresChangeFilter(
-              type: PostgresChangeFilterType.eq,
-              column: 'space_id',
-              value: spaceId,
+            callback: (_) => fetchMemories(
+              spaceId: _currentSpaceId ?? spaceId,
+              currentUserId: _currentUserId ?? currentUserId,
+              partnerId: _currentPartnerId,
+              partnerNickname: _currentPartnerNickname,
             ),
-            callback: (_) => fetchMemories(spaceId, currentUserId, partnerNickname),
           )
           .subscribe();
 
@@ -199,12 +222,12 @@ class MemoriesProvider extends ChangeNotifier {
             event: PostgresChangeEvent.all,
             schema: 'public',
             table: 'letters',
-            filter: PostgresChangeFilter(
-              type: PostgresChangeFilterType.eq,
-              column: 'space_id',
-              value: spaceId,
+            callback: (_) => fetchLetters(
+              spaceId: _currentSpaceId ?? spaceId,
+              currentUserId: _currentUserId ?? currentUserId,
+              partnerId: _currentPartnerId,
+              partnerNickname: _currentPartnerNickname,
             ),
-            callback: (_) => fetchLetters(spaceId, currentUserId, partnerNickname),
           )
           .subscribe();
 
@@ -214,12 +237,12 @@ class MemoriesProvider extends ChangeNotifier {
             event: PostgresChangeEvent.all,
             schema: 'public',
             table: 'milestones',
-            filter: PostgresChangeFilter(
-              type: PostgresChangeFilterType.eq,
-              column: 'space_id',
-              value: spaceId,
+            callback: (_) => fetchMilestones(
+              spaceId: _currentSpaceId ?? spaceId,
+              currentUserId: _currentUserId ?? currentUserId,
+              partnerId: _currentPartnerId,
+              partnerNickname: _currentPartnerNickname,
             ),
-            callback: (_) => fetchMilestones(spaceId, currentUserId, partnerNickname),
           )
           .subscribe();
     }
@@ -249,20 +272,24 @@ class MemoriesProvider extends ChangeNotifier {
     } catch (_) {}
   }
 
-  Future<void> fetchMemories(
-    String spaceId,
-    String currentUserId,
+  Future<void> fetchMemories({
+    required String spaceId,
+    required String currentUserId,
+    String? partnerId,
     String? partnerNickname,
-  ) async {
+  }) async {
     try {
       final supabase = SupabaseService.client;
       if (supabase == null) return;
 
-      final data = await supabase
-          .from('memories')
-          .select()
-          .eq('space_id', spaceId)
-          .order('created_at', ascending: false);
+      var query = supabase.from('memories').select();
+      if (partnerId != null && partnerId.isNotEmpty) {
+        query = query.or('author.ilike.%$currentUserId%,author.ilike.%$partnerId%,space_id.eq.$spaceId');
+      } else {
+        query = query.or('author.ilike.%$currentUserId%,space_id.eq.$spaceId');
+      }
+
+      final data = await query.order('created_at', ascending: false);
 
       _memories = (data as List)
           .map((row) => MemoryItem.fromJson(
@@ -293,20 +320,24 @@ class MemoriesProvider extends ChangeNotifier {
     } catch (_) {}
   }
 
-  Future<void> fetchLetters(
-    String spaceId,
-    String currentUserId,
+  Future<void> fetchLetters({
+    required String spaceId,
+    required String currentUserId,
+    String? partnerId,
     String? partnerNickname,
-  ) async {
+  }) async {
     try {
       final supabase = SupabaseService.client;
       if (supabase == null) return;
 
-      final data = await supabase
-          .from('letters')
-          .select()
-          .eq('space_id', spaceId)
-          .order('created_at', ascending: false);
+      var query = supabase.from('letters').select();
+      if (partnerId != null && partnerId.isNotEmpty) {
+        query = query.or('author.ilike.%$currentUserId%,author.ilike.%$partnerId%,space_id.eq.$spaceId');
+      } else {
+        query = query.or('author.ilike.%$currentUserId%,space_id.eq.$spaceId');
+      }
+
+      final data = await query.order('created_at', ascending: false);
 
       _letters = (data as List)
           .map((row) => LetterItem.fromJson(
@@ -319,20 +350,24 @@ class MemoriesProvider extends ChangeNotifier {
     } catch (_) {}
   }
 
-  Future<void> fetchMilestones(
-    String spaceId,
-    String currentUserId,
+  Future<void> fetchMilestones({
+    required String spaceId,
+    required String currentUserId,
+    String? partnerId,
     String? partnerNickname,
-  ) async {
+  }) async {
     try {
       final supabase = SupabaseService.client;
       if (supabase == null) return;
 
-      final data = await supabase
-          .from('milestones')
-          .select()
-          .eq('space_id', spaceId)
-          .order('event_date', ascending: false);
+      var query = supabase.from('milestones').select();
+      if (partnerId != null && partnerId.isNotEmpty) {
+        query = query.or('author.ilike.%$currentUserId%,author.ilike.%$partnerId%,space_id.eq.$spaceId');
+      } else {
+        query = query.or('author.ilike.%$currentUserId%,space_id.eq.$spaceId');
+      }
+
+      final data = await query.order('event_date', ascending: false);
 
       final list = (data as List)
           .map((row) => MilestoneItem.fromJson(

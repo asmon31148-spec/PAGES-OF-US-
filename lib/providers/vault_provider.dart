@@ -17,6 +17,9 @@ class VaultProvider extends ChangeNotifier {
   String? _currentPlayingTrack;
   StreamSubscription? _vaultSub;
   String? _activeSpaceId;
+  String? _currentUserId;
+  String? _partnerId;
+  String? _partnerNickname;
 
   List<VaultItem> get vaults => List.unmodifiable(_vaults);
   VaultItem? get selectedVault => _selectedVault ?? (_vaults.isNotEmpty ? _vaults.first : null);
@@ -149,28 +152,69 @@ class VaultProvider extends ChangeNotifier {
 
   // --- Real-time Sync & Persistence ---
 
-  Future<void> initVaultSync(String spaceId) async {
+  Future<void> initVaultSync({
+    required String spaceId,
+    required String currentUserId,
+    String? partnerId,
+    String? partnerNickname,
+  }) async {
     if (spaceId.isEmpty) return;
-    if (_activeSpaceId == spaceId && _vaultSub != null) return;
     _activeSpaceId = spaceId;
+    _currentUserId = currentUserId;
+    _partnerId = partnerId;
+    _partnerNickname = partnerNickname;
 
     // 0. Register Supabase Realtime Listener (0-50ms peer updates)
     SupabaseService.addVaultListener(_handleSupabaseVaultsUpdate);
 
     final vaultDocId = 'vaults_$spaceId';
+    final Map<String, VaultItem> mergedMap = {};
 
-    // 1. Supabase fetch
+    // 1. Supabase fetches: User-centric permanent vaults + Shared Space vaults
     try {
       final supabase = SupabaseService.client;
       if (supabase != null) {
-        // First try the new 'vaults_$spaceId' key
+        // a) Fetch user's own anchored vaults (guarantees Asmon's or any user's vaults are never lost!)
+        if (currentUserId.isNotEmpty) {
+          final userRes = await supabase
+              .from('app_content')
+              .select('content')
+              .eq('id', 'user_vaults_$currentUserId')
+              .maybeSingle();
+          if (userRes != null && userRes['content'] is List) {
+            for (final e in (userRes['content'] as List)) {
+              if (e is Map) {
+                final v = VaultItem.fromJson(Map<String, dynamic>.from(e));
+                mergedMap[v.id] = v;
+              }
+            }
+          }
+        }
+
+        // b) If paired, fetch partner's anchored vaults!
+        if (partnerId != null && partnerId.isNotEmpty) {
+          final partnerRes = await supabase
+              .from('app_content')
+              .select('content')
+              .eq('id', 'user_vaults_$partnerId')
+              .maybeSingle();
+          if (partnerRes != null && partnerRes['content'] is List) {
+            for (final e in (partnerRes['content'] as List)) {
+              if (e is Map) {
+                final v = VaultItem.fromJson(Map<String, dynamic>.from(e));
+                mergedMap[v.id] = v;
+              }
+            }
+          }
+        }
+
+        // c) Fetch shared space vaults
         var res = await supabase
             .from('app_content')
             .select('content')
             .eq('id', vaultDocId)
             .maybeSingle();
 
-        // Fallback to legacy key if not found
         if (res == null || res['content'] == null) {
           res = await supabase
               .from('app_content')
@@ -179,24 +223,33 @@ class VaultProvider extends ChangeNotifier {
               .maybeSingle();
         }
 
-        if (res != null && res['content'] != null) {
-          final rawList = res['content'];
-          if (rawList is List && rawList.isNotEmpty) {
-            final loaded = rawList
-                .map((e) => VaultItem.fromJson(Map<String, dynamic>.from(e as Map)))
-                .toList();
-            _vaults = loaded.where((v) => v.id != 'vault_midnight_seed' && v.title.toLowerCase().trim() != 'the midnight letters').toList();
-            if (loaded.length != _vaults.length) {
-              _syncVaultsToCloud(spaceId);
+        if (res != null && res['content'] != null && res['content'] is List) {
+          for (final e in (res['content'] as List)) {
+            if (e is Map) {
+              final v = VaultItem.fromJson(Map<String, dynamic>.from(e));
+              mergedMap[v.id] = v;
             }
-            if (_vaults.isNotEmpty && _selectedVault == null) {
-              _selectedVault = _vaults.first;
-            }
-            notifyListeners();
           }
         }
       }
     } catch (_) {}
+
+    var loaded = mergedMap.values.where((v) =>
+        v.id != 'vault_midnight_seed' &&
+        v.title.toLowerCase().trim() != 'the midnight letters').toList();
+
+    // If solo (no partner), only show user's own vaults!
+    if (partnerId == null || partnerId.isEmpty) {
+      loaded = loaded.where((v) => v.creatorId == currentUserId || v.creatorId.isEmpty).toList();
+    }
+
+    if (loaded.isNotEmpty) {
+      _vaults = loaded;
+      if (_selectedVault == null || !_vaults.any((v) => v.id == _selectedVault!.id)) {
+        _selectedVault = _vaults.first;
+      }
+      notifyListeners();
+    }
 
     // 2. If vaults exist in local cache, select the first
     if (_vaults.isNotEmpty && _selectedVault == null) {
@@ -218,22 +271,22 @@ class VaultProvider extends ChangeNotifier {
           final data = snap.data()!;
           if (data['vaults'] != null && data['vaults'] is List) {
             final raw = data['vaults'] as List;
-            final loaded = raw
+            final incoming = raw
                 .map((e) => VaultItem.fromJson(Map<String, dynamic>.from(e as Map)))
                 .toList();
 
-            bool removedMidnight = false;
-            _vaults = loaded.where((v) {
-              if (v.id == 'vault_midnight_seed' || v.title.toLowerCase().trim() == 'the midnight letters') {
-                removedMidnight = true;
-                return false;
+            final Map<String, VaultItem> map = {for (final v in _vaults) v.id: v};
+            for (final v in incoming) {
+              if (v.id != 'vault_midnight_seed' && v.title.toLowerCase().trim() != 'the midnight letters') {
+                if (_partnerId != null && _partnerId!.isNotEmpty) {
+                  map[v.id] = v;
+                } else if (v.creatorId == currentUserId || v.creatorId.isEmpty) {
+                  map[v.id] = v;
+                }
               }
-              return true;
-            }).toList();
-
-            if (removedMidnight) {
-              _syncVaultsToCloud(spaceId);
             }
+
+            _vaults = map.values.toList();
             
             // Check scheduled notifications for locked timers
             for (final v in _vaults) {
@@ -347,6 +400,19 @@ class VaultProvider extends ChangeNotifier {
           'content': jsonList,
           'updated_at': DateTime.now().toIso8601String(),
         });
+
+        // Also permanently anchor user's own vaults to their user account
+        if (_currentUserId != null && _currentUserId!.isNotEmpty) {
+          final myVaults = _vaults
+              .where((v) => v.creatorId == _currentUserId || v.creatorId.isEmpty)
+              .map((v) => v.toJson())
+              .toList();
+          await supabase.from('app_content').upsert({
+            'id': 'user_vaults_$_currentUserId',
+            'content': myVaults,
+            'updated_at': DateTime.now().toIso8601String(),
+          });
+        }
       }
     } catch (_) {}
 

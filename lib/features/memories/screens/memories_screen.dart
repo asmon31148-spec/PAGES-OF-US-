@@ -30,6 +30,7 @@ class _MemoriesScreenState extends State<MemoriesScreen> {
         context.read<MemoriesProvider>().initMemoriesSync(
               spaceId: auth.space!.id,
               currentUserId: auth.user!.id,
+              partnerId: auth.partner?.id,
               partnerNickname: auth.partner?.nickname,
             );
       }
@@ -86,6 +87,7 @@ class _MemoriesScreenState extends State<MemoriesScreen> {
                     await memoriesProvider.initMemoriesSync(
                       spaceId: spaceId,
                       currentUserId: user.id,
+                      partnerId: authProvider.partner?.id,
                       partnerNickname: authProvider.partner?.nickname,
                     );
                   }
