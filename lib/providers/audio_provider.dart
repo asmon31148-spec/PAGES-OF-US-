@@ -304,28 +304,6 @@ class AudioProvider extends ChangeNotifier {
         playNextWithCrossfade();
       }
     });
-
-    // Supabase app_content fetch for shared space playlists
-    try {
-      final client = SupabaseService.client;
-      if (client != null) {
-        client
-            .from('app_content')
-            .select('content')
-            .eq('id', 'playlists_$spaceId')
-            .maybeSingle()
-            .then((res) {
-          if (res != null && res['content'] != null && res['content'] is List) {
-            final list = res['content'] as List;
-            if (list.isNotEmpty) {
-              _playlists.clear();
-              _playlists.addAll(list.map((e) => PlaylistItem.fromJson(Map<String, dynamic>.from(e as Map))));
-              notifyListeners();
-            }
-          }
-        });
-      }
-    } catch (_) {}
   }
 
   void _initAtmospherePlayers() {
