@@ -45,6 +45,8 @@ class WorldProvider extends ChangeNotifier {
   String get gpsStatus => _gpsStatus;
   WeatherInfo? get partnerWeather => _partnerWeather;
   DateTime get now => _now;
+  String? get spaceId => _spaceId;
+  String? get partnerId => _partnerId;
   bool _isTrackingInitializing = false;
   bool get isLiveTrackingActive => _positionStreamSub != null || _isTrackingInitializing;
 

@@ -98,21 +98,25 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
     final user = auth.user;
     final partner = auth.partner;
 
-    if (user != null && !world.isLiveTrackingActive) {
+    if (user != null) {
       final effectiveSpaceId = spaceId.isNotEmpty ? spaceId : 'solo_${user.id}';
-      world.initWorldSync(
-        spaceId: effectiveSpaceId,
-        currentUserId: user.id,
-        partnerId: partner?.id,
-      );
+      if (world.spaceId != effectiveSpaceId || world.partnerId != partner?.id) {
+        world.initWorldSync(
+          spaceId: effectiveSpaceId,
+          currentUserId: user.id,
+          partnerId: partner?.id,
+        );
+      }
 
-      // Automatically acquire GPS and begin continuous real-time movement streaming
-      world.startLiveTracking(
-        spaceId: effectiveSpaceId,
-        currentUserId: user.id,
-        nickname: user.nickname,
-        avatarUrl: user.avatarUrl,
-      );
+      if (!world.isLiveTrackingActive) {
+        // Automatically acquire GPS and begin continuous real-time movement streaming
+        world.startLiveTracking(
+          spaceId: effectiveSpaceId,
+          currentUserId: user.id,
+          nickname: user.nickname,
+          avatarUrl: user.avatarUrl,
+        );
+      }
     }
   }
 
