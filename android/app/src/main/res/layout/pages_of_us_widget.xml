@@ -5,10 +5,11 @@
     android:layout_height="match_parent"
     android:background="@drawable/widget_bg"
     android:orientation="vertical"
-    android:padding="12dp">
+    android:padding="13dp">
 
-    <!-- Top Row: Title and Counter -->
+    <!-- Top Header Bar: Title and Romantic Capsule -->
     <LinearLayout
+        android:id="@+id/widget_header_container"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:gravity="center_vertical"
@@ -20,35 +21,36 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:text="PAGES OF US"
-            android:textColor="#A09DA8"
-            android:textSize="10sp"
-            android:textStyle="bold" />
+            android:textColor="#9E96A9"
+            android:textSize="9.5sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.08" />
 
         <TextView
             android:id="@+id/widget_days_together"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Together ✦"
-            android:textColor="#E07A5F"
-            android:textSize="11sp"
+            android:background="@drawable/widget_pill_bg"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
+            android:paddingTop="2.5dp"
+            android:paddingBottom="2.5dp"
+            android:text="Day 0 together ✦"
+            android:textColor="#FF9A7B"
+            android:textSize="10sp"
             android:textStyle="bold" />
     </LinearLayout>
 
-    <FrameLayout
-        android:layout_width="match_parent"
-        android:layout_height="1dp"
-        android:layout_marginTop="6dp"
-        android:layout_marginBottom="6dp"
-        android:background="#262434" />
-
-    <!-- Center Interactive Container (Switches between 3 Views) -->
+    <!-- Center Interactive Container (Tapping slides to next card) -->
     <FrameLayout
         android:id="@+id/widget_center_container"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1">
+        android:layout_weight="1"
+        android:layout_marginTop="6dp"
+        android:layout_marginBottom="2dp">
 
-        <!-- VIEW 1: Daily Care List -->
+        <!-- VIEW 1: Daily Care Routine (Index 0) -->
         <LinearLayout
             android:id="@+id/widget_view_care"
             android:layout_width="match_parent"
@@ -58,18 +60,25 @@
             android:visibility="gone">
 
             <TextView
-                android:layout_width="match_parent"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="🌿 DAILY CARE"
+                android:text="🌿  DAILY CARE"
                 android:textColor="#E9C46A"
-                android:textSize="10sp"
-                android:textStyle="bold" />
+                android:textSize="9.5sp"
+                android:textStyle="bold"
+                android:letterSpacing="0.06"
+                android:layout_marginBottom="4dp" />
 
             <TextView
                 android:id="@+id/widget_care_line1"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
+                android:layout_marginTop="2dp"
+                android:background="@drawable/widget_care_chip_bg"
+                android:paddingStart="8dp"
+                android:paddingEnd="8dp"
+                android:paddingTop="3.5dp"
+                android:paddingBottom="3.5dp"
                 android:ellipsize="end"
                 android:maxLines="1"
                 android:text="💧 Morning Hydration"
@@ -81,6 +90,11 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="2dp"
+                android:background="@drawable/widget_care_chip_bg"
+                android:paddingStart="8dp"
+                android:paddingEnd="8dp"
+                android:paddingTop="3.5dp"
+                android:paddingBottom="3.5dp"
                 android:ellipsize="end"
                 android:maxLines="1"
                 android:text="🥗 Mindful Lunch &amp; Breather"
@@ -92,6 +106,11 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="2dp"
+                android:background="@drawable/widget_care_chip_bg"
+                android:paddingStart="8dp"
+                android:paddingEnd="8dp"
+                android:paddingTop="3.5dp"
+                android:paddingBottom="3.5dp"
                 android:ellipsize="end"
                 android:maxLines="1"
                 android:text="🌙 Sweet Sleep &amp; Whispers"
@@ -99,148 +118,174 @@
                 android:textSize="11sp" />
         </LinearLayout>
 
-        <!-- VIEW 2: Pinned Note / Sanctuary Whisper (Default) -->
+        <!-- VIEW 2: Pinned Whisper Note (Index 1 - Default) -->
         <LinearLayout
             android:id="@+id/widget_view_note"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:gravity="center"
             android:orientation="vertical"
+            android:paddingStart="4dp"
+            android:paddingEnd="4dp"
             android:visibility="visible">
 
             <TextView
-                android:layout_width="match_parent"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:gravity="center"
-                android:text="💌 PINNED WHISPER"
+                android:text="💌  WHISPER NOTE"
                 android:textColor="#F4A261"
-                android:textSize="10sp"
-                android:textStyle="bold" />
+                android:textSize="9.5sp"
+                android:textStyle="bold"
+                android:letterSpacing="0.06" />
 
             <TextView
                 android:id="@+id/widget_partner_thought"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
+                android:layout_marginTop="6dp"
                 android:ellipsize="end"
+                android:fontFamily="serif"
+                android:textStyle="italic"
                 android:gravity="center"
                 android:maxLines="3"
+                android:lineSpacingExtra="2dp"
                 android:text="“Thinking of you...”"
                 android:textColor="#FFFFFF"
-                android:textSize="13sp"
-                android:textStyle="bold" />
+                android:textSize="16sp" />
 
             <TextView
                 android:id="@+id/widget_note_author"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
+                android:layout_marginTop="5dp"
                 android:gravity="center"
-                android:text="— from your partner"
-                android:textColor="#9E9AA7"
-                android:textSize="10sp" />
+                android:text="— with love, your partner"
+                android:textColor="#9E96A9"
+                android:textSize="11sp" />
         </LinearLayout>
 
-        <!-- VIEW 3: Miss You / Partner Touches -->
+        <!-- VIEW 3: Live Tether & Touches (Index 2) -->
         <LinearLayout
             android:id="@+id/widget_view_miss_you"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:gravity="center"
             android:orientation="vertical"
+            android:paddingStart="4dp"
+            android:paddingEnd="4dp"
             android:visibility="gone">
 
             <TextView
-                android:layout_width="match_parent"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:gravity="center"
-                android:text="❤️ LIVE TETHER"
+                android:text="❤️  LIVE TETHER"
                 android:textColor="#E07A5F"
-                android:textSize="10sp"
-                android:textStyle="bold" />
+                android:textSize="9.5sp"
+                android:textStyle="bold"
+                android:letterSpacing="0.06" />
 
             <TextView
                 android:id="@+id/widget_miss_you_count"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
+                android:layout_marginTop="5dp"
                 android:gravity="center"
-                android:text="14 Touches Today"
+                android:text="14 Touches Today ❤️"
                 android:textColor="#FFFFFF"
-                android:textSize="14sp"
+                android:textSize="18sp"
                 android:textStyle="bold" />
 
             <TextView
+                android:id="@+id/widget_tether_status"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
+                android:layout_marginTop="3dp"
                 android:gravity="center"
                 android:text="Connected in sanctuary ✦"
-                android:textColor="#9E9AA7"
-                android:textSize="10sp" />
+                android:textColor="#9E96A9"
+                android:textSize="11sp" />
         </LinearLayout>
     </FrameLayout>
 
-    <!-- Bottom Interactive Switcher Tabs: 3 Slidable/Tappable Views -->
+    <!-- Bottom Slidable / Carousel Indicator Bar -->
     <LinearLayout
+        android:id="@+id/widget_carousel_bar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="6dp"
         android:gravity="center"
         android:orientation="horizontal">
 
+        <!-- Previous Card Button -->
         <TextView
-            android:id="@+id/widget_btn_care"
-            android:layout_width="0dp"
+            android:id="@+id/widget_btn_prev"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginLeft="2dp"
-            android:layout_marginRight="2dp"
-            android:layout_marginStart="2dp"
-            android:layout_marginEnd="2dp"
-            android:layout_weight="1"
-            android:background="@drawable/widget_tab_bg"
-            android:gravity="center"
-            android:paddingTop="5dp"
-            android:paddingBottom="5dp"
-            android:text="🌿 Care"
-            android:textColor="#EDEAE5"
-            android:textSize="10sp"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp"
+            android:paddingTop="3dp"
+            android:paddingBottom="3dp"
+            android:text="‹"
+            android:textColor="#7A7387"
+            android:textSize="16sp"
             android:textStyle="bold" />
 
-        <TextView
-            android:id="@+id/widget_btn_note"
-            android:layout_width="0dp"
+        <!-- 3 Interactive Dots (Care:0, Note:1, Tether:2) -->
+        <LinearLayout
+            android:id="@+id/widget_dots_container"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginLeft="2dp"
-            android:layout_marginRight="2dp"
-            android:layout_marginStart="2dp"
-            android:layout_marginEnd="2dp"
-            android:layout_weight="1"
-            android:background="@drawable/widget_tab_bg"
             android:gravity="center"
-            android:paddingTop="5dp"
-            android:paddingBottom="5dp"
-            android:text="💌 Note"
-            android:textColor="#EDEAE5"
-            android:textSize="10sp"
-            android:textStyle="bold" />
+            android:orientation="horizontal">
 
+            <TextView
+                android:id="@+id/widget_dot_0"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:paddingStart="5dp"
+                android:paddingEnd="5dp"
+                android:paddingTop="3dp"
+                android:paddingBottom="3dp"
+                android:text="●"
+                android:textColor="#4A4358"
+                android:textSize="8sp" />
+
+            <TextView
+                android:id="@+id/widget_dot_1"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:paddingStart="5dp"
+                android:paddingEnd="5dp"
+                android:paddingTop="3dp"
+                android:paddingBottom="3dp"
+                android:text="●"
+                android:textColor="#E07A5F"
+                android:textSize="8sp" />
+
+            <TextView
+                android:id="@+id/widget_dot_2"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:paddingStart="5dp"
+                android:paddingEnd="5dp"
+                android:paddingTop="3dp"
+                android:paddingBottom="3dp"
+                android:text="●"
+                android:textColor="#4A4358"
+                android:textSize="8sp" />
+        </LinearLayout>
+
+        <!-- Next Card Button -->
         <TextView
-            android:id="@+id/widget_btn_miss"
-            android:layout_width="0dp"
+            android:id="@+id/widget_btn_next"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginLeft="2dp"
-            android:layout_marginRight="2dp"
-            android:layout_marginStart="2dp"
-            android:layout_marginEnd="2dp"
-            android:layout_weight="1"
-            android:background="@drawable/widget_tab_bg"
-            android:gravity="center"
-            android:paddingTop="5dp"
-            android:paddingBottom="5dp"
-            android:text="❤️ Miss"
-            android:textColor="#EDEAE5"
-            android:textSize="10sp"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp"
+            android:paddingTop="3dp"
+            android:paddingBottom="3dp"
+            android:text="›"
+            android:textColor="#7A7387"
+            android:textSize="16sp"
             android:textStyle="bold" />
     </LinearLayout>
 </LinearLayout>

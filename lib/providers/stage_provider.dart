@@ -511,7 +511,10 @@ class StageProvider extends ChangeNotifier {
     if (partnerId != null && _pinnedNotes.containsKey(partnerId)) {
       thought = _pinnedNotes[partnerId]?.text;
     }
-    final careLines = _dailyCareItems.map((c) => '${c.icon} ${c.title}').take(3).toList();
+    final careLines = _dailyCareItems.map((c) {
+      final cleanTitle = c.title.replaceAll(c.icon, '').trim();
+      return '${c.icon} $cleanTitle';
+    }).take(3).toList();
     WidgetSyncService.syncWidget(
       partnerThought: thought,
       daysTogether: daysTogether,
