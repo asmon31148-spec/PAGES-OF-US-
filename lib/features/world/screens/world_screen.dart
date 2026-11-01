@@ -175,10 +175,14 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
     final partner = authProvider.partner;
     final spaceId = authProvider.space?.id ?? authProvider.user?.spaceId ?? '';
 
-    final hasPartner = partner != null && partner.id.isNotEmpty;
+    final hasPartner = (partner != null && partner.id.isNotEmpty) ||
+        authProvider.isPaired ||
+        (worldProvider.partnerLocation != null) ||
+        (worldProvider.partnerId != null && worldProvider.partnerId!.isNotEmpty);
+    final effectivePartnerId = partner?.id ?? worldProvider.partnerId ?? '';
     final myLoc = (user != null ? worldProvider.getUserLocation(user.id) : null) ?? worldProvider.myLocation;
     final partnerLoc = hasPartner
-        ? ((worldProvider.getUserLocation(partner.id) ?? worldProvider.partnerLocation))
+        ? ((effectivePartnerId.isNotEmpty ? worldProvider.getUserLocation(effectivePartnerId) : null) ?? worldProvider.partnerLocation)
         : null;
 
     // Automatic real-time distance calculation between two partners (only in paired mode)
@@ -954,7 +958,16 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
     required bool hasPartner,
   }) {
     final myTimeStr = DateFormat('h:mm a').format(now);
-    final partnerTimeStr = DateFormat('h:mm a').format(now);
+    final myIsDay = now.hour >= 6 && now.hour < 19;
+
+    // Calculate partner local time based on their geographic longitude offset from UTC
+    DateTime partnerDateTime = now;
+    if (partnerLoc != null && (partnerLoc.lat != 0.0 || partnerLoc.lng != 0.0)) {
+      final approxUtcOffsetMinutes = (partnerLoc.lng * 4).round();
+      partnerDateTime = now.toUtc().add(Duration(minutes: approxUtcOffsetMinutes));
+    }
+    final partnerTimeStr = DateFormat('h:mm a').format(partnerDateTime);
+    final partnerIsDay = partnerDateTime.hour >= 6 && partnerDateTime.hour < 19;
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
@@ -975,7 +988,7 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
               children: [
                 Row(
                   children: [
-                    const Text('☀️', style: TextStyle(fontSize: 12)),
+                    Text(myIsDay ? '☀️' : '🌙', style: const TextStyle(fontSize: 12)),
                     const SizedBox(width: 4),
                     Expanded(
                       child: Text(
@@ -1029,7 +1042,7 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
                 children: [
                   Row(
                     children: [
-                      const Text('🌙', style: TextStyle(fontSize: 12)),
+                      Text(partnerIsDay ? '☀️' : '🌙', style: const TextStyle(fontSize: 12)),
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(

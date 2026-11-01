@@ -24,10 +24,10 @@ class WidgetSyncService {
       if (partnerNickname != null && partnerNickname.isNotEmpty) {
         await HomeWidget.saveWidgetData<String>('partnerNickname', partnerNickname);
       }
-      final touches = (missYouCount != null && missYouCount > 0) ? missYouCount : 14;
+      final touches = (missYouCount != null && missYouCount >= 0) ? missYouCount : 0;
       await HomeWidget.saveWidgetData<String>(
         'missYouCount',
-        '$touches Touches Today ❤️',
+        touches > 0 ? '$touches Touches Today ❤️' : '0 Touches Today ❤️',
       );
 
       if (careLines != null && careLines.isNotEmpty) {

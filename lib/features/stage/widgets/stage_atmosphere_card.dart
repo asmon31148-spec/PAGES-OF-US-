@@ -41,22 +41,20 @@ class _StageAtmosphereCardState extends State<StageAtmosphereCard> {
             (partner.id.isNotEmpty ? world.getUserLocation(partner.id) : null);
         lat = partnerLoc?.lat;
         lng = partnerLoc?.lng;
-      }
-
-      // Fallback to my location if partner has no GPS coords yet or if solo
-      if (lat == null || lng == null || (lat == 0.0 && lng == 0.0)) {
+      } else {
+        // Fallback to my location only if in solo mode
         lat = world.myLocation?.lat;
         lng = world.myLocation?.lng;
-      }
 
-      if (lat == null || lng == null || (lat == 0.0 && lng == 0.0)) {
-        try {
-          final pos = await Geolocator.getLastKnownPosition();
-          if (pos != null) {
-            lat = pos.latitude;
-            lng = pos.longitude;
-          }
-        } catch (_) {}
+        if (lat == null || lng == null || (lat == 0.0 && lng == 0.0)) {
+          try {
+            final pos = await Geolocator.getLastKnownPosition();
+            if (pos != null) {
+              lat = pos.latitude;
+              lng = pos.longitude;
+            }
+          } catch (_) {}
+        }
       }
 
       WeatherInfo? info;
@@ -152,7 +150,9 @@ class _StageAtmosphereCardState extends State<StageAtmosphereCard> {
     final partnerName = partner?.nickname ?? 'Your partner';
     final city = partnerLoc?.placeName ?? '';
     if (isPaired) {
-      if ((weather.weatherCode >= 51 && weather.weatherCode <= 67) || (weather.weatherCode >= 80 && weather.weatherCode <= 82)) {
+      if (partnerLoc == null || (partnerLoc.lat == 0.0 && partnerLoc.lng == 0.0)) {
+        romanticHook = 'Waiting for $partnerName to connect GPS atmosphere 🛰️';
+      } else if ((weather.weatherCode >= 51 && weather.weatherCode <= 67) || (weather.weatherCode >= 80 && weather.weatherCode <= 82)) {
         romanticHook = '$partnerName is resting under gentle rain ${city.isNotEmpty ? "in $city" : "today"} 🌧️';
       } else if (weather.weatherCode >= 95) {
         romanticHook = 'Thunderstorms rolling over $partnerName ${city.isNotEmpty ? "in $city" : ""} ⛈️';

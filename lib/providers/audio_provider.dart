@@ -39,6 +39,7 @@ class AudioProvider extends ChangeNotifier {
   List<SongItem> _songs = [];
   final Set<String> _deletedSongIds = {};
   StreamSubscription? _musicCloudSub;
+  StreamSubscription? _playlistFirebaseSub;
 
   final List<PlaylistItem> _playlists = [
     PlaylistItem(
@@ -631,6 +632,20 @@ class AudioProvider extends ChangeNotifier {
       }
     });
 
+    // Realtime stream for playlists from Firebase
+    _playlistFirebaseSub?.cancel();
+    _playlistFirebaseSub = FirebaseService.streamFeatureDoc(spaceId, 'playlists').listen((snap) {
+      if (snap.exists && snap.data() != null) {
+        final list = snap.data()!['playlists'] as List<dynamic>?;
+        if (list != null && list.isNotEmpty) {
+          _playlists.clear();
+          _playlists.addAll(list.map((e) => PlaylistItem.fromJson(Map<String, dynamic>.from(e as Map))));
+          LocalCacheService.setCachedPlaylists(_playlists.map((p) => p.toJson()).toList());
+          notifyListeners();
+        }
+      }
+    });
+
     // Supabase app_content fetch for shared space playlists
     try {
       final client = SupabaseService.client;
@@ -661,6 +676,10 @@ class AudioProvider extends ChangeNotifier {
     try {
       LocalCacheService.setCachedPlaylists(_playlists.map((p) => p.toJson()).toList());
       if (_syncSpaceId.isNotEmpty) {
+        FirebaseService.saveFeatureDoc(_syncSpaceId, 'playlists', {
+          'playlists': _playlists.map((p) => p.toJson()).toList(),
+          'updated_at': DateTime.now().toIso8601String(),
+        });
         final client = SupabaseService.client;
         if (client != null) {
           client.from('app_content').upsert({
@@ -1144,6 +1163,8 @@ class AudioProvider extends ChangeNotifier {
 
   @override
   void dispose() {
+    _musicCloudSub?.cancel();
+    _playlistFirebaseSub?.cancel();
     audioHandler?.clearNotification();
     _songPlayer.dispose();
     _crossfadePlayer?.dispose();

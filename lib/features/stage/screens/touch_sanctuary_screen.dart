@@ -87,19 +87,6 @@ class _TouchSanctuaryScreenState extends State<TouchSanctuaryScreen>
     });
   }
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final auth = context.read<AuthProvider>();
-    final effectiveSpaceId = auth.space?.id ?? auth.user?.spaceId;
-    if (effectiveSpaceId != null && effectiveSpaceId.isNotEmpty && auth.user != null) {
-      context.read<StageProvider>().initSpaceListeners(
-            effectiveSpaceId,
-            auth.user!.id,
-            auth.partner?.id,
-          );
-    }
-  }
 
   @override
   void dispose() {
