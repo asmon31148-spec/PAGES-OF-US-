@@ -330,6 +330,7 @@ class WorldProvider extends ChangeNotifier {
   }
 
   final Map<String, Map<String, String>> _geocodeCache = {};
+  int _lastGeocodeTimestamp = 0;
 
   /// Starts continuous real-time high-accuracy GPS movement tracking
   Future<void> startLiveTracking({
@@ -523,11 +524,17 @@ class WorldProvider extends ChangeNotifier {
       return;
     }
 
+    final nowMs = DateTime.now().millisecondsSinceEpoch;
+    if (nowMs - _lastGeocodeTimestamp < 2500 && _cachedPlaceName.isNotEmpty) {
+      return;
+    }
+    _lastGeocodeTimestamp = nowMs;
+
     try {
       final geoUrl = Uri.parse(
         'https://nominatim.openstreetmap.org/reverse?format=json&lat=$lat&lon=$lng&zoom=18&addressdetails=1',
       );
-      final resp = await http.get(geoUrl, headers: {'User-Agent': 'PagesOfUsApp/1.0 (contact@pagesofus.app)'});
+      final resp = await http.get(geoUrl, headers: {'User-Agent': 'PagesOfUsApp/1.0 (contact@pagesofus.app)'}).timeout(const Duration(seconds: 4));
       if (resp.statusCode == 200) {
         final geoData = jsonDecode(resp.body) as Map<String, dynamic>;
         final addr = geoData['address'] as Map<String, dynamic>?;
@@ -566,6 +573,41 @@ class WorldProvider extends ChangeNotifier {
             );
             notifyListeners();
           }
+        }
+      } else {
+        await _fallbackBigDataCloud(lat, lng, cacheKey);
+      }
+    } catch (_) {
+      await _fallbackBigDataCloud(lat, lng, cacheKey);
+    }
+  }
+
+  Future<void> _fallbackBigDataCloud(double lat, double lng, String cacheKey) async {
+    try {
+      final url = Uri.parse(
+        'https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=$lat&longitude=$lng&localityLanguage=en',
+      );
+      final resp = await http.get(url).timeout(const Duration(seconds: 4));
+      if (resp.statusCode == 200) {
+        final data = jsonDecode(resp.body) as Map<String, dynamic>;
+        final locality = data['locality']?.toString().trim() ?? '';
+        final city = (data['city'] ?? data['principalSubdivision'] ?? '').toString().trim();
+        _cachedNeighborhood = locality;
+        _cachedCity = city;
+        _cachedPlaceName = locality.isNotEmpty ? (city.isNotEmpty ? '$locality, $city' : locality) : (city.isNotEmpty ? city : 'Nearby');
+
+        _geocodeCache[cacheKey] = {
+          'place': _cachedPlaceName,
+          'neighborhood': _cachedNeighborhood,
+          'city': _cachedCity,
+        };
+        if (_currentUserId != null && _locations.containsKey(_currentUserId)) {
+          _locations[_currentUserId!] = _locations[_currentUserId!]!.copyWith(
+            placeName: _cachedPlaceName,
+            neighborhood: _cachedNeighborhood,
+            city: _cachedCity,
+          );
+          notifyListeners();
         }
       }
     } catch (_) {}

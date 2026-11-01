@@ -41,16 +41,16 @@ class PagesOfUsWidgetProvider : AppWidgetProvider() {
                 }
 
                 val daysTogether = homeWidgetPrefs?.getString("daysTogether", null)
-                    ?: legacyPrefs.getString("daysTogether", "Day 0 together ✦")
-                    ?: "Day 0 together ✦"
+                    ?: legacyPrefs.getString("daysTogether", "Day 1 together ✦")
+                    ?: "Day 1 together ✦"
 
                 val partnerNickname = homeWidgetPrefs?.getString("partnerNickname", null)
                     ?: legacyPrefs.getString("partnerNickname", "your partner")
                     ?: "your partner"
 
                 val missYouCount = homeWidgetPrefs?.getString("missYouCount", null)
-                    ?: legacyPrefs.getString("missYouCount", "14 Touches Today ❤️")
-                    ?: "14 Touches Today ❤️"
+                    ?: legacyPrefs.getString("missYouCount", "0 Touches Today ❤️")
+                    ?: "0 Touches Today ❤️"
 
                 val careLine1 = homeWidgetPrefs?.getString("careLine1", null)
                     ?: legacyPrefs.getString("careLine1", "💧 Morning Hydration")

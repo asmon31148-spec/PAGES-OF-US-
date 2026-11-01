@@ -81,13 +81,13 @@ class StageProvider extends ChangeNotifier {
   int get weeklyTouches => _weeklyTouches;
 
   int get daysTogether {
-    if (_anniversaryDate == null || _anniversaryDate!.isEmpty) return 0;
+    if (_anniversaryDate == null || _anniversaryDate!.isEmpty) return 1;
     try {
       final start = DateTime.parse(_anniversaryDate!);
       final diff = DateTime.now().difference(start).inDays;
-      return diff >= 0 ? diff : 0;
+      return diff >= 0 ? diff + 1 : 1;
     } catch (_) {
-      return 0;
+      return 1;
     }
   }
 
@@ -228,13 +228,15 @@ class StageProvider extends ChangeNotifier {
     _dailyPromptSub?.cancel();
     _dailyPromptSub = FirebaseService.streamFeatureDoc(spaceId, 'daily_prompt').listen((snap) {
       if (snap.exists && snap.data() != null) {
-        _dailyPrompt = DailyPrompt.fromJson(snap.data()!);
-        LocalCacheService.setCachedDailyPrompt(snap.data()!);
+        final parsed = DailyPrompt.fromJson(snap.data()!);
+        _dailyPrompt = _handleDailyPromptRollover(parsed, spaceId);
+        LocalCacheService.setCachedDailyPrompt(_dailyPrompt!.toJson());
         notifyListeners();
       } else if (partnerId != null && partnerId.isNotEmpty && _dailyPrompt == null) {
         // Paired, but no prompt exists yet in space: establish shared prompt
+        final todayStr = DateTime.now().toIso8601String().split('T').first;
         final defaultPrompt = DailyPrompt(
-          id: DateTime.now().toIso8601String().split('T').first,
+          id: todayStr,
           prompt: 'What was the sweetest little thought you had about us today?',
           category: 'Soft Affection',
           vibeTag: 'Gentle Whisper',
@@ -262,8 +264,9 @@ class StageProvider extends ChangeNotifier {
             .then((res) {
           if (res != null && res['content'] != null && res['content'] is Map) {
             final promptMap = Map<String, dynamic>.from(res['content'] as Map);
-            _dailyPrompt = DailyPrompt.fromJson(promptMap);
-            LocalCacheService.setCachedDailyPrompt(promptMap);
+            final parsed = DailyPrompt.fromJson(promptMap);
+            _dailyPrompt = _handleDailyPromptRollover(parsed, spaceId);
+            LocalCacheService.setCachedDailyPrompt(_dailyPrompt!.toJson());
             notifyListeners();
           }
         });
@@ -753,6 +756,53 @@ class StageProvider extends ChangeNotifier {
     } catch (e) {
       debugPrint('Failed to sync custom daily prompt: $e');
     }
+  }
+
+  DailyPrompt _handleDailyPromptRollover(DailyPrompt prompt, String spaceId) {
+    final todayStr = DateTime.now().toIso8601String().split('T').first;
+    if (prompt.id.isNotEmpty && prompt.id != todayStr) {
+      // It's from a previous day! Auto-archive yesterday's prompt if it had answers
+      if (prompt.answers.isNotEmpty) {
+        final historyItem = PromptHistoryItem(
+          id: prompt.id,
+          question: prompt.prompt,
+          vibeTag: prompt.vibeTag,
+          category: prompt.category,
+          answers: prompt.answers,
+          date: prompt.id,
+        );
+        _archivePromptHistory(spaceId, historyItem);
+      }
+
+      // Automatically seal a fresh daily question for today
+      final curatedPool = [
+        'What was the sweetest little thought you had about us today?',
+        'If you could teleport anywhere with me for 1 hour tonight, where would we go?',
+        'What is one tiny habit or quirk of mine that secretly makes you smile?',
+        'When do you feel most deeply close and connected to my heart?',
+        'What is a song, scent, or place that instantly brings me to your mind?',
+        'What is a private fantasy or dream you want us to experience together?',
+        'What made you fall for me all over again recently?',
+      ];
+      final dayIndex = DateTime.now().day % curatedPool.length;
+      final freshPrompt = DailyPrompt(
+        id: todayStr,
+        prompt: curatedPool[dayIndex],
+        category: 'Soft Affection',
+        vibeTag: 'Gentle Whisper',
+        answers: {},
+        reveals: {},
+        careChecks: {},
+        createdAt: DateTime.now().toIso8601String(),
+      );
+
+      // Save to Firebase and Supabase so both partners receive the identical prompt
+      FirebaseService.saveFeatureDoc(spaceId, 'daily_prompt', freshPrompt.toJson());
+      SupabaseService.upsertAppContent('daily_prompt_$spaceId', freshPrompt.toJson());
+      LocalCacheService.setCachedDailyPrompt(freshPrompt.toJson());
+      return freshPrompt;
+    }
+    return prompt;
   }
 
   Future<void> _archivePromptHistory(String spaceId, PromptHistoryItem item) async {

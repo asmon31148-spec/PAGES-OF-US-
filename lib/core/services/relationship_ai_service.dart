@@ -734,7 +734,7 @@ Do NOT include markdown code blocks or conversational text.
               'Content-Type': 'application/json; charset=utf-8',
             },
             body: jsonEncode({
-              'model': 'qwen/qwen3.8-27b',
+              'model': 'llama-3.3-70b-versatile',
               'messages': [
                 {'role': 'system', 'content': systemPrompt},
                 {'role': 'user', 'content': 'Generate 3 fresh, bold intimate couple questions now.'},

@@ -35,7 +35,7 @@
             android:paddingEnd="8dp"
             android:paddingTop="2.5dp"
             android:paddingBottom="2.5dp"
-            android:text="Day 0 together ✦"
+            android:text="Day 1 together ✦"
             android:textColor="#FF9A7B"
             android:textSize="10sp"
             android:textStyle="bold" />
@@ -190,7 +190,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="5dp"
                 android:gravity="center"
-                android:text="14 Touches Today ❤️"
+                android:text="0 Touches Today ❤️"
                 android:textColor="#FFFFFF"
                 android:textSize="18sp"
                 android:textStyle="bold" />
