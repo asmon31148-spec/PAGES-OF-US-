@@ -361,7 +361,10 @@ class StageProvider extends ChangeNotifier {
         _drawingStrokes.clear();
         for (final s in list) {
           if (s is Map) {
-            _drawingStrokes.add(DrawingStroke.fromJson(Map<String, dynamic>.from(s)));
+            _drawingStrokes.add(DrawingStroke.fromJson(
+              Map<String, dynamic>.from(s),
+              currentUserId: userId,
+            ));
           }
         }
         notifyListeners();
@@ -419,6 +422,7 @@ class StageProvider extends ChangeNotifier {
           final stroke = DrawingStroke.fromJson(
             Map<String, dynamic>.from(data['stroke'] as Map),
             isPartner: true,
+            currentUserId: userId,
           );
           _drawingStrokes.add(stroke);
           notifyListeners();
@@ -428,7 +432,7 @@ class StageProvider extends ChangeNotifier {
         final sender = data['senderId'] as String?;
         if (sender != userId && data['strokes'] is List) {
           final list = (data['strokes'] as List)
-              .map((e) => DrawingStroke.fromJson(Map<String, dynamic>.from(e as Map)))
+              .map((e) => DrawingStroke.fromJson(Map<String, dynamic>.from(e as Map), currentUserId: userId))
               .toList();
           _drawingStrokes.clear();
           _drawingStrokes.addAll(list);
@@ -603,7 +607,10 @@ class StageProvider extends ChangeNotifier {
   }
 
   Future<void> addDrawingStroke(DrawingStroke stroke, String spaceId, String userId) async {
-    _drawingStrokes.add(stroke);
+    final taggedStroke = (stroke.senderId == null || stroke.senderId!.isEmpty)
+        ? stroke.copyWith(senderId: userId)
+        : stroke;
+    _drawingStrokes.add(taggedStroke);
     notifyListeners();
 
     await SupabaseService.broadcastEvent(
@@ -611,7 +618,7 @@ class StageProvider extends ChangeNotifier {
       eventType: 'DRAW_STROKE',
       payload: {
         'senderId': userId,
-        'stroke': stroke.toJson(),
+        'stroke': taggedStroke.toJson(),
       },
     );
 
@@ -631,6 +638,10 @@ class StageProvider extends ChangeNotifier {
     final beforeCount = _drawingStrokes.length;
     final rSq = radius * radius;
     _drawingStrokes.removeWhere((stroke) {
+      // The eraser tool only rubs away the user's own strokes so partner's art is never accidentally wiped
+      if (stroke.isPartner || (stroke.senderId != null && stroke.senderId != userId)) {
+        return false;
+      }
       for (final pt in stroke.points) {
         final dx = pt.x - nx;
         final dy = pt.y - ny;
@@ -665,6 +676,34 @@ class StageProvider extends ChangeNotifier {
     }
   }
 
+  /// Erases ONLY the user's drawings, keeping partner's drawings 100% intact
+  Future<void> clearMyDrawing(String spaceId, String userId) async {
+    _drawingStrokes.removeWhere((stroke) {
+      if (stroke.senderId != null && stroke.senderId == userId) return true;
+      if (!stroke.isPartner) return true;
+      return false;
+    });
+    notifyListeners();
+
+    final toSave = _drawingStrokes.length > 80
+        ? _drawingStrokes.sublist(_drawingStrokes.length - 80)
+        : _drawingStrokes;
+
+    await SupabaseService.broadcastEvent(
+      spaceId: spaceId,
+      eventType: 'SYNC_DRAWING',
+      payload: {
+        'senderId': userId,
+        'strokes': toSave.map((s) => s.toJson()).toList(),
+      },
+    );
+
+    await SupabaseService.upsertAppContent('drawing_$spaceId', {
+      'strokes': toSave.map((s) => s.toJson()).toList(),
+    });
+  }
+
+  /// Clears the entire canvas (both users' drawings)
   Future<void> clearDrawing(String spaceId, String userId) async {
     _drawingStrokes.clear();
     notifyListeners();
