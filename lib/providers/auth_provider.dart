@@ -150,6 +150,14 @@ class AuthProvider extends ChangeNotifier {
           _user = profile;
           await LocalCacheService.setCachedUser(profile.toJson());
         }
+        if (profile.partnerId != null && profile.partnerId!.isNotEmpty && (_partner == null || _partner!.id != profile.partnerId)) {
+          _listenToPartner(profile.partnerId!);
+        } else if ((profile.partnerId == null || profile.partnerId!.isEmpty) && _partner != null) {
+          // If profile cleared partner, verify with space
+          if (_space == null || !_space!.members.any((m) => m != uid)) {
+            _listenToPartner('');
+          }
+        }
         notifyListeners();
       }
     });
@@ -361,7 +369,7 @@ class AuthProvider extends ChangeNotifier {
       _spaceSub?.cancel();
       _space = newSpace;
       _partner = null;
-      _user = _user!.copyWith(spaceId: newSpace.id);
+      _user = _user!.copyWith(spaceId: newSpace.id, clearPartner: true);
       await LocalCacheService.setCachedSpace(newSpace.toJson());
       await LocalCacheService.setCachedUser(_user!.toJson());
       await LocalCacheService.setCachedPartner(null);

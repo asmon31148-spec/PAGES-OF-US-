@@ -204,7 +204,7 @@ class AudioProvider extends ChangeNotifier {
       }
 
       final cachedPlaylists = LocalCacheService.getCachedPlaylists();
-      if (cachedPlaylists != null && cachedPlaylists.isNotEmpty) {
+      if (cachedPlaylists != null) {
         _playlists.clear();
         _playlists.addAll(cachedPlaylists.map((e) => PlaylistItem.fromJson(e)));
       }
@@ -304,6 +304,28 @@ class AudioProvider extends ChangeNotifier {
         playNextWithCrossfade();
       }
     });
+
+    // Supabase app_content fetch for shared space playlists
+    try {
+      final client = SupabaseService.client;
+      if (client != null) {
+        client
+            .from('app_content')
+            .select('content')
+            .eq('id', 'playlists_$spaceId')
+            .maybeSingle()
+            .then((res) {
+          if (res != null && res['content'] != null && res['content'] is List) {
+            final list = res['content'] as List;
+            if (list.isNotEmpty) {
+              _playlists.clear();
+              _playlists.addAll(list.map((e) => PlaylistItem.fromJson(Map<String, dynamic>.from(e as Map))));
+              notifyListeners();
+            }
+          }
+        });
+      }
+    } catch (_) {}
   }
 
   void _initAtmospherePlayers() {
@@ -630,6 +652,28 @@ class AudioProvider extends ChangeNotifier {
         }
       }
     });
+
+    // Supabase app_content fetch for shared space playlists
+    try {
+      final client = SupabaseService.client;
+      if (client != null) {
+        client
+            .from('app_content')
+            .select('content')
+            .eq('id', 'playlists_$spaceId')
+            .maybeSingle()
+            .then((res) {
+          if (res != null && res['content'] != null && res['content'] is List) {
+            final list = res['content'] as List;
+            if (list.isNotEmpty) {
+              _playlists.clear();
+              _playlists.addAll(list.map((e) => PlaylistItem.fromJson(Map<String, dynamic>.from(e as Map))));
+              notifyListeners();
+            }
+          }
+        });
+      }
+    } catch (_) {}
   }
 
   // -------------------------------------------------------------
@@ -638,6 +682,16 @@ class AudioProvider extends ChangeNotifier {
   void _savePlaylistsLocally() {
     try {
       LocalCacheService.setCachedPlaylists(_playlists.map((p) => p.toJson()).toList());
+      if (_syncSpaceId.isNotEmpty) {
+        final client = SupabaseService.client;
+        if (client != null) {
+          client.from('app_content').upsert({
+            'id': 'playlists_$_syncSpaceId',
+            'content': _playlists.map((p) => p.toJson()).toList(),
+            'updated_at': DateTime.now().toIso8601String(),
+          }).then((_) {});
+        }
+      }
     } catch (_) {}
   }
 

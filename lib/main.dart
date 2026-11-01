@@ -274,10 +274,16 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold> with Wi
                 currentUserId: user.id,
                 partnerId: partner?.id,
               );
-          context.read<VaultProvider>().initVaultSync(effectiveSpaceId);
+          context.read<VaultProvider>().initVaultSync(
+                spaceId: effectiveSpaceId,
+                currentUserId: user.id,
+                partnerId: partner?.id,
+                partnerNickname: partner?.nickname,
+              );
           context.read<MemoriesProvider>().initMemoriesSync(
                 spaceId: effectiveSpaceId,
                 currentUserId: user.id,
+                partnerId: partner?.id,
                 partnerNickname: partner?.nickname,
               );
           context.read<AudioProvider>().initMusicSync(effectiveSpaceId);

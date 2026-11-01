@@ -5,6 +5,7 @@ class UserProfile {
   final String? avatarUrl;
   final String? thought;
   final String? spaceId;
+  final String? partnerId;
   final String? fcmToken;
   final String? createdAt;
 
@@ -15,6 +16,7 @@ class UserProfile {
     this.avatarUrl,
     this.thought,
     this.spaceId,
+    this.partnerId,
     this.fcmToken,
     this.createdAt,
   });
@@ -27,6 +29,7 @@ class UserProfile {
       avatarUrl: json['avatarUrl'] as String? ?? json['avatar_url'] as String? ?? json['photoURL'] as String?,
       thought: json['thought'] as String?,
       spaceId: json['spaceId'] as String? ?? json['space_id'] as String?,
+      partnerId: json['partnerId'] as String? ?? json['partner_id'] as String?,
       fcmToken: json['fcmToken'] as String? ?? json['fcm_token'] as String?,
       createdAt: json['createdAt'] as String? ?? json['created_at'] as String?,
     );
@@ -41,6 +44,8 @@ class UserProfile {
       'thought': thought,
       'spaceId': spaceId,
       if (spaceId != null) 'space_id': spaceId,
+      if (partnerId != null) 'partnerId': partnerId,
+      if (partnerId != null) 'partner_id': partnerId,
       if (fcmToken != null) 'fcmToken': fcmToken,
       'createdAt': createdAt,
     };
@@ -51,7 +56,9 @@ class UserProfile {
     String? avatarUrl,
     String? thought,
     String? spaceId,
+    String? partnerId,
     String? fcmToken,
+    bool clearPartner = false,
   }) {
     return UserProfile(
       id: id,
@@ -60,6 +67,7 @@ class UserProfile {
       avatarUrl: avatarUrl ?? this.avatarUrl,
       thought: thought ?? this.thought,
       spaceId: spaceId ?? this.spaceId,
+      partnerId: clearPartner ? null : (partnerId ?? this.partnerId),
       fcmToken: fcmToken ?? this.fcmToken,
       createdAt: createdAt,
     );

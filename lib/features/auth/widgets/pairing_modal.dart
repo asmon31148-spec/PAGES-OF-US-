@@ -330,10 +330,16 @@ class _PairingModalState extends State<PairingModal> {
                                     currentUserId: user.id,
                                     partnerId: partner?.id,
                                   );
-                              context.read<VaultProvider>().initVaultSync(space.id);
+                              context.read<VaultProvider>().initVaultSync(
+                                    spaceId: space.id,
+                                    currentUserId: user.id,
+                                    partnerId: partner?.id ?? space.partnerId,
+                                    partnerNickname: partner?.nickname,
+                                  );
                               context.read<MemoriesProvider>().initMemoriesSync(
                                     spaceId: space.id,
                                     currentUserId: user.id,
+                                    partnerId: partner?.id ?? space.partnerId,
                                     partnerNickname: partner?.nickname,
                                   );
                             }

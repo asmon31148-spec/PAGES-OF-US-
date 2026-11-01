@@ -417,6 +417,8 @@ class FirebaseService {
     await firestore.collection('users').doc(currentUid).set({
       'spaceId': targetSpaceId,
       'space_id': targetSpaceId,
+      'partnerId': partnerUid,
+      'partner_id': partnerUid,
     }, SetOptions(merge: true));
 
     // Update partner's profile
@@ -424,6 +426,8 @@ class FirebaseService {
       await firestore.collection('users').doc(partnerUid).set({
         'spaceId': targetSpaceId,
         'space_id': targetSpaceId,
+        'partnerId': currentUid,
+        'partner_id': currentUid,
       }, SetOptions(merge: true));
     }
 
@@ -623,11 +627,23 @@ class FirebaseService {
       'createdAt': FieldValue.serverTimestamp(),
     });
 
-    // 3. Update currentUser's spaceId to the new space
+    // 3. Update currentUser's spaceId to the new space and clear partnerId
     await firestore.collection('users').doc(effectiveUid).set({
       'spaceId': newSpaceId,
       'space_id': newSpaceId,
+      'partnerId': null,
+      'partner_id': null,
     }, SetOptions(merge: true));
+
+    // 4. Clear partnerId on remaining members (ex-partner)
+    for (final memberId in remainingMembers) {
+      try {
+        await firestore.collection('users').doc(memberId).set({
+          'partnerId': null,
+          'partner_id': null,
+        }, SetOptions(merge: true));
+      } catch (_) {}
+    }
 
     return newSpace;
   }

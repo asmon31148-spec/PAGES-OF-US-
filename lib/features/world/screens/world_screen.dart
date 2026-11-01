@@ -1066,6 +1066,45 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
                 ],
               ),
             )
+          else if (hasPartner)
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Row(
+                    children: [
+                      const Text('📡', style: TextStyle(fontSize: 12)),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          partnerNickname.toUpperCase(),
+                          style: const TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.5,
+                            color: AppColors.terra,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    'Awaiting partner signal 🛰️',
+                    style: TextStyle(
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w600,
+                      color: isDark ? AppColors.darkSoft : AppColors.lightSoft,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            )
           else
             Expanded(
               child: Column(

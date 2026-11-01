@@ -1562,7 +1562,7 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
     );
   }
 
-  void _showCreatePlaylistDialog(BuildContext context) {
+  void _showCreatePlaylistDialog(BuildContext context, {String? initialSongId}) {
     final titleCtrl = TextEditingController();
 
     showModalBottomSheet(
@@ -1574,7 +1574,7 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
         child: Container(
           padding: const EdgeInsets.all(20),
           decoration: const BoxDecoration(
-            color: Color(0xFF111E16),
+            color: Color(0xFF13151B),
             borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
           ),
           child: Column(
@@ -1590,10 +1590,10 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
                 controller: titleCtrl,
                 style: const TextStyle(fontSize: 13, color: Colors.white),
                 decoration: InputDecoration(
-                  hintText: 'Playlist Name (e.g. Stargazing)',
+                  hintText: 'Playlist Name (e.g. Calm Nights, Stargazing)',
                   hintStyle: const TextStyle(color: Color(0xFF64748B)),
                   filled: true,
-                  fillColor: const Color(0xFF07100B),
+                  fillColor: const Color(0xFF0F1115),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
                 ),
               ),
@@ -1604,13 +1604,24 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
                   onPressed: () {
                     final title = titleCtrl.text.trim();
                     if (title.isNotEmpty) {
-                      context.read<AudioProvider>().createPlaylist(title, ['song_1', 'song_2']);
+                      final audio = context.read<AudioProvider>();
+                      final songIds = initialSongId != null && initialSongId.isNotEmpty ? [initialSongId] : <String>[];
+                      audio.createPlaylist(title, songIds);
                       Navigator.pop(ctx);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Created playlist "$title" ✦', style: const TextStyle(color: Colors.white)),
+                          backgroundColor: const Color(0xFF1E212B),
+                          behavior: SnackBarBehavior.floating,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          duration: const Duration(seconds: 2),
+                        ),
+                      );
                     }
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFE07A5F),
-                    foregroundColor: Colors.black,
+                    foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                   ),
@@ -1746,6 +1757,36 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
                 ],
               ),
               const SizedBox(height: 16),
+              // + Create New Playlist Action Button
+              GestureDetector(
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _showCreatePlaylistDialog(context, initialSongId: song.id);
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  margin: const EdgeInsets.only(bottom: 12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE07A5F).withOpacity(0.14),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: const Color(0xFFE07A5F).withOpacity(0.4)),
+                  ),
+                  child: Row(
+                    children: const [
+                      Icon(Icons.add_circle_outline_rounded, color: Color(0xFFE07A5F), size: 22),
+                      SizedBox(width: 12),
+                      Text(
+                        'Create New Playlist',
+                        style: TextStyle(
+                          color: Color(0xFFE07A5F),
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
               if (playlists.isEmpty)
                 const Padding(
                   padding: EdgeInsets.symmetric(vertical: 24),

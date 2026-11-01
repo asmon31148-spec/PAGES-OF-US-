@@ -188,9 +188,14 @@ class WorldProvider extends ChangeNotifier {
                   _locations[key] = loc;
                   hasChanges = true;
                 }
-              } else if (_partnerId != null && key == _partnerId) {
-                _locations[key] = loc;
-                hasChanges = true;
+              } else if (key != currentUserId && key != 'updatedAt') {
+                if (_partnerId == null || _partnerId!.isEmpty) {
+                  _partnerId = key;
+                }
+                if (key == _partnerId) {
+                  _locations[key] = loc;
+                  hasChanges = true;
+                }
               }
             }
           });
@@ -224,7 +229,10 @@ class WorldProvider extends ChangeNotifier {
   void _handleSupabaseLocationUpdate(Map<String, dynamic> data) {
     if (data['location'] != null && data['location'] is Map) {
       final loc = UserLocationData.fromJson(Map<String, dynamic>.from(data['location'] as Map));
-      if (_partnerId != null && loc.userId == _partnerId) {
+      if (loc.userId != _currentUserId) {
+        if (_partnerId == null || _partnerId!.isEmpty) {
+          _partnerId = loc.userId;
+        }
         _locations[loc.userId] = loc;
         _checkPartnerGeofence(loc);
         if (_partnerWeather == null) {
