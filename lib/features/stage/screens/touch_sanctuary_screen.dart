@@ -1134,7 +1134,7 @@ class _TouchSanctuaryScreenState extends State<TouchSanctuaryScreen>
                                     ),
                                     child: Text(
                                       '$myStrokes',
-                                      style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.terraLight),
+                                      style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.terra),
                                     ),
                                   ),
                                 ],
