@@ -189,12 +189,6 @@ class _StageScreenState extends State<StageScreen> {
                         onSelectTab: widget.onSelectTab,
                       ),
 
-                      // Section 3: Milestone & Dream Section (Living Interactive Widget)
-                      const StageMilestonesCard(),
-
-                      // Section 5: Daily Care and Checkup Section
-                      const StageDailyCareCard(),
-
                       // Section 6: Pinned Message Section
                       const StagePinnedCorkboard(),
 

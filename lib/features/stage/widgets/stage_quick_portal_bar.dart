@@ -6,6 +6,8 @@ import '../../../../providers/theme_provider.dart';
 import '../../../../providers/audio_provider.dart';
 import '../../watch_together/screens/watch_lobby_screen.dart';
 import '../screens/touch_sanctuary_screen.dart';
+import '../screens/daily_care_screen.dart';
+import 'goal_tracker_modal.dart';
 import '../../music/screens/music_sanctuary_screen.dart';
 
 class StageQuickPortalBar extends StatelessWidget {
@@ -23,12 +25,13 @@ class StageQuickPortalBar extends StatelessWidget {
     final isMusicPlaying = audioProvider.isPlaying;
 
     final inkColor = isDark ? AppColors.darkInk : AppColors.lightInk;
-    final softColor = isDark ? AppColors.darkSoft : AppColors.lightSoft;
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        mainAxisSize: MainAxisSize.min,
         children: [
           // 1. Cinema (Watch Together)
           _buildPortalItem(
@@ -47,6 +50,8 @@ class StageQuickPortalBar extends StatelessWidget {
             },
           ),
 
+          const SizedBox(width: 15),
+
           // 2. Touch (Touch & Draw Studio)
           _buildPortalItem(
             icon: Icons.front_hand_rounded,
@@ -63,6 +68,8 @@ class StageQuickPortalBar extends StatelessWidget {
               );
             },
           ),
+
+          const SizedBox(width: 15),
 
           // 3. Listen (Music Sanctuary)
           _buildPortalItem(
@@ -82,7 +89,37 @@ class StageQuickPortalBar extends StatelessWidget {
             },
           ),
 
-          // 4. Notes (Pinned Love Notes)
+          const SizedBox(width: 15),
+
+          // 4. Daily Care
+          _buildPortalItem(
+            icon: Icons.spa_rounded,
+            label: 'Daily Care',
+            inkColor: inkColor,
+            isDark: isDark,
+            onTap: () {
+              HapticFeedback.lightImpact();
+              DailyCareScreen.show(context);
+            },
+          ),
+
+          const SizedBox(width: 15),
+
+          // 5. Milestones & Dreams
+          _buildPortalItem(
+            icon: Icons.flag_rounded,
+            label: 'Milestones',
+            inkColor: inkColor,
+            isDark: isDark,
+            onTap: () {
+              HapticFeedback.lightImpact();
+              GoalTrackerModal.show(context);
+            },
+          ),
+
+          const SizedBox(width: 15),
+
+          // 6. Notes (Pinned Love Notes)
           _buildPortalItem(
             icon: Icons.edit_note_rounded,
             label: 'Notes',
@@ -118,8 +155,8 @@ class StageQuickPortalBar extends StatelessWidget {
         children: [
           // Circular Glowing Icon Frame
           Container(
-            width: 58,
-            height: 58,
+            width: 56,
+            height: 56,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: isDark
@@ -150,7 +187,7 @@ class StageQuickPortalBar extends StatelessWidget {
             child: Icon(
               icon,
               size: 24,
-              color: isActive ? AppColors.terra : AppColors.terra,
+              color: AppColors.terra,
             ),
           ),
           const SizedBox(height: 7),
@@ -158,7 +195,7 @@ class StageQuickPortalBar extends StatelessWidget {
           Text(
             label,
             style: TextStyle(
-              fontSize: 12,
+              fontSize: 11.5,
               fontWeight: FontWeight.w600,
               letterSpacing: 0.2,
               color: inkColor,
