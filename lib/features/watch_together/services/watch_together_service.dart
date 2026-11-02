@@ -332,23 +332,36 @@ class WatchTogetherService {
     });
   }
 
-  /// Cleanup: Leave room and remove if empty or host leaves
+  /// Cleanup: Leave room and dismantle when both have exited
   Future<void> leaveRoom({
     required String roomCode,
     required String uid,
     required bool isHost,
   }) async {
     try {
-      final roomRef = _rtdb.ref('watchRooms/$roomCode');
+      final cleanCode = roomCode.trim().toUpperCase();
+      final roomRef = _rtdb.ref('watchRooms/$cleanCode');
+      
+      // 1. Mark this user as offline
       await roomRef.child('members/$uid/online').set(false);
 
-      if (isHost) {
-        // Host leaving dismantles the room after a brief grace delay
+      // 2. Fetch current members to check if ANY other member is still online
+      final snapshot = await roomRef.get();
+      if (!snapshot.exists || snapshot.value == null) return;
+
+      final data = snapshot.value as Map<dynamic, dynamic>;
+      final members = data['members'] as Map<dynamic, dynamic>? ?? {};
+
+      bool anyOtherMemberOnline = false;
+      members.forEach((mUid, mData) {
+        if (mUid != uid && mData is Map && mData['online'] == true) {
+          anyOtherMemberOnline = true;
+        }
+      });
+
+      // If no other member is online (both have exited), permanently wipe the room and all messages!
+      if (!anyOtherMemberOnline) {
         await roomRef.remove();
-      } else {
-        // Guest leaving frees the slot
-        await roomRef.child('guestUid').set('');
-        await roomRef.child('members/$uid').remove();
       }
     } catch (e) {
       debugPrint('leaveRoom error: $e');

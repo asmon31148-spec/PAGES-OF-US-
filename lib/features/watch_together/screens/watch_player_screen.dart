@@ -142,11 +142,33 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> {
       _handleRemotePlayback(playback, myUid);
     });
 
-    // 2. Room stream (tracks partner online status)
+    // 2. Room stream (tracks partner online status and room end)
     _roomSub = WatchTogetherService.instance
         .streamRoom(widget.roomCode)
         .listen((room) {
-      if (!mounted || room == null || _isLeaving) return;
+      if (!mounted || _isLeaving) return;
+
+      if (room == null) {
+        // Room ended
+        _isLeaving = true;
+        try {
+          _controller.pause();
+        } catch (_) {}
+        try {
+          WakelockPlus.disable();
+        } catch (_) {}
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Watch party ended 🎬'),
+              backgroundColor: AppColors.terra,
+              duration: Duration(seconds: 3),
+            ),
+          );
+          Navigator.of(context).popUntil((route) => route.isFirst);
+        }
+        return;
+      }
 
       final partnerUid = room.members.keys.firstWhere(
         (uid) => uid != myUid,
