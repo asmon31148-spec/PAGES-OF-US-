@@ -22,7 +22,7 @@ class UpdateInfo {
 }
 
 class UpdateService {
-  static const String currentVersion = '1.0.52';
+  static const String currentVersion = '1.0.53';
   static const String githubRepo = 'asmon31148-spec/PAGES-OF-US-';
 
   /// Checks Firestore remote config and GitHub releases for a newer APK version
@@ -56,7 +56,11 @@ class UpdateService {
       final url = Uri.parse('https://api.github.com/repos/$githubRepo/releases/latest');
       final response = await http.get(
         url,
-        headers: {'Accept': 'application/vnd.github.v3+json'},
+        headers: {
+          'Accept': 'application/vnd.github.v3+json',
+          'User-Agent': 'PagesOfUs-App/1.0',
+          'Cache-Control': 'no-cache',
+        },
       ).timeout(const Duration(seconds: 8));
 
       if (response.statusCode == 200) {
@@ -65,10 +69,10 @@ class UpdateService {
         final cleanVersion = tagName.replaceAll(RegExp(r'[^0-9.]'), '');
 
         if (_isNewerVersion(cleanVersion, currentVersion)) {
-          final body = data['body']?.toString() ?? 'A new update is available for Pages of Us.';
+          final body = data['changelog']?.toString() ?? data['body']?.toString() ?? 'A new update is available for Pages of Us.';
           final assets = data['assets'] as List<dynamic>? ?? [];
 
-          String apkUrl = 'https://github.com/$githubRepo/releases/download/latest/PagesOfUs.apk';
+          String apkUrl = 'https://github.com/$githubRepo/releases/download/$tagName/PagesOfUs.apk';
           int sizeBytes = 0;
 
           for (final a in assets) {
@@ -89,8 +93,38 @@ class UpdateService {
         }
       }
     } catch (e) {
-      debugPrint('Check update error (ignored): $e');
+      debugPrint('Check GitHub API error: $e');
     }
+
+    // 3. Third Priority Fallback: Direct Raw Repository Metadata (No Rate Limits)
+    try {
+      final rawUrl = Uri.parse('https://raw.githubusercontent.com/$githubRepo/master/pubspec.yaml');
+      final rawRes = await http.get(
+        rawUrl,
+        headers: {
+          'User-Agent': 'PagesOfUs-App/1.0',
+          'Cache-Control': 'no-cache',
+        },
+      ).timeout(const Duration(seconds: 6));
+
+      if (rawRes.statusCode == 200) {
+        final match = RegExp(r'version:\s*([0-9]+\.[0-9]+\.[0-9]+)').firstMatch(rawRes.body);
+        if (match != null) {
+          final latestVersion = match.group(1)!;
+          if (_isNewerVersion(latestVersion, currentVersion)) {
+            return UpdateInfo(
+              version: 'v$latestVersion',
+              changelog: 'A new update (v$latestVersion) is available with UI improvements and bug fixes.',
+              apkDownloadUrl: 'https://github.com/$githubRepo/releases/download/v$latestVersion/PagesOfUs.apk',
+              apkSizeBytes: 98000000,
+            );
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Check raw update fallback error: $e');
+    }
+
     return null;
   }
 
