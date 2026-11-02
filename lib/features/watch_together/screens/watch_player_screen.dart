@@ -54,6 +54,7 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> {
   bool _isLandscape = false;
   bool _isChatVisible = true;
   bool _hasShownMovieEnded = false;
+  bool _isLeaving = false;
 
   // Key to trigger floating reactions on screen
   final GlobalKey<WatchFloatingReactionsState> _reactionsKey = GlobalKey();
@@ -97,28 +98,18 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> {
   }
 
   void _videoPlayerListener() {
-    if (!mounted || !_isInitialized) return;
+    if (!mounted || !_isInitialized || _isLeaving) return;
 
-    // Check for movie completion (Screen 4 condition)
+    // Check for movie completion (Screen 4 condition) - only if movie has valid duration > 10s
     final pos = _controller.value.position;
     final dur = _controller.value.duration;
-    if (dur > Duration.zero && pos >= dur && !_hasShownMovieEnded) {
+    if (dur > const Duration(seconds: 10) && pos >= dur && !_hasShownMovieEnded) {
       _hasShownMovieEnded = true;
-      _showMovieEndedDialog();
-    }
-
-    // Handle buffering notification to partner
-    if (_controller.value.isBuffering) {
-      final myUid = context.read<AuthProvider>().user?.id;
-      if (myUid != null) {
-        WatchTogetherService.instance.updatePlayback(
-          roomCode: widget.roomCode,
-          uid: myUid,
-          isPlaying: false,
-          positionMs: pos.inMilliseconds,
-          buffering: true,
-        );
-      }
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && !_isLeaving) {
+          _showMovieEndedDialog();
+        }
+      });
     }
   }
 
@@ -136,7 +127,7 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> {
     _roomSub = WatchTogetherService.instance
         .streamRoom(widget.roomCode)
         .listen((room) {
-      if (!mounted || room == null) return;
+      if (!mounted || room == null || _isLeaving) return;
 
       final partnerUid = room.members.keys.firstWhere(
         (uid) => uid != myUid,
@@ -159,7 +150,7 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> {
     _chatSub = WatchTogetherService.instance
         .streamChat(widget.roomCode)
         .listen((messages) {
-      if (!mounted) return;
+      if (!mounted || _isLeaving) return;
 
       // Check if new reactions arrived
       if (messages.length > _chatMessages.length) {
@@ -179,36 +170,43 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> {
 
   /// Exact Sync Algorithm: Receiving an action
   void _handleRemotePlayback(WatchPlayback playback, String? myUid) {
-    if (!mounted || !_isInitialized) return;
+    if (!mounted || !_isInitialized || _isLeaving) return;
 
     // Rule 4: No echo loops — ignore own updates
     if (playback.updatedBy == myUid) return;
 
-    // Ignore remote updates during local action lock (500ms debounce)
+    // Ignore remote updates during local action lock (800ms debounce)
     if (DateTime.now().isBefore(_ignoreRemoteUntil)) return;
 
     _lastRemotePlayback = playback;
 
     // Calculate latency using server time offset
     final nowServer = WatchTogetherService.instance.currentServerTime;
-    final delay = (nowServer - playback.updatedAt).clamp(0, 8000);
+    final delay = (nowServer - playback.updatedAt).clamp(0, 5000);
 
     if (playback.isPlaying) {
       final targetMs = playback.positionMs + delay;
       final currentMs = _controller.value.position.inMilliseconds;
 
-      // Only seek if difference is noticeable (> 300ms) to avoid local audio stutter
-      if ((currentMs - targetMs).abs() > 300) {
+      // Only seek if difference is large (> 1500ms) to prevent video frame thrashing and crashing
+      if ((currentMs - targetMs).abs() > 1500) {
         _controller.seekTo(Duration(milliseconds: targetMs));
       }
-      _controller.play();
+      if (!_controller.value.isPlaying) {
+        _controller.play();
+      }
       setState(() {
         _syncStatus = SyncStatus.inSync;
       });
     } else {
-      // Pause action
-      _controller.seekTo(Duration(milliseconds: playback.positionMs));
-      _controller.pause();
+      // Pause action: only seek if significant difference
+      final currentMs = _controller.value.position.inMilliseconds;
+      if ((currentMs - playback.positionMs).abs() > 1000) {
+        _controller.seekTo(Duration(milliseconds: playback.positionMs));
+      }
+      if (_controller.value.isPlaying) {
+        _controller.pause();
+      }
     }
   }
 
@@ -216,7 +214,7 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> {
   void _startDriftCorrectionTimer() {
     _driftCheckTimer?.cancel();
     _driftCheckTimer = Timer.periodic(const Duration(seconds: 4), (_) {
-      if (!mounted || !_isInitialized || !_controller.value.isPlaying) return;
+      if (!mounted || !_isInitialized || _isLeaving || !_controller.value.isPlaying) return;
 
       final myUid = context.read<AuthProvider>().user?.id;
       if (_lastRemotePlayback != null &&
@@ -228,14 +226,14 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> {
         final currentMs = _controller.value.position.inMilliseconds;
         final diff = (currentMs - expectedMs).abs();
 
-        // If drift exceeds 400 milliseconds, quietly correct to expected position
-        if (diff > 400) {
+        // If drift exceeds 1500 milliseconds, quietly correct to expected position
+        if (diff > 1500) {
           setState(() {
             _syncStatus = SyncStatus.syncing;
           });
           _controller.seekTo(Duration(milliseconds: expectedMs));
           Future.delayed(const Duration(milliseconds: 1200), () {
-            if (mounted) {
+            if (mounted && !_isLeaving) {
               setState(() {
                 _syncStatus = SyncStatus.inSync;
               });
@@ -248,11 +246,12 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> {
 
   /// Exact Sync Algorithm: Sending an action
   void _sendPlaybackAction({required bool isPlaying, required int positionMs}) {
+    if (_isLeaving) return;
     final myUid = context.read<AuthProvider>().user?.id;
     if (myUid == null) return;
 
-    // Set 500ms lock so local events don't trigger remote echo
-    _ignoreRemoteUntil = DateTime.now().add(const Duration(milliseconds: 500));
+    // Set 800ms lock so local events don't trigger remote echo
+    _ignoreRemoteUntil = DateTime.now().add(const Duration(milliseconds: 800));
 
     WatchTogetherService.instance.updatePlayback(
       roomCode: widget.roomCode,
@@ -372,17 +371,30 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> {
   }
 
   Future<void> _leavePlayerAndRoom() async {
-    _controller.pause();
+    if (_isLeaving) return;
+    setState(() {
+      _isLeaving = true;
+    });
+
+    try {
+      _controller.pause();
+    } catch (_) {}
+
+    try {
+      WakelockPlus.disable();
+    } catch (_) {}
+
     final myUid = context.read<AuthProvider>().user?.id;
     if (myUid != null) {
-      await WatchTogetherService.instance.leaveRoom(
+      WatchTogetherService.instance.leaveRoom(
         roomCode: widget.roomCode,
         uid: myUid,
         isHost: widget.isHost,
       );
     }
+
     if (mounted) {
-      Navigator.pop(context);
+      Navigator.of(context).popUntil((route) => route.isFirst);
     }
   }
 
@@ -552,9 +564,11 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> {
     }
 
     return PopScope(
-      canPop: false,
+      canPop: _isLeaving,
       onPopInvoked: (didPop) {
-        if (!didPop) _showLeaveConfirmation();
+        if (!didPop && !_isLeaving) {
+          _showLeaveConfirmation();
+        }
       },
       child: Scaffold(
         backgroundColor: Colors.black,

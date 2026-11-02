@@ -191,7 +191,7 @@ class _WatchWaitingScreenState extends State<WatchWaitingScreen> {
   Future<void> _leaveRoom() async {
     final myUid = context.read<AuthProvider>().user?.id;
     if (myUid != null) {
-      await WatchTogetherService.instance.leaveRoom(
+      WatchTogetherService.instance.leaveRoom(
         roomCode: widget.roomCode,
         uid: myUid,
         isHost: widget.isHost,
