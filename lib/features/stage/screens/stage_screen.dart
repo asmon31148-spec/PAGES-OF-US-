@@ -18,6 +18,7 @@ import '../widgets/mood_aura_modal.dart';
 import '../widgets/anniversary_modal.dart';
 import '../widgets/profile_modal.dart';
 import '../../auth/widgets/pairing_modal.dart';
+import '../widgets/stage_quick_portal_bar.dart';
 import '../../watch_together/screens/watch_lobby_screen.dart';
 import '../../../core/services/update_service.dart';
 import '../../../core/services/notification_service.dart';
@@ -176,92 +177,11 @@ class _StageScreenState extends State<StageScreen> {
                         onOpenProfileModal: () => ProfileModal.show(context),
                       ),
 
+                      // Sanctuary Quick Action Hub (Cinema, Touch, Listen, Notes)
+                      const StageQuickPortalBar(),
+
                       // Section 1: Weather Status Atmosphere Card
                       const StageAtmosphereCard(),
-
-                      // Watch Together Quick Launch Button (Screen 1 Entry Point)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 20.0, vertical: 6.0),
-                        child: GestureDetector(
-                          onTap: () {
-                            HapticFeedback.lightImpact();
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const WatchLobbyScreen(),
-                              ),
-                            );
-                          },
-                          child: Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 12),
-                            decoration: BoxDecoration(
-                              color: isDark
-                                  ? AppColors.darkSurface
-                                  : AppColors.lightSurface,
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(
-                                color: isDark
-                                    ? AppColors.darkBorder
-                                    : AppColors.lightBorder,
-                              ),
-                            ),
-                            child: Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(8),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.terra.withOpacity(0.12),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: const Icon(
-                                    Icons.local_movies_rounded,
-                                    color: AppColors.terra,
-                                    size: 20,
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        'Watch Together',
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.bold,
-                                          color: isDark
-                                              ? AppColors.darkInk
-                                              : AppColors.lightInk,
-                                        ),
-                                      ),
-                                      Text(
-                                        'Private cinema for two • Zero uploads',
-                                        style: TextStyle(
-                                          fontSize: 11,
-                                          color: isDark
-                                              ? AppColors.darkSoft
-                                              : AppColors.lightSoft,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                Icon(
-                                  Icons.arrow_forward_ios_rounded,
-                                  size: 14,
-                                  color: isDark
-                                      ? AppColors.darkSoft
-                                      : AppColors.lightSoft,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
 
                       // Section 4: Highlight Screen Section (Memory Spotlight Hero Deck)
                       StageMemoryHeroCard(
