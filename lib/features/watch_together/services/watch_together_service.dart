@@ -307,11 +307,7 @@ class WatchTogetherService {
     });
     // Increment message count for counter badge
     try {
-      await _rtdb.ref('watchRooms/$roomCode/messageCount').runTransaction((mutableData) {
-        final current = (mutableData.value as num?)?.toInt() ?? 0;
-        mutableData.value = current + 1;
-        return Transaction.success(mutableData);
-      });
+      await _rtdb.ref('watchRooms/$roomCode/messageCount').set(ServerValue.increment(1));
     } catch (_) {}
   }
 
