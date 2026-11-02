@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:provider/provider.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../providers/theme_provider.dart';
 import '../../../../providers/auth_provider.dart';
@@ -57,6 +58,18 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> {
   bool _isChatVisible = true;
   bool _hasShownMovieEnded = false;
   bool _isLeaving = false;
+
+  // Skip debounce & target position
+  Duration? _targetSkipPosition;
+  Timer? _skipDebounceTimer;
+
+  // 2X Speed state
+  bool _isFastForwarding = false;
+
+  // Subtle New Message Toast & unread state
+  WatchMessage? _quickToastMessage;
+  Timer? _quickToastTimer;
+  bool _hasUnreadMessages = false;
 
   // Video Aspect Ratio Fit mode
   BoxFit _videoFit = BoxFit.contain;
@@ -158,12 +171,17 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> {
         .listen((messages) {
       if (!mounted || _isLeaving) return;
 
-      // Check if new reactions arrived
+      // Check if new reactions or messages arrived
       if (messages.length > _chatMessages.length) {
         final newMsgs = messages.sublist(_chatMessages.length);
         for (final m in newMsgs) {
           if (m.type == 'reaction') {
             _reactionsKey.currentState?.triggerReaction(m.text);
+          } else if (m.type == 'text' && m.uid != myUid) {
+            // Partner sent a message while chat is closed!
+            if (!_isChatVisible) {
+              _showQuickToast(m);
+            }
           }
         }
       }
@@ -231,7 +249,8 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> {
   void _startDriftCorrectionTimer() {
     _driftCheckTimer?.cancel();
     _driftCheckTimer = Timer.periodic(const Duration(seconds: 4), (_) {
-      if (!mounted || !_isInitialized || _isLeaving || !_controller.value.isPlaying) return;
+      if (!mounted || !_isInitialized || _isLeaving || !_controller.value.isPlaying || _isFastForwarding) return;
+      if (DateTime.now().isBefore(_ignoreRemoteUntil)) return;
 
       final myUid = context.read<AuthProvider>().user?.id;
       if (_lastRemotePlayback != null &&
@@ -267,8 +286,17 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> {
     final myUid = context.read<AuthProvider>().user?.id;
     if (myUid == null) return;
 
-    // Set 800ms lock so local events don't trigger remote echo
-    _ignoreRemoteUntil = DateTime.now().add(const Duration(milliseconds: 800));
+    // Set 2500ms lock so local events don't trigger remote echo
+    _ignoreRemoteUntil = DateTime.now().add(const Duration(milliseconds: 2500));
+
+    // Update _lastRemotePlayback locally so local drift timer won't use partner's old position
+    _lastRemotePlayback = WatchPlayback(
+      isPlaying: isPlaying,
+      positionMs: positionMs,
+      updatedAt: WatchTogetherService.instance.currentServerTime,
+      updatedBy: myUid,
+      speed: _controller.value.playbackSpeed,
+    );
 
     WatchTogetherService.instance.updatePlayback(
       roomCode: widget.roomCode,
@@ -304,7 +332,14 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> {
     if (!_isInitialized) return;
     HapticFeedback.lightImpact();
 
+    _targetSkipPosition = position;
     _controller.seekTo(position);
+
+    _skipDebounceTimer?.cancel();
+    _skipDebounceTimer = Timer(const Duration(milliseconds: 600), () {
+      _targetSkipPosition = null;
+    });
+
     _sendPlaybackAction(
       isPlaying: _controller.value.isPlaying,
       positionMs: position.inMilliseconds,
@@ -316,21 +351,76 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> {
     if (!_isInitialized) return;
     HapticFeedback.lightImpact();
 
-    final current = _controller.value.position;
+    final base = _targetSkipPosition ?? _controller.value.position;
     final target = forward
-        ? current + const Duration(seconds: 10)
-        : current - const Duration(seconds: 10);
+        ? base + const Duration(seconds: 10)
+        : base - const Duration(seconds: 10);
 
     final clamped = target < Duration.zero
         ? Duration.zero
         : (target > _controller.value.duration ? _controller.value.duration : target);
 
+    _targetSkipPosition = clamped;
     _controller.seekTo(clamped);
+
+    _skipDebounceTimer?.cancel();
+    _skipDebounceTimer = Timer(const Duration(milliseconds: 600), () {
+      _targetSkipPosition = null;
+    });
+
     _sendPlaybackAction(
       isPlaying: _controller.value.isPlaying,
       positionMs: clamped.inMilliseconds,
     );
     setState(() {});
+  }
+
+  void _startSpeedUp() {
+    if (!_isInitialized || _isLeaving) return;
+    HapticFeedback.mediumImpact();
+    _controller.setPlaybackSpeed(2.0);
+    _ignoreRemoteUntil = DateTime.now().add(const Duration(seconds: 10));
+    setState(() {
+      _isFastForwarding = true;
+    });
+  }
+
+  void _stopSpeedUp() {
+    if (!_isInitialized || _isLeaving) return;
+    HapticFeedback.lightImpact();
+    _controller.setPlaybackSpeed(1.0);
+    setState(() {
+      _isFastForwarding = false;
+    });
+    _sendPlaybackAction(
+      isPlaying: _controller.value.isPlaying,
+      positionMs: _controller.value.position.inMilliseconds,
+    );
+  }
+
+  void _showQuickToast(WatchMessage message) {
+    _quickToastTimer?.cancel();
+    setState(() {
+      _quickToastMessage = message;
+      _hasUnreadMessages = true;
+    });
+
+    _quickToastTimer = Timer(const Duration(milliseconds: 3600), () {
+      if (mounted) {
+        setState(() {
+          _quickToastMessage = null;
+        });
+      }
+    });
+  }
+
+  void _openChatFromToast() {
+    _quickToastTimer?.cancel();
+    setState(() {
+      _isChatVisible = true;
+      _quickToastMessage = null;
+      _hasUnreadMessages = false;
+    });
   }
 
   void _toggleAspectRatio() {
@@ -539,6 +629,8 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> {
     _chatSub?.cancel();
     _messageCountSub?.cancel();
     _driftCheckTimer?.cancel();
+    _skipDebounceTimer?.cancel();
+    _quickToastTimer?.cancel();
     _controller.removeListener(_videoPlayerListener);
     _controller.dispose();
 
@@ -552,6 +644,132 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> {
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
 
     super.dispose();
+  }
+
+  Widget _buildFastForwardIndicator() {
+    if (!_isFastForwarding) return const SizedBox.shrink();
+
+    return Center(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+        decoration: BoxDecoration(
+          color: Colors.black.withOpacity(0.85),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: AppColors.terra.withOpacity(0.85), width: 1.5),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.terra.withOpacity(0.4),
+              blurRadius: 18,
+              spreadRadius: 2,
+            ),
+          ],
+        ),
+        child: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.fast_forward_rounded, color: AppColors.terra, size: 24),
+            SizedBox(width: 8),
+            Text(
+              '2X SPEED',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 1.1,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQuickToast(String partnerAvatarUrl) {
+    if (_quickToastMessage == null || _isChatVisible) {
+      return const SizedBox.shrink();
+    }
+
+    final avatar = _quickToastMessage!.avatarUrl.isNotEmpty
+        ? _quickToastMessage!.avatarUrl
+        : partnerAvatarUrl;
+
+    return Positioned(
+      top: _isLandscape ? 16 : 10,
+      right: 14,
+      child: GestureDetector(
+        onTap: _openChatFromToast,
+        child: Container(
+          constraints: BoxConstraints(
+            maxWidth: _isLandscape ? 280 : 230,
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: Colors.black.withOpacity(0.88),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: AppColors.terra.withOpacity(0.7), width: 1.3),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.5),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircleAvatar(
+                radius: 12,
+                backgroundColor: AppColors.terra.withOpacity(0.3),
+                backgroundImage: avatar.isNotEmpty ? CachedNetworkImageProvider(avatar) : null,
+                child: avatar.isEmpty
+                    ? Text(
+                        _quickToastMessage!.name.isNotEmpty
+                            ? _quickToastMessage!.name[0].toUpperCase()
+                            : 'P',
+                        style: const TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.terra,
+                        ),
+                      )
+                    : null,
+              ),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      _quickToastMessage!.name.isNotEmpty ? _quickToastMessage!.name : 'Partner',
+                      style: const TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.terra,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      _quickToastMessage!.text,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Colors.white,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 6),
+              const Icon(Icons.arrow_forward_ios_rounded, size: 10, color: Colors.white54),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -642,6 +860,8 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> {
                           ),
                           // Floating Reactions over Video
                           WatchFloatingReactions(key: _reactionsKey),
+                          // Fast Forward 2X HUD
+                          _buildFastForwardIndicator(),
                           // Controls Overlay
                           WatchControlsOverlay(
                             isPlaying: _controller.value.isPlaying,
@@ -651,6 +871,7 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> {
                             movieTitle: widget.movieTitle,
                             isFullscreen: _isLandscape,
                             isChatVisible: _isChatVisible,
+                            hasUnreadMessages: _hasUnreadMessages,
                             onTogglePlay: _togglePlayPause,
                             onSeek: _seek,
                             onSkipBack10: () => _skip10Seconds(false),
@@ -658,13 +879,21 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> {
                             onToggleFullscreen: _toggleFullscreen,
                             onToggleAspectRatio: _toggleAspectRatio,
                             aspectRatioLabel: _aspectRatioLabel,
+                            onSpeedUpStart: _startSpeedUp,
+                            onSpeedUpEnd: _stopSpeedUp,
                             onToggleChat: () {
                               setState(() {
                                 _isChatVisible = !_isChatVisible;
+                                if (_isChatVisible) {
+                                  _hasUnreadMessages = false;
+                                  _quickToastMessage = null;
+                                }
                               });
                             },
                             onLeave: _showLeaveConfirmation,
                           ),
+                          // Quick notification toast over video in portrait
+                          _buildQuickToast(partnerAvatarUrl),
                         ],
                       ),
                     ),
@@ -708,12 +937,55 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> {
                                 onPressed: () {
                                   setState(() {
                                     _isChatVisible = true;
+                                    _hasUnreadMessages = false;
+                                    _quickToastMessage = null;
                                   });
                                 },
-                                icon: const Icon(Icons.chat_bubble_outline_rounded,
-                                    color: AppColors.terra),
-                                label: const Text('Show Live Chat',
-                                    style: TextStyle(color: AppColors.terra)),
+                                icon: Stack(
+                                  clipBehavior: Clip.none,
+                                  children: [
+                                    const Icon(Icons.chat_bubble_outline_rounded,
+                                        color: AppColors.terra),
+                                    if (_hasUnreadMessages)
+                                      Positioned(
+                                        top: -2,
+                                        right: -2,
+                                        child: Container(
+                                          width: 8,
+                                          height: 8,
+                                          decoration: const BoxDecoration(
+                                            color: Colors.redAccent,
+                                            shape: BoxShape.circle,
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                                label: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Text('Show Live Chat',
+                                        style: TextStyle(color: AppColors.terra)),
+                                    if (_hasUnreadMessages) ...[
+                                      const SizedBox(width: 6),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                                        decoration: BoxDecoration(
+                                          color: Colors.redAccent,
+                                          borderRadius: BorderRadius.circular(10),
+                                        ),
+                                        child: const Text(
+                                          'New',
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                ),
                               ),
                             ),
                     ),
@@ -741,6 +1013,8 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> {
                     ),
                     // Floating Reactions over fullscreen video
                     WatchFloatingReactions(key: _reactionsKey),
+                    // Fast Forward 2X HUD
+                    _buildFastForwardIndicator(),
                     // Controls Overlay
                     WatchControlsOverlay(
                       isPlaying: _controller.value.isPlaying,
@@ -750,6 +1024,7 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> {
                       movieTitle: widget.movieTitle,
                       isFullscreen: _isLandscape,
                       isChatVisible: _isChatVisible,
+                      hasUnreadMessages: _hasUnreadMessages,
                       onTogglePlay: _togglePlayPause,
                       onSeek: _seek,
                       onSkipBack10: () => _skip10Seconds(false),
@@ -757,13 +1032,21 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> {
                       onToggleFullscreen: _toggleFullscreen,
                       onToggleAspectRatio: _toggleAspectRatio,
                       aspectRatioLabel: _aspectRatioLabel,
+                      onSpeedUpStart: _startSpeedUp,
+                      onSpeedUpEnd: _stopSpeedUp,
                       onToggleChat: () {
                         setState(() {
                           _isChatVisible = !_isChatVisible;
+                          if (_isChatVisible) {
+                            _hasUnreadMessages = false;
+                            _quickToastMessage = null;
+                          }
                         });
                       },
                       onLeave: _showLeaveConfirmation,
                     ),
+                    // Quick notification toast over video in landscape
+                    _buildQuickToast(partnerAvatarUrl),
                     // Translucent Overlay Chat in Landscape (Right 28% of screen)
                     if (_isChatVisible)
                       Positioned(

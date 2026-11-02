@@ -25,6 +25,9 @@ class WatchControlsOverlay extends StatefulWidget {
   final VoidCallback onLeave;
   final VoidCallback? onToggleAspectRatio;
   final String aspectRatioLabel;
+  final VoidCallback? onSpeedUpStart;
+  final VoidCallback? onSpeedUpEnd;
+  final bool hasUnreadMessages;
 
   const WatchControlsOverlay({
     super.key,
@@ -44,6 +47,9 @@ class WatchControlsOverlay extends StatefulWidget {
     required this.onLeave,
     this.onToggleAspectRatio,
     this.aspectRatioLabel = 'Fit',
+    this.onSpeedUpStart,
+    this.onSpeedUpEnd,
+    this.hasUnreadMessages = false,
   });
 
   @override
@@ -113,6 +119,9 @@ class WatchControlsOverlayState extends State<WatchControlsOverlay> {
       return GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: toggleVisibility,
+        onLongPressStart: (_) => widget.onSpeedUpStart?.call(),
+        onLongPressEnd: (_) => widget.onSpeedUpEnd?.call(),
+        onLongPressCancel: () => widget.onSpeedUpEnd?.call(),
         child: const SizedBox.expand(),
       );
     }
@@ -124,6 +133,15 @@ class WatchControlsOverlayState extends State<WatchControlsOverlay> {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: toggleVisibility,
+      onLongPressStart: (_) {
+        setState(() {
+          _isVisible = false;
+        });
+        _hideTimer?.cancel();
+        widget.onSpeedUpStart?.call();
+      },
+      onLongPressEnd: (_) => widget.onSpeedUpEnd?.call(),
+      onLongPressCancel: () => widget.onSpeedUpEnd?.call(),
       child: Container(
         color: Colors.black.withOpacity(0.45),
         child: SafeArea(
@@ -194,22 +212,48 @@ class WatchControlsOverlayState extends State<WatchControlsOverlay> {
                         _startHideTimer();
                         widget.onToggleChat();
                       },
-                      child: Container(
-                        padding: const EdgeInsets.all(7),
-                        decoration: BoxDecoration(
-                          color: widget.isChatVisible
-                              ? AppColors.terra.withOpacity(0.8)
-                              : Colors.black.withOpacity(0.5),
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white.withOpacity(0.2)),
-                        ),
-                        child: Icon(
-                          widget.isChatVisible
-                              ? Icons.chat_bubble_rounded
-                              : Icons.chat_bubble_outline_rounded,
-                          size: 15,
-                          color: Colors.white,
-                        ),
+                      child: Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(7),
+                            decoration: BoxDecoration(
+                              color: widget.isChatVisible
+                                  ? AppColors.terra.withOpacity(0.8)
+                                  : Colors.black.withOpacity(0.5),
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white.withOpacity(0.2)),
+                            ),
+                            child: Icon(
+                              widget.isChatVisible
+                                  ? Icons.chat_bubble_rounded
+                                  : Icons.chat_bubble_outline_rounded,
+                              size: 15,
+                              color: Colors.white,
+                            ),
+                          ),
+                          if (!widget.isChatVisible && widget.hasUnreadMessages)
+                            Positioned(
+                              top: -2,
+                              right: -2,
+                              child: Container(
+                                width: 9,
+                                height: 9,
+                                decoration: BoxDecoration(
+                                  color: Colors.redAccent,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(color: Colors.black, width: 1.5),
+                                  boxShadow: const [
+                                    BoxShadow(
+                                      color: Colors.redAccent,
+                                      blurRadius: 4,
+                                      spreadRadius: 1,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
                     ),
                   ],
