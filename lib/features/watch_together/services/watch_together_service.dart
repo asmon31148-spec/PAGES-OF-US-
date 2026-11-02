@@ -2,6 +2,7 @@
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/foundation.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
 import '../models/watch_room_model.dart';
 
@@ -17,6 +18,16 @@ class WatchTogetherService {
 
   // Allowed character set for 6-character room codes (no 0, O, 1, I)
   static const String _charset = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+
+  Future<void> _ensureAuth() async {
+    if (FirebaseAuth.instance.currentUser == null) {
+      try {
+        await FirebaseAuth.instance.signInAnonymously();
+      } catch (e) {
+        debugPrint('WatchTogether auth check error: $e');
+      }
+    }
+  }
 
   void _initServerTimeOffset() {
     try {
@@ -43,14 +54,19 @@ class WatchTogetherService {
 
   /// Creates a unique room code not currently active in RTDB
   Future<String> createUniqueRoomCode() async {
+    await _ensureAuth();
     for (int i = 0; i < 5; i++) {
       final code = _generateRandomCode();
-      final snapshot = await _rtdb.ref('watchRooms/$code').get();
-      if (!snapshot.exists) {
+      try {
+        final snapshot = await _rtdb.ref('watchRooms/$code').get();
+        if (!snapshot.exists) {
+          return code;
+        }
+      } catch (_) {
         return code;
       }
     }
-    // Fallback with timestamp salt if collision occurs
+    // Fallback with random code if collision or read error occurs
     return _generateRandomCode();
   }
 
@@ -59,6 +75,8 @@ class WatchTogetherService {
     required String hostUid,
     required String hostName,
   }) async {
+    await _ensureAuth();
+
     // 1. Opportunistic cleanup of stale rooms older than 24 hours
     cleanupStaleRooms();
 
@@ -104,6 +122,7 @@ class WatchTogetherService {
     required String guestUid,
     required String guestName,
   }) async {
+    await _ensureAuth();
     final cleanCode = roomCode.trim().toUpperCase();
     final roomRef = _rtdb.ref('watchRooms/$cleanCode');
     final snapshot = await roomRef.get();

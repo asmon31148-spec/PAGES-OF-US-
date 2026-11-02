@@ -57,10 +57,16 @@ class _WatchLobbyScreenState extends State<WatchLobbyScreen> {
       );
     } catch (e) {
       if (!mounted) return;
+      final errorStr = e.toString();
+      String userFriendlyMsg = 'Could not create room: $e';
+      if (errorStr.contains('permission-denied')) {
+        userFriendlyMsg =
+            'Database permission locked. Please update Rules in Firebase Console.';
+      }
       setState(() {
-        _errorMessage = 'Could not create room: $e';
+        _errorMessage = userFriendlyMsg;
       });
-      _showSnackbar('Could not create room. Please try again.');
+      _showSnackbar(userFriendlyMsg);
     } finally {
       if (mounted) {
         setState(() {
@@ -111,7 +117,11 @@ class _WatchLobbyScreenState extends State<WatchLobbyScreen> {
       );
     } catch (e) {
       if (!mounted) return;
-      final msg = e.toString().replaceAll('Exception: ', '');
+      final errorStr = e.toString();
+      String msg = e.toString().replaceAll('Exception: ', '');
+      if (errorStr.contains('permission-denied')) {
+        msg = 'Database permission locked. Please update Rules in Firebase Console.';
+      }
       setState(() {
         _errorMessage = msg;
       });
