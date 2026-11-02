@@ -279,22 +279,40 @@ class WatchTogetherService {
     });
   }
 
+  /// Screen 3: Stream total message count
+  Stream<int> streamMessageCount(String roomCode) {
+    return _rtdb.ref('watchRooms/$roomCode/messageCount').onValue.map((event) {
+      if (!event.snapshot.exists || event.snapshot.value == null) return 0;
+      return (event.snapshot.value as num?)?.toInt() ?? 0;
+    });
+  }
+
   /// Screen 3: Send chat message
   Future<void> sendChatMessage({
     required String roomCode,
     required String uid,
     required String name,
     required String text,
+    String avatarUrl = '',
   }) async {
     if (text.trim().isEmpty) return;
     final chatRef = _rtdb.ref('watchRooms/$roomCode/chat').push();
     await chatRef.set({
       'uid': uid,
       'name': name,
+      'avatarUrl': avatarUrl,
       'text': text.trim(),
       'type': 'text',
       'sentAt': ServerValue.timestamp,
     });
+    // Increment message count for counter badge
+    try {
+      await _rtdb.ref('watchRooms/$roomCode/messageCount').runTransaction((mutableData) {
+        final current = (mutableData.value as num?)?.toInt() ?? 0;
+        mutableData.value = current + 1;
+        return Transaction.success(mutableData);
+      });
+    } catch (_) {}
   }
 
   /// Screen 3: Send emoji reaction

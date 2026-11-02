@@ -42,6 +42,7 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> {
   StreamSubscription<WatchPlayback>? _playbackSub;
   StreamSubscription<WatchRoom?>? _roomSub;
   StreamSubscription<List<WatchMessage>>? _chatSub;
+  StreamSubscription<int>? _messageCountSub;
 
   // Sync state
   WatchPlayback? _lastRemotePlayback;
@@ -51,10 +52,15 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> {
 
   // Chat & UI state
   List<WatchMessage> _chatMessages = [];
+  int _totalMessageCount = 0;
   bool _isLandscape = false;
   bool _isChatVisible = true;
   bool _hasShownMovieEnded = false;
   bool _isLeaving = false;
+
+  // Video Aspect Ratio Fit mode
+  BoxFit _videoFit = BoxFit.contain;
+  String _aspectRatioLabel = 'Fit';
 
   // Key to trigger floating reactions on screen
   final GlobalKey<WatchFloatingReactionsState> _reactionsKey = GlobalKey();
@@ -165,6 +171,17 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> {
       setState(() {
         _chatMessages = messages;
       });
+    });
+
+    // 4. Message count stream (persists real total count beyond query limit)
+    _messageCountSub = WatchTogetherService.instance
+        .streamMessageCount(widget.roomCode)
+        .listen((count) {
+      if (mounted && !_isLeaving) {
+        setState(() {
+          _totalMessageCount = count;
+        });
+      }
     });
   }
 
@@ -314,6 +331,22 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> {
       positionMs: clamped.inMilliseconds,
     );
     setState(() {});
+  }
+
+  void _toggleAspectRatio() {
+    HapticFeedback.selectionClick();
+    setState(() {
+      if (_videoFit == BoxFit.contain) {
+        _videoFit = BoxFit.cover;
+        _aspectRatioLabel = 'Zoom';
+      } else if (_videoFit == BoxFit.cover) {
+        _videoFit = BoxFit.fill;
+        _aspectRatioLabel = 'Stretch';
+      } else {
+        _videoFit = BoxFit.contain;
+        _aspectRatioLabel = 'Fit';
+      }
+    });
   }
 
   void _toggleFullscreen() {
@@ -504,6 +537,7 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> {
     _playbackSub?.cancel();
     _roomSub?.cancel();
     _chatSub?.cancel();
+    _messageCountSub?.cancel();
     _driftCheckTimer?.cancel();
     _controller.removeListener(_videoPlayerListener);
     _controller.dispose();
@@ -522,8 +556,11 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final myUid = context.watch<AuthProvider>().user?.id ?? '';
-    final myName = context.watch<AuthProvider>().user?.nickname ?? 'You';
+    final auth = context.watch<AuthProvider>();
+    final myUid = auth.user?.id ?? '';
+    final myName = auth.user?.nickname ?? 'You';
+    final myAvatarUrl = auth.user?.avatarUrl ?? '';
+    final partnerAvatarUrl = auth.partner?.avatarUrl ?? '';
 
     if (_initError != null) {
       return Scaffold(
@@ -589,11 +626,18 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> {
                         alignment: Alignment.center,
                         children: [
                           Center(
-                            child: AspectRatio(
-                              aspectRatio: _controller.value.aspectRatio > 0
-                                  ? _controller.value.aspectRatio
-                                  : 16 / 9,
-                              child: VideoPlayer(_controller),
+                            child: FittedBox(
+                              fit: _videoFit,
+                              clipBehavior: Clip.hardEdge,
+                              child: SizedBox(
+                                width: _controller.value.size.width > 0
+                                    ? _controller.value.size.width
+                                    : 16,
+                                height: _controller.value.size.height > 0
+                                    ? _controller.value.size.height
+                                    : 9,
+                                child: VideoPlayer(_controller),
+                              ),
                             ),
                           ),
                           // Floating Reactions over Video
@@ -612,6 +656,8 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> {
                             onSkipBack10: () => _skip10Seconds(false),
                             onSkipForward10: () => _skip10Seconds(true),
                             onToggleFullscreen: _toggleFullscreen,
+                            onToggleAspectRatio: _toggleAspectRatio,
+                            aspectRatioLabel: _aspectRatioLabel,
                             onToggleChat: () {
                               setState(() {
                                 _isChatVisible = !_isChatVisible;
@@ -629,6 +675,9 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> {
                           ? WatchChatView(
                               messages: _chatMessages,
                               currentUid: myUid,
+                              totalCount: _totalMessageCount,
+                              partnerAvatarUrl: partnerAvatarUrl,
+                              userAvatarUrl: myAvatarUrl,
                               isLandscape: false,
                               onSendMessage: (text) {
                                 WatchTogetherService.instance.sendChatMessage(
@@ -636,6 +685,7 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> {
                                   uid: myUid,
                                   name: myName,
                                   text: text,
+                                  avatarUrl: myAvatarUrl,
                                 );
                               },
                               onSendReaction: (emoji) {
@@ -675,11 +725,18 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> {
                   fit: StackFit.expand,
                   children: [
                     Center(
-                      child: AspectRatio(
-                        aspectRatio: _controller.value.aspectRatio > 0
-                            ? _controller.value.aspectRatio
-                            : 16 / 9,
-                        child: VideoPlayer(_controller),
+                      child: FittedBox(
+                        fit: _videoFit,
+                        clipBehavior: Clip.hardEdge,
+                        child: SizedBox(
+                          width: _controller.value.size.width > 0
+                              ? _controller.value.size.width
+                              : 16,
+                          height: _controller.value.size.height > 0
+                              ? _controller.value.size.height
+                              : 9,
+                          child: VideoPlayer(_controller),
+                        ),
                       ),
                     ),
                     // Floating Reactions over fullscreen video
@@ -698,6 +755,8 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> {
                       onSkipBack10: () => _skip10Seconds(false),
                       onSkipForward10: () => _skip10Seconds(true),
                       onToggleFullscreen: _toggleFullscreen,
+                      onToggleAspectRatio: _toggleAspectRatio,
+                      aspectRatioLabel: _aspectRatioLabel,
                       onToggleChat: () {
                         setState(() {
                           _isChatVisible = !_isChatVisible;
@@ -705,16 +764,19 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> {
                       },
                       onLeave: _showLeaveConfirmation,
                     ),
-                    // Translucent Overlay Chat in Landscape (Right 35% of screen)
+                    // Translucent Overlay Chat in Landscape (Right 28% of screen)
                     if (_isChatVisible)
                       Positioned(
-                        top: 48,
-                        bottom: 12,
-                        right: 12,
-                        width: MediaQuery.of(context).size.width * 0.35,
+                        top: 20,
+                        bottom: 20,
+                        right: 8,
+                        width: MediaQuery.of(context).size.width * 0.28,
                         child: WatchChatView(
                           messages: _chatMessages,
                           currentUid: myUid,
+                          totalCount: _totalMessageCount,
+                          partnerAvatarUrl: partnerAvatarUrl,
+                          userAvatarUrl: myAvatarUrl,
                           isLandscape: true,
                           onSendMessage: (text) {
                             WatchTogetherService.instance.sendChatMessage(
@@ -722,6 +784,7 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> {
                               uid: myUid,
                               name: myName,
                               text: text,
+                              avatarUrl: myAvatarUrl,
                             );
                           },
                           onSendReaction: (emoji) {

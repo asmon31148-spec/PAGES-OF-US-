@@ -39,15 +39,15 @@ class WatchFloatingReactionsState extends State<WatchFloatingReactions> {
     final item = FloatingReactionItem(
       key: UniqueKey(),
       emoji: emoji,
-      startX: 0.2 + _random.nextDouble() * 0.6, // random horizontal offset (20% to 80%)
+      startX: 0.15 + _random.nextDouble() * 0.70, // 15% to 85% horizontal spread
     );
 
     setState(() {
       _reactions.add(item);
     });
 
-    // Remove after 2.2 seconds animation
-    Future.delayed(const Duration(milliseconds: 2200), () {
+    // Remove after 2.4s animation
+    Future.delayed(const Duration(milliseconds: 2400), () {
       if (mounted) {
         setState(() {
           _reactions.remove(item);
@@ -92,32 +92,37 @@ class _AnimatedReactionState extends State<_AnimatedReaction>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _translateY;
-  late Animation<double> _opacity;
   late Animation<double> _scale;
-  final double _driftX = (Random().nextDouble() - 0.5) * 60; // gentle horizontal sway
+  late Animation<double> _opacity;
+  final double _swayAmplitude = 25.0 + Random().nextDouble() * 20.0;
+  final double _swaySpeed = 2.0 + Random().nextDouble() * 1.5;
+  final double _rotation = (Random().nextDouble() - 0.5) * 0.35;
 
   @override
   void initState() {
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 2000),
+      duration: const Duration(milliseconds: 2200),
     );
 
-    _translateY = Tween<double>(begin: 0, end: -240).animate(
+    // Smooth upward curved translation
+    _translateY = Tween<double>(begin: 0, end: -300).animate(
       CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic),
     );
 
+    // Bouncy scale-in then settle
     _scale = TweenSequence<double>([
-      TweenSequenceItem(tween: Tween(begin: 0.3, end: 1.3), weight: 30),
-      TweenSequenceItem(tween: Tween(begin: 1.3, end: 1.0), weight: 30),
-      TweenSequenceItem(tween: Tween(begin: 1.0, end: 0.9), weight: 40),
+      TweenSequenceItem(tween: Tween(begin: 0.0, end: 1.4).chain(CurveTween(curve: Curves.easeOutBack)), weight: 25),
+      TweenSequenceItem(tween: Tween(begin: 1.4, end: 1.05), weight: 35),
+      TweenSequenceItem(tween: Tween(begin: 1.05, end: 0.85), weight: 40),
     ]).animate(_controller);
 
+    // Romantic glow fade
     _opacity = TweenSequence<double>([
-      TweenSequenceItem(tween: Tween(begin: 0.0, end: 1.0), weight: 20),
-      TweenSequenceItem(tween: Tween(begin: 1.0, end: 1.0), weight: 50),
-      TweenSequenceItem(tween: Tween(begin: 1.0, end: 0.0), weight: 30),
+      TweenSequenceItem(tween: Tween(begin: 0.0, end: 1.0), weight: 15),
+      TweenSequenceItem(tween: Tween(begin: 1.0, end: 1.0), weight: 55),
+      TweenSequenceItem(tween: Tween(begin: 1.0, end: 0.0).chain(CurveTween(curve: Curves.easeInQuad)), weight: 30),
     ]).animate(_controller);
 
     _controller.forward();
@@ -132,23 +137,32 @@ class _AnimatedReactionState extends State<_AnimatedReaction>
   @override
   Widget build(BuildContext context) {
     return Positioned(
-      bottom: 60,
+      bottom: 50,
       left: widget.startX,
       child: AnimatedBuilder(
         animation: _controller,
         builder: (context, child) {
           final progress = _controller.value;
-          final currentX = _driftX * sin(progress * pi);
+          final swayX = sin(progress * _swaySpeed * pi) * _swayAmplitude;
+          final currentRotation = sin(progress * pi) * _rotation;
 
           return Transform.translate(
-            offset: Offset(currentX, _translateY.value),
-            child: Transform.scale(
-              scale: _scale.value,
-              child: Opacity(
-                opacity: _opacity.value.clamp(0.0, 1.0),
-                child: Text(
-                  widget.emoji,
-                  style: const TextStyle(fontSize: 34),
+            offset: Offset(swayX, _translateY.value),
+            child: Transform.rotate(
+              angle: currentRotation,
+              child: Transform.scale(
+                scale: _scale.value,
+                child: Opacity(
+                  opacity: _opacity.value.clamp(0.0, 1.0),
+                  child: Text(
+                    widget.emoji,
+                    style: const TextStyle(
+                      fontSize: 36,
+                      shadows: [
+                        Shadow(color: Colors.black45, blurRadius: 10, offset: Offset(0, 3)),
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ),

@@ -101,6 +101,7 @@ class WatchMessage {
   final String id;
   final String uid;
   final String name;
+  final String avatarUrl;
   final String text;
   final String type; // 'text' or 'reaction'
   final int sentAt;
@@ -109,6 +110,7 @@ class WatchMessage {
     required this.id,
     required this.uid,
     required this.name,
+    this.avatarUrl = '',
     required this.text,
     this.type = 'text',
     required this.sentAt,
@@ -122,6 +124,7 @@ class WatchMessage {
       id: id,
       uid: map['uid']?.toString() ?? '',
       name: map['name']?.toString() ?? 'Partner',
+      avatarUrl: map['avatarUrl']?.toString() ?? '',
       text: map['text']?.toString() ?? '',
       type: map['type']?.toString() ?? 'text',
       sentAt: (map['sentAt'] as num?)?.toInt() ?? 0,
@@ -131,6 +134,7 @@ class WatchMessage {
   Map<String, dynamic> toMap() => {
         'uid': uid,
         'name': name,
+        'avatarUrl': avatarUrl,
         'text': text,
         'type': type,
         'sentAt': sentAt,

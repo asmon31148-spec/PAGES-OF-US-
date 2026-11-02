@@ -23,6 +23,8 @@ class WatchControlsOverlay extends StatefulWidget {
   final VoidCallback onToggleFullscreen;
   final VoidCallback onToggleChat;
   final VoidCallback onLeave;
+  final VoidCallback? onToggleAspectRatio;
+  final String aspectRatioLabel;
 
   const WatchControlsOverlay({
     super.key,
@@ -40,6 +42,8 @@ class WatchControlsOverlay extends StatefulWidget {
     required this.onToggleFullscreen,
     required this.onToggleChat,
     required this.onLeave,
+    this.onToggleAspectRatio,
+    this.aspectRatioLabel = 'Fit',
   });
 
   @override
@@ -345,6 +349,34 @@ class WatchControlsOverlayState extends State<WatchControlsOverlay> {
                             color: Colors.white.withOpacity(0.7),
                           ),
                         ),
+                        if (widget.onToggleAspectRatio != null) ...[
+                          const SizedBox(width: 8),
+                          GestureDetector(
+                            onTap: () {
+                              _startHideTimer();
+                              widget.onToggleAspectRatio!();
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withOpacity(0.4),
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(color: Colors.white.withOpacity(0.2)),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.aspect_ratio_rounded, size: 14, color: Colors.white),
+                                  const SizedBox(width: 3),
+                                  Text(
+                                    widget.aspectRatioLabel,
+                                    style: const TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.bold),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
                         const SizedBox(width: 8),
                         GestureDetector(
                           onTap: () {
