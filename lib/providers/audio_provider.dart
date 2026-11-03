@@ -11,6 +11,7 @@ import '../core/services/audio_handler.dart';
 import '../core/services/local_cache_service.dart';
 import '../data/services/firebase_service.dart';
 import '../data/services/supabase_service.dart';
+import 'auth_provider.dart';
 
 class AudioProvider extends ChangeNotifier {
   final SanctuaryAudioHandler? audioHandler;
@@ -183,10 +184,41 @@ class AudioProvider extends ChangeNotifier {
   String get activePreset => _activePreset;
 
   AudioProvider({this.audioHandler}) {
+    AuthProvider.registerSignOutHook(resetState);
     _loadPersistedSongs();
     _initHandlerCallbacks();
     _initSongListeners();
     _initAtmospherePlayers();
+  }
+
+  /// Wipes ALL audio player and music state when user logs out.
+  void resetState() {
+    _musicCloudSub?.cancel();
+    _playlistFirebaseSub?.cancel();
+    _syncChannel?.unsubscribe();
+    _musicCloudSub = null;
+    _playlistFirebaseSub = null;
+    _syncChannel = null;
+    _syncSpaceId = null;
+
+    try { _songPlayer.stop(); } catch (_) {}
+    pauseAtmosphere();
+
+    _songs = [];
+    _deletedSongIds.clear();
+    _playlists.clear();
+    _playlists.addAll([
+      PlaylistItem(id: 'favs', title: 'Favorites', icon: '💖', colorHex: 0xFFE07A5F, songIds: []),
+      PlaylistItem(id: 'sleep', title: 'Late Night Talks', icon: '🌙', colorHex: 0xFF334155, songIds: []),
+      PlaylistItem(id: 'stargazing', title: 'Stargazing', icon: '✨', colorHex: 0xFFE9C46A, songIds: []),
+      PlaylistItem(id: 'roadtrip', title: 'Road Trips', icon: '🚗', colorHex: 0xFF4D655A, songIds: []),
+    ]);
+    _currentSongIndex = 0;
+    _isSongPlaying = false;
+    _isAtmospherePlaying = false;
+    _songPosition = Duration.zero;
+    _songDuration = Duration.zero;
+    notifyListeners();
   }
 
   void _loadPersistedSongs() {

@@ -7,6 +7,11 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../providers/theme_provider.dart';
 import '../../../providers/auth_provider.dart';
+import '../../../providers/stage_provider.dart';
+import '../../../providers/vault_provider.dart';
+import '../../../providers/memories_provider.dart';
+import '../../../providers/world_provider.dart';
+import '../../../providers/audio_provider.dart';
 import '../../../core/services/media_upload_service.dart';
 import '../../../core/services/update_service.dart';
 import '../../../core/widgets/update_dialog.dart';
@@ -197,6 +202,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
             onPressed: () async {
               Navigator.pop(ctx);
               Navigator.pop(context); // exit profile screen
+              try { context.read<VaultProvider>().resetState(); } catch (_) {}
+              try { context.read<MemoriesProvider>().resetState(); } catch (_) {}
+              try { context.read<StageProvider>().resetState(); } catch (_) {}
+              try { context.read<WorldProvider>().resetState(); } catch (_) {}
+              try { context.read<AudioProvider>().resetState(); } catch (_) {}
               await authProvider.signOut();
             },
             style: ElevatedButton.styleFrom(

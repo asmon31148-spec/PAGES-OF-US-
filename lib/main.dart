@@ -258,7 +258,10 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold> with Wi
     final partner = authProvider.partner;
     final effectiveSpaceId = space?.id ?? user?.spaceId;
 
-    if (effectiveSpaceId != null && effectiveSpaceId.isNotEmpty && user != null) {
+    if (user == null) {
+      _syncedSpaceId = null;
+      _syncedPartnerId = null;
+    } else if (effectiveSpaceId != null && effectiveSpaceId.isNotEmpty) {
       if (_syncedSpaceId != effectiveSpaceId || _syncedPartnerId != partner?.id) {
         _syncedSpaceId = effectiveSpaceId;
         _syncedPartnerId = partner?.id;
