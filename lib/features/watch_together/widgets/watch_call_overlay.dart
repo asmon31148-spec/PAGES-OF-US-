@@ -273,7 +273,7 @@ class _WatchCallOverlayState extends State<WatchCallOverlay> {
               child: ValueListenableBuilder<bool>(
                 valueListenable: _callService.isPartnerCameraOff,
                 builder: (context, isCameraOff, _) {
-                  if (isCameraOff) {
+                  if (isCameraOff || _callService.remoteRenderer.srcObject == null) {
                     return _buildPartnerAvatarPlaceholder();
                   }
                   return RTCVideoView(
@@ -284,24 +284,24 @@ class _WatchCallOverlayState extends State<WatchCallOverlay> {
               ),
             ),
 
-            // Partner Muted Badge
-            ValueListenableBuilder<bool>(
-              valueListenable: _callService.isPartnerMicMuted,
-              builder: (context, isMuted, _) {
-                if (!isMuted) return const SizedBox.shrink();
-                return Positioned(
-                  top: 6,
-                  left: 6,
-                  child: Container(
+            // Partner Muted Badge (Must be direct child of Stack)
+            Positioned(
+              top: 6,
+              left: 6,
+              child: ValueListenableBuilder<bool>(
+                valueListenable: _callService.isPartnerMicMuted,
+                builder: (context, isMuted, _) {
+                  if (!isMuted) return const SizedBox.shrink();
+                  return Container(
                     padding: const EdgeInsets.all(4),
                     decoration: BoxDecoration(
                       color: Colors.black.withOpacity(0.7),
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(Icons.mic_off_rounded, color: Colors.redAccent, size: 12),
-                  ),
-                );
-              },
+                  );
+                },
+              ),
             ),
 
             // Inset: My Local Camera Thumbnail (bottom-right of bubble)
@@ -320,7 +320,7 @@ class _WatchCallOverlayState extends State<WatchCallOverlay> {
                 child: ValueListenableBuilder<bool>(
                   valueListenable: _callService.isCameraOff,
                   builder: (context, isCameraOff, _) {
-                    if (isCameraOff) {
+                    if (isCameraOff || _callService.localRenderer.srcObject == null) {
                       return const Icon(Icons.videocam_off_rounded, size: 16, color: Colors.white54);
                     }
                     return RTCVideoView(

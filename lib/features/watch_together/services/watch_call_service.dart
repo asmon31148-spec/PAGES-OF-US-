@@ -22,8 +22,8 @@ class WatchCallService {
   MediaStream? _localStream;
   MediaStream? _remoteStream;
 
-  final RTCVideoRenderer localRenderer = RTCVideoRenderer();
-  final RTCVideoRenderer remoteRenderer = RTCVideoRenderer();
+  RTCVideoRenderer localRenderer = RTCVideoRenderer();
+  RTCVideoRenderer remoteRenderer = RTCVideoRenderer();
 
   bool _isRenderersInitialized = false;
 
@@ -45,6 +45,9 @@ class WatchCallService {
   StreamSubscription? _candidateSub;
   StreamSubscription? _partnerStatusSub;
 
+  final List<RTCIceCandidate> _queuedRemoteCandidates = [];
+  bool _isRemoteDescriptionSet = false;
+
   final Map<String, dynamic> _iceConfig = {
     'iceServers': [
       {'urls': 'stun:stun.l.google.com:19302'},
@@ -56,12 +59,16 @@ class WatchCallService {
     'sdpSemantics': 'unified-plan',
   };
 
-  /// Pre-initialize video renderers
+  /// Pre-initialize video renderers safely
   Future<void> initRenderers() async {
     if (_isRenderersInitialized) return;
-    await localRenderer.initialize();
-    await remoteRenderer.initialize();
-    _isRenderersInitialized = true;
+    try {
+      await localRenderer.initialize();
+      await remoteRenderer.initialize();
+      _isRenderersInitialized = true;
+    } catch (e) {
+      debugPrint('Error initializing renderers: $e');
+    }
   }
 
   /// Listen for incoming calls while in a watch room
@@ -102,8 +109,16 @@ class WatchCallService {
           if (answerMap != null && _peerConnection != null) {
             final sdp = answerMap['sdp']?.toString() ?? '';
             final type = answerMap['type']?.toString() ?? 'answer';
-            _peerConnection?.setRemoteDescription(RTCSessionDescription(sdp, type));
-            callStatus.value = WatchCallStatus.connected;
+            () async {
+              try {
+                await _peerConnection?.setRemoteDescription(RTCSessionDescription(sdp, type));
+                _isRemoteDescriptionSet = true;
+                await _drainQueuedCandidates();
+                callStatus.value = WatchCallStatus.connected;
+              } catch (e) {
+                debugPrint('Error setting remote description on caller: $e');
+              }
+            }();
           }
         }
       } else if (state == 'idle' || state == 'declined' || state == 'ended') {
@@ -132,37 +147,42 @@ class WatchCallService {
     });
   }
 
-  /// Request permissions and create local user media stream
+  /// Request permissions and create local user media stream with safe fallbacks
   Future<bool> _openUserMedia() async {
-    final cameraStatus = await Permission.camera.request();
-    final micStatus = await Permission.microphone.request();
-
-    if (!cameraStatus.isGranted || !micStatus.isGranted) {
-      debugPrint('Camera or Microphone permissions not granted');
-      return false;
-    }
-
-    await initRenderers();
-
-    final Map<String, dynamic> mediaConstraints = {
-      'audio': {
-        'echoCancellation': true,
-        'noiseSuppression': true,
-        'autoGainControl': true,
-      },
-      'video': {
-        'mandatory': {
-          'minWidth': '320',
-          'minHeight': '240',
-          'minFrameRate': '20',
-        },
-        'facingMode': 'user',
-        'optional': [],
-      }
-    };
-
     try {
-      _localStream = await navigator.mediaDevices.getUserMedia(mediaConstraints);
+      final cameraStatus = await Permission.camera.request();
+      final micStatus = await Permission.microphone.request();
+
+      if (!cameraStatus.isGranted || !micStatus.isGranted) {
+        debugPrint('Camera or Microphone permissions not granted');
+        return false;
+      }
+
+      await initRenderers();
+
+      final Map<String, dynamic> mediaConstraints = {
+        'audio': {
+          'echoCancellation': true,
+          'noiseSuppression': true,
+          'autoGainControl': true,
+        },
+        'video': {
+          'facingMode': 'user',
+          'width': 640,
+          'height': 480,
+        }
+      };
+
+      try {
+        _localStream = await navigator.mediaDevices.getUserMedia(mediaConstraints);
+      } catch (e) {
+        debugPrint('Failed with resolution constraints, falling back to basic: $e');
+        _localStream = await navigator.mediaDevices.getUserMedia({
+          'audio': true,
+          'video': {'facingMode': 'user'},
+        });
+      }
+
       localRenderer.srcObject = _localStream;
       isCameraOff.value = false;
       isMicMuted.value = false;
@@ -175,174 +195,213 @@ class WatchCallService {
 
   /// Start a video call (Offer creation)
   Future<void> startCall({required String roomCode, required String myUid, required String myName}) async {
-    _currentRoomCode = roomCode.trim().toUpperCase();
-    _myUid = myUid;
-    _myName = myName;
+    try {
+      _currentRoomCode = roomCode.trim().toUpperCase();
+      _myUid = myUid;
+      _myName = myName;
+      _queuedRemoteCandidates.clear();
+      _isRemoteDescriptionSet = false;
 
-    final mediaReady = await _openUserMedia();
-    if (!mediaReady) return;
+      final mediaReady = await _openUserMedia();
+      if (!mediaReady) return;
 
-    callStatus.value = WatchCallStatus.calling;
+      callStatus.value = WatchCallStatus.calling;
 
-    // 1. Create Peer Connection
-    _peerConnection = await createPeerConnection(_iceConfig);
+      // Clean up previous call candidates in RTDB
+      try {
+        await _rtdb.ref('watchRooms/$_currentRoomCode/call/callerCandidates').remove();
+        await _rtdb.ref('watchRooms/$_currentRoomCode/call/calleeCandidates').remove();
+      } catch (_) {}
 
-    // 2. Add local tracks to PeerConnection
-    _localStream?.getTracks().forEach((track) {
-      _peerConnection?.addTrack(track, _localStream!);
-    });
+      // 1. Create Peer Connection
+      _peerConnection = await createPeerConnection(_iceConfig);
 
-    // 3. Listen for remote stream
-    _peerConnection?.onTrack = (RTCTrackEvent event) {
-      if (event.streams.isNotEmpty) {
-        _remoteStream = event.streams[0];
-        remoteRenderer.srcObject = _remoteStream;
-        callStatus.value = WatchCallStatus.connected;
-      }
-    };
-
-    // 4. Send ICE Candidates to RTDB
-    _peerConnection?.onIceCandidate = (RTCIceCandidate candidate) {
-      if (candidate.candidate == null) return;
-      _rtdb.ref('watchRooms/$_currentRoomCode/call/candidates/$myUid').push().set({
-        'candidate': candidate.candidate,
-        'sdpMid': candidate.sdpMid,
-        'sdpMLineIndex': candidate.sdpMLineIndex,
+      // 2. Add local tracks to PeerConnection
+      _localStream?.getTracks().forEach((track) {
+        _peerConnection?.addTrack(track, _localStream!);
       });
-    };
 
-    // 5. Create SDP Offer
-    final offer = await _peerConnection!.createOffer({
-      'offerToReceiveAudio': 1,
-      'offerToReceiveVideo': 1,
-    });
-    await _peerConnection!.setLocalDescription(offer);
+      // 3. Listen for remote stream
+      _peerConnection?.onTrack = (RTCTrackEvent event) {
+        if (event.streams.isNotEmpty) {
+          _remoteStream = event.streams[0];
+          remoteRenderer.srcObject = _remoteStream;
+          callStatus.value = WatchCallStatus.connected;
+        }
+      };
 
-    // 6. Write Offer to Firebase RTDB
-    await _rtdb.ref('watchRooms/$_currentRoomCode/call').update({
-      'state': 'calling',
-      'callerUid': myUid,
-      'callerName': myName,
-      'offer': {
-        'sdp': offer.sdp,
-        'type': offer.type,
-      },
-    });
+      // 4. Send ICE Candidates to RTDB under callerCandidates
+      _peerConnection?.onIceCandidate = (RTCIceCandidate candidate) {
+        if (candidate.candidate == null) return;
+        _rtdb.ref('watchRooms/$_currentRoomCode/call/callerCandidates').push().set({
+          'candidate': candidate.candidate,
+          'sdpMid': candidate.sdpMid,
+          'sdpMLineIndex': candidate.sdpMLineIndex,
+        });
+      };
 
-    // 7. Publish initial local status
-    _updateTrackStatusInDb();
+      // 5. Create SDP Offer
+      final offer = await _peerConnection!.createOffer({
+        'offerToReceiveAudio': 1,
+        'offerToReceiveVideo': 1,
+      });
+      await _peerConnection!.setLocalDescription(offer);
 
-    // 8. Listen for ICE candidates from partner
-    _subscribeToRemoteCandidates();
+      // 6. Write Offer to Firebase RTDB
+      await _rtdb.ref('watchRooms/$_currentRoomCode/call').update({
+        'state': 'calling',
+        'callerUid': myUid,
+        'callerName': myName,
+        'offer': {
+          'sdp': offer.sdp,
+          'type': offer.type,
+        },
+      });
+
+      // 7. Publish initial local status
+      _updateTrackStatusInDb();
+
+      // 8. Listen for ICE candidates from callee
+      _subscribeToCandidates(path: 'watchRooms/$_currentRoomCode/call/calleeCandidates');
+    } catch (e) {
+      debugPrint('Error starting call: $e');
+      _cleanUpLocalCall();
+    }
   }
 
   /// Answer an incoming video call (Answer creation)
   Future<void> answerCall({required String roomCode, required String myUid, required String myName}) async {
-    _currentRoomCode = roomCode.trim().toUpperCase();
-    _myUid = myUid;
-    _myName = myName;
+    try {
+      _currentRoomCode = roomCode.trim().toUpperCase();
+      _myUid = myUid;
+      _myName = myName;
+      _queuedRemoteCandidates.clear();
+      _isRemoteDescriptionSet = false;
 
-    final mediaReady = await _openUserMedia();
-    if (!mediaReady) {
-      declineCall();
-      return;
-    }
-
-    // 1. Fetch Offer from RTDB
-    final snapshot = await _rtdb.ref('watchRooms/$_currentRoomCode/call').get();
-    if (!snapshot.exists || snapshot.value == null) return;
-
-    final data = snapshot.value as Map<dynamic, dynamic>;
-    final offerMap = data['offer'] as Map<dynamic, dynamic>?;
-    if (offerMap == null) return;
-
-    // 2. Create Peer Connection
-    _peerConnection = await createPeerConnection(_iceConfig);
-
-    // 3. Add local tracks
-    _localStream?.getTracks().forEach((track) {
-      _peerConnection?.addTrack(track, _localStream!);
-    });
-
-    // 4. Listen for remote stream
-    _peerConnection?.onTrack = (RTCTrackEvent event) {
-      if (event.streams.isNotEmpty) {
-        _remoteStream = event.streams[0];
-        remoteRenderer.srcObject = _remoteStream;
-        callStatus.value = WatchCallStatus.connected;
+      final mediaReady = await _openUserMedia();
+      if (!mediaReady) {
+        await declineCall();
+        return;
       }
-    };
 
-    // 5. Send ICE Candidates to RTDB
-    _peerConnection?.onIceCandidate = (RTCIceCandidate candidate) {
-      if (candidate.candidate == null) return;
-      _rtdb.ref('watchRooms/$_currentRoomCode/call/candidates/$myUid').push().set({
-        'candidate': candidate.candidate,
-        'sdpMid': candidate.sdpMid,
-        'sdpMLineIndex': candidate.sdpMLineIndex,
+      // 1. Fetch Offer from RTDB
+      final snapshot = await _rtdb.ref('watchRooms/$_currentRoomCode/call').get();
+      if (!snapshot.exists || snapshot.value == null) return;
+
+      final data = snapshot.value as Map<dynamic, dynamic>;
+      final offerMap = data['offer'] as Map<dynamic, dynamic>?;
+      if (offerMap == null) return;
+
+      // 2. Create Peer Connection
+      _peerConnection = await createPeerConnection(_iceConfig);
+
+      // 3. Add local tracks
+      _localStream?.getTracks().forEach((track) {
+        _peerConnection?.addTrack(track, _localStream!);
       });
-    };
 
-    // 6. Set Remote Description (Offer)
-    final sdp = offerMap['sdp']?.toString() ?? '';
-    final type = offerMap['type']?.toString() ?? 'offer';
-    await _peerConnection!.setRemoteDescription(RTCSessionDescription(sdp, type));
+      // 4. Listen for remote stream
+      _peerConnection?.onTrack = (RTCTrackEvent event) {
+        if (event.streams.isNotEmpty) {
+          _remoteStream = event.streams[0];
+          remoteRenderer.srcObject = _remoteStream;
+          callStatus.value = WatchCallStatus.connected;
+        }
+      };
 
-    // 7. Create SDP Answer
-    final answer = await _peerConnection!.createAnswer({
-      'offerToReceiveAudio': 1,
-      'offerToReceiveVideo': 1,
-    });
-    await _peerConnection!.setLocalDescription(answer);
+      // 5. Send Callee ICE Candidates to RTDB under calleeCandidates
+      _peerConnection?.onIceCandidate = (RTCIceCandidate candidate) {
+        if (candidate.candidate == null) return;
+        _rtdb.ref('watchRooms/$_currentRoomCode/call/calleeCandidates').push().set({
+          'candidate': candidate.candidate,
+          'sdpMid': candidate.sdpMid,
+          'sdpMLineIndex': candidate.sdpMLineIndex,
+        });
+      };
 
-    // 8. Write Answer to RTDB
-    await _rtdb.ref('watchRooms/$_currentRoomCode/call').update({
-      'state': 'connected',
-      'answer': {
-        'sdp': answer.sdp,
-        'type': answer.type,
-      },
-    });
+      // 6. Set Remote Description (Offer)
+      final sdp = offerMap['sdp']?.toString() ?? '';
+      final type = offerMap['type']?.toString() ?? 'offer';
+      await _peerConnection!.setRemoteDescription(RTCSessionDescription(sdp, type));
+      _isRemoteDescriptionSet = true;
 
-    callStatus.value = WatchCallStatus.connected;
+      // 7. Subscribe to caller candidates
+      _subscribeToCandidates(path: 'watchRooms/$_currentRoomCode/call/callerCandidates');
 
-    // 9. Publish local status
-    _updateTrackStatusInDb();
+      // 8. Create SDP Answer
+      final answer = await _peerConnection!.createAnswer({
+        'offerToReceiveAudio': 1,
+        'offerToReceiveVideo': 1,
+      });
+      await _peerConnection!.setLocalDescription(answer);
 
-    // 10. Listen for partner candidates
-    _subscribeToRemoteCandidates();
+      // 9. Write Answer to RTDB
+      await _rtdb.ref('watchRooms/$_currentRoomCode/call').update({
+        'state': 'connected',
+        'answer': {
+          'sdp': answer.sdp,
+          'type': answer.type,
+        },
+      });
+
+      // Flush any queued candidates that arrived before description was set
+      await _drainQueuedCandidates();
+
+      callStatus.value = WatchCallStatus.connected;
+
+      // 10. Publish local status
+      _updateTrackStatusInDb();
+    } catch (e) {
+      debugPrint('Error in answerCall: $e');
+      await declineCall();
+    }
   }
 
-  void _subscribeToRemoteCandidates() {
-    if (_currentRoomCode == null || _myUid == null) return;
+  void _subscribeToCandidates({required String path}) {
     _candidateSub?.cancel();
-
-    _candidateSub = _rtdb.ref('watchRooms/$_currentRoomCode/call/candidates').onChildAdded.listen((event) {
-      final fromUid = event.snapshot.key;
-      if (fromUid == _myUid) return; // Ignore own candidates
-
-      if (event.snapshot.value is Map) {
+    _candidateSub = _rtdb.ref(path).onChildAdded.listen((event) async {
+      if (!event.snapshot.exists || event.snapshot.value == null) return;
+      try {
         final val = event.snapshot.value as Map<dynamic, dynamic>;
-        val.forEach((_, candData) {
-          if (candData is Map && _peerConnection != null) {
-            final candidate = RTCIceCandidate(
-              candData['candidate']?.toString() ?? '',
-              candData['sdpMid']?.toString() ?? '',
-              (candData['sdpMLineIndex'] as num?)?.toInt() ?? 0,
-            );
-            _peerConnection?.addCandidate(candidate);
-          }
-        });
+        final candidateStr = val['candidate']?.toString() ?? '';
+        final sdpMid = val['sdpMid']?.toString() ?? '';
+        final sdpMLineIndex = (val['sdpMLineIndex'] as num?)?.toInt() ?? 0;
+
+        if (candidateStr.isEmpty) return;
+
+        final candidate = RTCIceCandidate(candidateStr, sdpMid, sdpMLineIndex);
+
+        if (_peerConnection != null && _isRemoteDescriptionSet) {
+          await _peerConnection?.addCandidate(candidate);
+        } else {
+          _queuedRemoteCandidates.add(candidate);
+        }
+      } catch (e) {
+        debugPrint('Error processing incoming ICE candidate: $e');
       }
     });
+  }
+
+  Future<void> _drainQueuedCandidates() async {
+    if (_peerConnection == null || !_isRemoteDescriptionSet) return;
+    for (final candidate in _queuedRemoteCandidates) {
+      try {
+        await _peerConnection?.addCandidate(candidate);
+      } catch (e) {
+        debugPrint('Error adding queued candidate: $e');
+      }
+    }
+    _queuedRemoteCandidates.clear();
   }
 
   /// Decline incoming call
   Future<void> declineCall() async {
     if (_currentRoomCode != null) {
-      await _rtdb.ref('watchRooms/$_currentRoomCode/call').update({
-        'state': 'declined',
-      });
+      try {
+        await _rtdb.ref('watchRooms/$_currentRoomCode/call').update({
+          'state': 'declined',
+        });
+      } catch (_) {}
     }
     _cleanUpLocalCall();
   }
@@ -350,9 +409,11 @@ class WatchCallService {
   /// End ongoing call
   Future<void> endCall() async {
     if (_currentRoomCode != null) {
-      await _rtdb.ref('watchRooms/$_currentRoomCode/call').set({
-        'state': 'idle',
-      });
+      try {
+        await _rtdb.ref('watchRooms/$_currentRoomCode/call').set({
+          'state': 'idle',
+        });
+      } catch (_) {}
     }
     _cleanUpLocalCall();
   }
@@ -413,6 +474,8 @@ class WatchCallService {
 
     _candidateSub?.cancel();
     _candidateSub = null;
+    _queuedRemoteCandidates.clear();
+    _isRemoteDescriptionSet = false;
 
     try {
       _localStream?.getTracks().forEach((track) {
@@ -446,8 +509,15 @@ class WatchCallService {
     _cleanUpLocalCall();
 
     if (_isRenderersInitialized) {
-      localRenderer.dispose();
-      remoteRenderer.dispose();
+      try {
+        localRenderer.srcObject = null;
+        remoteRenderer.srcObject = null;
+        localRenderer.dispose();
+        remoteRenderer.dispose();
+      } catch (_) {}
+      // Instantiate fresh renderers so initialize() works on the next session
+      localRenderer = RTCVideoRenderer();
+      remoteRenderer = RTCVideoRenderer();
       _isRenderersInitialized = false;
     }
   }

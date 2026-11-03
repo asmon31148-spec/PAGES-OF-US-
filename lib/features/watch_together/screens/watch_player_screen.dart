@@ -36,7 +36,7 @@ class WatchPlayerScreen extends StatefulWidget {
   State<WatchPlayerScreen> createState() => _WatchPlayerScreenState();
 }
 
-class _WatchPlayerScreenState extends State<WatchPlayerScreen> {
+class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindingObserver {
   late VideoPlayerController _controller;
   bool _isInitialized = false;
   String? _initError;
@@ -83,7 +83,22 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _initPlayer();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && !_isLeaving) {
+      final myUid = context.read<AuthProvider>().user?.id;
+      if (myUid != null) {
+        WatchTogetherService.instance.setMemberOnline(
+          roomCode: widget.roomCode,
+          uid: myUid,
+          online: true,
+        );
+      }
+    }
   }
 
   Future<void> _initPlayer() async {
@@ -651,6 +666,7 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     WakelockPlus.disable();
     _playbackSub?.cancel();
     _roomSub?.cancel();
