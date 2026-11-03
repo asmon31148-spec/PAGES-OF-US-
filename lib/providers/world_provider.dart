@@ -5,12 +5,42 @@ import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../data/models/user_location_model.dart';
 import '../data/models/pinned_place.dart';
 import '../data/services/firebase_service.dart';
 import '../data/services/supabase_service.dart';
 import '../core/services/weather_service.dart';
 import '../core/services/notification_service.dart';
+
+// ── Journey tracking data model ────────────────────────────────────────────────
+class JourneyPoint {
+  final double lat;
+  final double lng;
+  final DateTime timestamp;
+  final String city;
+
+  const JourneyPoint({
+    required this.lat,
+    required this.lng,
+    required this.timestamp,
+    this.city = '',
+  });
+
+  Map<String, dynamic> toJson() => {
+    'lat': lat,
+    'lng': lng,
+    'ts': timestamp.millisecondsSinceEpoch,
+    'city': city,
+  };
+
+  factory JourneyPoint.fromJson(Map<String, dynamic> j) => JourneyPoint(
+    lat: (j['lat'] as num).toDouble(),
+    lng: (j['lng'] as num).toDouble(),
+    timestamp: DateTime.fromMillisecondsSinceEpoch((j['ts'] as num).toInt()),
+    city: j['city']?.toString() ?? '',
+  );
+}
 
 class WorldProvider extends ChangeNotifier {
   final Map<String, UserLocationData> _locations = {};
@@ -37,6 +67,12 @@ class WorldProvider extends ChangeNotifier {
   String _cachedPlaceName = 'Nearby';
   String _cachedNeighborhood = '';
   String _cachedCity = '';
+
+  // ── Journey log — accumulated GPS points for travel stats ───────────────────
+  List<JourneyPoint> _myJourneyLog = [];
+  List<JourneyPoint> _partnerJourneyLog = [];
+  Timer? _journeyPersistDebounce;
+  static const String _journeyPrefKey = 'journey_log_my_v2';
 
   Map<String, UserLocationData> get locations => Map.unmodifiable(_locations);
   List<PinnedPlace> get pinnedPlaces => List.unmodifiable(_pinnedPlaces);
@@ -116,6 +152,7 @@ class WorldProvider extends ChangeNotifier {
 
   WorldProvider() {
     _startClockTimer();
+    _loadJourneyLog();
   }
 
   void _startClockTimer() {
@@ -129,6 +166,7 @@ class WorldProvider extends ChangeNotifier {
   void dispose() {
     _clockTimer?.cancel();
     _cloudDebounce?.cancel();
+    _journeyPersistDebounce?.cancel();
     _firestoreSub?.cancel();
     _positionStreamSub?.cancel();
     SupabaseService.removeLocationListener(_handleSupabaseLocationUpdate);
@@ -138,6 +176,135 @@ class WorldProvider extends ChangeNotifier {
   UserLocationData? getUserLocation(String? userId) {
     if (userId == null) return null;
     return _locations[userId];
+  }
+
+  // ── Journey tracking ────────────────────────────────────────────────────────
+
+  /// Accumulates a GPS position into the personal journey log.
+  void _appendMyPoint(Position position) {
+    final point = JourneyPoint(
+      lat: position.latitude,
+      lng: position.longitude,
+      timestamp: DateTime.now(),
+      city: _cachedCity,
+    );
+
+    // Only append if moved at least 5 m from last logged point (de-duplicate stationary pings)
+    if (_myJourneyLog.isNotEmpty) {
+      final last = _myJourneyLog.last;
+      final distM = calculateDistanceKm(last.lat, last.lng, point.lat, point.lng) * 1000;
+      if (distM < 5) return;
+    }
+
+    _myJourneyLog.add(point);
+
+    // Prune log older than 31 days to cap memory usage
+    final cutoff = DateTime.now().subtract(const Duration(days: 31));
+    _myJourneyLog.removeWhere((p) => p.timestamp.isBefore(cutoff));
+
+    // Debounced persist to SharedPreferences (max 1 write every 30 s)
+    _journeyPersistDebounce?.cancel();
+    _journeyPersistDebounce = Timer(const Duration(seconds: 30), _persistJourneyLog);
+  }
+
+  /// Accumulates the partner's incoming location into their journey log (session only).
+  void _appendPartnerPoint(double lat, double lng) {
+    if (lat == 0.0 && lng == 0.0) return;
+    final point = JourneyPoint(lat: lat, lng: lng, timestamp: DateTime.now());
+
+    if (_partnerJourneyLog.isNotEmpty) {
+      final last = _partnerJourneyLog.last;
+      final distM = calculateDistanceKm(last.lat, last.lng, point.lat, point.lng) * 1000;
+      if (distM < 5) return;
+    }
+    _partnerJourneyLog.add(point);
+
+    // Prune to last 24 h (partner log is session-only, not persisted)
+    final cutoff = DateTime.now().subtract(const Duration(hours: 24));
+    _partnerJourneyLog.removeWhere((p) => p.timestamp.isBefore(cutoff));
+  }
+
+  double _calcJourneyKm(List<JourneyPoint> log, Duration period) {
+    final since = DateTime.now().subtract(period);
+    final filtered = log.where((p) => p.timestamp.isAfter(since)).toList();
+    if (filtered.length < 2) return 0.0;
+    double total = 0.0;
+    for (int i = 1; i < filtered.length; i++) {
+      total += calculateDistanceKm(
+        filtered[i - 1].lat, filtered[i - 1].lng,
+        filtered[i].lat, filtered[i].lng,
+      );
+    }
+    return total;
+  }
+
+  int _countAreas(List<JourneyPoint> log, Duration period) {
+    final since = DateTime.now().subtract(period);
+    final cities = log
+        .where((p) => p.timestamp.isAfter(since) && p.city.isNotEmpty)
+        .map((p) => p.city)
+        .toSet();
+    return cities.isEmpty ? 0 : cities.length;
+  }
+
+  // ── Public journey getters ──────────────────────────────────────────────────
+  double myJourneyKmToday     => _calcJourneyKm(_myJourneyLog, const Duration(hours: 24));
+  double myJourneyKmThisWeek  => _calcJourneyKm(_myJourneyLog, const Duration(days: 7));
+  double myJourneyKmThisMonth => _calcJourneyKm(_myJourneyLog, const Duration(days: 30));
+
+  int myAreasVisitedToday     => _countAreas(_myJourneyLog, const Duration(hours: 24));
+  int myAreasVisitedThisWeek  => _countAreas(_myJourneyLog, const Duration(days: 7));
+  int myAreasVisitedThisMonth => _countAreas(_myJourneyLog, const Duration(days: 30));
+
+  double partnerJourneyKmToday     => _calcJourneyKm(_partnerJourneyLog, const Duration(hours: 24));
+  double partnerJourneyKmThisWeek  => _calcJourneyKm(_partnerJourneyLog, const Duration(days: 7));
+  double partnerJourneyKmThisMonth => _calcJourneyKm(_partnerJourneyLog, const Duration(days: 30));
+
+  // ── Convenience methods called by journey_stats_card ───────────────────────
+  double myJourneyKm(dynamic period) {
+    final name = period?.toString() ?? '';
+    if (name.contains('week')) return myJourneyKmThisWeek;
+    if (name.contains('month')) return myJourneyKmThisMonth;
+    return myJourneyKmToday;
+  }
+
+  double partnerJourneyKm(dynamic period) {
+    final name = period?.toString() ?? '';
+    if (name.contains('week')) return partnerJourneyKmThisWeek;
+    if (name.contains('month')) return partnerJourneyKmThisMonth;
+    return partnerJourneyKmToday;
+  }
+
+  int myAreasVisited(dynamic period) {
+    final name = period?.toString() ?? '';
+    if (name.contains('week')) return myAreasVisitedThisWeek;
+    if (name.contains('month')) return myAreasVisitedThisMonth;
+    return myAreasVisitedToday;
+  }
+
+  // ── Persist / load journey log ──────────────────────────────────────────────
+  Future<void> _persistJourneyLog() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final json = jsonEncode(_myJourneyLog.map((p) => p.toJson()).toList());
+      await prefs.setString(_journeyPrefKey, json);
+    } catch (_) {}
+  }
+
+  Future<void> _loadJourneyLog() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_journeyPrefKey);
+      if (raw != null && raw.isNotEmpty) {
+        final list = jsonDecode(raw) as List<dynamic>;
+        _myJourneyLog = list
+            .map((e) => JourneyPoint.fromJson(Map<String, dynamic>.from(e as Map)))
+            .toList();
+        // Prune stale entries immediately on load
+        final cutoff = DateTime.now().subtract(const Duration(days: 31));
+        _myJourneyLog.removeWhere((p) => p.timestamp.isBefore(cutoff));
+      }
+    } catch (_) {}
   }
 
   double calculateDistanceKm(double lat1, double lon1, double lat2, double lon2) {
@@ -249,6 +416,8 @@ class WorldProvider extends ChangeNotifier {
           _partnerId = loc.userId;
         }
         _locations[loc.userId] = loc;
+        // Accumulate partner's position into their journey log
+        _appendPartnerPoint(loc.lat, loc.lng);
         _checkPartnerGeofence(loc);
         if (_partnerWeather == null) {
           _fetchPartnerWeather(loc.lat, loc.lng);
@@ -444,6 +613,9 @@ class WorldProvider extends ChangeNotifier {
 
   Future<void> _handleNewPosition(Position position) async {
     if (_currentUserId == null || _spaceId == null) return;
+
+    // Accumulate position into journey log
+    _appendMyPoint(position);
 
     _gpsStatus = (_partnerId != null && _partnerId!.isNotEmpty) ? 'Live Tethered' : 'Live Presence';
 
