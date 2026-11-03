@@ -199,7 +199,7 @@ class AudioProvider extends ChangeNotifier {
     _musicCloudSub = null;
     _playlistFirebaseSub = null;
     _syncChannel = null;
-    _syncSpaceId = null;
+    _syncSpaceId = '';
 
     try { _songPlayer.stop(); } catch (_) {}
     pauseAtmosphere();
@@ -208,10 +208,9 @@ class AudioProvider extends ChangeNotifier {
     _deletedSongIds.clear();
     _playlists.clear();
     _playlists.addAll([
-      PlaylistItem(id: 'favs', title: 'Favorites', icon: '💖', colorHex: 0xFFE07A5F, songIds: []),
-      PlaylistItem(id: 'sleep', title: 'Late Night Talks', icon: '🌙', colorHex: 0xFF334155, songIds: []),
-      PlaylistItem(id: 'stargazing', title: 'Stargazing', icon: '✨', colorHex: 0xFFE9C46A, songIds: []),
-      PlaylistItem(id: 'roadtrip', title: 'Road Trips', icon: '🚗', colorHex: 0xFF4D655A, songIds: []),
+      PlaylistItem(id: 'pl_1', title: 'Calm evenings', coverColor: const Color(0xFF2DD4BF), songIds: []),
+      PlaylistItem(id: 'pl_2', title: 'Night Sanctuary', coverColor: const Color(0xFFF97316), songIds: []),
+      PlaylistItem(id: 'pl_3', title: 'Road Trips', coverColor: const Color(0xFF6366F1), songIds: []),
     ]);
     _currentSongIndex = 0;
     _isSongPlaying = false;

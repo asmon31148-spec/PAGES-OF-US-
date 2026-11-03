@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 
 /// CustomPainter that draws a cubic bezier arc with a dashed trail and
