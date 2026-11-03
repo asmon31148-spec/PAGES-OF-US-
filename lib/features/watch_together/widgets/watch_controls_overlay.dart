@@ -28,6 +28,8 @@ class WatchControlsOverlay extends StatefulWidget {
   final VoidCallback? onSpeedUpStart;
   final VoidCallback? onSpeedUpEnd;
   final bool hasUnreadMessages;
+  final VoidCallback? onStartCall;
+  final bool isCallActive;
 
   const WatchControlsOverlay({
     super.key,
@@ -50,6 +52,8 @@ class WatchControlsOverlay extends StatefulWidget {
     this.onSpeedUpStart,
     this.onSpeedUpEnd,
     this.hasUnreadMessages = false,
+    this.onStartCall,
+    this.isCallActive = false,
   });
 
   @override
@@ -205,6 +209,36 @@ class WatchControlsOverlayState extends State<WatchControlsOverlay> {
                     _buildSyncStatusChip(),
 
                     const SizedBox(width: 8),
+
+                    // Video Call Button
+                    if (widget.onStartCall != null) ...[
+                      GestureDetector(
+                        onTap: () {
+                          _startHideTimer();
+                          widget.onStartCall!();
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.all(7),
+                          decoration: BoxDecoration(
+                            color: widget.isCallActive
+                                ? const Color(0xFF10B981).withOpacity(0.85)
+                                : Colors.black.withOpacity(0.5),
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: widget.isCallActive
+                                  ? const Color(0xFF10B981)
+                                  : Colors.white.withOpacity(0.2),
+                            ),
+                          ),
+                          child: Icon(
+                            widget.isCallActive ? Icons.videocam_rounded : Icons.videocam_outlined,
+                            size: 15,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                    ],
 
                     // Chat Toggle Icon
                     GestureDetector(

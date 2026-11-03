@@ -14,6 +14,8 @@ import '../services/watch_together_service.dart';
 import '../widgets/watch_controls_overlay.dart';
 import '../widgets/watch_chat_view.dart';
 import '../widgets/watch_floating_reactions.dart';
+import '../widgets/watch_call_overlay.dart';
+import '../services/watch_call_service.dart';
 import 'watch_waiting_screen.dart';
 
 class WatchPlayerScreen extends StatefulWidget {
@@ -529,6 +531,10 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> {
       WakelockPlus.disable();
     } catch (_) {}
 
+    try {
+      WatchCallService.instance.endCall();
+    } catch (_) {}
+
     final myUid = context.read<AuthProvider>().user?.id;
     if (myUid != null) {
       WatchTogetherService.instance.leaveRoom(
@@ -653,6 +659,7 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> {
     _driftCheckTimer?.cancel();
     _skipDebounceTimer?.cancel();
     _quickToastTimer?.cancel();
+    WatchCallService.instance.dispose();
     _controller.removeListener(_videoPlayerListener);
     _controller.dispose();
 
@@ -801,6 +808,7 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> {
     final myName = auth.user?.nickname ?? 'You';
     final myAvatarUrl = auth.user?.avatarUrl ?? '';
     final partnerAvatarUrl = auth.partner?.avatarUrl ?? '';
+    final partnerName = auth.partner?.nickname ?? 'Partner';
 
     if (_initError != null) {
       return Scaffold(
@@ -885,34 +893,53 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> {
                           // Fast Forward 2X HUD
                           _buildFastForwardIndicator(),
                           // Controls Overlay
-                          WatchControlsOverlay(
-                            isPlaying: _controller.value.isPlaying,
-                            position: _controller.value.position,
-                            duration: _controller.value.duration,
-                            syncStatus: _syncStatus,
-                            movieTitle: widget.movieTitle,
-                            isFullscreen: _isLandscape,
-                            isChatVisible: _isChatVisible,
-                            hasUnreadMessages: _hasUnreadMessages,
-                            onTogglePlay: _togglePlayPause,
-                            onSeek: _seek,
-                            onSkipBack10: () => _skip10Seconds(false),
-                            onSkipForward10: () => _skip10Seconds(true),
-                            onToggleFullscreen: _toggleFullscreen,
-                            onToggleAspectRatio: _toggleAspectRatio,
-                            aspectRatioLabel: _aspectRatioLabel,
-                            onSpeedUpStart: _startSpeedUp,
-                            onSpeedUpEnd: _stopSpeedUp,
-                            onToggleChat: () {
-                              setState(() {
-                                _isChatVisible = !_isChatVisible;
-                                if (_isChatVisible) {
-                                  _hasUnreadMessages = false;
-                                  _quickToastMessage = null;
-                                }
-                              });
+                          ValueListenableBuilder<WatchCallStatus>(
+                            valueListenable: WatchCallService.instance.callStatus,
+                            builder: (context, callStatus, _) {
+                              final isCallActive = callStatus == WatchCallStatus.connected ||
+                                  callStatus == WatchCallStatus.calling;
+                              return WatchControlsOverlay(
+                                isPlaying: _controller.value.isPlaying,
+                                position: _controller.value.position,
+                                duration: _controller.value.duration,
+                                syncStatus: _syncStatus,
+                                movieTitle: widget.movieTitle,
+                                isFullscreen: _isLandscape,
+                                isChatVisible: _isChatVisible,
+                                hasUnreadMessages: _hasUnreadMessages,
+                                onTogglePlay: _togglePlayPause,
+                                onSeek: _seek,
+                                onSkipBack10: () => _skip10Seconds(false),
+                                onSkipForward10: () => _skip10Seconds(true),
+                                onToggleFullscreen: _toggleFullscreen,
+                                onToggleAspectRatio: _toggleAspectRatio,
+                                aspectRatioLabel: _aspectRatioLabel,
+                                onSpeedUpStart: _startSpeedUp,
+                                onSpeedUpEnd: _stopSpeedUp,
+                                onStartCall: () {
+                                  if (callStatus == WatchCallStatus.idle) {
+                                    WatchCallService.instance.startCall(
+                                      roomCode: widget.roomCode,
+                                      myUid: myUid,
+                                      myName: myName,
+                                    );
+                                  } else {
+                                    WatchCallService.instance.endCall();
+                                  }
+                                },
+                                isCallActive: isCallActive,
+                                onToggleChat: () {
+                                  setState(() {
+                                    _isChatVisible = !_isChatVisible;
+                                    if (_isChatVisible) {
+                                      _hasUnreadMessages = false;
+                                      _quickToastMessage = null;
+                                    }
+                                  });
+                                },
+                                onLeave: _showLeaveConfirmation,
+                              );
                             },
-                            onLeave: _showLeaveConfirmation,
                           ),
                           // Quick notification toast over video in portrait
                           _buildQuickToast(partnerAvatarUrl),
@@ -1038,34 +1065,53 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> {
                     // Fast Forward 2X HUD
                     _buildFastForwardIndicator(),
                     // Controls Overlay
-                    WatchControlsOverlay(
-                      isPlaying: _controller.value.isPlaying,
-                      position: _controller.value.position,
-                      duration: _controller.value.duration,
-                      syncStatus: _syncStatus,
-                      movieTitle: widget.movieTitle,
-                      isFullscreen: _isLandscape,
-                      isChatVisible: _isChatVisible,
-                      hasUnreadMessages: _hasUnreadMessages,
-                      onTogglePlay: _togglePlayPause,
-                      onSeek: _seek,
-                      onSkipBack10: () => _skip10Seconds(false),
-                      onSkipForward10: () => _skip10Seconds(true),
-                      onToggleFullscreen: _toggleFullscreen,
-                      onToggleAspectRatio: _toggleAspectRatio,
-                      aspectRatioLabel: _aspectRatioLabel,
-                      onSpeedUpStart: _startSpeedUp,
-                      onSpeedUpEnd: _stopSpeedUp,
-                      onToggleChat: () {
-                        setState(() {
-                          _isChatVisible = !_isChatVisible;
-                          if (_isChatVisible) {
-                            _hasUnreadMessages = false;
-                            _quickToastMessage = null;
-                          }
-                        });
+                    ValueListenableBuilder<WatchCallStatus>(
+                      valueListenable: WatchCallService.instance.callStatus,
+                      builder: (context, callStatus, _) {
+                        final isCallActive = callStatus == WatchCallStatus.connected ||
+                            callStatus == WatchCallStatus.calling;
+                        return WatchControlsOverlay(
+                          isPlaying: _controller.value.isPlaying,
+                          position: _controller.value.position,
+                          duration: _controller.value.duration,
+                          syncStatus: _syncStatus,
+                          movieTitle: widget.movieTitle,
+                          isFullscreen: _isLandscape,
+                          isChatVisible: _isChatVisible,
+                          hasUnreadMessages: _hasUnreadMessages,
+                          onTogglePlay: _togglePlayPause,
+                          onSeek: _seek,
+                          onSkipBack10: () => _skip10Seconds(false),
+                          onSkipForward10: () => _skip10Seconds(true),
+                          onToggleFullscreen: _toggleFullscreen,
+                          onToggleAspectRatio: _toggleAspectRatio,
+                          aspectRatioLabel: _aspectRatioLabel,
+                          onSpeedUpStart: _startSpeedUp,
+                          onSpeedUpEnd: _stopSpeedUp,
+                          onStartCall: () {
+                            if (callStatus == WatchCallStatus.idle) {
+                              WatchCallService.instance.startCall(
+                                roomCode: widget.roomCode,
+                                myUid: myUid,
+                                myName: myName,
+                              );
+                            } else {
+                              WatchCallService.instance.endCall();
+                            }
+                          },
+                          isCallActive: isCallActive,
+                          onToggleChat: () {
+                            setState(() {
+                              _isChatVisible = !_isChatVisible;
+                              if (_isChatVisible) {
+                                _hasUnreadMessages = false;
+                                _quickToastMessage = null;
+                              }
+                            });
+                          },
+                          onLeave: _showLeaveConfirmation,
+                        );
                       },
-                      onLeave: _showLeaveConfirmation,
                     ),
                     // Quick notification toast over video in landscape
                     _buildQuickToast(partnerAvatarUrl),
@@ -1110,6 +1156,16 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> {
                       ),
                   ],
                 ),
+
+              // Floating Picture-in-Picture Video Call Overlay
+              WatchCallOverlay(
+                roomCode: widget.roomCode,
+                myUid: myUid,
+                myName: myName,
+                partnerAvatarUrl: partnerAvatarUrl,
+                partnerName: partnerName,
+                isLandscape: _isLandscape,
+              ),
             ],
           ),
         ),
