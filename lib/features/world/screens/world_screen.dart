@@ -13,6 +13,8 @@ import '../../stage/widgets/app_top_bar.dart';
 import '../../stage/widgets/profile_modal.dart';
 import '../../../data/models/user_location_model.dart';
 import '../../../data/models/pinned_place.dart';
+import '../widgets/journey_stats_card.dart';
+import '../widgets/meet_route_sheet.dart';
 
 enum MapBasemapStyle {
   streets,
@@ -292,7 +294,24 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
                               now: worldProvider.now,
                             ),
 
-                            // 4. Quick Action Grid
+                            // 4. Journey Stats Card — paper plane animation with daily/weekly/monthly travel
+                            JourneyStatsCard(isDark: isDark),
+
+                            // 5. Long-distance Reunion Planner — only shown when > 50 km apart
+                            if (hasPartner &&
+                                distanceKm != null &&
+                                distanceKm! > 50 &&
+                                myLoc != null &&
+                                partnerLoc != null)
+                              _buildReunionBanner(
+                                isDark: isDark,
+                                myLoc: myLoc!,
+                                partnerLoc: partnerLoc!,
+                                distanceKm: distanceKm!,
+                                partnerName: partner?.nickname ?? 'Partner',
+                              ),
+
+                            // 6. Quick Action Grid
                             Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                       child: Row(
@@ -340,7 +359,7 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
                       ),
                     ),
 
-                    // 5. Privacy & History Options Card
+                    // 7. Privacy & History Options Card
                     Container(
                       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                       padding: const EdgeInsets.all(16),
@@ -434,6 +453,106 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
     ),
   );
 }
+
+  /// Reunion planner banner — only shown when couple is > 50 km apart.
+  Widget _buildReunionBanner({
+    required bool isDark,
+    required UserLocationData myLoc,
+    required UserLocationData partnerLoc,
+    required double distanceKm,
+    required String partnerName,
+  }) {
+    final distStr = distanceKm > 1000
+        ? '${(distanceKm / 1000).toStringAsFixed(1)}k km'
+        : '${distanceKm.toStringAsFixed(0)} km';
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            AppColors.terra.withOpacity(isDark ? 0.18 : 0.12),
+            AppColors.rose.withOpacity(isDark ? 0.10 : 0.06),
+          ],
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.terra.withOpacity(0.35)),
+      ),
+      child: Row(
+        children: [
+          const Text('✈️', style: TextStyle(fontSize: 26)),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'You & $partnerName are $distStr apart',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: isDark ? AppColors.darkInk : AppColors.lightInk,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'See flights, trains, hotels & the best route to meet',
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: isDark ? AppColors.darkSoft : AppColors.lightSoft,
+                    height: 1.3,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          GestureDetector(
+            onTap: () {
+              HapticFeedback.mediumImpact();
+              MeetRouteSheet.show(
+                context,
+                isDark: isDark,
+                myLat: myLoc.lat,
+                myLng: myLoc.lng,
+                myCity: myLoc.city ?? myLoc.placeName ?? '',
+                partnerLat: partnerLoc.lat,
+                partnerLng: partnerLoc.lng,
+                partnerCity: partnerLoc.city ?? partnerLoc.placeName ?? '',
+                partnerName: partnerName,
+                distanceKm: distanceKm,
+              );
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                color: AppColors.terra,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.terra.withOpacity(0.35),
+                    blurRadius: 8,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: const Text(
+                'Plan 🗺️',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _buildMapCard({
     required bool isDark,
