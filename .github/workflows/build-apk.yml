@@ -151,28 +151,21 @@ jobs:
           name: "Pages of Us v${{ steps.app_version.outputs.version }} — Sanctuary Edition"
           make_latest: true
           body: |
-            ### ✨ What's New in Pages of Us v${{ steps.app_version.outputs.version }}
+            ### ✨ What is New in Pages of Us v${{ steps.app_version.outputs.version }}
 
-            - **🎵 Echo YouTube Music Streaming**:
-              - Search and stream any song, artist, album, or link from YouTube Music directly inside the app with zero ads and high-bitrate audio.
-              - Audio-only streaming engine keeping battery and memory footprint tiny (<25 MB).
+            - **📹 Live WebRTC Video Calling in Watch Together**:
+              - Floating picture-in-picture video call while watching movies in sync.
+              - Real-time mic mute, camera switch, and crash-proof signaling.
 
-            - **💾 In-App Offline Music Downloader**:
-              - One-tap download to store favorite songs locally on your phone for offline playback anytime with 0ms buffer and zero data usage.
-              - Dedicated "Offline" tab in Music Sanctuary with storage manager.
+            - **🌍 Universal Global Partner Clocks & Our World Map**:
+              - Accurate civil time calculation handling fractional timezone countries (Nepal +5:45, Iran +3:30, Afghanistan +4:30, Myanmar +6:30, Sri Lanka +5:30, and Australia).
+              - Real-time location tether with auto reverse-geocoding.
 
-            - **🔐 Direct Vault Theme Music Integration**:
-              - Select any downloaded YouTube Music track directly as the background theme song for your memory Vaults.
-              - Multi-cloud synchronization so both partners hear the soundtrack when unlocking that Vault.
+            - **🎵 Echo Music & Offline Sanctuary**:
+              - Stream YouTube Music with zero ads, offline audio caching, and synchronized lyrics.
 
-            - **🎤 Synchronized Lyrics (LRCLIB)**:
-              - Real-time time-coded lyrics auto-scrolling with the singer's voice.
-              - Tap any lyric line to jump directly to that point in the song.
-
-            - **🌟 Living Stage Screen Widgets**:
-              - Interactive Milestones & Dreams progress widget.
-              - One-tap Daily Care & Routine checkoff chips.
-              - Romantic weather hook & partner atmospheric sky glow.
+            - **⚡ Enhanced Presence & Real-time Sync**:
+              - Instant room reconnection and robust multi-cloud synchronization.
           files: |
             build/app/outputs/flutter-apk/PagesOfUs.apk
             build/app/outputs/flutter-apk/app-release.apk
