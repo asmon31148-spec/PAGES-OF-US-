@@ -750,22 +750,25 @@ class StageProvider extends ChangeNotifier {
     required String vibeTag,
     required String category,
   }) async {
+    final effectiveSpaceId = spaceId.isNotEmpty ? spaceId : (_activeSpaceId ?? '');
+    final todayStr = DateTime.now().toIso8601String().split('T').first;
+
     // If current prompt has answers, archive to history first
-    if (_dailyPrompt != null && _dailyPrompt!.answers.isNotEmpty) {
+    if (_dailyPrompt != null && _dailyPrompt!.answers.isNotEmpty && effectiveSpaceId.isNotEmpty) {
       final historyItem = PromptHistoryItem(
         id: _dailyPrompt!.id,
         question: _dailyPrompt!.prompt,
         vibeTag: _dailyPrompt!.vibeTag,
         category: _dailyPrompt!.category,
         answers: _dailyPrompt!.answers,
-        date: DateTime.now().toIso8601String().split('T').first,
+        date: todayStr,
       );
-      _archivePromptHistory(spaceId, historyItem);
+      _archivePromptHistory(effectiveSpaceId, historyItem);
     }
 
     final newPrompt = DailyPrompt(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      prompt: question,
+      id: todayStr,
+      prompt: question.trim(),
       category: category,
       vibeTag: vibeTag,
       answers: {},
@@ -779,36 +782,46 @@ class StageProvider extends ChangeNotifier {
     await LocalCacheService.setCachedDailyPrompt(newPrompt.toJson());
     notifyListeners();
 
-    // 1. Dual save: Firestore & Supabase app_content
-    try {
-      await FirebaseService.saveFeatureDoc(spaceId, 'daily_prompt', newPrompt.toJson());
-      await SupabaseService.upsertAppContent('daily_prompt_$spaceId', newPrompt.toJson());
+    if (effectiveSpaceId.isNotEmpty) {
+      // 1. Dual save: Firestore (merge: false so stale answers are wiped) & Supabase app_content
+      try {
+        await FirebaseService.saveFeatureDoc(effectiveSpaceId, 'daily_prompt', newPrompt.toJson(), merge: false);
+        await SupabaseService.upsertAppContent('daily_prompt_$effectiveSpaceId', newPrompt.toJson());
 
-      // 2. Broadcast to partner
-      await SupabaseService.broadcastEvent(
-        spaceId: spaceId,
-        eventType: 'DAILY_PROMPT_UPDATE',
-        payload: {
-          'dailyPrompt': newPrompt.toJson(),
-        },
-      );
-    } catch (e) {
-      debugPrint('Failed to sync custom daily prompt: $e');
+        // 2. Broadcast to partner
+        await SupabaseService.broadcastEvent(
+          spaceId: effectiveSpaceId,
+          eventType: 'DAILY_PROMPT_UPDATE',
+          payload: {
+            'senderId': _activeUserId ?? '',
+            'dailyPrompt': newPrompt.toJson(),
+          },
+        );
+      } catch (e) {
+        debugPrint('Failed to sync custom daily prompt: $e');
+      }
     }
   }
 
   DailyPrompt _handleDailyPromptRollover(DailyPrompt prompt, String spaceId) {
     final todayStr = DateTime.now().toIso8601String().split('T').first;
-    if (prompt.id.isNotEmpty && prompt.id != todayStr) {
+
+    // Check if the prompt is legitimately from today:
+    // 1. Its ID equals today's date (todayStr)
+    // 2. OR its createdAt starts with today's date
+    final isFromToday = prompt.id == todayStr ||
+        (prompt.createdAt != null && prompt.createdAt!.startsWith(todayStr));
+
+    if (!isFromToday && prompt.id.isNotEmpty) {
       // It's from a previous day! Auto-archive yesterday's prompt if it had answers
-      if (prompt.answers.isNotEmpty) {
+      if (prompt.answers.isNotEmpty && spaceId.isNotEmpty) {
         final historyItem = PromptHistoryItem(
           id: prompt.id,
           question: prompt.prompt,
           vibeTag: prompt.vibeTag,
           category: prompt.category,
           answers: prompt.answers,
-          date: prompt.id,
+          date: prompt.id.length == 10 ? prompt.id : (prompt.createdAt?.split('T').first ?? todayStr),
         );
         _archivePromptHistory(spaceId, historyItem);
       }
@@ -833,11 +846,14 @@ class StageProvider extends ChangeNotifier {
         reveals: {},
         careChecks: {},
         createdAt: DateTime.now().toIso8601String(),
+        isCustom: false,
       );
 
       // Save to Firebase and Supabase so both partners receive the identical prompt
-      FirebaseService.saveFeatureDoc(spaceId, 'daily_prompt', freshPrompt.toJson());
-      SupabaseService.upsertAppContent('daily_prompt_$spaceId', freshPrompt.toJson());
+      if (spaceId.isNotEmpty) {
+        FirebaseService.saveFeatureDoc(spaceId, 'daily_prompt', freshPrompt.toJson(), merge: false);
+        SupabaseService.upsertAppContent('daily_prompt_$spaceId', freshPrompt.toJson());
+      }
       LocalCacheService.setCachedDailyPrompt(freshPrompt.toJson());
       return freshPrompt;
     }

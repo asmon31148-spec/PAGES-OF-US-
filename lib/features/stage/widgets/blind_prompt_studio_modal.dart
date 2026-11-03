@@ -108,7 +108,7 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
     HapticFeedback.mediumImpact();
     final auth = context.read<AuthProvider>();
     final stage = context.read<StageProvider>();
-    final spaceId = auth.space?.id ?? auth.user?.spaceId ?? '';
+    final spaceId = auth.space?.id ?? auth.user?.spaceId ?? stage.activeSpaceId ?? '';
 
     // Capture the messenger BEFORE popping to avoid using a deactivated context
     final messenger = ScaffoldMessenger.of(context);
@@ -138,17 +138,15 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
       ),
     );
 
-    if (spaceId.isNotEmpty) {
-      try {
-        await stage.setCustomDailyPrompt(
-          spaceId: spaceId,
-          question: question,
-          vibeTag: vibeTag,
-          category: category,
-        );
-      } catch (e) {
-        debugPrint('Failed to set custom prompt: $e');
-      }
+    try {
+      await stage.setCustomDailyPrompt(
+        spaceId: spaceId,
+        question: question,
+        vibeTag: vibeTag,
+        category: category,
+      );
+    } catch (e) {
+      debugPrint('Failed to set custom prompt: $e');
     }
 
     _isPinning = false;

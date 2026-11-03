@@ -668,14 +668,15 @@ class FirebaseService {
   static Future<void> saveFeatureDoc(
     String spaceId,
     String featureName,
-    Map<String, dynamic> data,
-  ) async {
+    Map<String, dynamic> data, {
+    bool merge = true,
+  }) async {
     await firestore
         .collection('spaces')
         .doc(spaceId)
         .collection('features')
         .doc(featureName)
-        .set(data, SetOptions(merge: true));
+        .set(data, SetOptions(merge: merge));
   }
 
   /// Saves a feature field partitioned by userId so neither partner ever overwrites the other
