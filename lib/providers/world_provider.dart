@@ -195,6 +195,11 @@ class WorldProvider extends ChangeNotifier {
                 if (key == _partnerId) {
                   _locations[key] = loc;
                   hasChanges = true;
+                  if (loc.lat != 0.0 || loc.lng != 0.0) {
+                    if (loc.placeName == null || loc.placeName == 'Nearby' || loc.placeName!.trim().isEmpty) {
+                      _reverseGeocodePartner(key, loc.lat, loc.lng);
+                    }
+                  }
                 }
               }
             }
@@ -205,6 +210,11 @@ class WorldProvider extends ChangeNotifier {
               final pLoc = _locations[_partnerId]!;
               _fetchPartnerWeather(pLoc.lat, pLoc.lng);
               _checkPartnerGeofence(pLoc);
+              if (pLoc.lat != 0.0 || pLoc.lng != 0.0) {
+                if (pLoc.placeName == null || pLoc.placeName == 'Nearby' || pLoc.placeName!.trim().isEmpty) {
+                  _reverseGeocodePartner(_partnerId!, pLoc.lat, pLoc.lng);
+                }
+              }
             }
             notifyListeners();
           }
@@ -223,6 +233,11 @@ class WorldProvider extends ChangeNotifier {
     if (_partnerId != null && _locations[_partnerId] != null) {
       final pLoc = _locations[_partnerId]!;
       _fetchPartnerWeather(pLoc.lat, pLoc.lng);
+      if (pLoc.lat != 0.0 || pLoc.lng != 0.0) {
+        if (pLoc.placeName == null || pLoc.placeName == 'Nearby' || pLoc.placeName!.trim().isEmpty) {
+          _reverseGeocodePartner(_partnerId!, pLoc.lat, pLoc.lng);
+        }
+      }
     }
   }
 
@@ -237,6 +252,11 @@ class WorldProvider extends ChangeNotifier {
         _checkPartnerGeofence(loc);
         if (_partnerWeather == null) {
           _fetchPartnerWeather(loc.lat, loc.lng);
+        }
+        if (loc.lat != 0.0 || loc.lng != 0.0) {
+          if (loc.placeName == null || loc.placeName == 'Nearby' || loc.placeName!.trim().isEmpty) {
+            _reverseGeocodePartner(loc.userId, loc.lat, loc.lng);
+          }
         }
         notifyListeners();
       }
@@ -265,6 +285,11 @@ class WorldProvider extends ChangeNotifier {
               }
             } else if (_partnerId != null && key == _partnerId) {
               _locations[key] = loc;
+              if (loc.lat != 0.0 || loc.lng != 0.0) {
+                if (loc.placeName == null || loc.placeName == 'Nearby' || loc.placeName!.trim().isEmpty) {
+                  _reverseGeocodePartner(key, loc.lat, loc.lng);
+                }
+              }
             }
           }
         });
@@ -613,6 +638,121 @@ class WorldProvider extends ChangeNotifier {
     } catch (_) {}
   }
 
+  /// Reverse geocodes the partner's coordinates so their actual town/city resolves
+  /// even if partner's own device sent 'Nearby' due to timeout or rate limiting.
+  Future<void> _reverseGeocodePartner(String partnerId, double lat, double lng) async {
+    if (lat == 0.0 && lng == 0.0) return;
+    final cacheKey = 'partner_${lat.toStringAsFixed(3)},${lng.toStringAsFixed(3)}';
+    if (_geocodeCache.containsKey(cacheKey)) {
+      final cached = _geocodeCache[cacheKey]!;
+      final place = cached['place'] ?? '';
+      if (place.isNotEmpty && _locations.containsKey(partnerId)) {
+        _locations[partnerId] = _locations[partnerId]!.copyWith(
+          placeName: place,
+          neighborhood: cached['neighborhood'],
+          city: cached['city'],
+        );
+        notifyListeners();
+      }
+      return;
+    }
+
+    // 1. Try Photon reverse geocode (instant, zero rate limits)
+    try {
+      final photonUrl = Uri.parse('https://photon.komoot.io/reverse?lat=$lat&lon=$lng');
+      final resp = await http.get(photonUrl).timeout(const Duration(seconds: 4));
+      if (resp.statusCode == 200) {
+        final data = jsonDecode(resp.body) as Map<String, dynamic>;
+        final features = data['features'] as List<dynamic>?;
+        if (features != null && features.isNotEmpty) {
+          final props = features.first['properties'] as Map<String, dynamic>?;
+          if (props != null) {
+            final name = (props['name'] ?? '').toString().trim();
+            final street = (props['street'] ?? '').toString().trim();
+            final city = (props['city'] ?? props['county'] ?? props['district'] ?? '').toString().trim();
+            final state = (props['state'] ?? '').toString().trim();
+
+            String placeName = '';
+            if (city.isNotEmpty && state.isNotEmpty && city.toLowerCase() != state.toLowerCase()) {
+              placeName = '$city, $state';
+            } else if (name.isNotEmpty && city.isNotEmpty) {
+              placeName = '$name, $city';
+            } else if (name.isNotEmpty && state.isNotEmpty) {
+              placeName = '$name, $state';
+            } else {
+              placeName = city.isNotEmpty ? city : (name.isNotEmpty ? name : state);
+            }
+
+            if (placeName.isNotEmpty) {
+              _geocodeCache[cacheKey] = {
+                'place': placeName,
+                'neighborhood': name.isNotEmpty ? name : street,
+                'city': city,
+              };
+              if (_locations.containsKey(partnerId)) {
+                _locations[partnerId] = _locations[partnerId]!.copyWith(
+                  placeName: placeName,
+                  neighborhood: name.isNotEmpty ? name : street,
+                  city: city,
+                );
+                notifyListeners();
+              }
+              return;
+            }
+          }
+        }
+      }
+    } catch (_) {}
+
+    // 2. Fallback to Nominatim OpenStreetMap
+    try {
+      final geoUrl = Uri.parse(
+        'https://nominatim.openstreetmap.org/reverse?format=json&lat=$lat&lon=$lng&zoom=14&addressdetails=1',
+      );
+      final resp = await http.get(geoUrl, headers: {
+        'User-Agent': 'PagesOfUsApp/1.0 (contact@pagesofus.app)',
+      }).timeout(const Duration(seconds: 4));
+      if (resp.statusCode == 200) {
+        final geoData = jsonDecode(resp.body) as Map<String, dynamic>;
+        final addr = geoData['address'] as Map<String, dynamic>?;
+        if (addr != null) {
+          final suburb = (addr['suburb'] ?? addr['neighbourhood'] ?? addr['town'] ?? addr['village'] ?? '').toString().trim();
+          final city = (addr['city'] ?? addr['county'] ?? addr['state_district'] ?? '').toString().trim();
+          final state = (addr['state'] ?? '').toString().trim();
+
+          String place = '';
+          if (city.isNotEmpty && state.isNotEmpty && city != state) {
+            place = '$city, $state';
+          } else if (suburb.isNotEmpty && city.isNotEmpty) {
+            place = '$suburb, $city';
+          } else if (city.isNotEmpty) {
+            place = city;
+          } else if (state.isNotEmpty) {
+            place = state;
+          } else {
+            final displayName = geoData['display_name']?.toString() ?? '';
+            final parts = displayName.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).take(2).toList();
+            place = parts.isNotEmpty ? parts.join(', ') : 'Nearby';
+          }
+
+          _geocodeCache[cacheKey] = {
+            'place': place,
+            'neighborhood': suburb,
+            'city': city,
+          };
+          if (_locations.containsKey(partnerId)) {
+            _locations[partnerId] = _locations[partnerId]!.copyWith(
+              placeName: place,
+              neighborhood: suburb,
+              city: city,
+            );
+            notifyListeners();
+          }
+        }
+      }
+    } catch (_) {}
+  }
+
   /// Manual force-refresh triggered by "Update GPS"
   Future<void> updateMyPosition({
     required String spaceId,
@@ -776,17 +916,80 @@ class WorldProvider extends ChangeNotifier {
   }
 
   Future<List<Map<String, dynamic>>> searchPlaces(String query) async {
-    if (query.trim().isEmpty) return [];
+    final clean = query.trim();
+    if (clean.isEmpty) return [];
+
+    // Check if user entered direct lat, lng coordinates e.g. "28.6139, 77.2090"
+    final coordMatch = RegExp(r'^([-+]?[0-9]*\.?[0-9]+)[\s,]+([-+]?[0-9]*\.?[0-9]+)$').firstMatch(clean);
+    if (coordMatch != null) {
+      final lat = coordMatch.group(1);
+      final lon = coordMatch.group(2);
+      return [
+        {
+          'display_name': 'Coordinates: $lat, $lon',
+          'lat': lat,
+          'lon': lon,
+          'name': 'Direct Coordinates',
+        }
+      ];
+    }
+
+    // 1. Try Photon first (instant geocoding worldwide, zero rate limits)
     try {
-      final url = Uri.parse(
-        'https://nominatim.openstreetmap.org/search?format=json&q=${Uri.encodeComponent(query)}&limit=5',
+      final photonUrl = Uri.parse(
+        'https://photon.komoot.io/api/?q=${Uri.encodeComponent(clean)}&limit=6',
       );
-      final res = await http.get(url, headers: {'User-Agent': 'PagesOfUs/1.0'});
+      final res = await http.get(photonUrl).timeout(const Duration(seconds: 4));
       if (res.statusCode == 200) {
-        final list = jsonDecode(res.body) as List<dynamic>;
-        return list.map((e) => Map<String, dynamic>.from(e)).toList();
+        final data = jsonDecode(res.body) as Map<String, dynamic>;
+        final features = data['features'] as List<dynamic>?;
+        if (features != null && features.isNotEmpty) {
+          final results = <Map<String, dynamic>>[];
+          for (final f in features) {
+            final props = f['properties'] as Map<String, dynamic>?;
+            final geom = f['geometry'] as Map<String, dynamic>?;
+            final coords = geom?['coordinates'] as List<dynamic>?;
+            if (props != null && coords != null && coords.length >= 2) {
+              final lon = coords[0].toString();
+              final lat = coords[1].toString();
+              final name = (props['name'] ?? '').toString();
+              final city = (props['city'] ?? props['county'] ?? props['district'] ?? '').toString();
+              final state = (props['state'] ?? '').toString();
+              final country = (props['country'] ?? '').toString();
+
+              final parts = [name, city, state, country]
+                  .where((s) => s.isNotEmpty)
+                  .toSet()
+                  .toList();
+              final displayName = parts.join(', ');
+
+              results.add({
+                'display_name': displayName.isNotEmpty ? displayName : name,
+                'lat': lat,
+                'lon': lon,
+                'name': name.isNotEmpty ? name : (city.isNotEmpty ? city : 'Place'),
+              });
+            }
+          }
+          if (results.isNotEmpty) return results;
+        }
       }
     } catch (_) {}
+
+    // 2. Fallback to Nominatim OpenStreetMap
+    try {
+      final url = Uri.parse(
+        'https://nominatim.openstreetmap.org/search?format=json&q=${Uri.encodeComponent(clean)}&limit=6',
+      );
+      final res = await http.get(url, headers: {
+        'User-Agent': 'PagesOfUsApp/1.0 (contact@pagesofus.app)',
+      }).timeout(const Duration(seconds: 4));
+      if (res.statusCode == 200) {
+        final list = jsonDecode(res.body) as List<dynamic>;
+        return list.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+      }
+    } catch (_) {}
+
     return [];
   }
 }

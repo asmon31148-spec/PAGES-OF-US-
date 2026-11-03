@@ -240,6 +240,7 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
                   worldProvider: worldProvider,
                   defaultCenter: defaultCenter,
                   isFullScreen: true,
+                  now: worldProvider.now,
                 )
               : Column(
                   children: [
@@ -274,6 +275,7 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
                                 myLoc: myLoc,
                                 partnerLoc: partnerLoc,
                                 partnerNickname: partner?.nickname ?? 'Partner',
+                                now: worldProvider.now,
                               ),
 
                             // 3. Interactive FlutterMap Card (Full-screen toggleable, no big accuracy circles)
@@ -287,6 +289,7 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
                               worldProvider: worldProvider,
                               defaultCenter: defaultCenter,
                               isFullScreen: false,
+                              now: worldProvider.now,
                             ),
 
                             // 4. Quick Action Grid
@@ -442,7 +445,35 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
     required WorldProvider worldProvider,
     required LatLng defaultCenter,
     required bool isFullScreen,
+    required DateTime now,
   }) {
+    // Partner live / recency calculation
+    bool isPartnerLive = false;
+    String partnerActiveStatus = 'Standby';
+    if (partnerLoc != null) {
+      try {
+        final updated = DateTime.parse(partnerLoc.updatedAt);
+        final diff = now.difference(updated);
+        if (diff.inMinutes < 3) {
+          isPartnerLive = true;
+          partnerActiveStatus = 'Live';
+        } else if (diff.inMinutes < 60) {
+          partnerActiveStatus = '${diff.inMinutes}m ago';
+        } else if (diff.inHours < 24) {
+          partnerActiveStatus = '${diff.inHours}h ago';
+        } else {
+          partnerActiveStatus = DateFormat('d MMM').format(updated);
+        }
+      } catch (_) {}
+    }
+
+    final pNick = partner?.nickname ?? 'Partner';
+    final mapStatusText = partnerLoc != null
+        ? (isPartnerLive ? 'Both Live Tethered' : 'Tethered · $pNick active $partnerActiveStatus')
+        : worldProvider.gpsStatus;
+    final mapStatusColor = partnerLoc != null
+        ? (isPartnerLive ? AppColors.sage : Colors.orangeAccent)
+        : (worldProvider.gpsStatus.contains('Live') ? AppColors.sage : (worldProvider.isLoading ? Colors.orangeAccent : Colors.grey));
     return Container(
       margin: isFullScreen
           ? EdgeInsets.zero
@@ -641,14 +672,12 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
                     height: 8,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: worldProvider.gpsStatus.contains('Live')
-                          ? AppColors.sage
-                          : (worldProvider.isLoading ? Colors.orangeAccent : Colors.grey),
+                      color: mapStatusColor,
                     ),
                   ),
                   const SizedBox(width: 6),
                   Text(
-                    worldProvider.gpsStatus,
+                    mapStatusText,
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.bold,
@@ -960,14 +989,58 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
     final myTimeStr = DateFormat('h:mm a').format(now);
     final myIsDay = now.hour >= 6 && now.hour < 19;
 
-    // Calculate partner local time based on their geographic longitude offset from UTC
+    // 1. Partner civil/clock time
     DateTime partnerDateTime = now;
+    int solarDiffMinutes = 0;
+    bool isPartnerLive = false;
+    String partnerActiveStatus = 'Standby';
+
+    if (partnerLoc != null && (partnerLoc.lat != 0.0 || partnerLoc.lng != 0.0)) {
+      // Check if both are in India (standard Indian Standard Time: UTC+5:30)
+      final partnerInIndia = partnerLoc.lat >= 6.0 && partnerLoc.lat <= 38.0 && partnerLoc.lng >= 68.0 && partnerLoc.lng <= 98.0;
+      final meInIndia = (myLoc == null || (myLoc.lat >= 6.0 && myLoc.lat <= 38.0 && myLoc.lng >= 68.0 && myLoc.lng <= 98.0));
+
+      if (partnerInIndia && meInIndia) {
+        // Both in India: Same official Indian Standard Time (IST)
+        partnerDateTime = now;
+      } else {
+        // Standard stepped timezone offset from UTC (15 degrees per hour)
+        final tzOffsetHours = (partnerLoc.lng / 15.0).round();
+        partnerDateTime = now.toUtc().add(Duration(hours: tzOffsetHours));
+      }
+
+      // Solar astronomical time difference (the sun's position: 4 mins per longitude degree)
+      final myLng = (myLoc != null && myLoc.lng != 0.0) ? myLoc.lng : partnerLoc.lng;
+      solarDiffMinutes = ((partnerLoc.lng - myLng) * 4).round();
+
+      // Activity recency
+      try {
+        final updated = DateTime.parse(partnerLoc.updatedAt);
+        final diff = now.difference(updated);
+        if (diff.inMinutes < 3) {
+          isPartnerLive = true;
+          partnerActiveStatus = 'Live';
+        } else if (diff.inMinutes < 60) {
+          partnerActiveStatus = '${diff.inMinutes}m ago';
+        } else if (diff.inHours < 24) {
+          partnerActiveStatus = '${diff.inHours}h ago';
+        } else {
+          partnerActiveStatus = DateFormat('d MMM').format(updated);
+        }
+      } catch (_) {}
+    }
+
+    final partnerTimeStr = DateFormat('h:mm a').format(partnerDateTime);
+
+    // Partner day/night icon based on astronomical solar position at their longitude
+    bool partnerIsDay;
     if (partnerLoc != null && (partnerLoc.lat != 0.0 || partnerLoc.lng != 0.0)) {
       final approxUtcOffsetMinutes = (partnerLoc.lng * 4).round();
-      partnerDateTime = now.toUtc().add(Duration(minutes: approxUtcOffsetMinutes));
+      final partnerSolarTime = now.toUtc().add(Duration(minutes: approxUtcOffsetMinutes));
+      partnerIsDay = partnerSolarTime.hour >= 6 && partnerSolarTime.hour < 18;
+    } else {
+      partnerIsDay = partnerDateTime.hour >= 6 && partnerDateTime.hour < 19;
     }
-    final partnerTimeStr = DateFormat('h:mm a').format(partnerDateTime);
-    final partnerIsDay = partnerDateTime.hour >= 6 && partnerDateTime.hour < 19;
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
@@ -1057,6 +1130,39 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                        decoration: BoxDecoration(
+                          color: isPartnerLive
+                              ? AppColors.sage.withOpacity(0.18)
+                              : (isDark ? Colors.white10 : Colors.black.withOpacity(0.06)),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 5,
+                              height: 5,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: isPartnerLive ? AppColors.sage : Colors.orangeAccent,
+                              ),
+                            ),
+                            const SizedBox(width: 3),
+                            Text(
+                              partnerActiveStatus,
+                              style: TextStyle(
+                                fontSize: 8.5,
+                                fontWeight: FontWeight.bold,
+                                color: isPartnerLive
+                                    ? AppColors.sage
+                                    : (isDark ? Colors.white60 : Colors.black54),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ],
                   ),
                   Text(
@@ -1068,7 +1174,7 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
                     ),
                   ),
                   Text(
-                    partnerLoc.placeName ?? 'Nearby',
+                    partnerLoc.placeName ?? 'Locating...',
                     style: TextStyle(
                       fontSize: 10,
                       color: isDark ? AppColors.darkSoft : AppColors.lightSoft,
@@ -1076,6 +1182,19 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
+                  if (solarDiffMinutes.abs() >= 10)
+                    Text(
+                      solarDiffMinutes < 0
+                          ? '☀️ Sun sets ~${-solarDiffMinutes}m later'
+                          : '☀️ Sun sets ~${solarDiffMinutes}m earlier',
+                      style: TextStyle(
+                        fontSize: 8.5,
+                        fontStyle: FontStyle.italic,
+                        color: isDark ? AppColors.darkSoft : AppColors.lightSoft,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                 ],
               ),
             )
@@ -1164,8 +1283,26 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
     required UserLocationData? myLoc,
     required UserLocationData? partnerLoc,
     required String partnerNickname,
+    required DateTime now,
   }) {
     final isTethered = distanceKm != null;
+
+    String partnerActiveStatus = 'Standby';
+    if (partnerLoc != null) {
+      try {
+        final updated = DateTime.parse(partnerLoc.updatedAt);
+        final diff = now.difference(updated);
+        if (diff.inMinutes < 3) {
+          partnerActiveStatus = 'Live now';
+        } else if (diff.inMinutes < 60) {
+          partnerActiveStatus = '${diff.inMinutes}m ago';
+        } else if (diff.inHours < 24) {
+          partnerActiveStatus = '${diff.inHours}h ago';
+        } else {
+          partnerActiveStatus = DateFormat('d MMM').format(updated);
+        }
+      } catch (_) {}
+    }
 
     String primaryDistance;
     String secondaryInfo;
@@ -1364,7 +1501,9 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
-                          '$partnerNickname: ${partnerLoc?.placeName ?? "Awaiting signal"}',
+                          partnerLoc != null
+                              ? '$partnerNickname: ${partnerLoc.placeName ?? "Locating..."} ($partnerActiveStatus)'
+                              : '$partnerNickname: Awaiting signal',
                           style: TextStyle(
                             fontSize: 10.5,
                             color: isDark ? Colors.white60 : Colors.black54,
@@ -1559,6 +1698,7 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
     final searchCtrl = TextEditingController();
     List<Map<String, dynamic>> results = [];
     bool isSearching = false;
+    String? statusMessage;
 
     showModalBottomSheet(
       context: context,
@@ -1568,63 +1708,193 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
         final isDark = ctx.watch<ThemeProvider>().isDark;
         return StatefulBuilder(
           builder: (context, setModalState) {
-            return Container(
-              padding: const EdgeInsets.all(20),
-              height: 400,
-              decoration: BoxDecoration(
-                color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            Future<void> doSearch() async {
+              final q = searchCtrl.text.trim();
+              if (q.isEmpty) return;
+              setModalState(() {
+                isSearching = true;
+                statusMessage = null;
+              });
+              try {
+                final res = await context.read<WorldProvider>().searchPlaces(q);
+                setModalState(() {
+                  results = res;
+                  isSearching = false;
+                  if (res.isEmpty) {
+                    statusMessage = 'No matching places found. Try another city or landmark.';
+                  }
+                });
+              } catch (_) {
+                setModalState(() {
+                  isSearching = false;
+                  statusMessage = 'Search request timed out. Please try again.';
+                });
+              }
+            }
+
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom,
               ),
-              child: Column(
-                children: [
-                  TextField(
-                    controller: searchCtrl,
-                    style: TextStyle(color: isDark ? AppColors.darkInk : AppColors.lightInk),
-                    decoration: InputDecoration(
-                      hintText: 'Search city, landmark or address...',
-                      hintStyle: TextStyle(color: isDark ? AppColors.darkSoft : AppColors.lightSoft),
-                      suffixIcon: IconButton(
-                        icon: Icon(Icons.search, color: isDark ? AppColors.darkSoft : AppColors.lightSoft),
-                        onPressed: () async {
-                          setModalState(() => isSearching = true);
-                          final res = await context.read<WorldProvider>().searchPlaces(searchCtrl.text);
-                          setModalState(() {
-                            results = res;
-                            isSearching = false;
-                          });
-                        },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                height: 480,
+                decoration: BoxDecoration(
+                  color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+                  boxShadow: const [
+                    BoxShadow(color: Colors.black38, blurRadius: 20),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Drag Handle
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: isDark ? Colors.white24 : Colors.black12,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
                       ),
                     ),
-                  ),
-                  if (isSearching) const LinearProgressIndicator(),
-                  Expanded(
-                    child: ListView.builder(
-                      itemCount: results.length,
-                      itemBuilder: (context, idx) {
-                        final item = results[idx];
-                        return ListTile(
-                          title: Text(
-                            item['display_name'] ?? '',
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
+                    const SizedBox(height: 14),
+                    Row(
+                      children: [
+                        const Icon(Icons.explore_outlined, color: AppColors.terra, size: 20),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Search Places & Coordinates',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: isDark ? AppColors.darkInk : AppColors.lightInk,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: searchCtrl,
+                      autofocus: true,
+                      textInputAction: TextInputAction.search,
+                      onSubmitted: (_) => doSearch(),
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: isDark ? AppColors.darkInk : AppColors.lightInk,
+                      ),
+                      decoration: InputDecoration(
+                        hintText: 'Search city, landmark or coordinates...',
+                        hintStyle: TextStyle(
+                          fontSize: 13,
+                          color: isDark ? AppColors.darkSoft : AppColors.lightSoft,
+                        ),
+                        prefixIcon: const Icon(Icons.search, color: AppColors.terra, size: 20),
+                        suffixIcon: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (searchCtrl.text.isNotEmpty)
+                              IconButton(
+                                icon: const Icon(Icons.clear, size: 18),
+                                color: isDark ? AppColors.darkSoft : AppColors.lightSoft,
+                                onPressed: () {
+                                  searchCtrl.clear();
+                                  setModalState(() {
+                                    results = [];
+                                    statusMessage = null;
+                                  });
+                                },
+                              ),
+                            IconButton(
+                              icon: const Icon(Icons.arrow_forward_rounded, color: AppColors.terra),
+                              onPressed: doSearch,
+                            ),
+                          ],
+                        ),
+                        filled: true,
+                        fillColor: isDark ? const Color(0xFF1E1D2A) : const Color(0xFFF3F4F6),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    if (isSearching)
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 24),
+                        child: Center(
+                          child: CircularProgressIndicator(color: AppColors.terra, strokeWidth: 2.5),
+                        ),
+                      ),
+                    if (!isSearching && statusMessage != null)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 24),
+                        child: Center(
+                          child: Text(
+                            statusMessage!,
+                            textAlign: TextAlign.center,
                             style: TextStyle(
-                              fontSize: 12,
-                              color: isDark ? AppColors.darkInk : AppColors.lightInk,
+                              fontSize: 12.5,
+                              color: isDark ? AppColors.darkSoft : AppColors.lightSoft,
                             ),
                           ),
-                          onTap: () {
-                            final lat = double.tryParse(item['lat'] ?? '');
-                            final lon = double.tryParse(item['lon'] ?? '');
-                            if (lat != null && lon != null) {
-                              _mapController.move(LatLng(lat, lon), 15.0);
-                              Navigator.pop(ctx);
-                            }
+                        ),
+                      ),
+                    if (!isSearching && results.isNotEmpty)
+                      Expanded(
+                        child: ListView.separated(
+                          itemCount: results.length,
+                          separatorBuilder: (_, __) => Divider(
+                            height: 1,
+                            color: isDark ? Colors.white10 : Colors.black12,
+                          ),
+                          itemBuilder: (context, idx) {
+                            final item = results[idx];
+                            return ListTile(
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                              leading: Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: AppColors.terra.withOpacity(0.12),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(Icons.location_on, size: 18, color: AppColors.terra),
+                              ),
+                              title: Text(
+                                item['display_name'] ?? item['name'] ?? '',
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: isDark ? AppColors.darkInk : AppColors.lightInk,
+                                ),
+                              ),
+                              onTap: () {
+                                final lat = double.tryParse(item['lat']?.toString() ?? '');
+                                final lon = double.tryParse(item['lon']?.toString() ?? '');
+                                if (lat != null && lon != null) {
+                                  _mapController.move(LatLng(lat, lon), 14.5);
+                                  Navigator.pop(ctx);
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('Centered map on ${item['name'] ?? 'location'}'),
+                                      duration: const Duration(seconds: 2),
+                                      behavior: SnackBarBehavior.floating,
+                                    ),
+                                  );
+                                }
+                              },
+                            );
                           },
-                        );
-                      },
-                    ),
-                  ),
-                ],
+                        ),
+                      ),
+                  ],
+                ),
               ),
             );
           },
