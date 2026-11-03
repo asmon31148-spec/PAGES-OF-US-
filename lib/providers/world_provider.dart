@@ -12,6 +12,7 @@ import '../data/services/firebase_service.dart';
 import '../data/services/supabase_service.dart';
 import '../core/services/weather_service.dart';
 import '../core/services/notification_service.dart';
+import 'auth_provider.dart';
 
 // ── Journey tracking data model ────────────────────────────────────────────────
 class JourneyPoint {
@@ -72,7 +73,7 @@ class WorldProvider extends ChangeNotifier {
   List<JourneyPoint> _myJourneyLog = [];
   List<JourneyPoint> _partnerJourneyLog = [];
   Timer? _journeyPersistDebounce;
-  static const String _journeyPrefKey = 'journey_log_my_v2';
+  String get _journeyPrefKey => _currentUserId != null ? 'journey_log_my_${_currentUserId!}' : 'journey_log_my_v2';
 
   Map<String, UserLocationData> get locations => Map.unmodifiable(_locations);
   List<PinnedPlace> get pinnedPlaces => List.unmodifiable(_pinnedPlaces);
@@ -126,6 +127,49 @@ class WorldProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Wipes ALL in-memory and persisted-key state when user logs out.
+  /// Called by AuthProvider.signOut() before FirebaseService.signOut().
+  Future<void> resetState() async {
+    _positionStreamSub?.cancel();
+    _positionStreamSub = null;
+    _firestoreSub?.cancel();
+    _firestoreSub = null;
+    _cloudDebounce?.cancel();
+    _journeyPersistDebounce?.cancel();
+    SupabaseService.removeLocationListener(_handleSupabaseLocationUpdate);
+
+    _locations.clear();
+    _pinnedPlaces.clear();
+    _myJourneyLog.clear();
+    _partnerJourneyLog.clear();
+    _geocodeCache.clear();
+    _partnerWeather = null;
+    _gpsStatus = 'Standby';
+    _spaceId = null;
+    _currentUserId = null;
+    _currentNickname = null;
+    _currentAvatarUrl = null;
+    _partnerId = null;
+    _lastGeocodedLat = null;
+    _lastGeocodedLng = null;
+    _lastGeocodedTime = null;
+    _cachedPlaceName = 'Nearby';
+    _cachedNeighborhood = '';
+    _cachedCity = '';
+    _isSharing = true;
+    _isTrackingInitializing = false;
+
+    // Wipe journey log from SharedPreferences (user-scoped key cleaned separately)
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      // Remove ALL journey log keys (any userId variant)
+      final keys = prefs.getKeys().where((k) => k.startsWith('journey_log_')).toList();
+      for (final k in keys) { await prefs.remove(k); }
+    } catch (_) {}
+
+    notifyListeners();
+  }
+
   String get formattedLiveDistance {
     final dist = liveDistanceKm;
     if (dist == null) {
@@ -151,6 +195,7 @@ class WorldProvider extends ChangeNotifier {
   }
 
   WorldProvider() {
+    AuthProvider.registerSignOutHook(resetState);
     _startClockTimer();
     _loadJourneyLog();
   }
@@ -325,6 +370,7 @@ class WorldProvider extends ChangeNotifier {
     _spaceId = spaceId;
     _currentUserId = currentUserId;
     _partnerId = (partnerId != null && partnerId.isNotEmpty) ? partnerId : null;
+    _loadJourneyLog();
 
     if (_partnerId == null) {
       // Solo mode: purge any stale non-self locations

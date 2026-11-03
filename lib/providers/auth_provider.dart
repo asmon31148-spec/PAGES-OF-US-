@@ -66,13 +66,37 @@ class AuthProvider extends ChangeNotifier {
     _initAuthListener();
   }
 
+  static final List<FutureOr<void> Function()> _signOutHooks = [];
+
+  static void registerSignOutHook(FutureOr<void> Function() hook) {
+    if (!_signOutHooks.contains(hook)) {
+      _signOutHooks.add(hook);
+    }
+  }
+
+  static Future<void> runSignOutHooks() async {
+    for (final hook in _signOutHooks) {
+      try {
+        await hook();
+      } catch (e) {
+        debugPrint('SignOut hook error: $e');
+      }
+    }
+  }
+
   void _initAuthListener() {
     _authSub = FirebaseService.authStateChanges.listen((firebaseUser) async {
       if (firebaseUser == null) {
         _spaceSub?.cancel();
+        _partnerSub?.cancel();
+        _userSub?.cancel();
+        _spaceSub = null;
+        _partnerSub = null;
+        _userSub = null;
         _user = null;
         _space = null;
         _partner = null;
+        await runSignOutHooks();
         await LocalCacheService.clearAll();
         notifyListeners();
       } else {
@@ -401,7 +425,16 @@ class AuthProvider extends ChangeNotifier {
     _spaceSub?.cancel();
     _partnerSub?.cancel();
     _userSub?.cancel();
+    _spaceSub = null;
+    _partnerSub = null;
+    _userSub = null;
+    _user = null;
+    _space = null;
+    _partner = null;
+    await runSignOutHooks();
+    await LocalCacheService.clearAll();
     await FirebaseService.signOut();
+    notifyListeners();
   }
 
   @override

@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart' hide Source;
 import '../data/models/vault_item.dart';
 import '../data/services/supabase_service.dart';
 import '../core/services/notification_service.dart';
+import 'auth_provider.dart';
 
 class VaultProvider extends ChangeNotifier {
   List<VaultItem> _vaults = [];
@@ -21,6 +22,10 @@ class VaultProvider extends ChangeNotifier {
   String? _partnerId;
   String? _partnerNickname;
 
+  VaultProvider() {
+    AuthProvider.registerSignOutHook(resetState);
+  }
+
   List<VaultItem> get vaults => List.unmodifiable(_vaults);
   VaultItem? get selectedVault => _selectedVault ?? (_vaults.isNotEmpty ? _vaults.first : null);
   String get activeFilter => _activeFilter;
@@ -30,6 +35,25 @@ class VaultProvider extends ChangeNotifier {
   bool get shouldTriggerConfetti => false;
   void resetConfettiTrigger() {}
 
+  /// Wipes ALL in-memory state when user logs out.
+  /// Called by AuthProvider.signOut() before FirebaseService.signOut().
+  void resetState() {
+    _vaultSub?.cancel();
+    _vaultSub = null;
+    _vaults = [];
+    _selectedVault = null;
+    _activeFilter = 'all';
+    _unlockedVaultIds.clear();
+    _activeSpaceId = null;
+    _currentUserId = null;
+    _partnerId = null;
+    _partnerNickname = null;
+    _isAudioPlaying = false;
+    _currentPlayingTrack = null;
+    try { _vaultAudio.stop(); } catch (_) {}
+    notifyListeners();
+  }
+
   void setFilter(String filter) {
     if (_activeFilter != filter) {
       _activeFilter = filter;
@@ -38,14 +62,18 @@ class VaultProvider extends ChangeNotifier {
   }
 
   List<VaultItem> getFilteredVaults(String currentUserId) {
+    final myVaults = _vaults.where((v) => v.creatorId == currentUserId).toList();
+    if (_partnerId == null || _partnerId!.isEmpty) {
+      return myVaults;
+    }
     switch (_activeFilter) {
       case 'mine':
-        return _vaults.where((v) => v.creatorId == currentUserId || v.creatorId.isEmpty).toList();
+        return myVaults;
       case 'partner':
-        return _vaults.where((v) => v.creatorId.isNotEmpty && v.creatorId != currentUserId).toList();
+        return _vaults.where((v) => v.creatorId == _partnerId).toList();
       case 'all':
       default:
-        return _vaults;
+        return _vaults.where((v) => v.creatorId == currentUserId || v.creatorId == _partnerId).toList();
     }
   }
 
@@ -238,18 +266,18 @@ class VaultProvider extends ChangeNotifier {
         v.id != 'vault_midnight_seed' &&
         v.title.toLowerCase().trim() != 'the midnight letters').toList();
 
-    // If solo (no partner), only show user's own vaults!
+    // Strict account isolation: if solo, ONLY show own vaults. If paired, only show self & active partner.
     if (partnerId == null || partnerId.isEmpty) {
-      loaded = loaded.where((v) => v.creatorId == currentUserId || v.creatorId.isEmpty).toList();
+      loaded = loaded.where((v) => v.creatorId == currentUserId).toList();
+    } else {
+      loaded = loaded.where((v) => v.creatorId == currentUserId || v.creatorId == partnerId).toList();
     }
 
-    if (loaded.isNotEmpty) {
-      _vaults = loaded;
-      if (_selectedVault == null || !_vaults.any((v) => v.id == _selectedVault!.id)) {
-        _selectedVault = _vaults.first;
-      }
-      notifyListeners();
+    _vaults = loaded;
+    if (_selectedVault == null || !_vaults.any((v) => v.id == _selectedVault!.id)) {
+      _selectedVault = _vaults.isNotEmpty ? _vaults.first : null;
     }
+    notifyListeners();
 
     // 2. If vaults exist in local cache, select the first
     if (_vaults.isNotEmpty && _selectedVault == null) {
@@ -275,18 +303,28 @@ class VaultProvider extends ChangeNotifier {
                 .map((e) => VaultItem.fromJson(Map<String, dynamic>.from(e as Map)))
                 .toList();
 
-            final Map<String, VaultItem> map = {for (final v in _vaults) v.id: v};
+            final Map<String, VaultItem> map = {};
+            for (final v in _vaults) {
+              if (v.creatorId == currentUserId || (partnerId != null && v.creatorId == partnerId)) {
+                map[v.id] = v;
+              }
+            }
             for (final v in incoming) {
               if (v.id != 'vault_midnight_seed' && v.title.toLowerCase().trim() != 'the midnight letters') {
-                if (_partnerId != null && _partnerId!.isNotEmpty) {
-                  map[v.id] = v;
-                } else if (v.creatorId == currentUserId || v.creatorId.isEmpty) {
+                if (partnerId != null && partnerId.isNotEmpty) {
+                  if (v.creatorId == currentUserId || v.creatorId == partnerId) {
+                    map[v.id] = v;
+                  }
+                } else if (v.creatorId == currentUserId) {
                   map[v.id] = v;
                 }
               }
             }
 
             _vaults = map.values.toList();
+            if (_selectedVault == null || !_vaults.any((v) => v.id == _selectedVault!.id)) {
+              _selectedVault = _vaults.isNotEmpty ? _vaults.first : null;
+            }
             
             // Check scheduled notifications for locked timers
             for (final v in _vaults) {
@@ -313,20 +351,25 @@ class VaultProvider extends ChangeNotifier {
           .toList();
 
       bool removedMidnight = false;
-      _vaults = loaded.where((v) {
+      final filtered = loaded.where((v) {
         if (v.id == 'vault_midnight_seed' || v.title.toLowerCase().trim() == 'the midnight letters') {
           removedMidnight = true;
           return false;
         }
-        return true;
+        if (_partnerId != null && _partnerId!.isNotEmpty) {
+          return v.creatorId == _currentUserId || v.creatorId == _partnerId;
+        }
+        return v.creatorId == _currentUserId;
       }).toList();
+
+      _vaults = filtered;
 
       if (removedMidnight && _activeSpaceId != null) {
         _syncVaultsToCloud(_activeSpaceId!);
       }
 
-      if (_vaults.isNotEmpty && _selectedVault == null) {
-        _selectedVault = _vaults.first;
+      if (_selectedVault == null || !_vaults.any((v) => v.id == _selectedVault!.id)) {
+        _selectedVault = _vaults.isNotEmpty ? _vaults.first : null;
       }
       notifyListeners();
     }
@@ -404,7 +447,7 @@ class VaultProvider extends ChangeNotifier {
         // Also permanently anchor user's own vaults to their user account
         if (_currentUserId != null && _currentUserId!.isNotEmpty) {
           final myVaults = _vaults
-              .where((v) => v.creatorId == _currentUserId || v.creatorId.isEmpty)
+              .where((v) => v.creatorId == _currentUserId)
               .map((v) => v.toJson())
               .toList();
           await supabase.from('app_content').upsert({

@@ -13,6 +13,7 @@ import '../data/services/supabase_service.dart';
 import '../core/services/local_cache_service.dart';
 import '../core/services/widget_sync_service.dart';
 import '../core/services/notification_service.dart';
+import 'auth_provider.dart';
 
 class TouchPoint {
   final double x;
@@ -92,6 +93,7 @@ class StageProvider extends ChangeNotifier {
   }
 
   StageProvider() {
+    AuthProvider.registerSignOutHook(resetState);
     // 1. INSTANT ZERO-LATENCY LOAD FROM LOCAL CACHE
     _anniversaryDate = LocalCacheService.getCachedAnniversary();
     final cachedMyMood = LocalCacheService.getCachedMyMood();
@@ -114,6 +116,51 @@ class StageProvider extends ChangeNotifier {
     }
     _loadTouchMetrics();
     _syncWidget(null);
+  }
+
+  /// Wipes ALL in-memory state when user logs out.
+  /// Called by AuthProvider.signOut() before FirebaseService.signOut().
+  void resetState() {
+    _anniversarySub?.cancel();
+    _moodSub?.cancel();
+    _noteSub?.cancel();
+    _dailyPromptSub?.cancel();
+    _promptHistorySub?.cancel();
+    _goalsSub?.cancel();
+    _dailyCareSub?.cancel();
+    _pulseSub?.cancel();
+    _touchStatsSub?.cancel();
+    _drawingSaveDebounce?.cancel();
+    _partnerTouchDecayTimer?.cancel();
+    _anniversarySub = null;
+    _moodSub = null;
+    _noteSub = null;
+    _dailyPromptSub = null;
+    _promptHistorySub = null;
+    _goalsSub = null;
+    _dailyCareSub = null;
+    _pulseSub = null;
+    _touchStatsSub = null;
+
+    _anniversaryDate = null;
+    _myMood = null;
+    _partnerMood = null;
+    _dailyPrompt = null;
+    _promptHistory = [];
+    _pinnedNotes = {};
+    _goals = [];
+    _dailyCareItems = [];
+    _drawingStrokes.clear();
+    _touchPoints.clear();
+    _partnerTouchPoint = null;
+    _isPulsing = false;
+    _myDailyTouches = 0;
+    _partnerDailyTouches = 0;
+    _weeklyTouches = 0;
+    _activeSpaceId = null;
+    _activeUserId = null;
+    _activePartnerId = null;
+    notifyListeners();
   }
 
   void _loadTouchMetrics() {
@@ -150,6 +197,15 @@ class StageProvider extends ChangeNotifier {
     _activeUserId = userId;
     _activePartnerId = partnerId;
 
+    if (partnerId == null || partnerId.isEmpty) {
+      _partnerMood = null;
+      _partnerTouchPoint = null;
+      _partnerDailyTouches = 0;
+      _pinnedNotes.removeWhere((k, _) => k != userId);
+      LocalCacheService.setCachedPartner(null);
+      LocalCacheService.setCachedPartnerMood(null);
+    }
+
     // 1. Listen to Anniversary
     _anniversarySub?.cancel();
     _anniversarySub = FirebaseService.streamFeatureDoc(spaceId, 'anniversary').listen((snap) {
@@ -182,20 +238,13 @@ class StageProvider extends ChangeNotifier {
           LocalCacheService.setCachedMyMood(myData);
         }
 
-        if (partnerId != null && moods.containsKey(partnerId) && moods[partnerId] is Map) {
+        if (partnerId != null && partnerId.isNotEmpty && moods.containsKey(partnerId) && moods[partnerId] is Map) {
           final pData = Map<String, dynamic>.from(moods[partnerId] as Map);
           _partnerMood = MoodAura.fromJson(pData);
           LocalCacheService.setCachedPartnerMood(pData);
         } else {
-          // Dynamic partner lookup
-          for (final entry in moods.entries) {
-            if (entry.key != userId && entry.key != 'updatedAt' && entry.value is Map) {
-              final pData = Map<String, dynamic>.from(entry.value as Map);
-              _partnerMood = MoodAura.fromJson(pData);
-              LocalCacheService.setCachedPartnerMood(pData);
-              break;
-            }
-          }
+          _partnerMood = null;
+          LocalCacheService.setCachedPartnerMood(null);
         }
         notifyListeners();
       }
@@ -210,17 +259,20 @@ class StageProvider extends ChangeNotifier {
         final updatedMap = <String, PinnedNote>{};
         rawNotes.forEach((k, v) {
           if (k != 'updatedAt' && v is Map) {
-            try {
-              updatedMap[k] = PinnedNote.fromJson(Map<String, dynamic>.from(v));
-            } catch (_) {}
+            // Strictly only admit notes for current user or active partner!
+            if (k == userId || (partnerId != null && partnerId.isNotEmpty && k == partnerId)) {
+              try {
+                updatedMap[k] = PinnedNote.fromJson(Map<String, dynamic>.from(v));
+              } catch (_) {}
+            }
           }
         });
-        if (updatedMap.isNotEmpty) {
-          _pinnedNotes = updatedMap;
-          LocalCacheService.setCachedPinnedNotes(rawNotes);
-          _syncWidget(partnerId);
-          notifyListeners();
-        }
+        _pinnedNotes = updatedMap;
+        LocalCacheService.setCachedPinnedNotes(
+          _pinnedNotes.map((k, v) => MapEntry(k, v.toJson())),
+        );
+        _syncWidget(partnerId);
+        notifyListeners();
       }
     });
 

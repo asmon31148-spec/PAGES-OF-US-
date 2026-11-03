@@ -12,6 +12,7 @@ import '../data/services/firebase_service.dart';
 import '../core/services/notification_service.dart';
 import '../core/services/audio_cache_service.dart';
 import 'audio_provider.dart';
+import 'auth_provider.dart';
 import '../core/services/voice_playback_service.dart';
 
 class MemoriesProvider extends ChangeNotifier {
@@ -53,10 +54,42 @@ class MemoriesProvider extends ChangeNotifier {
   String? _lastSentLetterId;
 
   MemoriesProvider() {
+    AuthProvider.registerSignOutHook(resetState);
     _voiceService.addListener(_onVoicePlaybackChanged);
   }
 
   void _onVoicePlaybackChanged() {
+    notifyListeners();
+  }
+
+  /// Wipes ALL in-memory state when user logs out.
+  /// Called by AuthProvider.signOut() before FirebaseService.signOut().
+  void resetState() {
+    _firestoreMilestonesSub?.cancel();
+    _firestoreMilestonesSub = null;
+    final supabase = SupabaseService.client;
+    if (supabase != null) {
+      if (_memoriesChannel != null) supabase.removeChannel(_memoriesChannel!);
+      if (_lettersChannel != null) supabase.removeChannel(_lettersChannel!);
+      if (_milestonesChannel != null) supabase.removeChannel(_milestonesChannel!);
+    }
+    _memoriesChannel = null;
+    _lettersChannel = null;
+    _milestonesChannel = null;
+    _memories = [];
+    _letters = [];
+    _milestones = [];
+    _mediaFilter = 'all';
+    _searchQuery = '';
+    _activeStackIndex = 0;
+    _currentUserId = null;
+    _currentPartnerId = null;
+    _currentPartnerNickname = null;
+    _currentSpaceId = null;
+    _lastPreservedMemoryId = null;
+    _lastSentLetterId = null;
+    _isLoading = false;
+    try { _voiceService.stop(); } catch (_) {}
     notifyListeners();
   }
 
@@ -264,6 +297,11 @@ class MemoriesProvider extends ChangeNotifier {
                 currentUserId: currentUserId,
                 partnerNickname: partnerNickname,
               );
+            }).where((m) {
+              if (partnerId != null && partnerId.isNotEmpty) {
+                return m.isMine || (m.authorId != null && m.authorId!.contains(partnerId));
+              }
+              return m.isMine;
             }).toList();
             _mergeMilestones(incoming);
           }, onError: (err) {
@@ -284,9 +322,9 @@ class MemoriesProvider extends ChangeNotifier {
 
       var query = supabase.from('memories').select();
       if (partnerId != null && partnerId.isNotEmpty) {
-        query = query.or('author.ilike.%$currentUserId%,author.ilike.%$partnerId%,space_id.eq.$spaceId');
+        query = query.or('author.ilike.%$currentUserId%,author.ilike.%$partnerId%');
       } else {
-        query = query.or('author.ilike.%$currentUserId%,space_id.eq.$spaceId');
+        query = query.filter('author', 'ilike', '%$currentUserId%');
       }
 
       final data = await query.order('created_at', ascending: false);
@@ -297,6 +335,12 @@ class MemoriesProvider extends ChangeNotifier {
                 currentUserId: currentUserId,
                 partnerNickname: partnerNickname,
               ))
+          .where((m) {
+            if (partnerId != null && partnerId.isNotEmpty) {
+              return m.isMine || m.author.contains(partnerId);
+            }
+            return m.isMine;
+          })
           .toList();
 
       // Background prefetch for instant 0ms voice whisper playback
@@ -332,9 +376,9 @@ class MemoriesProvider extends ChangeNotifier {
 
       var query = supabase.from('letters').select();
       if (partnerId != null && partnerId.isNotEmpty) {
-        query = query.or('author.ilike.%$currentUserId%,author.ilike.%$partnerId%,space_id.eq.$spaceId');
+        query = query.or('author.ilike.%$currentUserId%,author.ilike.%$partnerId%');
       } else {
-        query = query.or('author.ilike.%$currentUserId%,space_id.eq.$spaceId');
+        query = query.filter('author', 'ilike', '%$currentUserId%');
       }
 
       final data = await query.order('created_at', ascending: false);
@@ -345,6 +389,12 @@ class MemoriesProvider extends ChangeNotifier {
                 currentUserId: currentUserId,
                 partnerNickname: partnerNickname,
               ))
+          .where((l) {
+            if (partnerId != null && partnerId.isNotEmpty) {
+              return l.isMine || l.author.contains(partnerId);
+            }
+            return l.isMine;
+          })
           .toList();
       notifyListeners();
     } catch (_) {}
@@ -362,9 +412,9 @@ class MemoriesProvider extends ChangeNotifier {
 
       var query = supabase.from('milestones').select();
       if (partnerId != null && partnerId.isNotEmpty) {
-        query = query.or('author.ilike.%$currentUserId%,author.ilike.%$partnerId%,space_id.eq.$spaceId');
+        query = query.or('author.ilike.%$currentUserId%,author.ilike.%$partnerId%');
       } else {
-        query = query.or('author.ilike.%$currentUserId%,space_id.eq.$spaceId');
+        query = query.filter('author', 'ilike', '%$currentUserId%');
       }
 
       final data = await query.order('event_date', ascending: false);
@@ -375,17 +425,35 @@ class MemoriesProvider extends ChangeNotifier {
                 currentUserId: currentUserId,
                 partnerNickname: partnerNickname,
               ))
+          .where((m) {
+            if (partnerId != null && partnerId.isNotEmpty) {
+              return m.isMine || (m.authorId != null && m.authorId!.contains(partnerId));
+            }
+            return m.isMine;
+          })
           .toList();
       _mergeMilestones(list);
     } catch (_) {}
   }
 
   void _mergeMilestones(List<MilestoneItem> incoming) {
+    final filtered = incoming.where((m) {
+      if (_currentPartnerId != null && _currentPartnerId!.isNotEmpty) {
+        return m.isMine || (m.authorId != null && m.authorId!.contains(_currentPartnerId!));
+      }
+      return m.isMine;
+    }).toList();
+
     final Map<String, MilestoneItem> map = {for (final m in _milestones) m.id: m};
-    for (final item in incoming) {
+    for (final item in filtered) {
       map[item.id] = item;
     }
-    _milestones = map.values.toList()
+    _milestones = map.values.where((m) {
+      if (_currentPartnerId != null && _currentPartnerId!.isNotEmpty) {
+        return m.isMine || (m.authorId != null && m.authorId!.contains(_currentPartnerId!));
+      }
+      return m.isMine;
+    }).toList()
       ..sort((a, b) => b.rawDate.compareTo(a.rawDate));
     notifyListeners();
   }
