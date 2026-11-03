@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../widgets/update_dialog.dart';
 
 class UpdateInfo {
@@ -191,10 +192,32 @@ class UpdateService {
     }
   }
 
+  static bool _hasPromptedThisSession = false;
+
   /// Prompts the user with the Echo-style update popup if available
-  static Future<void> checkAndPrompt(BuildContext context) async {
+  static Future<void> checkAndPrompt(BuildContext context, {bool force = false}) async {
+    if (!force && _hasPromptedThisSession) return;
+
+    if (!force) {
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        final lastPrompt = prefs.getInt('last_update_prompt_timestamp') ?? 0;
+        final now = DateTime.now().millisecondsSinceEpoch;
+        // Don't auto-prompt more than once every 6 hours
+        if (now - lastPrompt < 6 * 3600 * 1000) {
+          return;
+        }
+      } catch (_) {}
+    }
+
     final update = await checkLatestRelease();
     if (update != null && context.mounted) {
+      _hasPromptedThisSession = true;
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setInt('last_update_prompt_timestamp', DateTime.now().millisecondsSinceEpoch);
+      } catch (_) {}
+
       showDialog(
         context: context,
         barrierDismissible: true,
