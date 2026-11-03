@@ -1892,6 +1892,8 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
         );
       },
     );
+  }
+
   /// Estimates the UTC offset for a geographic coordinate, correctly handling
   /// countries with fractional-hour timezones (Nepal, Iran, Afghanistan, Myanmar, etc.).
   /// Falls back to the nearest whole-hour zone for all other locations.
