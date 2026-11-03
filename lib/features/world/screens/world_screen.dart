@@ -996,18 +996,9 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
     String partnerActiveStatus = 'Standby';
 
     if (partnerLoc != null && (partnerLoc.lat != 0.0 || partnerLoc.lng != 0.0)) {
-      // Check if both are in India (standard Indian Standard Time: UTC+5:30)
-      final partnerInIndia = partnerLoc.lat >= 6.0 && partnerLoc.lat <= 38.0 && partnerLoc.lng >= 68.0 && partnerLoc.lng <= 98.0;
-      final meInIndia = (myLoc == null || (myLoc.lat >= 6.0 && myLoc.lat <= 38.0 && myLoc.lng >= 68.0 && myLoc.lng <= 98.0));
-
-      if (partnerInIndia && meInIndia) {
-        // Both in India: Same official Indian Standard Time (IST)
-        partnerDateTime = now;
-      } else {
-        // Standard stepped timezone offset from UTC (15 degrees per hour)
-        final tzOffsetHours = (partnerLoc.lng / 15.0).round();
-        partnerDateTime = now.toUtc().add(Duration(hours: tzOffsetHours));
-      }
+      // Estimate partner's civil clock using timezone-aware offset (handles fractional-offset countries)
+      final partnerOffset = _estimatePartnerOffset(partnerLoc.lat, partnerLoc.lng);
+      partnerDateTime = now.toUtc().add(partnerOffset);
 
       // Solar astronomical time difference (the sun's position: 4 mins per longitude degree)
       final myLng = (myLoc != null && myLoc.lng != 0.0) ? myLoc.lng : partnerLoc.lng;
@@ -1901,5 +1892,51 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
         );
       },
     );
+  /// Estimates the UTC offset for a geographic coordinate, correctly handling
+  /// countries with fractional-hour timezones (Nepal, Iran, Afghanistan, Myanmar, etc.).
+  /// Falls back to the nearest whole-hour zone for all other locations.
+  Duration _estimatePartnerOffset(double lat, double lng) {
+    // India (IST UTC+5:30) — excludes Nepal and Sri Lanka sub-regions below
+    if (lat >= 6.0 && lat <= 38.0 && lng >= 68.0 && lng <= 98.0) {
+      final isNepal = lat >= 26.0 && lat <= 31.0 && lng >= 80.0 && lng <= 89.0;
+      final isSriLanka = lat >= 5.5 && lat <= 10.0 && lng >= 79.5 && lng <= 82.0;
+      if (!isNepal && !isSriLanka) return const Duration(hours: 5, minutes: 30);
+    }
+    // Nepal (NPT UTC+5:45)
+    if (lat >= 26.0 && lat <= 31.0 && lng >= 80.0 && lng <= 89.0) {
+      return const Duration(hours: 5, minutes: 45);
+    }
+    // Sri Lanka (SLST UTC+5:30)
+    if (lat >= 5.5 && lat <= 10.0 && lng >= 79.5 && lng <= 82.0) {
+      return const Duration(hours: 5, minutes: 30);
+    }
+    // Afghanistan (AFT UTC+4:30)
+    if (lat >= 29.0 && lat <= 39.0 && lng >= 60.0 && lng <= 75.0) {
+      return const Duration(hours: 4, minutes: 30);
+    }
+    // Iran (IRST UTC+3:30 standard)
+    if (lat >= 25.0 && lat <= 40.0 && lng >= 44.0 && lng <= 64.0) {
+      return const Duration(hours: 3, minutes: 30);
+    }
+    // Myanmar (MMT UTC+6:30)
+    if (lat >= 10.0 && lat <= 29.0 && lng >= 92.0 && lng <= 102.0) {
+      return const Duration(hours: 6, minutes: 30);
+    }
+    // Northern Territory / South Australia (ACST UTC+9:30)
+    if (lat >= -38.0 && lat <= -10.0 && lng >= 129.0 && lng <= 141.0) {
+      return const Duration(hours: 9, minutes: 30);
+    }
+    // Chatham Islands, NZ (CHAST UTC+12:45)
+    if (lat >= -44.5 && lat <= -43.5 && lng >= -177.0 && lng <= -175.0) {
+      return const Duration(hours: 12, minutes: 45);
+    }
+    // Marquesas Islands (MART UTC−9:30)
+    if (lat >= -11.0 && lat <= -7.0 && lng >= -141.0 && lng <= -135.0) {
+      return const Duration(hours: -9, minutes: -30);
+    }
+    // General case: round to nearest whole-hour zone (15° per hour), clamped to valid range
+    final tzOffsetHours = (lng / 15.0).round().clamp(-12, 14);
+    return Duration(hours: tzOffsetHours);
   }
 }
+

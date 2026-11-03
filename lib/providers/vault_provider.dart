@@ -174,7 +174,7 @@ class VaultProvider extends ChangeNotifier {
     try {
       final supabase = SupabaseService.client;
       if (supabase != null) {
-        // a) Fetch user's own anchored vaults (guarantees Asmon's or any user's vaults are never lost!)
+        // a) Fetch each user's own anchored vaults (guarantees their personal vaults are never lost!)
         if (currentUserId.isNotEmpty) {
           final userRes = await supabase
               .from('app_content')

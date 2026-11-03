@@ -22,7 +22,9 @@ class UpdateInfo {
 }
 
 class UpdateService {
-  static const String currentVersion = '1.0.57';
+  // ⚠️ Keep this in sync with the version field in pubspec.yaml whenever bumping the app version
+  static const String currentVersion = '1.0.58';
+  // Distribution repository — update this if the app repo is ever moved or renamed
   static const String githubRepo = 'asmon31148-spec/PAGES-OF-US-';
 
   /// Checks Firestore remote config and GitHub releases for a newer APK version
