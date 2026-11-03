@@ -14,7 +14,39 @@ enum WatchCallStatus {
 
 class WatchCallService {
   static final WatchCallService instance = WatchCallService._internal();
-  WatchCallService._internal();
+  WatchCallService._internal() {
+    callStatus.addListener(() {
+      if (callStatus.value == WatchCallStatus.connected) {
+        _startDurationTimer();
+      } else {
+        _stopDurationTimer();
+      }
+    });
+  }
+
+  Timer? _durationTimer;
+  final ValueNotifier<int> callDurationSeconds = ValueNotifier(0);
+
+  String get formattedCallDuration {
+    final s = callDurationSeconds.value;
+    final minutes = (s ~/ 60).toString().padLeft(2, '0');
+    final seconds = (s % 60).toString().padLeft(2, '0');
+    return '$minutes:$seconds';
+  }
+
+  void _startDurationTimer() {
+    _durationTimer?.cancel();
+    callDurationSeconds.value = 0;
+    _durationTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      callDurationSeconds.value++;
+    });
+  }
+
+  void _stopDurationTimer() {
+    _durationTimer?.cancel();
+    _durationTimer = null;
+    callDurationSeconds.value = 0;
+  }
 
   final FirebaseDatabase _rtdb = FirebaseDatabase.instance;
 

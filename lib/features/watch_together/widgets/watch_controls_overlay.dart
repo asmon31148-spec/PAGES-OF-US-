@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../services/watch_call_service.dart';
 
 enum SyncStatus {
   inSync,
@@ -210,8 +211,62 @@ class WatchControlsOverlayState extends State<WatchControlsOverlay> {
 
                     const SizedBox(width: 8),
 
-                    // Video Call Button
-                    if (widget.onStartCall != null) ...[
+                    // Video Call / In-Call Indicator
+                    if (widget.isCallActive) ...[
+                      // In-call chip: 🟢 In call 00:12 (SS 3 Match)
+                      ValueListenableBuilder<int>(
+                        valueListenable: WatchCallService.instance.callDurationSeconds,
+                        builder: (context, _, __) {
+                          return Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withOpacity(0.6),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: const Color(0xFF10B981).withOpacity(0.4)),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  width: 7,
+                                  height: 7,
+                                  decoration: const BoxDecoration(
+                                    color: Color(0xFF10B981),
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                                const SizedBox(width: 5),
+                                Text(
+                                  'In call ${WatchCallService.instance.formattedCallDuration}',
+                                  style: const TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF10B981),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                      const SizedBox(width: 6),
+                      // Red End Call Button (SS 3 Match)
+                      GestureDetector(
+                        onTap: () {
+                          _startHideTimer();
+                          WatchCallService.instance.endCall();
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: const BoxDecoration(
+                            color: Color(0xFFEF4444),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.call_end_rounded, size: 14, color: Colors.white),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                    ] else if (widget.onStartCall != null) ...[
                       GestureDetector(
                         onTap: () {
                           _startHideTimer();
@@ -220,18 +275,14 @@ class WatchControlsOverlayState extends State<WatchControlsOverlay> {
                         child: Container(
                           padding: const EdgeInsets.all(7),
                           decoration: BoxDecoration(
-                            color: widget.isCallActive
-                                ? const Color(0xFF10B981).withOpacity(0.85)
-                                : Colors.black.withOpacity(0.5),
+                            color: Colors.black.withOpacity(0.5),
                             shape: BoxShape.circle,
                             border: Border.all(
-                              color: widget.isCallActive
-                                  ? const Color(0xFF10B981)
-                                  : Colors.white.withOpacity(0.2),
+                              color: Colors.white.withOpacity(0.2),
                             ),
                           ),
-                          child: Icon(
-                            widget.isCallActive ? Icons.videocam_rounded : Icons.videocam_outlined,
+                          child: const Icon(
+                            Icons.videocam_outlined,
                             size: 15,
                             color: Colors.white,
                           ),
@@ -294,80 +345,125 @@ class WatchControlsOverlayState extends State<WatchControlsOverlay> {
                 ),
               ),
 
-              // Center Action Buttons (Back 10s, Play/Pause, Forward 10s)
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+              // Center Action Buttons (Back 10s, Play/Pause, Forward 10s) + Live Chat pill
+              Stack(
+                alignment: Alignment.center,
                 children: [
-                  // -10s
-                  GestureDetector(
-                    onTap: () {
-                      _startHideTimer();
-                      widget.onSkipBack10();
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.4),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.replay_10_rounded,
-                        size: 34,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(width: 32),
-
-                  // Play / Pause
-                  GestureDetector(
-                    onTap: () {
-                      _startHideTimer();
-                      widget.onTogglePlay();
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: const BoxDecoration(
-                        color: AppColors.terra,
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black38,
-                            blurRadius: 10,
-                            offset: Offset(0, 4),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // -10s
+                      GestureDetector(
+                        onTap: () {
+                          _startHideTimer();
+                          widget.onSkipBack10();
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.4),
+                            shape: BoxShape.circle,
                           ),
-                        ],
+                          child: const Icon(
+                            Icons.replay_10_rounded,
+                            size: 34,
+                            color: Colors.white,
+                          ),
+                        ),
                       ),
-                      child: Icon(
-                        widget.isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
-                        size: 44,
-                        color: Colors.white,
+
+                      const SizedBox(width: 32),
+
+                      // Play / Pause
+                      GestureDetector(
+                        onTap: () {
+                          _startHideTimer();
+                          widget.onTogglePlay();
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: const BoxDecoration(
+                            color: AppColors.terra,
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black38,
+                                blurRadius: 10,
+                                offset: Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Icon(
+                            widget.isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                            size: 44,
+                            color: Colors.white,
+                          ),
+                        ),
                       ),
-                    ),
+
+                      const SizedBox(width: 32),
+
+                      // +10s
+                      GestureDetector(
+                        onTap: () {
+                          _startHideTimer();
+                          widget.onSkipForward10();
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.4),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.forward_10_rounded,
+                            size: 34,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
 
-                  const SizedBox(width: 32),
-
-                  // +10s
-                  GestureDetector(
-                    onTap: () {
-                      _startHideTimer();
-                      widget.onSkipForward10();
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.4),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.forward_10_rounded,
-                        size: 34,
-                        color: Colors.white,
+                  // Floating Live Chat Pill on Right Edge (SS 3 Match)
+                  if (!widget.isChatVisible && widget.isFullscreen)
+                    Positioned(
+                      right: 16,
+                      child: GestureDetector(
+                        onTap: () {
+                          _startHideTimer();
+                          widget.onToggleChat();
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.65),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: Colors.white.withOpacity(0.2)),
+                            boxShadow: const [
+                              BoxShadow(color: Colors.black45, blurRadius: 8),
+                            ],
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.chat_bubble_outline_rounded, size: 13, color: Colors.white),
+                              SizedBox(width: 6),
+                              Text(
+                                'Live Chat',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              SizedBox(width: 4),
+                              Icon(Icons.chevron_right_rounded, size: 16, color: Colors.white70),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
-                  ),
                 ],
               ),
 

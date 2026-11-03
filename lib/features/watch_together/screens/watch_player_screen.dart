@@ -6,6 +6,7 @@ import 'package:video_player/video_player.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:firebase_database/firebase_database.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../providers/theme_provider.dart';
 import '../../../../providers/auth_provider.dart';
@@ -52,6 +53,11 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
   DateTime _ignoreRemoteUntil = DateTime.now();
   Timer? _driftCheckTimer;
   SyncStatus _syncStatus = SyncStatus.inSync;
+
+  // Heartbeat & connection listeners
+  Timer? _heartbeatTimer;
+  StreamSubscription? _connectedSub;
+  VoidCallback? _callStatusListener;
 
   // Chat & UI state
   List<WatchMessage> _chatMessages = [];
@@ -108,6 +114,66 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
     } catch (e) {
       debugPrint('Wakelock error: $e');
     }
+
+    // Mark online state immediately upon entering player
+    final myUid = context.read<AuthProvider>().user?.id;
+    if (myUid != null) {
+      WatchTogetherService.instance.updateMemberOnline(
+        roomCode: widget.roomCode,
+        uid: myUid,
+        online: true,
+      );
+    }
+
+    // Start periodic heartbeat every 8 seconds to prevent false offline status
+    _heartbeatTimer?.cancel();
+    _heartbeatTimer = Timer.periodic(const Duration(seconds: 8), (_) {
+      if (!_isLeaving && mounted) {
+        final uid = context.read<AuthProvider>().user?.id;
+        if (uid != null) {
+          WatchTogetherService.instance.updateMemberOnline(
+            roomCode: widget.roomCode,
+            uid: uid,
+            online: true,
+          );
+        }
+      }
+    });
+
+    // Listen to RTDB connection state so reconnections immediately restore online status
+    _connectedSub?.cancel();
+    _connectedSub = FirebaseDatabase.instance.ref('.info/connected').onValue.listen((event) {
+      final connected = event.snapshot.value == true;
+      if (connected && !_isLeaving && mounted) {
+        final uid = context.read<AuthProvider>().user?.id;
+        if (uid != null) {
+          WatchTogetherService.instance.updateMemberOnline(
+            roomCode: widget.roomCode,
+            uid: uid,
+            online: true,
+          );
+          try {
+            FirebaseDatabase.instance
+                .ref('watchRooms/${widget.roomCode}/members/$uid/online')
+                .onDisconnect()
+                .set(false);
+          } catch (_) {}
+        }
+      }
+    });
+
+    // Listen for call status changes to guarantee online status during active calls
+    _callStatusListener = () {
+      if (!mounted || _isLeaving) return;
+      final status = WatchCallService.instance.callStatus.value;
+      if ((status == WatchCallStatus.connected || status == WatchCallStatus.calling) &&
+          _syncStatus == SyncStatus.partnerOffline) {
+        setState(() {
+          _syncStatus = SyncStatus.inSync;
+        });
+      }
+    };
+    WatchCallService.instance.callStatus.addListener(_callStatusListener!);
 
     // 2. Initialize video controller directly from local storage
     try {
@@ -193,7 +259,17 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
       );
       final partner = partnerUid.isNotEmpty ? room.members[partnerUid] : null;
 
-      if (partner != null && !partner.online) {
+      final isCallActive = WatchCallService.instance.callStatus.value == WatchCallStatus.connected ||
+          WatchCallService.instance.callStatus.value == WatchCallStatus.calling;
+
+      if (isCallActive) {
+        // If actively in a call, partner is 100% online
+        if (_syncStatus == SyncStatus.partnerOffline) {
+          setState(() {
+            _syncStatus = SyncStatus.inSync;
+          });
+        }
+      } else if (partner != null && !partner.online) {
         setState(() {
           _syncStatus = SyncStatus.partnerOffline;
         });
@@ -668,6 +744,11 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     WakelockPlus.disable();
+    _heartbeatTimer?.cancel();
+    _connectedSub?.cancel();
+    if (_callStatusListener != null) {
+      WatchCallService.instance.callStatus.removeListener(_callStatusListener!);
+    }
     _playbackSub?.cancel();
     _roomSub?.cancel();
     _chatSub?.cancel();
