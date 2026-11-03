@@ -92,7 +92,7 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
     if (state == AppLifecycleState.resumed && !_isLeaving) {
       final myUid = context.read<AuthProvider>().user?.id;
       if (myUid != null) {
-        WatchTogetherService.instance.setMemberOnline(
+        WatchTogetherService.instance.updateMemberOnline(
           roomCode: widget.roomCode,
           uid: myUid,
           online: true,
