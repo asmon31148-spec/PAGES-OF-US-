@@ -293,17 +293,17 @@ class WorldProvider extends ChangeNotifier {
   }
 
   // ── Public journey getters ──────────────────────────────────────────────────
-  double myJourneyKmToday     => _calcJourneyKm(_myJourneyLog, const Duration(hours: 24));
-  double myJourneyKmThisWeek  => _calcJourneyKm(_myJourneyLog, const Duration(days: 7));
-  double myJourneyKmThisMonth => _calcJourneyKm(_myJourneyLog, const Duration(days: 30));
+  double get myJourneyKmToday     => _calcJourneyKm(_myJourneyLog, const Duration(hours: 24));
+  double get myJourneyKmThisWeek  => _calcJourneyKm(_myJourneyLog, const Duration(days: 7));
+  double get myJourneyKmThisMonth => _calcJourneyKm(_myJourneyLog, const Duration(days: 30));
 
-  int myAreasVisitedToday     => _countAreas(_myJourneyLog, const Duration(hours: 24));
-  int myAreasVisitedThisWeek  => _countAreas(_myJourneyLog, const Duration(days: 7));
-  int myAreasVisitedThisMonth => _countAreas(_myJourneyLog, const Duration(days: 30));
+  int get myAreasVisitedToday     => _countAreas(_myJourneyLog, const Duration(hours: 24));
+  int get myAreasVisitedThisWeek  => _countAreas(_myJourneyLog, const Duration(days: 7));
+  int get myAreasVisitedThisMonth => _countAreas(_myJourneyLog, const Duration(days: 30));
 
-  double partnerJourneyKmToday     => _calcJourneyKm(_partnerJourneyLog, const Duration(hours: 24));
-  double partnerJourneyKmThisWeek  => _calcJourneyKm(_partnerJourneyLog, const Duration(days: 7));
-  double partnerJourneyKmThisMonth => _calcJourneyKm(_partnerJourneyLog, const Duration(days: 30));
+  double get partnerJourneyKmToday     => _calcJourneyKm(_partnerJourneyLog, const Duration(hours: 24));
+  double get partnerJourneyKmThisWeek  => _calcJourneyKm(_partnerJourneyLog, const Duration(days: 7));
+  double get partnerJourneyKmThisMonth => _calcJourneyKm(_partnerJourneyLog, const Duration(days: 30));
 
   // ── Convenience methods called by journey_stats_card ───────────────────────
   double myJourneyKm(dynamic period) {
