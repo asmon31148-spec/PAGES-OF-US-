@@ -414,11 +414,11 @@ class WorldProvider extends ChangeNotifier {
         } catch (_) {}
       }
 
-      // 2. High-performance continuous position stream (fires on 25m movement for battery & quota safety)
+      // 2. High-precision continuous position stream (fires on 5m movement for walking-level accuracy)
       _positionStreamSub?.cancel();
       const settings = LocationSettings(
         accuracy: LocationAccuracy.high,
-        distanceFilter: 25,
+        distanceFilter: 5,
       );
 
       _positionStreamSub = Geolocator.getPositionStream(locationSettings: settings).listen(
@@ -447,7 +447,7 @@ class WorldProvider extends ChangeNotifier {
 
     _gpsStatus = (_partnerId != null && _partnerId!.isNotEmpty) ? 'Live Tethered' : 'Live Presence';
 
-    // Reverse geocoding only when moved > 60m or > 2 minutes
+    // Reverse geocoding only when moved > 20m or > 1 minute
     final now = DateTime.now();
     bool shouldGeocode = false;
     if (_lastGeocodedLat == null || _lastGeocodedLng == null || _lastGeocodedTime == null) {
@@ -459,7 +459,7 @@ class WorldProvider extends ChangeNotifier {
         position.latitude,
         position.longitude,
       );
-      if (dist > 0.06 || now.difference(_lastGeocodedTime!).inMinutes >= 2) {
+      if (dist > 0.02 || now.difference(_lastGeocodedTime!).inMinutes >= 1) {
         shouldGeocode = true;
       }
     }
