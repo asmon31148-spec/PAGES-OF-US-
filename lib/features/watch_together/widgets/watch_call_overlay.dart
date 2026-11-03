@@ -31,8 +31,8 @@ class WatchCallOverlay extends StatefulWidget {
 class _WatchCallOverlayState extends State<WatchCallOverlay> {
   final WatchCallService _callService = WatchCallService.instance;
 
-  // Draggable PiP coordinates
-  Offset _pipPosition = const Offset(16, 24);
+  // Draggable widescreen bar position — starts near bottom, user can drag freely
+  Offset _pipPosition = const Offset(16, 300);
   bool _showControls = false;
   Timer? _hideControlsTimer;
 
@@ -234,15 +234,22 @@ class _WatchCallOverlayState extends State<WatchCallOverlay> {
     );
   }
 
-  /// 3. Draggable Connected Picture-in-Picture (PiP) Window
+  /// 3. Draggable Connected Widescreen Facecam Bar (Techno Gamerz-style 16:9 streamer overlay)
   Widget _buildConnectedPip() {
     final screenSize = MediaQuery.of(context).size;
-    final pipWidth = widget.isLandscape ? 130.0 : 110.0;
-    final pipHeight = widget.isLandscape ? 100.0 : 150.0;
+
+    // 16:9 widescreen bar — full width in portrait, 42% width in landscape
+    final barWidth = widget.isLandscape
+        ? screenSize.width * 0.42
+        : screenSize.width - 32.0;
+    final barHeight = barWidth * 9.0 / 16.0;
+
+    final clampedX = _pipPosition.dx.clamp(0.0, screenSize.width - barWidth);
+    final clampedY = _pipPosition.dy.clamp(0.0, screenSize.height - barHeight - 8.0);
 
     return Positioned(
-      left: _pipPosition.dx.clamp(8.0, screenSize.width - pipWidth - 8.0),
-      top: _pipPosition.dy.clamp(8.0, screenSize.height - pipHeight - 8.0),
+      left: clampedX,
+      top: clampedY,
       child: GestureDetector(
         onPanUpdate: (details) {
           setState(() {
@@ -251,21 +258,20 @@ class _WatchCallOverlayState extends State<WatchCallOverlay> {
         },
         onTap: _toggleControls,
         child: Stack(
-          alignment: Alignment.center,
           children: [
-            // Main Partner Video Bubble
+            // Main widescreen partner video bar
             Container(
-              width: pipWidth,
-              height: pipHeight,
+              width: barWidth,
+              height: barHeight,
               decoration: BoxDecoration(
                 color: Colors.black,
-                borderRadius: BorderRadius.circular(18),
+                borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: AppColors.terra.withOpacity(0.8), width: 1.5),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withOpacity(0.6),
                     blurRadius: 14,
-                    offset: const Offset(0, 6),
+                    offset: const Offset(0, 4),
                   ),
                 ],
               ),
@@ -284,36 +290,37 @@ class _WatchCallOverlayState extends State<WatchCallOverlay> {
               ),
             ),
 
-            // Partner Muted Badge (Must be direct child of Stack)
+            // Partner name label — bottom left
             Positioned(
-              top: 6,
-              left: 6,
-              child: ValueListenableBuilder<bool>(
-                valueListenable: _callService.isPartnerMicMuted,
-                builder: (context, isMuted, _) {
-                  if (!isMuted) return const SizedBox.shrink();
-                  return Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.7),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.mic_off_rounded, color: Colors.redAccent, size: 12),
-                  );
-                },
+              bottom: 6,
+              left: 10,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.55),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  widget.partnerName,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ),
             ),
 
-            // Inset: My Local Camera Thumbnail (bottom-right of bubble)
+            // My local camera — bottom-right inset (small 16:9 mini thumbnail)
             Positioned(
               bottom: 6,
-              right: 6,
+              right: 8,
               child: Container(
-                width: 34,
-                height: 46,
+                width: 72,
+                height: 41, // 72 * 9/16
                 decoration: BoxDecoration(
                   color: Colors.black87,
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(6),
                   border: Border.all(color: Colors.white70, width: 1),
                 ),
                 clipBehavior: Clip.antiAlias,
@@ -333,84 +340,94 @@ class _WatchCallOverlayState extends State<WatchCallOverlay> {
               ),
             ),
 
-            // Toggled Controls Overlay (Mute, Camera, Flip, Hangup)
+            // Partner mic muted badge — top left
+            Positioned(
+              top: 6,
+              left: 6,
+              child: ValueListenableBuilder<bool>(
+                valueListenable: _callService.isPartnerMicMuted,
+                builder: (context, isMuted, _) {
+                  if (!isMuted) return const SizedBox.shrink();
+                  return Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.7),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.mic_off_rounded, color: Colors.redAccent, size: 12),
+                  );
+                },
+              ),
+            ),
+
+            // Toggled Controls Overlay (tap to show — Mute, Camera, Flip, Hangup)
             if (_showControls)
               Container(
-                width: pipWidth,
-                height: pipHeight,
+                width: barWidth,
+                height: barHeight,
                 decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.75),
-                  borderRadius: BorderRadius.circular(18),
+                  color: Colors.black.withOpacity(0.72),
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                child: Column(
+                child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        // Mic Mute Toggle
-                        ValueListenableBuilder<bool>(
-                          valueListenable: _callService.isMicMuted,
-                          builder: (context, muted, _) {
-                            return GestureDetector(
-                              onTap: () {
-                                HapticFeedback.selectionClick();
-                                _callService.toggleMic();
-                              },
-                              child: Icon(
-                                muted ? Icons.mic_off_rounded : Icons.mic_rounded,
-                                color: muted ? Colors.redAccent : Colors.white,
-                                size: 20,
-                              ),
-                            );
-                          },
-                        ),
-                        // Camera Toggle
-                        ValueListenableBuilder<bool>(
-                          valueListenable: _callService.isCameraOff,
-                          builder: (context, cameraOff, _) {
-                            return GestureDetector(
-                              onTap: () {
-                                HapticFeedback.selectionClick();
-                                _callService.toggleCamera();
-                              },
-                              child: Icon(
-                                cameraOff ? Icons.videocam_off_rounded : Icons.videocam_rounded,
-                                color: cameraOff ? Colors.redAccent : Colors.white,
-                                size: 20,
-                              ),
-                            );
-                          },
-                        ),
-                      ],
-                    ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        // Flip Camera
-                        GestureDetector(
+                    // Mic Mute Toggle
+                    ValueListenableBuilder<bool>(
+                      valueListenable: _callService.isMicMuted,
+                      builder: (context, muted, _) {
+                        return GestureDetector(
                           onTap: () {
                             HapticFeedback.selectionClick();
-                            _callService.switchCamera();
+                            _callService.toggleMic();
                           },
-                          child: const Icon(Icons.cameraswitch_rounded, color: Colors.white, size: 20),
-                        ),
-                        // End Call
-                        GestureDetector(
-                          onTap: () {
-                            HapticFeedback.mediumImpact();
-                            _callService.endCall();
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.all(4),
-                            decoration: const BoxDecoration(
-                              color: Colors.redAccent,
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(Icons.call_end_rounded, color: Colors.white, size: 16),
+                          child: Icon(
+                            muted ? Icons.mic_off_rounded : Icons.mic_rounded,
+                            color: muted ? Colors.redAccent : Colors.white,
+                            size: 22,
                           ),
+                        );
+                      },
+                    ),
+                    // Camera Toggle
+                    ValueListenableBuilder<bool>(
+                      valueListenable: _callService.isCameraOff,
+                      builder: (context, cameraOff, _) {
+                        return GestureDetector(
+                          onTap: () {
+                            HapticFeedback.selectionClick();
+                            _callService.toggleCamera();
+                          },
+                          child: Icon(
+                            cameraOff ? Icons.videocam_off_rounded : Icons.videocam_rounded,
+                            color: cameraOff ? Colors.redAccent : Colors.white,
+                            size: 22,
+                          ),
+                        );
+                      },
+                    ),
+                    // Flip Camera
+                    GestureDetector(
+                      onTap: () {
+                        HapticFeedback.selectionClick();
+                        _callService.switchCamera();
+                      },
+                      child: const Icon(Icons.cameraswitch_rounded, color: Colors.white, size: 22),
+                    ),
+                    // End Call
+                    GestureDetector(
+                      onTap: () {
+                        HapticFeedback.mediumImpact();
+                        _callService.endCall();
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: const BoxDecoration(
+                          color: Colors.redAccent,
+                          shape: BoxShape.circle,
                         ),
-                      ],
+                        child: const Icon(Icons.call_end_rounded, color: Colors.white, size: 18),
+                      ),
                     ),
                   ],
                 ),
