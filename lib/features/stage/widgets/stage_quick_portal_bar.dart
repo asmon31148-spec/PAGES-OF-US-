@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -153,41 +154,52 @@ class StageQuickPortalBar extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Circular Glowing Icon Frame
-          Container(
-            width: 56,
-            height: 56,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: isDark
-                  ? (isActive
-                      ? AppColors.terra.withOpacity(0.2)
-                      : const Color(0xFF1F2B24).withOpacity(0.7))
-                  : (isActive
-                      ? AppColors.terra.withOpacity(0.15)
-                      : Colors.white),
-              border: Border.all(
-                color: isActive
-                    ? AppColors.terra
-                    : (isDark
-                        ? AppColors.terra.withOpacity(0.4)
-                        : AppColors.terra.withOpacity(0.35)),
-                width: 1.4,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.terra.withOpacity(isActive ? 0.35 : 0.14),
-                  blurRadius: 10,
-                  spreadRadius: 1,
-                  offset: const Offset(0, 3),
+          // Apple Liquid Glass Circular Icon Frame
+          ClipRRect(
+            borderRadius: BorderRadius.circular(28),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+              child: Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: isActive
+                        ? [
+                            AppColors.terra.withOpacity(0.35),
+                            AppColors.terra.withOpacity(0.12),
+                          ]
+                        : [
+                            Colors.white.withOpacity(0.14),
+                            Colors.white.withOpacity(0.04),
+                          ],
+                  ),
+                  border: Border.all(
+                    color: isActive
+                        ? AppColors.terra.withOpacity(0.7)
+                        : Colors.white.withOpacity(0.24),
+                    width: 1.2,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: isActive
+                          ? AppColors.terra.withOpacity(0.35)
+                          : Colors.black.withOpacity(0.18),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-            alignment: Alignment.center,
-            child: Icon(
-              icon,
-              size: 24,
-              color: AppColors.terra,
+                alignment: Alignment.center,
+                child: Icon(
+                  icon,
+                  size: 24,
+                  color: isActive ? Colors.white : AppColors.terra,
+                ),
+              ),
             ),
           ),
           const SizedBox(height: 7),
@@ -210,22 +222,35 @@ class StageQuickPortalBar extends StatelessWidget {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: isDark ? AppColors.darkSurface : AppColors.lightSurface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
+      backgroundColor: Colors.transparent,
       builder: (ctx) {
-        return Padding(
-          padding: EdgeInsets.only(
-            left: 20,
-            right: 20,
-            top: 20,
-            bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+        return ClipRRect(
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 28, sigmaY: 28),
+            child: Container(
+              decoration: BoxDecoration(
+                color: isDark
+                    ? const Color(0xFF13151B).withOpacity(0.88)
+                    : Colors.white.withOpacity(0.88),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+                border: Border(
+                  top: BorderSide(
+                    color: isDark ? Colors.white.withOpacity(0.25) : Colors.black.withOpacity(0.1),
+                    width: 1.2,
+                  ),
+                ),
+              ),
+              padding: EdgeInsets.only(
+                left: 20,
+                right: 20,
+                top: 20,
+                bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
               Center(
                 child: Container(
                   width: 40,
@@ -271,8 +296,10 @@ class StageQuickPortalBar extends StatelessWidget {
               ),
             ],
           ),
-        );
-      },
-    );
-  }
+        ),
+      ),
+    ),
+  );
+};
+}
 }

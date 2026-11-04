@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -15,6 +16,9 @@ import '../../../data/models/user_location_model.dart';
 import '../../../data/models/pinned_place.dart';
 import '../widgets/journey_stats_card.dart';
 import '../widgets/meet_route_sheet.dart';
+import '../../music/widgets/glass/glass_ambient_background.dart';
+import '../../music/widgets/glass/glass_card.dart';
+import '../../music/theme/glass_tokens.dart';
 
 enum MapBasemapStyle {
   streets,
@@ -246,23 +250,25 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
         }
       },
       child: Scaffold(
-        backgroundColor: isDark ? AppColors.darkBg : AppColors.lightBg,
-        body: SafeArea(
-          child: _isFullScreenMap
-              ? _buildMapCard(
-                  isDark: isDark,
-                  myLoc: myLoc,
-                  partnerLoc: partnerLoc,
-                  distanceKm: distanceKm,
-                  user: user,
-                  partner: partner,
-                  worldProvider: worldProvider,
-                  defaultCenter: defaultCenter,
-                  isFullScreen: true,
-                  now: worldProvider.now,
-                )
-              : Column(
-                  children: [
+        backgroundColor: Colors.transparent,
+        body: _isFullScreenMap
+            ? _buildMapCard(
+                isDark: isDark,
+                myLoc: myLoc,
+                partnerLoc: partnerLoc,
+                distanceKm: distanceKm,
+                user: user,
+                partner: partner,
+                worldProvider: worldProvider,
+                defaultCenter: defaultCenter,
+                isFullScreen: true,
+                now: worldProvider.now,
+              )
+            : GlassAmbientBackground(
+                fallbackColor: const Color(0xFF2A9D8F),
+                child: SafeArea(
+                  child: Column(
+                    children: [
                     // Top Bar
                     AppTopBar(
                       title: 'Our World',
@@ -473,7 +479,8 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
         ),
       ),
     ),
-  );
+  ),
+);
 }
 
   /// Couple Reunion & Date Planner banner
@@ -489,22 +496,34 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
         ? '${(distanceKm / 1000).toStringAsFixed(1)}k km'
         : (distanceKm < 1 ? '${(distanceKm * 1000).round()} m' : '${distanceKm.toStringAsFixed(0)} km');
 
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            AppColors.terra.withOpacity(isDark ? 0.18 : 0.12),
-            AppColors.rose.withOpacity(isDark ? 0.10 : 0.06),
-          ],
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
-        ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      child: ClipRRect(
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.terra.withOpacity(0.35)),
-      ),
-      child: Row(
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  AppColors.terra.withOpacity(isDark ? 0.22 : 0.16),
+                  AppColors.rose.withOpacity(isDark ? 0.14 : 0.08),
+                ],
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+              ),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Colors.white.withOpacity(0.25), width: 1),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.terra.withOpacity(0.16),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Row(
         children: [
           Text(isLongDistance ? '✈️' : '✨', style: const TextStyle(fontSize: 26)),
           const SizedBox(width: 12),
@@ -578,8 +597,11 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
           ),
         ],
       ),
-    );
-  }
+    ),
+  ),
+),
+);
+}
 
   Widget _buildMapCard({
     required bool isDark,
@@ -1202,17 +1224,37 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
       partnerIsDay = partnerDateTime.hour >= 6 && partnerDateTime.hour < 19;
     }
 
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      child: ClipRRect(
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(
-          color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
-        ),
-      ),
-      child: Row(
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+          child: Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Colors.white.withOpacity(0.12),
+                  Colors.white.withOpacity(0.04),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.22),
+                width: 1,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.18),
+                  blurRadius: 14,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Row(
         children: [
           // User Clock
           Expanded(
@@ -1434,8 +1476,11 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
             ),
         ],
       ),
-    );
-  }
+    ),
+  ),
+),
+);
+}
 
   Widget _buildDistanceBanner({
     required bool isDark,
@@ -1501,30 +1546,46 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
       }
     }
 
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: isTethered
-            ? (isDark ? const Color(0xFF221A1A) : const Color(0xFFFFF6F0))
-            : (isDark ? AppColors.darkCard : AppColors.lightCard),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: isTethered
-              ? AppColors.terra.withOpacity(0.4)
-              : (isDark ? AppColors.darkBorder : AppColors.lightBorder),
-          width: 1.2,
-        ),
-        boxShadow: [
-          if (isTethered)
-            BoxShadow(
-              color: AppColors.terra.withOpacity(0.08),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(22),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+          child: Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: isTethered
+                    ? [
+                        AppColors.terra.withOpacity(0.24),
+                        AppColors.terra.withOpacity(0.06),
+                      ]
+                    : [
+                        Colors.white.withOpacity(0.12),
+                        Colors.white.withOpacity(0.04),
+                      ],
+              ),
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(
+                color: isTethered
+                    ? AppColors.terra.withOpacity(0.5)
+                    : Colors.white.withOpacity(0.22),
+                width: 1,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: isTethered
+                      ? AppColors.terra.withOpacity(0.18)
+                      : Colors.black.withOpacity(0.2),
+                  blurRadius: 14,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
-        ],
-      ),
-      child: Column(
+            child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Top Row: Status badge & Recenter action
@@ -1680,8 +1741,11 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
           ],
         ],
       ),
-    );
-  }
+    ),
+  ),
+),
+);
+}
 
   Widget _buildActionButton({
     required IconData icon,
