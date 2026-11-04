@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/liquid_glass/liquid_glass_card.dart';
+import '../../../core/widgets/liquid_glass/liquid_glass_button.dart';
+import '../../../core/widgets/liquid_glass/liquid_glass_theme.dart';
 import '../../../providers/theme_provider.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../providers/memories_provider.dart';
@@ -57,15 +60,12 @@ class _LetterboxSubviewState extends State<LetterboxSubview> {
                   ),
                 ],
               ),
-              ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.terra,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                ),
-                icon: const Icon(Icons.edit, size: 14),
-                label: const Text('Write Letter', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+              LiquidGlassButton(
+                primaryColor: AppColors.terra,
+                icon: Icons.edit_rounded,
+                label: 'Write Letter',
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                radius: 18,
                 onPressed: () => _showWriteLetterModal(context, spaceId, user?.id),
               ),
             ],
@@ -137,7 +137,10 @@ class _LetterboxSubviewState extends State<LetterboxSubview> {
       }
     }
 
-    return GestureDetector(
+    return LiquidGlassCard(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      radius: 22,
       onTap: () {
         if (isSealed && !letter.isMine) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -158,110 +161,92 @@ class _LetterboxSubviewState extends State<LetterboxSubview> {
           ),
         );
       },
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
-          borderRadius: BorderRadius.circular(22),
-          border: Border.all(
-            color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+      child: Row(
+        children: [
+          // Wax Seal Stamp
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: sealColor,
+              boxShadow: [
+                BoxShadow(
+                  color: sealColor.withOpacity(0.4),
+                  blurRadius: 6,
+                  spreadRadius: 1,
+                ),
+              ],
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              isSealed ? '🔒' : '✦',
+              style: const TextStyle(fontSize: 16, color: Colors.white),
+            ),
           ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.04),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            // Wax Seal Stamp
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: sealColor,
-                boxShadow: [
-                  BoxShadow(
-                    color: sealColor.withOpacity(0.4),
-                    blurRadius: 6,
-                    spreadRadius: 1,
-                  ),
-                ],
-              ),
-              alignment: Alignment.center,
-              child: Text(
-                isSealed ? '🔒' : '✦',
-                style: const TextStyle(fontSize: 16, color: Colors.white),
-              ),
-            ),
-            const SizedBox(width: 14),
+          const SizedBox(width: 14),
 
-            // Content Preview
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: sealColor.withOpacity(0.12),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          letter.category.toUpperCase(),
-                          style: TextStyle(
-                            fontSize: 9,
-                            fontWeight: FontWeight.bold,
-                            color: sealColor,
-                          ),
+          // Content Preview
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: sealColor.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        letter.category.toUpperCase(),
+                        style: TextStyle(
+                          fontSize: 9,
+                          fontWeight: FontWeight.bold,
+                          color: sealColor,
                         ),
                       ),
-                      const SizedBox(width: 6),
-                      if (isSealed)
-                        const Text(
-                          'TIMELOCKED',
-                          style: TextStyle(
-                            fontSize: 9,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.amber,
-                          ),
+                    ),
+                    const SizedBox(width: 6),
+                    if (isSealed)
+                      const Text(
+                        'TIMELOCKED',
+                        style: TextStyle(
+                          fontSize: 9,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.amber,
                         ),
-                    ],
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  letter.title,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: isDark ? AppColors.darkInk : AppColors.lightInk,
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    letter.title,
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color: isDark ? AppColors.darkInk : AppColors.lightInk,
-                    ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'From ${letter.authorName} · ${letter.writtenDate.split("T").first}',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: isDark ? AppColors.darkSoft : AppColors.lightSoft,
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    'From ${letter.authorName} · ${letter.writtenDate.split("T").first}',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: isDark ? AppColors.darkSoft : AppColors.lightSoft,
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
+          ),
 
-            Icon(
-              Icons.chevron_right,
-              color: isDark ? AppColors.darkSoft : AppColors.lightSoft,
-              size: 20,
-            ),
-          ],
-        ),
+          Icon(
+            Icons.chevron_right,
+            color: isDark ? AppColors.darkSoft : AppColors.lightSoft,
+            size: 20,
+          ),
+        ],
       ),
     );
   }

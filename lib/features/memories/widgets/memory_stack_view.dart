@@ -6,6 +6,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'voice_whisper_player_card.dart';
 import '../../../widgets/sanctuary_voice_player.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/liquid_glass/liquid_glass_theme.dart';
 import '../../../core/widgets/full_screen_video_player.dart';
 import '../../../providers/theme_provider.dart';
 import '../../../providers/memories_provider.dart';
@@ -264,17 +265,32 @@ class _MemoryStackViewState extends State<MemoryStackView> {
         provider.setFilter(filterKey);
       },
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 6.5),
         decoration: BoxDecoration(
           color: isSelected
               ? AppColors.terra
-              : (isDark ? AppColors.darkSurface : AppColors.lightSurface),
+              : (isDark ? Colors.white.withOpacity(0.08) : Colors.white),
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
             color: isSelected
                 ? AppColors.terra
-                : (isDark ? AppColors.darkBorder : AppColors.lightBorder),
+                : (isDark ? Colors.white.withOpacity(0.20) : Colors.black.withOpacity(0.06)),
+            width: 1,
           ),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: AppColors.terra.withOpacity(0.35),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : [
+                  BoxShadow(
+                    color: isDark ? Colors.black.withOpacity(0.2) : Colors.black.withOpacity(0.04),
+                    blurRadius: 4,
+                  ),
+                ],
         ),
         child: Text(
           label,
@@ -334,21 +350,20 @@ class _MemoryStackViewState extends State<MemoryStackView> {
             },
             child: Container(
               decoration: BoxDecoration(
-                color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(
-                  color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(isDark ? 0.2 : 0.04),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
+                borderRadius: BorderRadius.circular(20),
+                gradient: LiquidGlassTheme.specularBorder(isDark),
+                boxShadow: LiquidGlassTheme.cardShadow(isDark),
               ),
-              clipBehavior: Clip.antiAlias,
-              child: Stack(
+              padding: const EdgeInsets.all(1.0),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(19),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF131714) : AppColors.lightSurface,
+                    borderRadius: BorderRadius.circular(19),
+                  ),
+                  clipBehavior: Clip.antiAlias,
+                  child: Stack(
                 fit: StackFit.expand,
                 children: [
                   // 1. Media Preview
@@ -384,16 +399,28 @@ class _MemoryStackViewState extends State<MemoryStackView> {
                         Container(color: Colors.black.withOpacity(0.25)),
                         // Centered Play Pip
                         Center(
-                          child: Container(
-                            width: 36,
-                            height: 36,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: Colors.black.withOpacity(0.6),
-                              border: Border.all(color: Colors.white38, width: 1),
-                            ),
-                            child: const Center(
-                              child: Icon(Icons.play_arrow_rounded, color: Colors.white, size: 22),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(22),
+                            child: BackdropFilter(
+                              filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+                              child: Container(
+                                width: 44,
+                                height: 44,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: Colors.black.withOpacity(0.45),
+                                  border: Border.all(color: Colors.white.withOpacity(0.45), width: 1.2),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.35),
+                                      blurRadius: 10,
+                                    ),
+                                  ],
+                                ),
+                                child: const Center(
+                                  child: Icon(Icons.play_arrow_rounded, color: Colors.white, size: 26),
+                                ),
+                              ),
                             ),
                           ),
                         ),
@@ -407,33 +434,40 @@ class _MemoryStackViewState extends State<MemoryStackView> {
                   Positioned(
                     top: 8,
                     right: 8,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.6),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            memory.mediaType == 'video'
-                                ? Icons.videocam_rounded
-                                : (memory.mediaType == 'audio' ? Icons.graphic_eq_rounded : Icons.photo_camera_rounded),
-                            size: 11,
-                            color: Colors.white,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3.5),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.45),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: Colors.white.withOpacity(0.3), width: 0.8),
                           ),
-                          const SizedBox(width: 3),
-                          Text(
-                            memory.mediaType.toUpperCase(),
-                            style: const TextStyle(
-                              fontSize: 8.5,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                              letterSpacing: 0.4,
-                            ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                memory.mediaType == 'video'
+                                    ? Icons.videocam_rounded
+                                    : (memory.mediaType == 'audio' ? Icons.graphic_eq_rounded : Icons.photo_camera_rounded),
+                                size: 11,
+                                color: Colors.white,
+                              ),
+                              const SizedBox(width: 3.5),
+                              Text(
+                                memory.mediaType.toUpperCase(),
+                                style: const TextStyle(
+                                  fontSize: 8.5,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                  letterSpacing: 0.4,
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
+                        ),
                       ),
                     ),
                   ),
@@ -443,48 +477,56 @@ class _MemoryStackViewState extends State<MemoryStackView> {
                     bottom: 0,
                     left: 0,
                     right: 0,
-                    child: Container(
-                      padding: const EdgeInsets.fromLTRB(10, 16, 10, 8),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.transparent,
-                            Colors.black.withOpacity(0.8),
-                          ],
+                    child: ClipRRect(
+                      borderRadius: const BorderRadius.vertical(bottom: Radius.circular(19)),
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                        child: Container(
+                          padding: const EdgeInsets.fromLTRB(10, 14, 10, 8),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                Colors.transparent,
+                                Colors.black.withOpacity(0.8),
+                              ],
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                memory.title.isNotEmpty ? memory.title : 'Memory',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              const SizedBox(height: 1),
+                              Text(
+                                memory.createdAt.split('T').first,
+                                style: TextStyle(
+                                  fontSize: 9.5,
+                                  color: Colors.white.withOpacity(0.75),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            memory.title.isNotEmpty ? memory.title : 'Memory',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                          ),
-                          const SizedBox(height: 1),
-                          Text(
-                            memory.createdAt.split('T').first,
-                            style: TextStyle(
-                              fontSize: 9.5,
-                              color: Colors.white.withOpacity(0.75),
-                            ),
-                          ),
-                        ],
                       ),
                     ),
                   ),
                 ],
               ),
             ),
-          );
+          ),
+        ),
+      );
         },
       ),
     );
@@ -504,23 +546,22 @@ class _MemoryStackViewState extends State<MemoryStackView> {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
         borderRadius: BorderRadius.circular(26),
-        border: Border.all(
-          color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        gradient: LiquidGlassTheme.specularBorder(isDark),
+        boxShadow: LiquidGlassTheme.cardShadow(isDark),
       ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+      padding: const EdgeInsets.all(1.0),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(25),
+        child: Container(
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF131714) : AppColors.lightSurface,
+            borderRadius: BorderRadius.circular(25),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
           // 1. Media Area (Photo or Video preview)
           if (memory.mediaType == 'photo' && memory.mediaUrl.isNotEmpty)
             GestureDetector(
@@ -787,7 +828,9 @@ class _MemoryStackViewState extends State<MemoryStackView> {
           ),
         ),
       ),
-    );
+    ),
+  ),
+);
   }
 
   /// High-resolution video thumbnail generator with Cloudinary & ImageKit support
