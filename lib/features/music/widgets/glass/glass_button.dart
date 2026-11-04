@@ -10,6 +10,10 @@ class GlassButton extends StatefulWidget {
   final EdgeInsetsGeometry? padding;
   final double radius;
   final Color? tint;
+  final Color? tintColor;
+  final Color? borderColor;
+  final double? width;
+  final double? height;
   final bool isCircle;
 
   const GlassButton({
@@ -19,6 +23,10 @@ class GlassButton extends StatefulWidget {
     this.padding,
     this.radius = GlassTokens.radiusPill,
     this.tint,
+    this.tintColor,
+    this.borderColor,
+    this.width,
+    this.height,
     this.isCircle = false,
   });
 
@@ -64,6 +72,11 @@ class _GlassButtonState extends State<GlassButton> with SingleTickerProviderStat
 
   @override
   Widget build(BuildContext context) {
+    final effectiveTint = widget.tintColor ?? widget.tint;
+    final effectiveBorder = widget.borderColor != null
+        ? Border.all(color: widget.borderColor!, width: GlassTokens.borderWidth)
+        : Border.all(color: GlassTokens.glassBorder, width: GlassTokens.borderWidth);
+
     return RepaintBoundary(
       child: GestureDetector(
         onTapDown: _onTapDown,
@@ -81,23 +94,22 @@ class _GlassButtonState extends State<GlassButton> with SingleTickerProviderStat
             child: BackdropFilter(
               filter: ImageFilter.blur(sigmaX: GlassTokens.blurNormal, sigmaY: GlassTokens.blurNormal),
               child: Container(
+                width: widget.width,
+                height: widget.height,
                 padding: widget.padding ?? const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 decoration: BoxDecoration(
-                  gradient: widget.tint != null
+                  gradient: effectiveTint != null
                       ? LinearGradient(
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                           colors: [
-                            widget.tint!.withOpacity(0.35),
-                            widget.tint!.withOpacity(0.15),
+                            effectiveTint.withOpacity(0.35),
+                            effectiveTint.withOpacity(0.15),
                           ],
                         )
                       : GlassTokens.glassGradient,
                   borderRadius: BorderRadius.circular(widget.radius),
-                  border: Border.all(
-                    color: GlassTokens.glassBorder,
-                    width: GlassTokens.borderWidth,
-                  ),
+                  border: effectiveBorder,
                   shape: widget.isCircle ? BoxShape.circle : BoxShape.rectangle,
                 ),
                 child: widget.child,

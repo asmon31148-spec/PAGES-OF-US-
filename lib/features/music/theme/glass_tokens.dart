@@ -48,6 +48,7 @@ class GlassTokens {
   static const Color textPrimary = Colors.white;
   static final Color textSecondary = Colors.white.withOpacity(0.65);
   static final Color textMuted = Colors.white.withOpacity(0.40);
+  static const Color accent = Color(0xFFE07A5F);
   static const Color accentTerra = Color(0xFFE07A5F);
   static const Color accentEmerald = Color(0xFF10B981);
 

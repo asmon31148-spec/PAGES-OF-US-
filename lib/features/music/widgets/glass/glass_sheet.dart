@@ -17,8 +17,8 @@ class GlassSheet extends StatelessWidget {
     this.maxHeight = 0.85,
   });
 
-  static Future<T?> show<T>({
-    required BuildContext context,
+  static Future<T?> show<T>(
+    BuildContext context, {
     required Widget child,
     String? title,
     Widget? trailing,

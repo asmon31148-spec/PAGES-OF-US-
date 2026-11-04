@@ -12,6 +12,7 @@ class GlassCard extends StatelessWidget {
   final double? width;
   final double? height;
   final Color? tintColor;
+  final Color? borderColor;
   final double blurSigma;
   final VoidCallback? onTap;
   final Border? customBorder;
@@ -25,6 +26,7 @@ class GlassCard extends StatelessWidget {
     this.width,
     this.height,
     this.tintColor,
+    this.borderColor,
     this.blurSigma = GlassTokens.blurNormal,
     this.onTap,
     this.customBorder,
@@ -59,10 +61,12 @@ class GlassCard extends StatelessWidget {
                   : GlassTokens.glassGradient,
               borderRadius: BorderRadius.circular(radius),
               border: customBorder ??
-                  Border.all(
-                    color: GlassTokens.glassBorder,
-                    width: GlassTokens.borderWidth,
-                  ),
+                  (borderColor != null
+                      ? Border.all(color: borderColor!, width: GlassTokens.borderWidth)
+                      : Border.all(
+                          color: GlassTokens.glassBorder,
+                          width: GlassTokens.borderWidth,
+                        )),
             ),
             child: child,
           ),

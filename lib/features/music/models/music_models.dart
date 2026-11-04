@@ -101,6 +101,8 @@ class PlaylistItem {
     required this.songIds,
   });
 
+  int get songCount => songIds.length;
+
   Map<String, dynamic> toJson() {
     return {
       'id': id,
