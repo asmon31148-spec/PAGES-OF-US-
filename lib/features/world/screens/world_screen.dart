@@ -35,8 +35,18 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
   AnimationController? _mapAnimationController;
   bool _isMapReady = false;
   bool _hasInitialMapCentered = false;
+  String? _lastFittedCoordKey;
   bool _isFullScreenMap = false;
   MapBasemapStyle _mapStyle = MapBasemapStyle.streets;
+
+  String _cleanDisplayAddress(String? raw) {
+    if (raw == null || raw.trim().isEmpty) return 'Locating...';
+    final parts = raw.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
+    if (parts.length >= 2 && parts[0].toLowerCase() == parts[1].toLowerCase()) {
+      return parts[0];
+    }
+    return raw;
+  }
 
   @override
   void initState() {
@@ -203,19 +213,26 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
       distanceKm ??= worldProvider.liveDistanceKm;
     }
 
-    // Default center point: User location, partner location, or global overview
-    final defaultCenter = (myLoc != null && (myLoc.lat != 0.0 || myLoc.lng != 0.0))
-        ? LatLng(myLoc.lat, myLoc.lng)
-        : (hasPartner && partnerLoc != null && (partnerLoc.lat != 0.0 || partnerLoc.lng != 0.0))
-            ? LatLng(partnerLoc.lat, partnerLoc.lng)
-            : const LatLng(20.0, 0.0);
+    final hasMyValid = myLoc != null && (myLoc.lat != 0.0 || myLoc.lng != 0.0);
+    final hasPartnerValid = hasPartner && partnerLoc != null && (partnerLoc.lat != 0.0 || partnerLoc.lng != 0.0);
 
-    // Automatic camera fly-to when user's location is first acquired
-    if (_isMapReady && !_hasInitialMapCentered && myLoc != null && (myLoc.lat != 0.0 || myLoc.lng != 0.0)) {
+    // Default center point: Midpoint between both partners, or user/partner location
+    final defaultCenter = (hasMyValid && hasPartnerValid)
+        ? LatLng((myLoc.lat + partnerLoc.lat) / 2, (myLoc.lng + partnerLoc.lng) / 2)
+        : (hasMyValid
+            ? LatLng(myLoc.lat, myLoc.lng)
+            : (hasPartnerValid
+                ? LatLng(partnerLoc.lat, partnerLoc.lng)
+                : const LatLng(22.365, 88.432)));
+
+    // Automatic camera fly-to framing BOTH partners at maximum zoom by default
+    final currentCoordKey = '${myLoc?.lat.toStringAsFixed(4)},${myLoc?.lng.toStringAsFixed(4)}_${partnerLoc?.lat.toStringAsFixed(4)},${partnerLoc?.lng.toStringAsFixed(4)}';
+    if (_isMapReady && (!_hasInitialMapCentered || (_lastFittedCoordKey != currentCoordKey && hasPartnerValid))) {
       _hasInitialMapCentered = true;
+      _lastFittedCoordKey = currentCoordKey;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          _animatedMapMove(LatLng(myLoc.lat, myLoc.lng), 15.0);
+        if (mounted && _isMapReady) {
+          _fitMapBounds(myLoc, partnerLoc);
         }
       });
     }
@@ -294,8 +311,14 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
                               now: worldProvider.now,
                             ),
 
-                            // 4. Journey Stats Card — paper plane animation with daily/weekly/monthly travel
-                            JourneyStatsCard(isDark: isDark),
+                            // 4. Journey Stats Card — partner daily activity & animated paper plane flight route
+                            JourneyStatsCard(
+                              isDark: isDark,
+                              partnerNickname: partner?.nickname ?? 'Partner',
+                              partnerAvatarUrl: partner?.avatarUrl,
+                              userNickname: user?.nickname ?? 'You',
+                              userAvatarUrl: user?.avatarUrl,
+                            ),
 
                             // 5. Long-distance Reunion Planner — only shown when > 50 km apart
                             if (hasPartner &&
@@ -623,7 +646,7 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
             mapController: _mapController,
             options: MapOptions(
               initialCenter: defaultCenter,
-              initialZoom: 15.0,
+              initialZoom: 17.5,
               maxZoom: 21.0,
               minZoom: 3.0,
               onMapReady: () {
@@ -977,26 +1000,40 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
   void _fitMapBounds(UserLocationData? myLoc, UserLocationData? partnerLoc) {
     if (!_isMapReady) return;
 
-    if (myLoc != null && partnerLoc != null) {
-      final latDiff = (myLoc.lat - partnerLoc.lat).abs();
-      final lngDiff = (myLoc.lng - partnerLoc.lng).abs();
+    final hasMy = myLoc != null && (myLoc.lat != 0.0 || myLoc.lng != 0.0);
+    final hasPartner = partnerLoc != null && (partnerLoc.lat != 0.0 || partnerLoc.lng != 0.0);
 
-      // If both are very close (same building/room), zoom comfortably
-      if (latDiff < 0.0003 && lngDiff < 0.0003) {
-        _animatedMapMove(LatLng(myLoc.lat, myLoc.lng), 16.0);
+    if (hasMy && hasPartner) {
+      final distanceKm = calculateDistanceKm(myLoc.lat, myLoc.lng, partnerLoc.lat, partnerLoc.lng);
+      final centerLat = (myLoc.lat + partnerLoc.lat) / 2;
+      final centerLng = (myLoc.lng + partnerLoc.lng) / 2;
+      final center = LatLng(centerLat, centerLng);
+
+      if (distanceKm < 0.08) {
+        // Under the same roof or same building/room (< 80 meters):
+        // Zoom to maximum high-detail building/street view (18.2) so both avatars are prominently visible!
+        _animatedMapMove(center, 18.2);
+      } else if (distanceKm < 0.35) {
+        // Within walking distance / neighborhood:
+        _animatedMapMove(center, 17.2);
       } else {
+        // Maximum zoom fitting both pins with comfortable padding:
         final bounds = LatLngBounds(
           LatLng(myLoc.lat, myLoc.lng),
           LatLng(partnerLoc.lat, partnerLoc.lng),
         );
         _mapController.fitCamera(
-          CameraFit.bounds(bounds: bounds, padding: const EdgeInsets.all(55)),
+          CameraFit.bounds(
+            bounds: bounds,
+            padding: const EdgeInsets.symmetric(horizontal: 45, vertical: 40),
+            maxZoom: 18.0,
+          ),
         );
       }
-    } else if (myLoc != null) {
-      _animatedMapMove(LatLng(myLoc.lat, myLoc.lng), 15.0);
-    } else if (partnerLoc != null) {
-      _animatedMapMove(LatLng(partnerLoc.lat, partnerLoc.lng), 15.0);
+    } else if (hasMy) {
+      _animatedMapMove(LatLng(myLoc.lat, myLoc.lng), 17.5);
+    } else if (hasPartner) {
+      _animatedMapMove(LatLng(partnerLoc.lat, partnerLoc.lng), 17.5);
     }
   }
 
@@ -1197,7 +1234,7 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
                   ),
                 ),
                 Text(
-                  myLoc?.placeName ?? 'Locating...',
+                  _cleanDisplayAddress(myLoc?.placeName),
                   style: TextStyle(
                     fontSize: 10,
                     color: isDark ? AppColors.darkSoft : AppColors.lightSoft,
@@ -1284,7 +1321,7 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
                     ),
                   ),
                   Text(
-                    partnerLoc.placeName ?? 'Locating...',
+                    _cleanDisplayAddress(partnerLoc.placeName),
                     style: TextStyle(
                       fontSize: 10,
                       color: isDark ? AppColors.darkSoft : AppColors.lightSoft,
@@ -1591,7 +1628,7 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
-                          'You: ${myLoc?.placeName ?? "Locating..."}',
+                          'You: ${_cleanDisplayAddress(myLoc?.placeName)}',
                           style: TextStyle(
                             fontSize: 10.5,
                             color: isDark ? Colors.white60 : Colors.black54,
@@ -1612,7 +1649,7 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
                       Expanded(
                         child: Text(
                           partnerLoc != null
-                              ? '$partnerNickname: ${partnerLoc.placeName ?? "Locating..."} ($partnerActiveStatus)'
+                              ? '$partnerNickname: ${_cleanDisplayAddress(partnerLoc.placeName)} ($partnerActiveStatus)'
                               : '$partnerNickname: Awaiting signal',
                           style: TextStyle(
                             fontSize: 10.5,
