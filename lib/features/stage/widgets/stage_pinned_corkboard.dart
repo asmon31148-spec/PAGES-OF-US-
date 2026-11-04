@@ -188,17 +188,42 @@ class _StagePinnedCorkboardState extends State<StagePinnedCorkboard> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Text('✍️ ', style: TextStyle(fontSize: 11)),
-                            Text(
-                              'From You',
-                              style: TextStyle(
-                                fontSize: 11.5,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 0.2,
-                                color: isDark ? AppColors.sageLight : AppColors.sage,
-                              ),
+                            Row(
+                              children: [
+                                const Text('✍️ ', style: TextStyle(fontSize: 11)),
+                                Text(
+                                  'From You',
+                                  style: TextStyle(
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 0.2,
+                                    color: isDark ? AppColors.sageLight : AppColors.sage,
+                                  ),
+                                ),
+                              ],
                             ),
+                            if (myNote?.isNotEmpty == true)
+                              GestureDetector(
+                                onTap: () async {
+                                  if (space != null && user != null) {
+                                    await stageProvider.savePinnedNote(space.id, user.id, user.nickname, '');
+                                  }
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.all(2),
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: (isDark ? Colors.white : Colors.black).withOpacity(0.06),
+                                  ),
+                                  child: Icon(
+                                    Icons.close_rounded,
+                                    size: 14,
+                                    color: isDark ? AppColors.darkSoft : AppColors.lightSoft,
+                                  ),
+                                ),
+                              ),
                           ],
                         ),
                         const SizedBox(height: 7),
