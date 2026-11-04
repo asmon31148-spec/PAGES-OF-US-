@@ -13,6 +13,12 @@ import '../widgets/lyrics_sheet.dart';
 import 'listen_together_screen.dart';
 import 'now_playing_screen.dart';
 import '../widgets/music_interactive_scrubber.dart';
+import '../theme/glass_tokens.dart';
+import '../widgets/glass/glass_ambient_background.dart';
+import '../widgets/glass/glass_card.dart';
+import '../widgets/glass/glass_button.dart';
+import '../widgets/glass/glass_mini_player.dart';
+import '../widgets/glass/glass_sheet.dart';
 
 class MusicSanctuaryScreen extends StatefulWidget {
   const MusicSanctuaryScreen({super.key});
@@ -27,6 +33,9 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final audioProvider = context.watch<AudioProvider>();
+    final currentSong = audioProvider.currentSong;
+
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
@@ -37,65 +46,55 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
       ),
       child: Scaffold(
         backgroundColor: const Color(0xFF07100B),
-      body: Stack(
-        children: [
-          // Ambient Warm Glow top-right (matching reference screenshots)
-          Positioned(
-            top: -60,
-            right: -60,
-            child: Container(
-              width: 260,
-              height: 260,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    const Color(0xFFD97706).withOpacity(0.28),
-                    Colors.transparent,
-                  ],
-                ),
-              ),
-            ),
-          ),
-
-          SafeArea(
+        bottomNavigationBar: const SafeArea(
+          top: false,
+          child: GlassMiniPlayer(),
+        ),
+        body: GlassAmbientBackground(
+          imageUrl: currentSong.thumbnailUrl,
+          fallbackColor: currentSong.coverColor,
+          child: SafeArea(
+            bottom: false,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Top Header: Back (<), Title, Search (🔍), Add (+)
+                // Top Header: Back (<), Title, Headphones, Search (🔍), Add (+)
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   child: Row(
                     children: [
-                      _buildCircleIconButton(
-                        icon: Icons.arrow_back_ios_new_rounded,
+                      GlassButton(
                         onTap: () => Navigator.pop(context),
+                        width: 42,
+                        height: 42,
+                        child: const Center(
+                          child: Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 18),
+                        ),
                       ),
                       const SizedBox(width: 14),
                       Text(
-                        _activeTabIndex == 3 ? 'Atmosphere' : (_activeTabIndex == 2 ? 'Downloaded' : 'Music'),
+                        _activeTabIndex == 3
+                            ? 'Atmosphere'
+                            : (_activeTabIndex == 2
+                                ? 'Downloaded'
+                                : (_activeTabIndex == 1 ? 'Playlists' : 'Music Sanctuary')),
                         style: const TextStyle(
-                          fontSize: 24,
+                          fontSize: 22,
                           fontWeight: FontWeight.bold,
                           color: Colors.white,
                           letterSpacing: -0.5,
                         ),
                       ),
                       const Spacer(),
-                      _buildCircleIconButton(
-                        icon: context.watch<AudioProvider>().allowBackgroundPlayback
-                            ? Icons.headphones_rounded
-                            : Icons.headphones_outlined,
-                        iconColor: context.watch<AudioProvider>().allowBackgroundPlayback
-                            ? const Color(0xFFE07A5F)
-                            : Colors.white70,
+                      GlassButton(
+                        width: 42,
+                        height: 42,
                         onTap: () {
-                          final prov = context.read<AudioProvider>();
-                          prov.toggleBackgroundPlayback();
+                          audioProvider.toggleBackgroundPlayback();
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: Text(
-                                prov.allowBackgroundPlayback
+                                audioProvider.allowBackgroundPlayback
                                     ? 'Background playback enabled (plays outside app)'
                                     : 'Background playback disabled (pauses on exit)',
                               ),
@@ -104,39 +103,45 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
                             ),
                           );
                         },
+                        child: Icon(
+                          audioProvider.allowBackgroundPlayback
+                              ? Icons.headphones_rounded
+                              : Icons.headphones_outlined,
+                          color: audioProvider.allowBackgroundPlayback
+                              ? GlassTokens.accent
+                              : Colors.white70,
+                          size: 20,
+                        ),
                       ),
                       const SizedBox(width: 8),
-                      _buildCircleIconButton(
-                        icon: Icons.search_rounded,
+                      GlassButton(
+                        width: 42,
+                        height: 42,
                         onTap: () => YoutubeMusicSearchSheet.show(context),
+                        child: const Icon(Icons.search_rounded, color: Colors.white, size: 20),
                       ),
-                      const SizedBox(width: 10),
-                      GestureDetector(
+                      const SizedBox(width: 8),
+                      GlassButton(
+                        width: 42,
+                        height: 42,
+                        tintColor: GlassTokens.accent.withOpacity(0.35),
+                        borderColor: GlassTokens.accent.withOpacity(0.7),
                         onTap: () => _showAddSongDialog(context),
-                        child: Container(
-                          width: 42,
-                          height: 42,
-                          decoration: const BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: Color(0xFFE07A5F),
-                          ),
-                          child: const Center(
-                            child: Icon(Icons.add_rounded, color: Colors.black, size: 24),
-                          ),
-                        ),
+                        child: const Icon(Icons.add_rounded, color: Colors.white, size: 24),
                       ),
                     ],
                   ),
                 ),
 
-                // Segmented Pill: Songs | Playlists | Atmosphere
+                // Segmented Pill: Songs | Playlists | Offline | Atmosphere
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                   child: Container(
                     padding: const EdgeInsets.all(4),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF1E1A14), // Dark warm brown pill container
+                      color: Colors.white.withOpacity(0.06),
                       borderRadius: BorderRadius.circular(28),
+                      border: Border.all(color: Colors.white12),
                     ),
                     child: Row(
                       children: [
@@ -164,30 +169,33 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
               ],
             ),
           ),
-        ],
+        ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   Widget _buildTabPill(String title, int index) {
     final isSelected = _activeTabIndex == index;
     return Expanded(
       child: GestureDetector(
-        onTap: () => setState(() => _activeTabIndex = index),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 10),
+        onTap: () {
+          HapticFeedback.selectionClick();
+          setState(() => _activeTabIndex = index);
+        },
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(vertical: 8),
           decoration: BoxDecoration(
-            color: isSelected ? const Color(0xFFE07A5F) : Colors.transparent,
+            color: isSelected ? GlassTokens.accent : Colors.transparent,
             borderRadius: BorderRadius.circular(24),
           ),
           child: Center(
             child: Text(
               title,
               style: TextStyle(
-                fontSize: 12.5,
+                fontSize: 12,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                color: isSelected ? Colors.white : const Color(0xFF94A3B8),
+                color: isSelected ? Colors.white : GlassTokens.textSecondary,
               ),
             ),
           ),
@@ -197,16 +205,16 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
   }
 
   // -------------------------------------------------------------
-  // TAB 1: SONGS VIEW (Matches Image 1)
+  // TAB 1: SONGS VIEW (Apple iOS 26 Liquid Glass)
   // -------------------------------------------------------------
   Widget _buildSongsView(BuildContext context) {
     final audioProvider = context.watch<AudioProvider>();
-    final currentSong = audioProvider.currentSong;
-    final isPlaying = audioProvider.isSongPlaying;
-    final pos = audioProvider.songPosition;
-    final dur = audioProvider.songDuration;
-    final progress = dur.inMilliseconds > 0 ? (pos.inMilliseconds / dur.inMilliseconds).clamp(0.0, 1.0) : 0.0;
+    final authProvider = context.watch<AuthProvider>();
+    final partner = authProvider.partner;
+    final partnerName = (partner?.nickname.isNotEmpty ?? false) ? partner!.nickname : 'Partner';
     final songs = audioProvider.songs;
+    final playlists = audioProvider.playlists;
+
     var displaySongs = List<SongItem>.from(songs);
     if (_sortMode == 'title') {
       displaySongs.sort((a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
@@ -216,297 +224,327 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
       displaySongs = displaySongs.where((s) => s.isLocal || MusicDownloadService.instance.isDownloaded(s.id)).toList();
     }
 
+    final recentSongs = songs.take(8).toList();
+
     return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 1. Active Now Playing Card
-          Container(
+          // 1. Listen Together Elevated Glass Hero Card
+          GlassCard(
             padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: const Color(0xFF111E16),
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: const Color(0xFF18281E)),
-            ),
-            child: Column(
+            child: Row(
               children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (_) => const NowPlayingScreen()),
-                          );
-                        },
-                        child: Row(
-                          children: [
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(16),
-                              child: currentSong.thumbnailUrl != null && currentSong.thumbnailUrl!.isNotEmpty
-                                  ? CachedNetworkImage(
-                                      imageUrl: currentSong.thumbnailUrl!,
-                                      width: 52,
-                                      height: 52,
-                                      fit: BoxFit.cover,
-                                      errorWidget: (_, __, ___) => Container(
-                                        width: 52,
-                                        height: 52,
-                                        color: currentSong.coverColor,
-                                        child: const Center(
-                                          child: Icon(Icons.music_note_rounded, color: Colors.black87, size: 26),
-                                        ),
-                                      ),
-                                    )
-                                  : Container(
-                                      width: 52,
-                                      height: 52,
-                                      decoration: BoxDecoration(
-                                        borderRadius: BorderRadius.circular(16),
-                                        color: currentSong.coverColor,
-                                      ),
-                                      child: const Center(
-                                        child: Icon(Icons.music_note_rounded, color: Colors.black87, size: 26),
-                                      ),
-                                    ),
-                            ),
-                            const SizedBox(width: 14),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    audioProvider.isSongBuffering
-                                        ? (audioProvider.bufferingSongTitle ?? currentSong.title)
-                                        : currentSong.title,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Row(
-                                    children: [
-                                      if (audioProvider.isSongBuffering) ...[
-                                        const SizedBox(
-                                          width: 10,
-                                          height: 10,
-                                          child: CircularProgressIndicator(strokeWidth: 1.5, color: Color(0xFFE07A5F)),
-                                        ),
-                                        const SizedBox(width: 6),
-                                        const Text(
-                                          'Buffering audio...',
-                                          style: TextStyle(fontSize: 11, color: Color(0xFFE07A5F), fontWeight: FontWeight.w600),
-                                        ),
-                                      ] else ...[
-                                        if (currentSong.isLocal || MusicDownloadService.instance.isDownloaded(currentSong.id)) ...[
-                                          const Icon(Icons.offline_pin_rounded, size: 12, color: Color(0xFFE07A5F)),
-                                          const SizedBox(width: 4),
-                                        ],
-                                        Expanded(
-                                          child: Text(
-                                            currentSong.artist,
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: const TextStyle(
-                                              fontSize: 11,
-                                              color: Color(0xFF94A3B8),
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(16),
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFFE07A5F), Color(0xFFF97316)],
                     ),
-                    const SizedBox(width: 6),
-                    GestureDetector(
-                      onTap: () {
-                        LyricsSheet.show(
-                          context,
-                          title: currentSong.title,
-                          artist: currentSong.artist,
-                          durationSeconds: currentSong.durationSeconds,
-                        );
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF18281E),
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: const Color(0xFF243B2C)),
-                        ),
-                        child: const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.mic_external_on_rounded, size: 14, color: Color(0xFFFDE047)),
-                            SizedBox(width: 4),
-                            Text('Lyrics', style: TextStyle(fontSize: 11, color: Color(0xFFFDE047), fontWeight: FontWeight.bold)),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    GestureDetector(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => const NowPlayingScreen()),
-                        );
-                      },
-                      child: Container(
-                        width: 32,
-                        height: 32,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF18281E),
-                          shape: BoxShape.circle,
-                          border: Border.all(color: const Color(0xFF243B2C)),
-                        ),
-                        child: const Center(
-                          child: Icon(Icons.open_in_full_rounded, size: 14, color: Colors.white70),
-                        ),
-                      ),
-                    ),
-                  ],
+                  ),
+                  child: const Center(
+                    child: Icon(Icons.people_alt_rounded, color: Colors.white, size: 24),
+                  ),
                 ),
-                const SizedBox(height: 16),
-
-                // Smooth Interactive Music Scrubber (Finger dragging to any sec)
-                ValueListenableBuilder<Duration>(
-                  valueListenable: audioProvider.songPositionNotifier,
-                  builder: (context, livePos, _) {
-                    return MusicInteractiveScrubber(
-                      position: livePos,
-                      duration: dur,
-                      onSeek: (target) => audioProvider.seekSong(target),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Text(
+                            'Listen Together',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF86EFAC).withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Text(
+                              'LIVE',
+                              style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Color(0xFF86EFAC)),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Shared synced room with $partnerName',
+                        style: const TextStyle(fontSize: 11.5, color: GlassTokens.textSecondary),
+                      ),
+                    ],
+                  ),
+                ),
+                GlassButton(
+                  onTap: () {
+                    HapticFeedback.mediumImpact();
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const ListenTogetherScreen()),
                     );
                   },
-                ),
-                const SizedBox(height: 10),
-
-                // Controls: Previous, Play/Pause (Lime circle), Next
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.skip_previous_rounded, color: Colors.white, size: 26),
-                      onPressed: () => audioProvider.prevSong(),
-                    ),
-                    const SizedBox(width: 18),
-                    GestureDetector(
-                      onTap: () => audioProvider.toggleSongPlay(),
-                      child: Container(
-                        width: 52,
-                        height: 52,
-                        decoration: const BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Color(0xFFE07A5F),
-                        ),
-                        child: Center(
-                          child: audioProvider.isSongBuffering
-                              ? const SizedBox(
-                                  width: 22,
-                                  height: 22,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2.2,
-                                    color: Colors.black,
-                                  ),
-                                )
-                              : Icon(
-                                  isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
-                                  color: Colors.black,
-                                  size: 28,
-                                ),
-                        ),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Open',
+                        style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
                       ),
-                    ),
-                    const SizedBox(width: 18),
-                    IconButton(
-                      icon: const Icon(Icons.skip_next_rounded, color: Colors.white, size: 26),
-                      onPressed: () => audioProvider.nextSong(),
-                    ),
-                  ],
+                      SizedBox(width: 4),
+                      Icon(Icons.arrow_forward_ios_rounded, color: Colors.white70, size: 11),
+                    ],
+                  ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 20),
 
-          // 2. Listen Together Banner Card
-          GestureDetector(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const ListenTogetherScreen()),
-              );
-            },
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-              decoration: BoxDecoration(
-                color: const Color(0xFF111E16),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: const Color(0xFF18281E)),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(14),
-                      color: const Color(0xFFF97316),
-                    ),
-                    child: const Center(
-                      child: Icon(Icons.people_outline_rounded, color: Colors.black87, size: 22),
-                    ),
+          // 2. Recently Played Horizontal Carousel (if songs exist)
+          if (recentSongs.isNotEmpty) ...[
+            const Row(
+              children: [
+                Icon(Icons.history_rounded, size: 16, color: GlassTokens.accent),
+                SizedBox(width: 6),
+                Text(
+                  'Recently Played',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
                   ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: const [
-                        Text(
-                          'Listen together',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            SizedBox(
+              height: 148,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                physics: const BouncingScrollPhysics(),
+                itemCount: recentSongs.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 12),
+                itemBuilder: (context, index) {
+                  final song = recentSongs[index];
+                  final originalIndex = songs.indexOf(song);
+                  return GestureDetector(
+                    onTap: () {
+                      HapticFeedback.lightImpact();
+                      audioProvider.selectSong(originalIndex);
+                    },
+                    child: SizedBox(
+                      width: 106,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(14),
+                            child: song.thumbnailUrl != null && song.thumbnailUrl!.isNotEmpty
+                                ? CachedNetworkImage(
+                                    imageUrl: song.thumbnailUrl!,
+                                    width: 106,
+                                    height: 106,
+                                    fit: BoxFit.cover,
+                                    errorWidget: (_, __, ___) => Container(
+                                      width: 106,
+                                      height: 106,
+                                      color: song.coverColor,
+                                      child: const Icon(Icons.music_note, color: Colors.black87, size: 32),
+                                    ),
+                                  )
+                                : Container(
+                                    width: 106,
+                                    height: 106,
+                                    color: song.coverColor,
+                                    child: const Icon(Icons.music_note, color: Colors.black87, size: 32),
+                                  ),
                           ),
-                        ),
-                        SizedBox(height: 2),
-                        Text(
-                          'Sync songs with your partner',
-                          style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
-                        ),
-                      ],
+                          const SizedBox(height: 6),
+                          Text(
+                            song.title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                          Text(
+                            song.artist,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: GlassTokens.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                  const Icon(Icons.arrow_forward_ios_rounded, color: Color(0xFF64748B), size: 14),
-                ],
+                  );
+                },
               ),
             ),
-          ),
-          const SizedBox(height: 24),
+            const SizedBox(height: 20),
+          ],
 
-          // 3. Section: "Your songs" & Sort pill
+          // 3. Playlists for Two Section
+          if (playlists.isNotEmpty) ...[
+            Row(
+              children: [
+                const Icon(Icons.queue_music_rounded, size: 16, color: GlassTokens.accent),
+                const SizedBox(width: 6),
+                const Text(
+                  'Your Playlists',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                const Spacer(),
+                GestureDetector(
+                  onTap: () => setState(() => _activeTabIndex = 1),
+                  child: const Text(
+                    'See all',
+                    style: TextStyle(fontSize: 12, color: GlassTokens.accent, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            SizedBox(
+              height: 124,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                physics: const BouncingScrollPhysics(),
+                itemCount: playlists.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 12),
+                itemBuilder: (context, index) {
+                  final pl = playlists[index];
+                  return SizedBox(
+                    width: 175,
+                    child: GlassCard(
+                      padding: const EdgeInsets.all(12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                width: 34,
+                                height: 34,
+                                decoration: BoxDecoration(
+                                  color: pl.coverColor.withOpacity(0.4),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Center(
+                                  child: Icon(Icons.music_note, color: pl.coverColor, size: 18),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      pl.title,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                    Text(
+                                      '${pl.songCount} songs',
+                                      style: const TextStyle(fontSize: 10.5, color: GlassTokens.textSecondary),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          const Spacer(),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: GlassButton(
+                                  onTap: () => audioProvider.playPlaylist(pl),
+                                  padding: const EdgeInsets.symmetric(vertical: 5),
+                                  child: const Center(
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(Icons.play_arrow_rounded, size: 14, color: Colors.white),
+                                        SizedBox(width: 2),
+                                        Text('Play', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: GlassButton(
+                                  onTap: () {
+                                    audioProvider.queuePlaylist(pl);
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text('Queued "${pl.title}" (${pl.songCount} tracks) ✦'),
+                                        duration: const Duration(seconds: 2),
+                                        behavior: SnackBarBehavior.floating,
+                                      ),
+                                    );
+                                  },
+                                  padding: const EdgeInsets.symmetric(vertical: 5),
+                                  child: const Center(
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(Icons.playlist_add_rounded, size: 14, color: GlassTokens.accent),
+                                        SizedBox(width: 2),
+                                        Text('Queue', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 20),
+          ],
+
+          // 4. All Songs / Library Header & Sort
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Row(
                 children: [
                   const Text(
-                    'Your songs',
+                    'All Songs',
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
@@ -517,12 +555,12 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF18281E),
+                      color: Colors.white.withOpacity(0.08),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Text(
                       '${displaySongs.length}',
-                      style: const TextStyle(fontSize: 11, color: Color(0xFFE07A5F), fontWeight: FontWeight.bold),
+                      style: const TextStyle(fontSize: 11, color: GlassTokens.accent, fontWeight: FontWeight.bold),
                     ),
                   ),
                 ],
@@ -532,9 +570,9 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF18281E),
+                    color: Colors.white.withOpacity(0.06),
                     borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: const Color(0xFF243B2C)),
+                    border: Border.all(color: Colors.white12),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -547,10 +585,10 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
                                 : _sortMode == 'offline'
                                     ? 'Offline Only'
                                     : 'Recent',
-                        style: const TextStyle(fontSize: 11, color: Color(0xFFE07A5F), fontWeight: FontWeight.bold),
+                        style: const TextStyle(fontSize: 11, color: GlassTokens.accent, fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(width: 4),
-                      const Icon(Icons.sort_rounded, size: 13, color: Color(0xFFE07A5F)),
+                      const Icon(Icons.sort_rounded, size: 13, color: GlassTokens.accent),
                     ],
                   ),
                 ),
@@ -560,24 +598,27 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
           const SizedBox(height: 12),
 
           if (displaySongs.isEmpty)
-            Container(
+            GlassCard(
               padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 20),
-              alignment: Alignment.center,
-              child: Column(
-                children: [
-                  Icon(Icons.music_off_outlined, color: Colors.white.withOpacity(0.25), size: 40),
-                  const SizedBox(height: 12),
-                  Text(
-                    _sortMode == 'offline' ? 'No offline songs downloaded yet' : 'No songs in sanctuary',
-                    style: const TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.w600),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    _sortMode == 'offline' ? 'Tap search above to find songs and download them' : 'Tap the + button above to upload custom music',
-                    style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 12),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
+              child: Center(
+                child: Column(
+                  children: [
+                    Icon(Icons.music_off_outlined, color: Colors.white.withOpacity(0.25), size: 40),
+                    const SizedBox(height: 12),
+                    Text(
+                      _sortMode == 'offline' ? 'No offline songs downloaded yet' : 'No songs in library',
+                      style: const TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      _sortMode == 'offline'
+                          ? 'Tap search above to find songs and download them'
+                          : 'Search YouTube Music or upload audio files to start listening',
+                      style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 12),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
               ),
             )
           else
@@ -593,32 +634,45 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
                 final isOffline = song.isLocal || MusicDownloadService.instance.isDownloaded(song.id);
 
                 return GestureDetector(
-                  onTap: () => audioProvider.selectSong(originalIndex),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF111E16),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: isCurrent ? const Color(0xFFE07A5F).withOpacity(0.6) : const Color(0xFF18281E),
-                      ),
-                    ),
+                  onTap: () {
+                    HapticFeedback.lightImpact();
+                    audioProvider.selectSong(originalIndex);
+                  },
+                  child: GlassCard(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    borderColor: isCurrent ? GlassTokens.accent.withOpacity(0.7) : null,
+                    tintColor: isCurrent ? GlassTokens.accent.withOpacity(0.12) : null,
                     child: Row(
                       children: [
-                        Container(
-                          width: 44,
-                          height: 44,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(12),
-                            color: song.coverColor,
-                          ),
-                          child: Center(
-                            child: Icon(
-                              isCurrent && isPlaying ? Icons.equalizer_rounded : Icons.music_note_rounded,
-                              color: Colors.black87,
-                              size: 20,
-                            ),
-                          ),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: song.thumbnailUrl != null && song.thumbnailUrl!.isNotEmpty
+                              ? CachedNetworkImage(
+                                  imageUrl: song.thumbnailUrl!,
+                                  width: 44,
+                                  height: 44,
+                                  fit: BoxFit.cover,
+                                  errorWidget: (_, __, ___) => Container(
+                                    width: 44,
+                                    height: 44,
+                                    color: song.coverColor,
+                                    child: Icon(
+                                      isCurrent && audioProvider.isSongPlaying ? Icons.equalizer_rounded : Icons.music_note_rounded,
+                                      color: Colors.black87,
+                                      size: 20,
+                                    ),
+                                  ),
+                                )
+                              : Container(
+                                  width: 44,
+                                  height: 44,
+                                  color: song.coverColor,
+                                  child: Icon(
+                                    isCurrent && audioProvider.isSongPlaying ? Icons.equalizer_rounded : Icons.music_note_rounded,
+                                    color: Colors.black87,
+                                    size: 20,
+                                  ),
+                                ),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
@@ -627,17 +681,19 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
                             children: [
                               Text(
                                 song.title,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
-                                  fontSize: 13,
+                                  fontSize: 13.5,
                                   fontWeight: FontWeight.bold,
-                                  color: isCurrent ? const Color(0xFFE07A5F) : Colors.white,
+                                  color: isCurrent ? GlassTokens.accent : Colors.white,
                                 ),
                               ),
                               const SizedBox(height: 2),
                               Row(
                                 children: [
                                   if (isOffline) ...[
-                                    const Icon(Icons.offline_pin_rounded, size: 12, color: Color(0xFFE07A5F)),
+                                    const Icon(Icons.offline_pin_rounded, size: 12, color: GlassTokens.accent),
                                     const SizedBox(width: 4),
                                   ],
                                   Expanded(
@@ -646,8 +702,8 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                       style: const TextStyle(
-                                        fontSize: 11,
-                                        color: Color(0xFF94A3B8),
+                                        fontSize: 11.5,
+                                        color: GlassTokens.textSecondary,
                                       ),
                                     ),
                                   ),
@@ -657,7 +713,7 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
                           ),
                         ),
                         IconButton(
-                          icon: const Icon(Icons.more_horiz_rounded, color: Color(0xFF64748B), size: 18),
+                          icon: const Icon(Icons.more_horiz_rounded, color: Colors.white70, size: 20),
                           onPressed: () => _showSongOptions(context, song),
                         ),
                       ],
@@ -666,15 +722,13 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
                 );
               },
             ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 40),
         ],
       ),
     );
   }
-
   // -------------------------------------------------------------
-  // -------------------------------------------------------------
-  // TAB: DOWNLOADED VIEW (Offline Music Player)
+  // TAB: DOWNLOADED VIEW (Offline Music Player - Liquid Glass)
   // -------------------------------------------------------------
   Widget _buildDownloadedView(BuildContext context) {
     final downloader = context.watch<MusicDownloadService>();
@@ -683,47 +737,41 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
 
     if (tracks.isEmpty) {
       return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 70,
-              height: 70,
-              decoration: BoxDecoration(
-                color: const Color(0xFF111E16),
-                borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: const Color(0xFF18281E)),
-              ),
-              alignment: Alignment.center,
-              child: const Text('💾', style: TextStyle(fontSize: 32)),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: GlassCard(
+            padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('💾', style: TextStyle(fontSize: 36)),
+                const SizedBox(height: 16),
+                const Text(
+                  'No Downloaded Music Yet 🍃',
+                  style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Search any song on YouTube Music and tap ⬇ to listen offline anywhere with zero data.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: GlassTokens.textSecondary, fontSize: 12.5, height: 1.4),
+                ),
+                const SizedBox(height: 20),
+                GlassButton(
+                  onTap: () => YoutubeMusicSearchSheet.show(context),
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.search_rounded, size: 18, color: GlassTokens.accent),
+                      SizedBox(width: 8),
+                      Text('Explore YouTube Music', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 16),
-            const Text(
-              'No Downloaded Music Yet 🍃',
-              style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 36),
-              child: Text(
-                'Search any song on YouTube Music and tap ⬇ to listen offline anywhere with zero data.',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12.5, height: 1.4),
-              ),
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton.icon(
-              onPressed: () => YoutubeMusicSearchSheet.show(context),
-              icon: const Icon(Icons.search_rounded, size: 18),
-              label: const Text('Explore YouTube Music'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFE07A5F),
-                foregroundColor: Colors.black,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              ),
-            ),
-          ],
+          ),
         ),
       );
     }
@@ -733,132 +781,125 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
       builder: (context, snapshot) {
         final sizeMb = snapshot.data ?? 0.0;
         return ListView(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+          physics: const BouncingScrollPhysics(),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           children: [
             // Storage Header Banner
-            Container(
+            GlassCard(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              margin: const EdgeInsets.only(bottom: 14),
-              decoration: BoxDecoration(
-                color: const Color(0xFF111E16),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFF18281E)),
-              ),
               child: Row(
                 children: [
-                  const Icon(Icons.download_done_rounded, color: Color(0xFFE07A5F), size: 20),
+                  const Icon(Icons.download_done_rounded, color: GlassTokens.accent, size: 20),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
                       '${tracks.length} songs offline • ${sizeMb.toStringAsFixed(1)} MB',
-                      style: const TextStyle(color: Colors.white, fontSize: 12.5, fontWeight: FontWeight.w600),
+                      style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
                     ),
                   ),
-                  TextButton(
-                    onPressed: () => YoutubeMusicSearchSheet.show(context),
-                    style: TextButton.styleFrom(
-                      foregroundColor: const Color(0xFFE07A5F),
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                    ),
-                    child: const Text('+ Download More', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                  GlassButton(
+                    onTap: () => YoutubeMusicSearchSheet.show(context),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    child: const Text('+ Download More', style: TextStyle(fontSize: 11.5, color: GlassTokens.accent, fontWeight: FontWeight.bold)),
                   ),
                 ],
               ),
             ),
+            const SizedBox(height: 12),
 
             // Downloaded Songs List
             ...tracks.map((track) {
               final isCurrent = audio.currentSong.id == track.id;
               return Container(
                 margin: const EdgeInsets.only(bottom: 8),
-                decoration: BoxDecoration(
-                  color: isCurrent ? const Color(0xFF16251B) : const Color(0xFF111E16),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: isCurrent ? const Color(0xFFE07A5F).withOpacity(0.5) : const Color(0xFF18281E),
-                  ),
-                ),
-                child: ListTile(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-                  leading: ClipRRect(
-                    borderRadius: BorderRadius.circular(10),
-                    child: track.thumbnailUrl.isNotEmpty
-                        ? CachedNetworkImage(
-                            imageUrl: track.thumbnailUrl,
-                            width: 46,
-                            height: 46,
-                            fit: BoxFit.cover,
-                            errorWidget: (_, __, ___) => Container(
-                              width: 46,
-                              height: 46,
-                              color: const Color(0xFF1E2D22),
-                              child: const Icon(Icons.music_note, color: Colors.white24),
-                            ),
-                          )
-                        : Container(
-                            width: 46,
-                            height: 46,
-                            color: const Color(0xFF1E2D22),
-                            child: const Icon(Icons.music_note, color: Colors.white24),
-                          ),
-                  ),
-                  title: Text(
-                    track.title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: isCurrent ? const Color(0xFFE07A5F) : Colors.white,
-                      fontSize: 13.5,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  subtitle: Text(
-                    '${track.artist}  •  ${track.durationFormatted}  •  Offline ✓',
-                    style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 11),
-                  ),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
+                child: GlassCard(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  borderColor: isCurrent ? GlassTokens.accent.withOpacity(0.7) : null,
+                  tintColor: isCurrent ? GlassTokens.accent.withOpacity(0.12) : null,
+                  child: Row(
                     children: [
-                      IconButton(
-                        icon: Icon(
-                          isCurrent && audio.isSongPlaying ? Icons.pause_circle_filled_rounded : Icons.play_circle_fill_rounded,
-                          color: const Color(0xFFE07A5F),
-                          size: 30,
-                        ),
-                        onPressed: () {
-                          if (isCurrent && audio.isSongPlaying) {
-                            audio.pauseSong();
-                          } else {
-                            audio.playYoutubeTrack(track);
-                          }
-                        },
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.delete_outline_rounded, color: Colors.white38, size: 20),
-                        onPressed: () async {
-                          HapticFeedback.lightImpact();
-                          await downloader.deleteTrack(track.id);
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  'Removed "${track.title}" from downloads',
-                                  style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: track.thumbnailUrl.isNotEmpty
+                            ? CachedNetworkImage(
+                                imageUrl: track.thumbnailUrl,
+                                width: 46,
+                                height: 46,
+                                fit: BoxFit.cover,
+                                errorWidget: (_, __, ___) => Container(
+                                  width: 46,
+                                  height: 46,
+                                  color: const Color(0xFF1E2D22),
+                                  child: const Icon(Icons.music_note, color: Colors.white24),
                                 ),
-                                backgroundColor: const Color(0xFF1E212B),
-                                behavior: SnackBarBehavior.floating,
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                duration: const Duration(seconds: 2),
+                              )
+                            : Container(
+                                width: 46,
+                                height: 46,
+                                color: const Color(0xFF1E2D22),
+                                child: const Icon(Icons.music_note, color: Colors.white24),
                               ),
-                            );
-                          }
-                        },
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              track.title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: isCurrent ? GlassTokens.accent : Colors.white,
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              '${track.artist}  •  ${track.durationFormatted}  •  Offline ✓',
+                              style: const TextStyle(color: GlassTokens.textSecondary, fontSize: 11),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: Icon(
+                              isCurrent && audio.isSongPlaying ? Icons.pause_circle_filled_rounded : Icons.play_circle_fill_rounded,
+                              color: GlassTokens.accent,
+                              size: 30,
+                            ),
+                            onPressed: () {
+                              if (isCurrent && audio.isSongPlaying) {
+                                audio.pauseSong();
+                              } else {
+                                audio.playYoutubeTrack(track);
+                              }
+                            },
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.delete_outline_rounded, color: Colors.white38, size: 20),
+                            onPressed: () async {
+                              HapticFeedback.lightImpact();
+                              await downloader.deleteTrack(track.id);
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('Removed "${track.title}" from downloads'),
+                                    duration: const Duration(seconds: 2),
+                                    behavior: SnackBarBehavior.floating,
+                                  ),
+                                );
+                              }
+                            },
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                  onTap: () {
-                    audio.playYoutubeTrack(track);
-                  },
                 ),
               );
             }),
@@ -867,15 +908,16 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
       },
     );
   }
-
-  // TAB 2: PLAYLISTS VIEW
+  // -------------------------------------------------------------
+  // TAB 2: PLAYLISTS VIEW (Liquid Glass)
   // -------------------------------------------------------------
   Widget _buildPlaylistsView(BuildContext context) {
     final audioProvider = context.watch<AudioProvider>();
     final playlists = audioProvider.playlists;
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -884,105 +926,142 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
             children: [
               const Text(
                 'Playlists',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
               ),
-              GestureDetector(
+              GlassButton(
                 onTap: () => _showCreatePlaylistDialog(context),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF111E16),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: const Color(0xFF1E2F23)),
-                  ),
-                  child: Row(
-                    children: const [
-                      Icon(Icons.add_rounded, size: 14, color: Color(0xFFE07A5F)),
-                      SizedBox(width: 4),
-                      Text('New Playlist', style: TextStyle(fontSize: 11, color: Colors.white)),
-                    ],
-                  ),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                child: const Row(
+                  children: [
+                    Icon(Icons.add_rounded, size: 16, color: GlassTokens.accent),
+                    SizedBox(width: 4),
+                    Text('New Playlist', style: TextStyle(fontSize: 12, color: Colors.white, fontWeight: FontWeight.bold)),
+                  ],
                 ),
               ),
             ],
           ),
           const SizedBox(height: 16),
-          ListView.separated(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: playlists.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 10),
-            itemBuilder: (ctx, i) {
-              final pl = playlists[i];
-              return GestureDetector(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => PlaylistDetailScreen(playlist: pl),
-                    ),
-                  );
-                },
-                child: Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF111E16),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: const Color(0xFF18281E)),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 52,
-                        height: 52,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(16),
-                          color: pl.coverColor,
-                        ),
-                        child: const Center(
-                          child: Icon(Icons.music_note_rounded, color: Colors.black87, size: 26),
-                        ),
+          if (playlists.isEmpty)
+            const GlassCard(
+              padding: EdgeInsets.symmetric(vertical: 36, horizontal: 20),
+              child: Center(
+                child: Column(
+                  children: [
+                    Icon(Icons.playlist_play_rounded, size: 40, color: Colors.white24),
+                    SizedBox(height: 10),
+                    Text('No playlists yet', style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold)),
+                    SizedBox(height: 4),
+                    Text('Create your first playlist to group favorite tracks for both of you.', style: TextStyle(color: GlassTokens.textSecondary, fontSize: 12), textAlign: TextAlign.center),
+                  ],
+                ),
+              ),
+            )
+          else
+            ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: playlists.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 10),
+              itemBuilder: (ctx, i) {
+                final pl = playlists[i];
+                final songCount = audioProvider.songs.where((s) => pl.songIds.contains(s.id)).length;
+
+                return GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => PlaylistDetailScreen(playlist: pl),
                       ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                    );
+                  },
+                  child: GlassCard(
+                    padding: const EdgeInsets.all(14),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 50,
+                          height: 50,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(14),
+                            color: pl.coverColor.withOpacity(0.35),
+                            border: Border.all(color: pl.coverColor.withOpacity(0.6), width: 1.2),
+                          ),
+                          child: Center(
+                            child: Icon(Icons.music_note_rounded, color: pl.coverColor, size: 24),
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                pl.title,
+                                style: const TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                '$songCount ${songCount == 1 ? "song" : "songs"}',
+                                style: const TextStyle(fontSize: 12, color: GlassTokens.textSecondary),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            Text(
-                              pl.title,
-                              style: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
+                            GlassButton(
+                              onTap: () => audioProvider.playPlaylist(pl),
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.play_arrow_rounded, size: 15, color: Colors.white),
+                                  SizedBox(width: 2),
+                                  Text('Play', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                                ],
                               ),
                             ),
-                            const SizedBox(height: 3),
-                            Builder(
-                              builder: (context) {
-                                final songCount = audioProvider.songs
-                                    .where((s) => pl.songIds.contains(s.id))
-                                    .length;
-                                return Text(
-                                  '$songCount ${songCount == 1 ? "song" : "songs"}',
-                                  style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
+                            const SizedBox(width: 6),
+                            GlassButton(
+                              onTap: () {
+                                audioProvider.queuePlaylist(pl);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('Queued "${pl.title}" ($songCount songs) to upcoming queue ✦'),
+                                    duration: const Duration(seconds: 2),
+                                    behavior: SnackBarBehavior.floating,
+                                  ),
                                 );
                               },
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.playlist_add_rounded, size: 15, color: GlassTokens.accent),
+                                  SizedBox(width: 2),
+                                  Text('Queue', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                                ],
+                              ),
                             ),
                           ],
                         ),
-                      ),
-                      const Icon(Icons.arrow_forward_ios_rounded, color: Color(0xFF64748B), size: 14),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-              );
-            },
-          ),
+                );
+              },
+            ),
         ],
       ),
     );
   }
-
   // -------------------------------------------------------------
   // TAB 3: ATMOSPHERE VIEW (Matches Image 3)
   // -------------------------------------------------------------
@@ -1502,42 +1581,20 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
   }
 
   void _showSortBottomSheet(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) {
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 22),
-          decoration: const BoxDecoration(
-            color: Color(0xFF111E16),
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'Sort Library',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
-                  ),
-                  GestureDetector(
-                    onTap: () => Navigator.pop(ctx),
-                    child: const Icon(Icons.close_rounded, color: Colors.white54, size: 20),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              _buildSortOption(ctx, 'Recently Added', 'recent', Icons.history_rounded),
-              _buildSortOption(ctx, 'Title (A-Z)', 'title', Icons.sort_by_alpha_rounded),
-              _buildSortOption(ctx, 'Artist (A-Z)', 'artist', Icons.person_outline_rounded),
-              _buildSortOption(ctx, 'Offline Downloaded Only', 'offline', Icons.offline_pin_outlined),
-            ],
-          ),
-        );
-      },
+    HapticFeedback.lightImpact();
+    GlassSheet.show(
+      context,
+      title: 'Sort Library',
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _buildSortOption(context, 'Recently Added', 'recent', Icons.history_rounded),
+          _buildSortOption(context, 'Title (A-Z)', 'title', Icons.sort_by_alpha_rounded),
+          _buildSortOption(context, 'Artist (A-Z)', 'artist', Icons.person_outline_rounded),
+          _buildSortOption(context, 'Offline Downloaded Only', 'offline', Icons.offline_pin_outlined),
+          const SizedBox(height: 8),
+        ],
+      ),
     );
   }
 
@@ -1545,23 +1602,22 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
     final isSelected = _sortMode == key;
     return ListTile(
       contentPadding: EdgeInsets.zero,
-      leading: Icon(icon, color: isSelected ? const Color(0xFFE07A5F) : const Color(0xFF94A3B8), size: 22),
+      leading: Icon(icon, color: isSelected ? GlassTokens.accent : const Color(0xFF94A3B8), size: 22),
       title: Text(
         label,
         style: TextStyle(
-          color: isSelected ? const Color(0xFFE07A5F) : Colors.white,
+          color: isSelected ? GlassTokens.accent : Colors.white,
           fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
           fontSize: 14,
         ),
       ),
-      trailing: isSelected ? const Icon(Icons.check_rounded, color: Color(0xFFE07A5F), size: 20) : null,
+      trailing: isSelected ? const Icon(Icons.check_rounded, color: GlassTokens.accent, size: 20) : null,
       onTap: () {
         setState(() => _sortMode = key);
         Navigator.pop(ctx);
       },
     );
   }
-
   void _showCreatePlaylistDialog(BuildContext context, {String? initialSongId}) {
     final titleCtrl = TextEditingController();
 
@@ -1636,75 +1692,98 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
   }
 
   void _showSongOptions(BuildContext context, SongItem song) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => Container(
-        padding: const EdgeInsets.all(20),
-        decoration: const BoxDecoration(
-          color: Color(0xFF13151B),
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        child: SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                leading: const Icon(Icons.playlist_add_rounded, color: Color(0xFFE07A5F)),
-                title: const Text('Add to playlist', style: TextStyle(color: Colors.white, fontSize: 13)),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  _showAddToPlaylistPicker(context, song);
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.share_rounded, color: Color(0xFFE9C46A)),
-                title: const Text('Share song with partner', style: TextStyle(color: Colors.white, fontSize: 13)),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  final auth = context.read<AuthProvider>();
-                  if (auth.space != null) {
-                    context.read<AudioProvider>().startListenTogether(
-                      auth.space!.id,
-                      userId: auth.user?.id,
-                      nickname: auth.user?.nickname,
-                    );
-                  }
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Invited partner to listen to "${song.title}" ✦', style: const TextStyle(color: Colors.white)),
-                      backgroundColor: const Color(0xFF1E212B),
-                      behavior: SnackBarBehavior.floating,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                      duration: const Duration(seconds: 2),
-                    ),
-                  );
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.delete_outline_rounded, color: Color(0xFFF87171)),
-                title: const Text('Delete from sanctuary', style: TextStyle(color: Color(0xFFF87171), fontSize: 13)),
-                onTap: () {
-                  context.read<AudioProvider>().deleteSong(song.id);
-                  Navigator.pop(ctx);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Permanently removed "${song.title}" ✦', style: const TextStyle(color: Colors.white)),
-                      backgroundColor: const Color(0xFF1E1A29),
-                      behavior: SnackBarBehavior.floating,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                      duration: const Duration(seconds: 2),
-                    ),
-                  );
-                },
-              ),
-            ],
+    HapticFeedback.lightImpact();
+    final audio = context.read<AudioProvider>();
+
+    GlassSheet.show(
+      context,
+      title: song.title,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ListTile(
+            leading: const Icon(Icons.play_circle_outline_rounded, color: GlassTokens.accent),
+            title: const Text('Play Next', style: TextStyle(color: Colors.white, fontSize: 14)),
+            subtitle: const Text('Insert right after current track', style: TextStyle(color: GlassTokens.textSecondary, fontSize: 11)),
+            onTap: () {
+              audio.playNext(song);
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Playing "${song.title}" next ✦'),
+                  duration: const Duration(seconds: 2),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            },
           ),
-        ),
+          ListTile(
+            leading: const Icon(Icons.queue_music_rounded, color: GlassTokens.accent),
+            title: const Text('Add to Shared Queue', style: TextStyle(color: Colors.white, fontSize: 14)),
+            subtitle: const Text('Append to upcoming songs on both phones', style: TextStyle(color: GlassTokens.textSecondary, fontSize: 11)),
+            onTap: () {
+              audio.queueSongItem(song);
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Added "${song.title}" to shared queue ✦'),
+                  duration: const Duration(seconds: 2),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.playlist_add_rounded, color: Colors.white70),
+            title: const Text('Add to Playlist', style: TextStyle(color: Colors.white, fontSize: 14)),
+            onTap: () {
+              Navigator.pop(context);
+              _showAddToPlaylistPicker(context, song);
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.people_outline_rounded, color: Color(0xFF86EFAC)),
+            title: const Text('Listen Together with Partner', style: TextStyle(color: Colors.white, fontSize: 14)),
+            subtitle: const Text('Start sync session with this song', style: TextStyle(color: GlassTokens.textSecondary, fontSize: 11)),
+            onTap: () {
+              Navigator.pop(context);
+              final auth = context.read<AuthProvider>();
+              if (auth.space != null) {
+                audio.startListenTogether(
+                  auth.space!.id,
+                  userId: auth.user?.id,
+                  nickname: auth.user?.nickname,
+                );
+              }
+              final idx = audio.songs.indexOf(song);
+              if (idx != -1) audio.selectSong(idx);
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ListenTogetherScreen()),
+              );
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.delete_outline_rounded, color: Color(0xFFF87171)),
+            title: const Text('Remove from Library', style: TextStyle(color: Color(0xFFF87171), fontSize: 14)),
+            subtitle: const Text('De-clutter your song list', style: TextStyle(color: GlassTokens.textSecondary, fontSize: 11)),
+            onTap: () {
+              audio.removeSong(song.id);
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Removed "${song.title}" from library ✦'),
+                  duration: const Duration(seconds: 2),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 8),
+        ],
       ),
     );
   }
-
   void _showAddToPlaylistPicker(BuildContext context, SongItem song) {
     HapticFeedback.lightImpact();
     final audio = context.read<AudioProvider>();

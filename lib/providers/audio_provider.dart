@@ -146,6 +146,10 @@ class AudioProvider extends ChangeNotifier {
   // GETTERS
   // -------------------------------------------------------------
   List<SongItem> get songs => List.unmodifiable(_songs);
+  List<SongItem> get upcomingSongs {
+    if (_songs.isEmpty || _currentSongIndex >= _songs.length - 1) return [];
+    return List.unmodifiable(_songs.sublist(_currentSongIndex + 1));
+  }
   List<PlaylistItem> get playlists => List.unmodifiable(_playlists);
   int get currentSongIndex => _currentSongIndex;
   SongItem get currentSong {
@@ -835,6 +839,189 @@ class AudioProvider extends ChangeNotifier {
     }
   }
 
+  /// Play an entire playlist from the beginning
+  Future<void> playPlaylist(PlaylistItem playlist) async {
+    if (playlist.songIds.isEmpty) return;
+    final playlistSongs = <SongItem>[];
+    for (final sid in playlist.songIds) {
+      final s = _songs.where((x) => x.id == sid || (x.youtubeId != null && x.youtubeId == sid)).toList();
+      if (s.isNotEmpty) playlistSongs.add(s.first);
+    }
+    if (playlistSongs.isEmpty) return;
+
+    for (final s in playlistSongs) {
+      _songs.removeWhere((x) => x.id == s.id);
+    }
+    _songs.insertAll(0, playlistSongs);
+    _persistSongs();
+    await playSong(0);
+  }
+
+  /// Add all songs from a playlist into the upcoming queue
+  void queuePlaylist(PlaylistItem playlist) {
+    if (playlist.songIds.isEmpty) return;
+    final playlistSongs = <SongItem>[];
+    for (final sid in playlist.songIds) {
+      final s = _songs.where((x) => x.id == sid || (x.youtubeId != null && x.youtubeId == sid)).toList();
+      if (s.isNotEmpty) playlistSongs.add(s.first);
+    }
+    if (playlistSongs.isEmpty) return;
+
+    int insertIdx = _currentSongIndex + 1;
+    for (final song in playlistSongs) {
+      _songs.removeWhere((x) => x.id == song.id && _songs.indexOf(x) > _currentSongIndex);
+      _songs.insert(insertIdx, song);
+      insertIdx++;
+
+      if (_isListenTogetherActive && _syncChannel != null) {
+        final payload = {
+          'type': 'QUEUE_ADD',
+          'songId': song.id,
+          'youtubeId': song.youtubeId,
+          'title': song.title,
+          'artist': song.artist,
+          'durationSeconds': song.durationSeconds,
+          'thumbnailUrl': song.thumbnailUrl,
+          'audioUrl': song.audioUrl,
+          'timestamp': DateTime.now().millisecondsSinceEpoch,
+        };
+        _syncChannel!.sendBroadcastMessage(event: 'playback_update', payload: payload);
+        _syncChannel!.sendBroadcastMessage(event: 'playback_sync', payload: payload);
+      }
+    }
+    _persistSongs();
+    notifyListeners();
+  }
+
+  /// Remove a song from the upcoming queue by index (0 is next song)
+  void removeSongFromUpcoming(int queueIndex) {
+    final targetIndex = _currentSongIndex + 1 + queueIndex;
+    if (targetIndex >= 0 && targetIndex < _songs.length) {
+      final removed = _songs.removeAt(targetIndex);
+      _persistSongs();
+      notifyListeners();
+
+      if (_isListenTogetherActive && _syncChannel != null) {
+        final payload = {
+          'type': 'QUEUE_REMOVE',
+          'songId': removed.id,
+          'youtubeId': removed.youtubeId,
+          'timestamp': DateTime.now().millisecondsSinceEpoch,
+        };
+        _syncChannel!.sendBroadcastMessage(event: 'playback_update', payload: payload);
+        _syncChannel!.sendBroadcastMessage(event: 'playback_sync', payload: payload);
+      }
+    }
+  }
+
+  /// Remove a song from sanctuary library/queue by its ID
+  void removeSong(String songId) {
+    final idx = _songs.indexWhere((s) => s.id == songId || (s.youtubeId != null && s.youtubeId == songId));
+    if (idx != -1) {
+      if (idx == _currentSongIndex && _songs.length > 1) {
+        nextSong();
+      }
+      final removed = _songs.removeAt(idx);
+      if (idx < _currentSongIndex) {
+        _currentSongIndex = (_currentSongIndex - 1).clamp(0, _songs.length - 1);
+      }
+      _persistSongs();
+      notifyListeners();
+
+      if (_isListenTogetherActive && _syncChannel != null) {
+        final payload = {
+          'type': 'QUEUE_REMOVE',
+          'songId': removed.id,
+          'youtubeId': removed.youtubeId,
+          'timestamp': DateTime.now().millisecondsSinceEpoch,
+        };
+        _syncChannel!.sendBroadcastMessage(event: 'playback_update', payload: payload);
+        _syncChannel!.sendBroadcastMessage(event: 'playback_sync', payload: payload);
+      }
+    }
+  }
+
+  /// Clear all upcoming songs in the queue
+  void clearUpcomingQueue() {
+    if (_songs.length > _currentSongIndex + 1) {
+      _songs.removeRange(_currentSongIndex + 1, _songs.length);
+      _persistSongs();
+      notifyListeners();
+
+      if (_isListenTogetherActive && _syncChannel != null) {
+        final payload = {
+          'type': 'QUEUE_CLEAR',
+          'timestamp': DateTime.now().millisecondsSinceEpoch,
+        };
+        _syncChannel!.sendBroadcastMessage(event: 'playback_update', payload: payload);
+        _syncChannel!.sendBroadcastMessage(event: 'playback_sync', payload: payload);
+      }
+    }
+  }
+
+  /// Insert song directly after the current song so it plays next
+  void playNext(SongItem song) {
+    final existingIdx = _songs.indexWhere((s) => s.id == song.id || (s.youtubeId != null && s.youtubeId == song.youtubeId));
+    if (existingIdx != -1) {
+      if (existingIdx == _currentSongIndex) return;
+      _songs.removeAt(existingIdx);
+      if (existingIdx < _currentSongIndex) {
+        _currentSongIndex--;
+      }
+    }
+    final insertIdx = (_currentSongIndex + 1).clamp(0, _songs.length);
+    _songs.insert(insertIdx, song);
+    _persistSongs();
+    notifyListeners();
+
+    if (_isListenTogetherActive && _syncChannel != null) {
+      final payload = {
+        'type': 'QUEUE_ADD',
+        'songId': song.id,
+        'youtubeId': song.youtubeId,
+        'title': song.title,
+        'artist': song.artist,
+        'durationSeconds': song.durationSeconds,
+        'thumbnailUrl': song.thumbnailUrl,
+        'audioUrl': song.audioUrl,
+        'timestamp': DateTime.now().millisecondsSinceEpoch,
+      };
+      _syncChannel!.sendBroadcastMessage(event: 'playback_update', payload: payload);
+      _syncChannel!.sendBroadcastMessage(event: 'playback_sync', payload: payload);
+    }
+  }
+
+  /// Add song to the end of the upcoming queue
+  void queueSongItem(SongItem song) {
+    final existingIdx = _songs.indexWhere((s) => s.id == song.id || (s.youtubeId != null && s.youtubeId == song.youtubeId));
+    if (existingIdx != -1) {
+      if (existingIdx == _currentSongIndex) return;
+      _songs.removeAt(existingIdx);
+      if (existingIdx < _currentSongIndex) {
+        _currentSongIndex--;
+      }
+    }
+    _songs.add(song);
+    _persistSongs();
+    notifyListeners();
+
+    if (_isListenTogetherActive && _syncChannel != null) {
+      final payload = {
+        'type': 'QUEUE_ADD',
+        'songId': song.id,
+        'youtubeId': song.youtubeId,
+        'title': song.title,
+        'artist': song.artist,
+        'durationSeconds': song.durationSeconds,
+        'thumbnailUrl': song.thumbnailUrl,
+        'audioUrl': song.audioUrl,
+        'timestamp': DateTime.now().millisecondsSinceEpoch,
+      };
+      _syncChannel!.sendBroadcastMessage(event: 'playback_update', payload: payload);
+      _syncChannel!.sendBroadcastMessage(event: 'playback_sync', payload: payload);
+    }
+  }
+
   // -------------------------------------------------------------
   // ATMOSPHERE SOUNDSCAPES MULTI-STEM MIXER & SMART DUCKING
   // -------------------------------------------------------------
@@ -1020,6 +1207,32 @@ class AudioProvider extends ChangeNotifier {
           final insertIdx = (_currentSongIndex + 1).clamp(0, _songs.length);
           _songs.insert(insertIdx, qSong);
           notifyListeners();
+          return;
+        }
+
+        // Handle Partner Shared Queue Removal
+        if (type == 'QUEUE_REMOVE') {
+          if (songId != null || youtubeId != null) {
+            final idx = _songs.indexWhere((s) =>
+                (songId != null && s.id == songId) ||
+                (youtubeId != null && s.youtubeId == youtubeId));
+            if (idx != -1 && idx != _currentSongIndex) {
+              if (idx < _currentSongIndex) {
+                _currentSongIndex = (_currentSongIndex - 1).clamp(0, _songs.length - 1);
+              }
+              _songs.removeAt(idx);
+              notifyListeners();
+            }
+          }
+          return;
+        }
+
+        // Handle Partner Shared Queue Clear
+        if (type == 'QUEUE_CLEAR') {
+          if (_songs.length > _currentSongIndex + 1) {
+            _songs.removeRange(_currentSongIndex + 1, _songs.length);
+            notifyListeners();
+          }
           return;
         }
 
