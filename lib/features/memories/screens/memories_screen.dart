@@ -1,19 +1,18 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../providers/theme_provider.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../providers/memories_provider.dart';
+import '../../../core/widgets/liquid_glass/liquid_glass_background.dart';
+import '../../../core/widgets/liquid_glass/liquid_glass_segment_control.dart';
+import '../../../core/widgets/liquid_glass/liquid_glass_button.dart';
 import '../../stage/widgets/app_top_bar.dart';
 import '../../stage/widgets/profile_modal.dart';
 import '../widgets/memory_stack_view.dart';
 import '../widgets/letterbox_subview.dart';
 import '../widgets/timeline_subview.dart';
 import '../widgets/add_memory_dialog.dart';
-import '../../music/widgets/glass/glass_ambient_background.dart';
-import '../../music/theme/glass_tokens.dart';
 
 class MemoriesScreen extends StatefulWidget {
   const MemoriesScreen({super.key});
@@ -43,7 +42,6 @@ class _MemoriesScreenState extends State<MemoriesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = context.watch<ThemeProvider>().isDark;
     final authProvider = context.watch<AuthProvider>();
     final memoriesProvider = context.read<MemoriesProvider>();
 
@@ -51,36 +49,26 @@ class _MemoriesScreenState extends State<MemoriesScreen> {
     final spaceId = authProvider.space?.id ?? 'default_space';
 
     return Scaffold(
-      backgroundColor: isDark ? AppColors.darkBg : AppColors.lightBg,
-      body: SafeArea(
-        child: Column(
-          children: [
-            // Top Bar
-            AppTopBar(
-              title: 'Our Memories',
-              subtitle: 'Moments, letters & keepsakes',
-              onOpenProfile: () => ProfileModal.show(context),
-            ),
+      backgroundColor: Colors.transparent,
+      body: LiquidGlassBackground(
+        child: SafeArea(
+          child: Column(
+            children: [
+              // Top Bar
+              AppTopBar(
+                title: 'Our Memories',
+                subtitle: 'Moments, letters & keepsakes',
+                onOpenProfile: () => ProfileModal.show(context),
+              ),
 
-            // Segmented Switcher (Captured, Letterbox, Timeline)
-            Container(
-              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-              padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
-                ),
+              // True Apple Liquid Glass Segment Control
+              LiquidGlassSegmentControl(
+                selectedIndex: _selectedSegment,
+                segments: const ['Captured 📷', 'Letterbox ✉️', 'Journey 🌿'],
+                onSegmentSelected: (index) {
+                  setState(() => _selectedSegment = index);
+                },
               ),
-              child: Row(
-                children: [
-                  _buildSegmentButton(0, 'Captured 📷', isDark),
-                  _buildSegmentButton(1, 'Letterbox ✉️', isDark),
-                  _buildSegmentButton(2, 'Journey 🌿', isDark),
-                ],
-              ),
-            ),
 
               // Scrollable Content
               Expanded(
@@ -110,15 +98,11 @@ class _MemoriesScreenState extends State<MemoriesScreen> {
             ],
           ),
         ),
-      floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: AppColors.terra,
-        foregroundColor: Colors.white,
-        elevation: 4,
-        icon: const Icon(Icons.add, size: 20),
-        label: const Text(
-          'Keep Memory',
-          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-        ),
+      ),
+      floatingActionButton: LiquidGlassButton(
+        icon: Icons.add_rounded,
+        label: 'Keep Memory',
+        primaryColor: AppColors.terra,
         onPressed: () {
           if (user != null) {
             AddMemoryDialog.show(
@@ -130,44 +114,6 @@ class _MemoriesScreenState extends State<MemoriesScreen> {
             );
           }
         },
-      ),
-    );
-  }
-
-  Widget _buildSegmentButton(int index, String label, bool isDark) {
-    final isSelected = _selectedSegment == index;
-    return Expanded(
-      child: GestureDetector(
-        onTap: () => setState(() => _selectedSegment = index),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          decoration: BoxDecoration(
-            color: isSelected
-                ? (isDark ? AppColors.darkCard : Colors.white)
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: isSelected
-                ? [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.06),
-                      blurRadius: 4,
-                      offset: const Offset(0, 2),
-                    ),
-                  ]
-                : null,
-          ),
-          alignment: Alignment.center,
-          child: Text(
-            label,
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-              color: isSelected
-                  ? (isDark ? AppColors.darkInk : AppColors.lightInk)
-                  : (isDark ? AppColors.darkSoft : AppColors.lightSoft),
-            ),
-          ),
-        ),
       ),
     );
   }

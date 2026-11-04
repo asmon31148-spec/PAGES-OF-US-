@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -11,6 +12,9 @@ import 'package:intl/intl.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/services/media_upload_service.dart';
+import '../../../core/widgets/liquid_glass/liquid_glass_card.dart';
+import '../../../core/widgets/liquid_glass/liquid_glass_button.dart';
+import '../../../core/widgets/liquid_glass/liquid_glass_theme.dart';
 import '../../../providers/theme_provider.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../providers/memories_provider.dart';
@@ -79,19 +83,12 @@ class _TimelineSubviewState extends State<TimelineSubview> {
                   ),
                 ],
               ),
-              ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.sage,
-                  foregroundColor: Colors.white,
-                  elevation: 1,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                ),
-                icon: const Icon(Icons.add_rounded, size: 16),
-                label: const Text(
-                  'Add Moment',
-                  style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold),
-                ),
+              LiquidGlassButton(
+                primaryColor: AppColors.sage,
+                icon: Icons.add_rounded,
+                label: 'Add Moment',
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                radius: 18,
                 onPressed: () => _showAddMilestoneModal(context, spaceId, user?.id, partnerNickname),
               ),
             ],
@@ -101,20 +98,31 @@ class _TimelineSubviewState extends State<TimelineSubview> {
         // 2. Dual-Branch Switcher (Shared / You / Partner)
         Container(
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-          padding: const EdgeInsets.all(3.5),
+          padding: const EdgeInsets.all(1.0),
           decoration: BoxDecoration(
-            color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
-            ),
+            borderRadius: BorderRadius.circular(18),
+            gradient: LiquidGlassTheme.specularBorder(isDark),
+            boxShadow: LiquidGlassTheme.cardShadow(isDark),
           ),
-          child: Row(
-            children: [
-              _buildBranchPill(0, '🌿 Both', isDark),
-              _buildBranchPill(1, 'You 👤', isDark),
-              _buildBranchPill(2, '$partnerNickname 🤍', isDark),
-            ],
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(17),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+              child: Container(
+                padding: const EdgeInsets.all(3.5),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(17),
+                  gradient: LiquidGlassTheme.cardGloss(isDark),
+                ),
+                child: Row(
+                  children: [
+                    _buildBranchPill(0, '🌿 Both', isDark),
+                    _buildBranchPill(1, 'You 👤', isDark),
+                    _buildBranchPill(2, '$partnerNickname 🤍', isDark),
+                  ],
+                ),
+              ),
+            ),
           ),
         ),
 
@@ -201,15 +209,21 @@ class _TimelineSubviewState extends State<TimelineSubview> {
           padding: const EdgeInsets.symmetric(vertical: 6.5),
           decoration: BoxDecoration(
             color: isSelected
-                ? (isDark ? AppColors.darkCard : Colors.white)
+                ? (isDark ? Colors.white.withOpacity(0.18) : Colors.white)
                 : Colors.transparent,
             borderRadius: BorderRadius.circular(13),
+            border: isSelected
+                ? Border.all(
+                    color: isDark ? Colors.white.withOpacity(0.3) : Colors.black.withOpacity(0.06),
+                    width: 0.8,
+                  )
+                : null,
             boxShadow: isSelected
                 ? [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.06),
-                      blurRadius: 4,
-                      offset: const Offset(0, 1.5),
+                      color: isDark ? Colors.black.withOpacity(0.3) : Colors.black.withOpacity(0.06),
+                      blurRadius: 6,
+                      offset: const Offset(0, 2),
                     ),
                   ]
                 : null,
@@ -223,8 +237,8 @@ class _TimelineSubviewState extends State<TimelineSubview> {
               fontSize: 11,
               fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
               color: isSelected
-                  ? (isDark ? AppColors.darkInk : AppColors.lightInk)
-                  : (isDark ? AppColors.darkSoft : AppColors.lightSoft),
+                  ? (isDark ? Colors.white : AppColors.lightInk)
+                  : (isDark ? Colors.white60 : AppColors.lightSoft),
             ),
           ),
         ),
@@ -307,31 +321,13 @@ class _TimelineSubviewState extends State<TimelineSubview> {
 
           // Milestone Card (Tappable into Full Viewer)
           Expanded(
-            child: GestureDetector(
-              onTap: () {
-                HapticFeedback.lightImpact();
-                _openMilestoneDetail(context, milestone, isDark, spaceId, partnerNickname);
-              },
-              child: Container(
-                margin: const EdgeInsets.only(bottom: 14),
-                padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-                decoration: BoxDecoration(
-                  color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
-                  borderRadius: BorderRadius.circular(18),
-                  border: Border.all(
-                    color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
-                    width: 1,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(isDark ? 0.2 : 0.04),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+            child: LiquidGlassCard(
+              margin: const EdgeInsets.only(bottom: 14),
+              padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+              radius: 20,
+              onTap: () => _openMilestoneDetail(context, milestone, isDark, spaceId, partnerNickname),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Header Row: Primary Date (DD/MM/YYYY) + Author Tag + Media Badges
                     Row(
@@ -486,7 +482,6 @@ class _TimelineSubviewState extends State<TimelineSubview> {
                   ],
                 ),
               ),
-            ),
           ),
         ],
       ),
