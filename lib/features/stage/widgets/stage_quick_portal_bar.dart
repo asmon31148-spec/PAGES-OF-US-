@@ -294,12 +294,12 @@ class StageQuickPortalBar extends StatelessWidget {
                   child: const Text('View Pinned Notes Below 📌'),
                 ),
               ),
-            ],
+                ],
+              ),
+            ),
           ),
-        ),
-      ),
-    ),
-  );
-};
-}
+        );
+      },
+    );
+  }
 }
