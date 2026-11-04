@@ -363,13 +363,18 @@ class AudioProvider extends ChangeNotifier {
   }
 
   // -------------------------------------------------------------
-  // SONG CONTROLS & SMOOTH CROSSFADE
+  // SONG CONTROLS & SMOOTH PLAYBACK (Instant Optimistic Feedback)
   // -------------------------------------------------------------
   Future<void> toggleSongPlay() async {
-    if (_isSongPlaying) {
-      await pauseSong();
-    } else {
+    final willPlay = !_isSongPlaying;
+    _isSongPlaying = willPlay;
+    _syncNotificationState();
+    notifyListeners(); // 0ms instant UI reaction on play/pause tap!
+
+    if (willPlay) {
       await resumeSong();
+    } else {
+      await pauseSong();
     }
   }
 
@@ -383,18 +388,24 @@ class AudioProvider extends ChangeNotifier {
       } else {
         await _songPlayer.resume();
       }
+      _isSongPlaying = true;
       _syncNotificationState();
       _broadcastSync('PLAY', _songPosition.inSeconds);
+      notifyListeners();
     } catch (e) {
       debugPrint('resumeSong error: $e');
+      _isSongPlaying = false;
+      notifyListeners();
     }
   }
 
   Future<void> pauseSong() async {
     try {
-      await _songPlayer.pause();
+      _isSongPlaying = false;
       _syncNotificationState();
       _broadcastSync('PAUSE', _songPosition.inSeconds);
+      notifyListeners();
+      await _songPlayer.pause();
     } catch (_) {}
   }
 
@@ -475,12 +486,17 @@ class AudioProvider extends ChangeNotifier {
     _songPosition = Duration.zero;
     songPositionNotifier.value = Duration.zero;
     _songDuration = Duration(seconds: _songs[index].durationSeconds);
+    _isSongPlaying = true;
+    _syncNotificationState();
+    notifyListeners(); // 0ms instant optimistic UI response: track highlights & mini-player updates immediately!
+
+    _broadcastSync('SELECT', 0);
     await _playCurrentSongWithCrossfade();
     notifyListeners();
-    _broadcastSync('SELECT', 0);
   }
 
   Future<void> nextSong() async {
+    if (_songs.isEmpty) return;
     if (_isShuffle) {
       _currentSongIndex = Random().nextInt(_songs.length);
     } else {
@@ -490,6 +506,7 @@ class AudioProvider extends ChangeNotifier {
   }
 
   Future<void> prevSong() async {
+    if (_songs.isEmpty) return;
     if (_songPosition.inSeconds > 3) {
       await seekSong(Duration.zero);
     } else {
@@ -533,10 +550,6 @@ class AudioProvider extends ChangeNotifier {
   Future<void> _playCurrentSongWithCrossfade() async {
     try {
       final targetSource = _resolveSource(currentSong.audioUrl, isLocal: currentSong.isLocal);
-
-      if (_songPlayer.state == PlayerState.playing) {
-        await _songPlayer.stop();
-      }
 
       await _songPlayer.setVolume(1.0);
       await _songPlayer.play(targetSource);

@@ -19,10 +19,6 @@ class GlassMiniPlayer extends StatelessWidget {
     if (song.id == 'empty') return const SizedBox.shrink();
 
     final dur = audio.songDuration;
-    final pos = audio.songPosition;
-    final progress = (dur.inMilliseconds > 0)
-        ? (pos.inMilliseconds / dur.inMilliseconds).clamp(0.0, 1.0)
-        : 0.0;
 
     return RepaintBoundary(
       child: GestureDetector(
@@ -42,27 +38,32 @@ class GlassMiniPlayer extends StatelessWidget {
             borderRadius: BorderRadius.circular(GlassTokens.radiusCard),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.35),
-                blurRadius: 20,
+                color: Colors.black.withOpacity(0.4),
+                blurRadius: 18,
                 offset: const Offset(0, 6),
               ),
             ],
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(GlassTokens.radiusCard),
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: GlassTokens.blurNormal, sigmaY: GlassTokens.blurNormal),
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: GlassTokens.glassGradient,
-                  borderRadius: BorderRadius.circular(GlassTokens.radiusCard),
-                  border: Border.all(color: GlassTokens.glassBorder, width: 1.0),
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Color(0xF218281E),
+                    Color(0xFA0E1812),
+                  ],
                 ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Content Row
-                    Padding(
+                borderRadius: BorderRadius.circular(GlassTokens.radiusCard),
+                border: Border.all(color: Colors.white.withOpacity(0.18), width: 1.0),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Content Row
+                  Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                       child: Row(
                         children: [
@@ -169,14 +170,22 @@ class GlassMiniPlayer extends StatelessWidget {
                     ),
 
                     // Tiny Progress Bar at bottom of mini player
-                    ClipRRect(
-                      borderRadius: const BorderRadius.vertical(bottom: Radius.circular(GlassTokens.radiusCard)),
-                      child: LinearProgressIndicator(
-                        value: progress,
-                        minHeight: 2,
-                        backgroundColor: Colors.white.withOpacity(0.08),
-                        valueColor: const AlwaysStoppedAnimation<Color>(GlassTokens.accentTerra),
-                      ),
+                    ValueListenableBuilder<Duration>(
+                      valueListenable: audio.songPositionNotifier,
+                      builder: (context, livePos, _) {
+                        final progress = (dur.inMilliseconds > 0)
+                            ? (livePos.inMilliseconds / dur.inMilliseconds).clamp(0.0, 1.0)
+                            : 0.0;
+                        return ClipRRect(
+                          borderRadius: const BorderRadius.vertical(bottom: Radius.circular(GlassTokens.radiusCard)),
+                          child: LinearProgressIndicator(
+                            value: progress,
+                            minHeight: 2,
+                            backgroundColor: Colors.white.withOpacity(0.08),
+                            valueColor: const AlwaysStoppedAnimation<Color>(GlassTokens.accentTerra),
+                          ),
+                        );
+                      },
                     ),
                   ],
                 ),
@@ -184,7 +193,6 @@ class GlassMiniPlayer extends StatelessWidget {
             ),
           ),
         ),
-      ),
-    );
+      );
   }
 }
