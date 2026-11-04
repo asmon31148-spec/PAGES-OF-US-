@@ -146,6 +146,9 @@ class WatchCallService {
                 await _peerConnection?.setRemoteDescription(RTCSessionDescription(sdp, type));
                 _isRemoteDescriptionSet = true;
                 await _drainQueuedCandidates();
+                try {
+                  await Helper.setSpeakerphoneOn(true);
+                } catch (_) {}
                 callStatus.value = WatchCallStatus.connected;
               } catch (e) {
                 debugPrint('Error setting remote description on caller: $e');
@@ -197,11 +200,13 @@ class WatchCallService {
           'echoCancellation': true,
           'noiseSuppression': true,
           'autoGainControl': true,
+          'highpassFilter': true,
         },
         'video': {
           'facingMode': 'user',
-          'width': 640,
-          'height': 480,
+          'width': {'ideal': 1280, 'max': 1920},
+          'height': {'ideal': 720, 'max': 1080},
+          'frameRate': {'ideal': 30, 'max': 30},
         }
       };
 
@@ -225,6 +230,18 @@ class WatchCallService {
     }
   }
 
+  /// Optimize SDP bandwidth attributes for crystal-clear video streaming
+  String _optimizeSdp(String sdp) {
+    var modified = sdp;
+    if (modified.contains('m=video')) {
+      modified = modified.replaceAllMapped(
+        RegExp(r'(m=video[^\r\n]*[\r\n]+)'),
+        (match) => '${match.group(1)}b=AS:2000\r\n',
+      );
+    }
+    return modified;
+  }
+
   /// Start a video call (Offer creation)
   Future<void> startCall({required String roomCode, required String myUid, required String myName}) async {
     try {
@@ -239,10 +256,9 @@ class WatchCallService {
 
       callStatus.value = WatchCallStatus.calling;
 
-      // Clean up previous call candidates in RTDB
+      // Clean up previous call session in RTDB completely to ensure fresh slate
       try {
-        await _rtdb.ref('watchRooms/$_currentRoomCode/call/callerCandidates').remove();
-        await _rtdb.ref('watchRooms/$_currentRoomCode/call/calleeCandidates').remove();
+        await _rtdb.ref('watchRooms/$_currentRoomCode/call').remove();
       } catch (_) {}
 
       // 1. Create Peer Connection
@@ -258,6 +274,9 @@ class WatchCallService {
         if (event.streams.isNotEmpty) {
           _remoteStream = event.streams[0];
           remoteRenderer.srcObject = _remoteStream;
+          try {
+            Helper.setSpeakerphoneOn(true);
+          } catch (_) {}
           callStatus.value = WatchCallStatus.connected;
         }
       };
@@ -272,20 +291,23 @@ class WatchCallService {
         });
       };
 
-      // 5. Create SDP Offer
+      // 5. Create SDP Offer with bitrate optimization
       final offer = await _peerConnection!.createOffer({
         'offerToReceiveAudio': 1,
         'offerToReceiveVideo': 1,
       });
-      await _peerConnection!.setLocalDescription(offer);
+      final optimizedSdp = _optimizeSdp(offer.sdp ?? '');
+      await _peerConnection!.setLocalDescription(RTCSessionDescription(optimizedSdp, offer.type));
 
-      // 6. Write Offer to Firebase RTDB
-      await _rtdb.ref('watchRooms/$_currentRoomCode/call').update({
+      // 6. Write Offer to Firebase RTDB with unique session ID
+      await _rtdb.ref('watchRooms/$_currentRoomCode/call').set({
+        'callSessionId': DateTime.now().millisecondsSinceEpoch.toString(),
         'state': 'calling',
         'callerUid': myUid,
         'callerName': myName,
+        'createdAt': ServerValue.timestamp,
         'offer': {
-          'sdp': offer.sdp,
+          'sdp': optimizedSdp,
           'type': offer.type,
         },
       });
@@ -365,13 +387,19 @@ class WatchCallService {
         'offerToReceiveAudio': 1,
         'offerToReceiveVideo': 1,
       });
-      await _peerConnection!.setLocalDescription(answer);
+      final optimizedAnswerSdp = _optimizeSdp(answer.sdp ?? '');
+      await _peerConnection!.setLocalDescription(RTCSessionDescription(optimizedAnswerSdp, answer.type));
+
+      try {
+        await Helper.setSpeakerphoneOn(true);
+      } catch (_) {}
 
       // 9. Write Answer to RTDB
       await _rtdb.ref('watchRooms/$_currentRoomCode/call').update({
         'state': 'connected',
+        'connectedAt': ServerValue.timestamp,
         'answer': {
-          'sdp': answer.sdp,
+          'sdp': optimizedAnswerSdp,
           'type': answer.type,
         },
       });
@@ -444,6 +472,7 @@ class WatchCallService {
       try {
         await _rtdb.ref('watchRooms/$_currentRoomCode/call').set({
           'state': 'idle',
+          'endedAt': ServerValue.timestamp,
         });
       } catch (_) {}
     }
