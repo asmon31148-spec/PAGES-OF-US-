@@ -92,7 +92,10 @@ class _GlassButtonState extends State<GlassButton> with SingleTickerProviderStat
           child: Container(
             width: widget.width,
             height: widget.height,
-            padding: widget.padding ?? const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            padding: widget.padding ??
+                (widget.width != null || widget.isCircle
+                    ? EdgeInsets.zero
+                    : const EdgeInsets.symmetric(horizontal: 16, vertical: 10)),
             decoration: BoxDecoration(
               gradient: effectiveTint != null
                   ? LinearGradient(
@@ -104,7 +107,7 @@ class _GlassButtonState extends State<GlassButton> with SingleTickerProviderStat
                       ],
                     )
                   : GlassTokens.glassGradient,
-              borderRadius: BorderRadius.circular(widget.radius),
+              borderRadius: widget.isCircle ? null : BorderRadius.circular(widget.radius),
               border: effectiveBorder,
               shape: widget.isCircle ? BoxShape.circle : BoxShape.rectangle,
               boxShadow: [
@@ -115,7 +118,7 @@ class _GlassButtonState extends State<GlassButton> with SingleTickerProviderStat
                 ),
               ],
             ),
-            child: widget.child,
+            child: Center(child: widget.child),
           ),
         ),
       ),
