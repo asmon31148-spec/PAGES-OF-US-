@@ -16,6 +16,7 @@ class GlassCard extends StatelessWidget {
   final double blurSigma;
   final VoidCallback? onTap;
   final Border? customBorder;
+  final bool enableBlur;
 
   const GlassCard({
     super.key,
@@ -30,10 +31,40 @@ class GlassCard extends StatelessWidget {
     this.blurSigma = GlassTokens.blurNormal,
     this.onTap,
     this.customBorder,
+    this.enableBlur = true,
   });
 
   @override
   Widget build(BuildContext context) {
+    final border = customBorder ??
+        (borderColor != null
+            ? Border.all(color: borderColor!, width: GlassTokens.borderWidth)
+            : Border.all(
+                color: GlassTokens.glassBorder,
+                width: GlassTokens.borderWidth,
+              ));
+
+    final gradient = tintColor != null
+        ? LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              tintColor!.withOpacity(0.28),
+              tintColor!.withOpacity(0.08),
+            ],
+          )
+        : GlassTokens.glassGradient;
+
+    final innerContainer = Container(
+      padding: padding ?? const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: gradient,
+        borderRadius: BorderRadius.circular(radius),
+        border: border,
+      ),
+      child: child,
+    );
+
     Widget content = Container(
       width: width,
       height: height,
@@ -42,36 +73,15 @@ class GlassCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(radius),
         boxShadow: [GlassTokens.softShadow],
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(radius),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: blurSigma, sigmaY: blurSigma),
-          child: Container(
-            padding: padding ?? const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              gradient: tintColor != null
-                  ? LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        tintColor!.withOpacity(0.28),
-                        tintColor!.withOpacity(0.08),
-                      ],
-                    )
-                  : GlassTokens.glassGradient,
+      child: enableBlur && blurSigma > 0
+          ? ClipRRect(
               borderRadius: BorderRadius.circular(radius),
-              border: customBorder ??
-                  (borderColor != null
-                      ? Border.all(color: borderColor!, width: GlassTokens.borderWidth)
-                      : Border.all(
-                          color: GlassTokens.glassBorder,
-                          width: GlassTokens.borderWidth,
-                        )),
-            ),
-            child: child,
-          ),
-        ),
-      ),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: blurSigma, sigmaY: blurSigma),
+                child: innerContainer,
+              ),
+            )
+          : innerContainer,
     );
 
     if (onTap != null) {
