@@ -11,6 +11,12 @@ import 'package:timezone/timezone.dart' as tz;
 import 'local_cache_service.dart';
 import '../../data/services/supabase_service.dart';
 
+class _NotifCopy {
+  final String title;
+  final String body;
+  const _NotifCopy(this.title, this.body);
+}
+
 class NotificationService {
   static final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
@@ -51,13 +57,114 @@ class NotificationService {
   // Keep track of recent notification triggers to avoid duplicate spam
   static final Set<String> _recentNotifiedKeys = {};
 
-  static Future<void> init() async {
-    // 1. Timezone database initialization for exact scheduling
+  static void _configureLocalTimeZone() {
     try {
       tz.initializeTimeZones();
+      final now = DateTime.now();
+      final sysName = now.timeZoneName;
+
+      // 1. Direct match in IANA timezone database
+      if (tz.timeZoneDatabase.locations.containsKey(sysName)) {
+        tz.setLocalLocation(tz.getLocation(sysName));
+        debugPrint('[NotificationService] Local timezone set to $sysName');
+        return;
+      }
+
+      // 2. Standard abbreviation mapping (India IST, US zones, EU, etc.)
+      const abbrevMap = <String, String>{
+        'IST': 'Asia/Kolkata',
+        '+0530': 'Asia/Kolkata',
+        'PST': 'America/Los_Angeles',
+        'PDT': 'America/Los_Angeles',
+        'EST': 'America/New_York',
+        'EDT': 'America/New_York',
+        'CST': 'America/Chicago',
+        'CDT': 'America/Chicago',
+        'MST': 'America/Denver',
+        'MDT': 'America/Denver',
+        'GMT': 'Europe/London',
+        'BST': 'Europe/London',
+        'CET': 'Europe/Paris',
+        'CEST': 'Europe/Paris',
+        'JST': 'Asia/Tokyo',
+        'AEST': 'Australia/Sydney',
+        'AEDT': 'Australia/Sydney',
+        'SGT': 'Asia/Singapore',
+        'HKT': 'Asia/Hong_Kong',
+        'GST': 'Asia/Dubai',
+      };
+      final mapped = abbrevMap[sysName.toUpperCase()];
+      if (mapped != null && tz.timeZoneDatabase.locations.containsKey(mapped)) {
+        tz.setLocalLocation(tz.getLocation(mapped));
+        debugPrint('[NotificationService] Local timezone mapped: $sysName -> $mapped');
+        return;
+      }
+
+      // 3. Fallback: match by offset in milliseconds against IANA database
+      final offsetMillis = now.timeZoneOffset.inMilliseconds;
+      for (final loc in tz.timeZoneDatabase.locations.values) {
+        if (tz.TZDateTime.now(loc).timeZoneOffset.inMilliseconds == offsetMillis) {
+          tz.setLocalLocation(loc);
+          debugPrint('[NotificationService] Local timezone matched by offset: ${loc.name}');
+          return;
+        }
+      }
     } catch (e) {
-      debugPrint('Timezone init error: $e');
+      debugPrint('[NotificationService] Error configuring local timezone: $e');
     }
+  }
+
+  static _NotifCopy _getMorningCopy(String user, String partner, int dayIndex) {
+    final list = [
+      _NotifCopy('Morning lover 🥐', 'Bet you\'re looking cute right now. Check on $partner before they wonder where you are 😏💋'),
+      _NotifCopy('Wake up sleepyhead! ☀️', 'Your favorite human $partner is out there. Steal their morning smile first ☕✨'),
+      _NotifCopy('Partner radar beeped 👀', 'Pssst... $partner might be checking their phone for you right now. Sneak in and say hi 🍓💕'),
+      _NotifCopy('Good morning gorgeous 🥑', 'Today\'s forecast: 100% chance of missing $partner. Tap to check their sky ☁️🌸'),
+      _NotifCopy('Rise & shine cutie 🍯', 'The world is awake, but your sanctuary is just for the two of you. Drop a morning whisper 💌'),
+      _NotifCopy('First thought of the day? 💭', 'Admit it, $partner was already in your head. Go send some morning warmth 🥞💛'),
+      _NotifCopy('New day, same obsession 🧸', 'Go make $partner blush before their coffee kicks in. Tap to visit your sanctuary ☕💋'),
+    ];
+    return list[dayIndex % list.length];
+  }
+
+  static _NotifCopy _getAfternoonCopy(String user, String partner, int dayIndex) {
+    final list = [
+      _NotifCopy('Distraction alert 🚨', 'Stop working for 10 seconds. Send $partner a sneaky touch to tickle their screen 🪶😉'),
+      _NotifCopy('Afternoon craving 🍩', 'Forget the snack — $partner is craving your attention right now. Tap to nudge them ☕✨'),
+      _NotifCopy('Caught you daydreaming ☁️', 'Were you thinking of $partner? Thought so. Send a quick heart so they know 😏❤️'),
+      _NotifCopy('Quick question... 🤔', 'When was the last time you told $partner they\'re cute today? Go fix it 🍓💨'),
+      _NotifCopy('Boring afternoon? 🥱', 'Spice it up. Drop a silly note or a cute audio whisper for $partner 🎧💋'),
+      _NotifCopy('Partner poke incoming 👉', 'Send a gentle tether touch to $partner — see how fast they touch back ⚡💛'),
+      _NotifCopy('Missing them a little? 🧸', 'Halfway through the day. A 2-second touch on your screen will make $partner smile 🌸✨'),
+    ];
+    return list[dayIndex % list.length];
+  }
+
+  static _NotifCopy _getEveningCopy(String user, String partner, int dayIndex) {
+    final list = [
+      _NotifCopy('Spill the tea tonight 🍵', 'Today\'s couple question is juicy. What will $partner say? Seal your answer first 🤫✨'),
+      _NotifCopy('No peeking allowed 🙈', 'Tonight\'s card is locked! Both of you have to answer to break the wax seal. Drop your truth 🕯️🔥'),
+      _NotifCopy('Pillow talk time 🛋️', 'Time to unseal tonight\'s question with $partner. See if you two are on the same page 🌙🥂'),
+      _NotifCopy('Secret envelope waiting 💌', 'A sweet question is ready for you two. Answer before midnight to unlock $partner\'s thoughts 🗝️💫'),
+      _NotifCopy('Date night in your pocket 🍷', 'Break today\'s wax seal with $partner. Who\'s answering first tonight? 😏❤️'),
+    ];
+    return list[dayIndex % list.length];
+  }
+
+  static _NotifCopy _getNightCopy(String user, String partner, int dayIndex) {
+    final list = [
+      _NotifCopy('Don\'t sleep just yet 🥺', 'Leave $partner a little goodnight whisper so it\'s the first thing they wake up to tomorrow 🛌🌙'),
+      _NotifCopy('Goodnight favorite human 🧸', 'Cuddle in through the screen. Send your last warm hug of the night to $partner 💫🕯️'),
+      _NotifCopy('Midnight rule 🤫', 'No sleeping without saying goodnight! Drop a sweet bedtime kiss on $partner\'s sanctuary 🍯💋'),
+      _NotifCopy('Counting stars with you 🌌', 'Another day loved by $partner. Close your eyes knowing you\'re their safe place 💤❤️'),
+      _NotifCopy('Sweet dreams cutie 🌙', 'Tuck into bed softly. A quiet goodnight whisper for $partner is waiting to be sent ✨🤍'),
+    ];
+    return list[dayIndex % list.length];
+  }
+
+  static Future<void> init() async {
+    // 1. Timezone database initialization and device local timezone resolution
+    _configureLocalTimeZone();
 
     // 2. Local Notifications Initialization
     const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
@@ -190,12 +297,25 @@ class NotificationService {
     String? partnerNickname,
   }) async {
     try {
+      _configureLocalTimeZone();
       final user = (userNickname != null && userNickname.trim().isNotEmpty) ? userNickname.trim() : 'you';
       final partner = (partnerNickname != null && partnerNickname.trim().isNotEmpty)
           ? partnerNickname.trim()
           : 'your partner';
 
       final now = tz.TZDateTime.now(tz.local);
+      final dayOfYear = now.difference(tz.TZDateTime(tz.local, now.year, 1, 1)).inDays;
+
+      // Cancel previous daily IDs so they are cleanly rescheduled with correct timezone and fresh copy
+      await _localNotifications.cancel(80001);
+      await _localNotifications.cancel(80002);
+      await _localNotifications.cancel(80003);
+      await _localNotifications.cancel(80004);
+
+      final morningCopy = _getMorningCopy(user, partner, dayOfYear);
+      final afternoonCopy = _getAfternoonCopy(user, partner, dayOfYear);
+      final eveningCopy = _getEveningCopy(user, partner, dayOfYear);
+      final nightCopy = _getNightCopy(user, partner, dayOfYear);
 
       const androidDetails = AndroidNotificationDetails(
         partnerChannelId,
@@ -210,14 +330,14 @@ class NotificationService {
         actions: _quickLoveActions,
       );
 
-      // 1. 08:30 AM — Morning Tether & Sky
+      // 1. 08:30 AM — Morning Tether & Sky (Playful & Warm)
       var morning = tz.TZDateTime(tz.local, now.year, now.month, now.day, 8, 30);
       if (morning.isBefore(now)) morning = morning.add(const Duration(days: 1));
 
       await _localNotifications.zonedSchedule(
         80001,
-        '🌅 Good morning, $user ✨',
-        'A new day has begun in your sanctuary with $partner. Tap to check their sky & leave a morning thought 🌿',
+        morningCopy.title,
+        morningCopy.body,
         morning,
         const NotificationDetails(android: androidDetails),
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
@@ -226,14 +346,14 @@ class NotificationService {
         payload: 'tab_0',
       );
 
-      // 2. 02:15 PM — Afternoon Intimacy Nudge (Mystery Hook)
+      // 2. 02:15 PM — Afternoon Intimacy Nudge (Teasing & Playful)
       var afternoon = tz.TZDateTime(tz.local, now.year, now.month, now.day, 14, 15);
       if (afternoon.isBefore(now)) afternoon = afternoon.add(const Duration(days: 1));
 
       await _localNotifications.zonedSchedule(
         80002,
-        '☕ Thinking of you... 💭',
-        'A quiet moment in the afternoon. Send a gentle touch to let $partner know they\'re on your mind ✨',
+        afternoonCopy.title,
+        afternoonCopy.body,
         afternoon,
         const NotificationDetails(android: androidDetails),
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
@@ -242,14 +362,14 @@ class NotificationService {
         payload: 'touch',
       );
 
-      // 3. 08:00 PM — Tonight\'s Daily Sync & Wax Seal
+      // 3. 08:00 PM — Tonight's Daily Sync & Wax Seal (Curious & Informative)
       var evening = tz.TZDateTime(tz.local, now.year, now.month, now.day, 20, 0);
       if (evening.isBefore(now)) evening = evening.add(const Duration(days: 1));
 
       await _localNotifications.zonedSchedule(
         80003,
-        '💌 Tonight\'s Whisper Envelope is Waiting',
-        'Today\'s daily question is ready to be unsealed with $partner. Break the seal together before midnight 🕯️',
+        eveningCopy.title,
+        eveningCopy.body,
         evening,
         const NotificationDetails(android: androidDetails),
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
@@ -258,14 +378,14 @@ class NotificationService {
         payload: 'daily_sync',
       );
 
-      // 4. 10:45 PM — Nightfall & Sleep Whispers
+      // 4. 10:45 PM — Nightfall & Sleep Whispers (Sweet & Cozy)
       var night = tz.TZDateTime(tz.local, now.year, now.month, now.day, 22, 45);
       if (night.isBefore(now)) night = night.add(const Duration(days: 1));
 
       await _localNotifications.zonedSchedule(
         80004,
-        '🌙 Rest well tonight, $user',
-        'Your sanctuary is quiet and peaceful. Leave a bedtime whisper for $partner to wake up to 💫',
+        nightCopy.title,
+        nightCopy.body,
         night,
         const NotificationDetails(android: androidDetails),
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
@@ -274,7 +394,7 @@ class NotificationService {
         payload: 'tab_0',
       );
 
-      debugPrint('[NotificationService] Scheduled all 4 Daily Living Sanctuary Tethers!');
+      debugPrint('[NotificationService] Scheduled all 4 Daily Living Sanctuary Tethers in local timezone ${tz.local.name}!');
     } catch (e) {
       debugPrint('[NotificationService] Error scheduling daily sanctuary cadence: $e');
     }
@@ -306,8 +426,8 @@ class NotificationService {
 
     await _localNotifications.show(
       90010,
-      '🌧️ Soft rain is falling near $partnerNickname',
-      'Gentle rain detected over their sky right now. Warm them up with a sweet whisper or play a cozy track together ☕✨',
+      'Puddle alert near $partnerNickname 🌧️',
+      'It\'s raining over their sky! Perfect excuse to text: "Wish I was sharing an umbrella with you" ☔☕',
       const NotificationDetails(android: androidDetails),
       payload: 'tab_1',
     );
@@ -359,8 +479,8 @@ class NotificationService {
 
     await _localNotifications.show(
       90001,
-      '✨ Sanctuary Connected Forever!',
-      'You are now paired with $partnerNickname. Your private world for two is officially unlocked ✦',
+      'Officially locked in! 🥂✨',
+      'You and $partnerNickname are now paired! Your private universe for two is unlocked ✦💖',
       const NotificationDetails(android: androidDetails),
       payload: 'tab_0',
     );
@@ -441,8 +561,8 @@ class NotificationService {
 
     await _localNotifications.show(
       placeName.hashCode.abs() % 100000,
-      '📍 $partnerNickname is around $placeName',
-      'They just arrived near your tagged spot "$placeName"$tagText 🏡',
+      'Spotted: $partnerNickname near $placeName 📍',
+      'They just reached your special spot "$placeName"$tagText. Send them a cute little wave 🏡✨',
       const NotificationDetails(android: androidDetails),
       payload: 'tab_1',
     );
@@ -459,30 +579,32 @@ class NotificationService {
     required String id,
   }) async {
     String notifTitle;
+    String notifBody;
+    final cleanCaption = caption.trim().isNotEmpty ? ' — "$caption"' : '';
     switch (type.toLowerCase()) {
       case 'video':
-        notifTitle = '🎥 $partnerNickname shared a video moment!';
+        notifTitle = 'Mini movie saved! 🎬';
+        notifBody = '$partnerNickname just added a new video "$title" to your storybook 🍿💖';
         break;
       case 'voice':
       case 'audio':
-        notifTitle = '🎙️ $partnerNickname recorded a voice note for you!';
+        notifTitle = 'Voice note from $partnerNickname 🎙️';
+        notifBody = 'Plug in your earphones — their sweet voice is waiting for you 🎧✨';
         break;
       case 'letter':
-        notifTitle = '💌 $partnerNickname sent you a love letter!';
+        notifTitle = 'Secret love letter dropped 💌';
+        notifBody = 'Ooh, $partnerNickname wrote something for your eyes only. Open it in private 🤫💋';
         break;
       case 'milestone':
-        notifTitle = '⭐ $partnerNickname marked a new milestone!';
+        notifTitle = 'New milestone unlocked! ⭐';
+        notifBody = '$partnerNickname celebrated: "$title"$cleanCaption 🥂💫';
         break;
       case 'photo':
       default:
-        notifTitle = '📸 $partnerNickname preserved a new photo!';
+        notifTitle = 'Cute moment preserved 📸';
+        notifBody = '$partnerNickname just pinned "$title"$cleanCaption to your album 🥰';
         break;
     }
-
-    final summary = caption.trim().isNotEmpty
-        ? ' — "$caption"'
-        : '';
-    final notifBody = '"$title"$summary';
 
     const androidDetails = AndroidNotificationDetails(
       partnerChannelId,
@@ -535,8 +657,8 @@ class NotificationService {
 
     await _localNotifications.show(
       90005,
-      '🎵 Listen Together with $partnerNickname?',
-      '$partnerNickname is listening to "$songTitle" by $artist. Tap to tune in and listen in sync 🎧✨',
+      'DJ $partnerNickname is on aux 🎶',
+      'They\'re jamming to "$songTitle". Hop on the shared frequency before they skip your song 🎧💃',
       const NotificationDetails(android: androidDetails),
       payload: 'listen_together',
     );
@@ -650,8 +772,8 @@ class NotificationService {
 
       await _localNotifications.zonedSchedule(
         notifId,
-        '💭 Today\'s Daily Question is Waiting...',
-        'You haven\'t answered today\'s question yet. Share your heart with $partnerNickname before midnight ✦',
+        'Don\'t leave $partnerNickname hanging! 🙈',
+        'Tonight\'s question is still locked without your answer. Go break the wax seal together before midnight 🕯️🔥',
         scheduled,
         const NotificationDetails(android: androidDetails),
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
@@ -683,8 +805,8 @@ class NotificationService {
 
     await _localNotifications.show(
       90071,
-      '✨ $partnerNickname answered today\'s question!',
-      'Their thoughts are locked in! Reveal both of your answers now 💫',
+      'They answered! 👀',
+      '$partnerNickname just locked in their answer. Tap to reveal what they wrote about you 💫💋',
       const NotificationDetails(android: androidDetails),
       payload: 'daily_sync',
     );
@@ -716,8 +838,8 @@ class NotificationService {
 
     await _localNotifications.show(
       90008,
-      '⛈️ Severe Weather Alert near $partnerNickname!',
-      'Unnatural weather detected ($condition, ${tempC.round()}°C). Check in on $partnerNickname to make sure they\'re safe ❤️',
+      'Stormy skies near $partnerNickname ⛈️',
+      '$condition and ${tempC.round()}°C detected over their sky! Check in on your favorite human to make sure they\'re cozy ❤️',
       const NotificationDetails(android: androidDetails),
       payload: 'tab_1',
     );
@@ -748,12 +870,12 @@ class NotificationService {
       );
 
       final notifBody = pendingGoalsCount > 0
-          ? 'You and your partner have $pendingGoalsCount milestones in progress! Take a small step together today 💫'
-          : 'You\'ve completed all your shared goals! Plan a new dream milestone together today 🥂✨';
+          ? 'You and your partner have $pendingGoalsCount milestones in progress! Take one cute little step together today 💫'
+          : 'All shared goals conquered! Dream up your next big romantic adventure together today 🥂✨';
 
       await _localNotifications.zonedSchedule(
         90009,
-        '🎯 Weekly Couple Goals Check-In',
+        '🎯 Weekly Dream Check-In',
         notifBody,
         scheduled,
         const NotificationDetails(android: androidDetails),
@@ -817,8 +939,8 @@ class NotificationService {
 
       await _localNotifications.zonedSchedule(
         777777,
-        'Weekly Touch Summary ❤️',
-        'You and $partnerNickname shared $weeklyTouches touches this week! Send a touch to say you miss them.',
+        'Weekly Touch Recap ❤️',
+        'You and $partnerNickname shared $weeklyTouches touches this week! Send a quick poke to say you miss them ⚡💛',
         scheduled,
         const NotificationDetails(android: androidDetails),
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
