@@ -8,12 +8,14 @@ class PaperPlanePainter extends CustomPainter {
   final Color lineColor;
   final Color planeColor;
   final double planeSize;
+  final bool isStationary;
 
   const PaperPlanePainter({
     required this.progress,
     required this.lineColor,
     required this.planeColor,
     this.planeSize = 18,
+    this.isStationary = false,
   });
 
   @override
@@ -28,14 +30,14 @@ class PaperPlanePainter extends CustomPainter {
       ..cubicTo(cp1.dx, cp1.dy, cp2.dx, cp2.dy, end.dx, end.dy);
 
     final metric = fullPath.computeMetrics().first;
-    final clampedProgress = progress.clamp(0.0, 1.0);
-    final travelledDist = metric.length * clampedProgress;
+    final clampedProgress = isStationary ? 1.0 : progress.clamp(0.0, 1.0);
+    final travelledDist = isStationary ? metric.length : metric.length * clampedProgress;
 
     // ── Dashed trail up to current progress ──────────────────────────────────
-    _drawDashed(canvas, metric, travelledDist, lineColor);
+    _drawDashed(canvas, metric, travelledDist, lineColor.withOpacity(isStationary ? 0.35 : 0.85));
 
     // ── Ghost tail (remaining path) ───────────────────────────────────────────
-    if (clampedProgress < 0.99) {
+    if (!isStationary && clampedProgress < 0.99) {
       _drawDashed(canvas, metric, metric.length, lineColor.withOpacity(0.12),
           start: travelledDist);
     }
@@ -61,7 +63,13 @@ class PaperPlanePainter extends CustomPainter {
     if (travelledDist <= 0) return;
     final tangent = metric.getTangentForOffset(travelledDist);
     if (tangent == null) return;
-    final pos = tangent.position;
+    var pos = tangent.position;
+
+    if (isStationary) {
+      // Gentle floating breathing motion when resting
+      final floatOffset = 3.0 * (0.5 - (0.5 - progress).abs());
+      pos = Offset(pos.dx, pos.dy - floatOffset);
+    }
 
     // Soft glow under the plane
     canvas.drawCircle(

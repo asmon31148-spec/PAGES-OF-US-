@@ -1,19 +1,30 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../providers/world_provider.dart';
 import 'paper_plane_painter.dart';
 
-/// Tab options for the journey stats card.
-enum _JourneyPeriod { day, week, month }
-
-/// Animated card showing daily / weekly / monthly travel distance,
-/// rendered as a paper airplane flying along a curved bezier arc.
+/// Animated card showing live travel journey & activity status:
+/// - Prominently displays the Partner's footsteps, travel distance, and active time on your phone
+/// - Displays an animated paper plane traveling along the route from departure to current spot
+/// - Allows switching between Partner and You with a clean toggle pill
 class JourneyStatsCard extends StatefulWidget {
   final bool isDark;
+  final String? partnerNickname;
+  final String? partnerAvatarUrl;
+  final String? userNickname;
+  final String? userAvatarUrl;
 
-  const JourneyStatsCard({super.key, required this.isDark});
+  const JourneyStatsCard({
+    super.key,
+    required this.isDark,
+    this.partnerNickname,
+    this.partnerAvatarUrl,
+    this.userNickname,
+    this.userAvatarUrl,
+  });
 
   @override
   State<JourneyStatsCard> createState() => _JourneyStatsCardState();
@@ -21,41 +32,85 @@ class JourneyStatsCard extends StatefulWidget {
 
 class _JourneyStatsCardState extends State<JourneyStatsCard>
     with SingleTickerProviderStateMixin {
-  _JourneyPeriod _period = _JourneyPeriod.day;
+  bool _showPartner = true;
   late AnimationController _ctrl;
   late Animation<double> _planeAnim;
-  Timer? _loopTimer;
 
   @override
   void initState() {
     super.initState();
     _ctrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1800),
+      duration: const Duration(milliseconds: 2400),
     );
-    _planeAnim = CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut);
-    _ctrl.forward();
-    // Subtle idle loop: plane flies once then rests at destination
-  }
-
-  void _switchPeriod(_JourneyPeriod p) {
-    if (_period == p) return;
-    setState(() => _period = p);
-    _ctrl.reset();
-    _ctrl.forward();
+    _planeAnim = CurvedAnimation(parent: _ctrl, curve: Curves.easeInOutCubic);
+    _ctrl.repeat();
   }
 
   @override
   void dispose() {
-    _loopTimer?.cancel();
     _ctrl.dispose();
     super.dispose();
+  }
+
+  String _cleanPlace(String? raw) {
+    if (raw == null || raw.trim().isEmpty) return 'Starting Point';
+    final parts = raw.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
+    if (parts.isEmpty) return 'Starting Point';
+    if (parts.length >= 2 && parts[0].toLowerCase() == parts[1].toLowerCase()) {
+      return parts[0];
+    }
+    // Return primary neighborhood or city (max 18 chars)
+    final text = parts[0];
+    if (text.length > 18) {
+      return '${text.substring(0, 16)}...';
+    }
+    return text;
   }
 
   @override
   Widget build(BuildContext context) {
     final world = context.watch<WorldProvider>();
-    final stats = _getStats(world);
+    final partnerLoc = world.partnerLocation;
+    final myLoc = world.myLocation;
+
+    final hasPartner = widget.partnerNickname != null &&
+        widget.partnerNickname!.isNotEmpty &&
+        widget.partnerNickname!.toLowerCase() != 'partner';
+
+    final effectiveShowPartner = hasPartner ? _showPartner : false;
+    final partnerName = widget.partnerNickname ?? 'Partner';
+    final userName = widget.userNickname ?? 'You';
+
+    final currentTargetName = effectiveShowPartner ? partnerName : userName;
+    final currentAvatarUrl = effectiveShowPartner ? widget.partnerAvatarUrl : widget.userAvatarUrl;
+
+    // Distance, steps & active minutes
+    final double km = effectiveShowPartner
+        ? world.effectivePartnerJourneyKm
+        : world.myJourneyKmToday;
+
+    final int steps = effectiveShowPartner
+        ? world.effectivePartnerSteps
+        : world.myStepsToday;
+
+    final int activeMinutes = effectiveShowPartner
+        ? world.effectivePartnerActiveMinutes
+        : world.myActiveMinutesToday;
+
+    final bool isStationary = km < 0.08;
+
+    // Origin and destination place names
+    final String rawOrigin = effectiveShowPartner
+        ? world.effectivePartnerDeparturePlace
+        : world.myDeparturePlace;
+
+    final String rawDest = effectiveShowPartner
+        ? (partnerLoc?.placeName ?? 'Locating...')
+        : (myLoc?.placeName ?? 'Locating...');
+
+    final String originLabel = _cleanPlace(rawOrigin);
+    final String destLabel = _cleanPlace(rawDest);
 
     final bool isDark = widget.isDark;
     final Color surfaceColor =
@@ -64,6 +119,22 @@ class _JourneyStatsCardState extends State<JourneyStatsCard>
         isDark ? AppColors.darkBorder : AppColors.lightBorder;
     final Color inkColor = isDark ? AppColors.darkInk : AppColors.lightInk;
     final Color softColor = isDark ? AppColors.darkSoft : AppColors.lightSoft;
+
+    final distanceLabel = km < 0.05
+        ? '0 m'
+        : km < 1.0
+            ? '${(km * 1000).round()} m'
+            : '${km.toStringAsFixed(2)} km';
+
+    final stepsLabel = steps > 999
+        ? '${(steps / 1000).toStringAsFixed(1)}k'
+        : '$steps';
+
+    final activeLabel = activeMinutes < 5
+        ? '< 5 min'
+        : activeMinutes < 60
+            ? '$activeMinutes min'
+            : '${(activeMinutes / 60).toStringAsFixed(1)}h';
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -82,18 +153,31 @@ class _JourneyStatsCardState extends State<JourneyStatsCard>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── Header ──────────────────────────────────────────────────────────
+          // ── Header: Partner Avatar, Name & Toggle Pill ────────────────────
           Padding(
-            padding: const EdgeInsets.fromLTRB(18, 16, 18, 0),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
             child: Row(
               children: [
+                // Avatar / Emoji
                 Container(
-                  padding: const EdgeInsets.all(7),
+                  width: 36,
+                  height: 36,
                   decoration: BoxDecoration(
-                    color: AppColors.terra.withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(10),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: effectiveShowPartner ? AppColors.terra : AppColors.sage,
+                      width: 1.5,
+                    ),
                   ),
-                  child: const Text('✈️', style: TextStyle(fontSize: 16)),
+                  child: ClipOval(
+                    child: currentAvatarUrl != null && currentAvatarUrl.isNotEmpty
+                        ? CachedNetworkImage(
+                            imageUrl: currentAvatarUrl,
+                            fit: BoxFit.cover,
+                            errorWidget: (_, __, ___) => _avatarFallback(currentTargetName, effectiveShowPartner),
+                          )
+                        : _avatarFallback(currentTargetName, effectiveShowPartner),
+                  ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
@@ -101,35 +185,155 @@ class _JourneyStatsCardState extends State<JourneyStatsCard>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Your Journey',
+                        '$currentTargetName\'s Journey & Activity',
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.bold,
                           color: inkColor,
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                       Text(
-                        'Distance traveled together & apart',
+                        effectiveShowPartner
+                            ? 'Live activity synced from partner'
+                            : 'Your live movement & footsteps today',
                         style: TextStyle(fontSize: 10, color: softColor),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),
                 ),
-                // Period pill switcher
+                // Toggle pill between Partner and User
+                if (hasPartner)
+                  Container(
+                    padding: const EdgeInsets.all(3),
+                    decoration: BoxDecoration(
+                      color: isDark ? AppColors.darkCard : AppColors.lightCard,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _togglePill(
+                          label: partnerName,
+                          isSelected: _showPartner,
+                          isDark: isDark,
+                          onTap: () {
+                            HapticFeedback.selectionClick();
+                            setState(() => _showPartner = true);
+                          },
+                        ),
+                        _togglePill(
+                          label: 'You',
+                          isSelected: !_showPartner,
+                          isDark: isDark,
+                          onTap: () {
+                            HapticFeedback.selectionClick();
+                            setState(() => _showPartner = false);
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ),
+
+          // ── Departure & Destination Route Info ───────────────────────────
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                // Departure / Origin
+                Flexible(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 7,
+                        height: 7,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: AppColors.terra.withOpacity(0.6),
+                        ),
+                      ),
+                      const SizedBox(width: 5),
+                      Flexible(
+                        child: Text(
+                          originLabel,
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: inkColor,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Live status badge
                 Container(
-                  padding: const EdgeInsets.all(3),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
-                    color: isDark
-                        ? AppColors.darkCard
-                        : AppColors.lightCard,
+                    color: isStationary
+                        ? AppColors.sage.withOpacity(0.16)
+                        : AppColors.terra.withOpacity(0.16),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      _periodPill('Day', _JourneyPeriod.day, isDark),
-                      _periodPill('Week', _JourneyPeriod.week, isDark),
-                      _periodPill('Month', _JourneyPeriod.month, isDark),
+                      Text(
+                        isStationary ? '🏡 Resting' : '✈️ Moving',
+                        style: TextStyle(
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.bold,
+                          color: isStationary ? AppColors.sage : AppColors.terra,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        '· $distanceLabel',
+                        style: TextStyle(
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.bold,
+                          color: isStationary ? AppColors.sage : AppColors.terra,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Destination
+                Flexible(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      Flexible(
+                        child: Text(
+                          destLabel,
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: inkColor,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 5),
+                      const Icon(
+                        Icons.location_on_rounded,
+                        size: 13,
+                        color: AppColors.terra,
+                      ),
                     ],
                   ),
                 ),
@@ -137,9 +341,9 @@ class _JourneyStatsCardState extends State<JourneyStatsCard>
             ),
           ),
 
-          // ── Paper plane arc ──────────────────────────────────────────────────
+          // ── Animated Paper Plane Bezier Arc ──────────────────────────────
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+            padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
             child: AnimatedBuilder(
               animation: _planeAnim,
               builder: (context, _) {
@@ -148,61 +352,69 @@ class _JourneyStatsCardState extends State<JourneyStatsCard>
                     progress: _planeAnim.value,
                     lineColor: AppColors.terra,
                     planeColor: Colors.white,
+                    isStationary: isStationary,
                   ),
-                  child: const SizedBox(height: 80, width: double.infinity),
+                  child: const SizedBox(height: 72, width: double.infinity),
                 );
               },
             ),
           ),
 
-          // ── Distance label below arc ─────────────────────────────────────────
+          // ── 3 Core Stats Row: Footsteps, Distance, Active Time & Status ──
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 6),
-            child: Center(
-              child: Text(
-                stats.distanceLabel,
-                style: TextStyle(
-                  fontSize: 26,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.terra,
-                  letterSpacing: -0.5,
-                ),
-              ),
-            ),
-          ),
-
-          // ── Stats row ────────────────────────────────────────────────────────
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 0, 12, 14),
+            padding: const EdgeInsets.fromLTRB(14, 2, 14, 16),
             child: Row(
               children: [
-                _statChip('👟', '${stats.estimatedSteps}', 'steps', inkColor, softColor),
-                _statChip('⏱️', stats.activeHoursLabel, 'active', inkColor, softColor),
-                _statChip('📍', '${stats.areasCount}', 'areas', inkColor, softColor),
-                _statChip('📅', stats.periodLabel, _periodName, inkColor, softColor),
+                _statChip('👟', stepsLabel, 'footsteps', inkColor, softColor),
+                _statChip('📏', distanceLabel, 'traveled', inkColor, softColor),
+                _statChip('⏱️', activeLabel, 'active', inkColor, softColor),
+                _statChip(
+                  isStationary ? '🏡' : '📍',
+                  isStationary ? 'Stationary' : 'On Move',
+                  'status',
+                  inkColor,
+                  softColor,
+                ),
               ],
             ),
           ),
-
-          // ── Partner compare strip (if partner data available) ─────────────────
-          if (world.partnerJourneyKmToday > 0 ||
-              world.partnerJourneyKmThisWeek > 0 ||
-              world.partnerJourneyKmThisMonth > 0)
-            _buildPartnerStrip(world, isDark, softColor, borderColor),
         ],
       ),
     );
   }
 
-  Widget _periodPill(String label, _JourneyPeriod p, bool isDark) {
-    final selected = _period == p;
+  Widget _avatarFallback(String name, bool isPartner) {
+    final initial = name.isNotEmpty ? name[0].toUpperCase() : 'P';
+    return Container(
+      color: isPartner
+          ? AppColors.terra.withOpacity(0.2)
+          : AppColors.sage.withOpacity(0.2),
+      child: Center(
+        child: Text(
+          initial,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.bold,
+            color: isPartner ? AppColors.terra : AppColors.sage,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _togglePill({
+    required String label,
+    required bool isSelected,
+    required bool isDark,
+    required VoidCallback onTap,
+  }) {
     return GestureDetector(
-      onTap: () => _switchPeriod(p),
+      onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
         decoration: BoxDecoration(
-          color: selected ? AppColors.terra : Colors.transparent,
+          color: isSelected ? AppColors.terra : Colors.transparent,
           borderRadius: BorderRadius.circular(7),
         ),
         child: Text(
@@ -210,7 +422,7 @@ class _JourneyStatsCardState extends State<JourneyStatsCard>
           style: TextStyle(
             fontSize: 10,
             fontWeight: FontWeight.w700,
-            color: selected
+            color: isSelected
                 ? Colors.white
                 : (isDark ? AppColors.darkSoft : AppColors.lightSoft),
           ),
@@ -220,7 +432,12 @@ class _JourneyStatsCardState extends State<JourneyStatsCard>
   }
 
   Widget _statChip(
-      String emoji, String value, String label, Color inkColor, Color softColor) {
+    String emoji,
+    String value,
+    String label,
+    Color inkColor,
+    Color softColor,
+  ) {
     return Expanded(
       child: Column(
         children: [
@@ -233,144 +450,15 @@ class _JourneyStatsCardState extends State<JourneyStatsCard>
               fontWeight: FontWeight.w700,
               color: inkColor,
             ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
           Text(
             label,
-            style: TextStyle(fontSize: 9, color: softColor),
+            style: TextStyle(fontSize: 9.5, color: softColor),
           ),
         ],
       ),
     );
   }
-
-  Widget _buildPartnerStrip(
-    WorldProvider world,
-    bool isDark,
-    Color softColor,
-    Color borderColor,
-  ) {
-    final partnerKm = switch (_period) {
-      _JourneyPeriod.day => world.partnerJourneyKmToday,
-      _JourneyPeriod.week => world.partnerJourneyKmThisWeek,
-      _JourneyPeriod.month => world.partnerJourneyKmThisMonth,
-    };
-    final myKm = switch (_period) {
-      _JourneyPeriod.day => world.myJourneyKmToday,
-      _JourneyPeriod.week => world.myJourneyKmThisWeek,
-      _JourneyPeriod.month => world.myJourneyKmThisMonth,
-    };
-    final partnerLabel = partnerKm < 1
-        ? '${(partnerKm * 1000).round()} m'
-        : '${partnerKm.toStringAsFixed(1)} km';
-    return Container(
-      margin: const EdgeInsets.fromLTRB(12, 0, 12, 14),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: isDark
-            ? AppColors.darkCard.withOpacity(0.6)
-            : AppColors.lightCard.withOpacity(0.6),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: borderColor),
-      ),
-      child: Row(
-        children: [
-          const Text('💑', style: TextStyle(fontSize: 13)),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              'Partner traveled $partnerLabel this $_periodName',
-              style: TextStyle(fontSize: 10, color: softColor),
-            ),
-          ),
-          // Simple progress bar comparison
-          Container(
-            width: 60,
-            height: 5,
-            decoration: BoxDecoration(
-              color: AppColors.sage.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(3),
-            ),
-            child: FractionallySizedBox(
-              widthFactor: myKm > 0
-                  ? (partnerKm / (myKm + partnerKm)).clamp(0.05, 0.95)
-                  : 0.5,
-              alignment: Alignment.centerLeft,
-              child: Container(
-                decoration: BoxDecoration(
-                  color: AppColors.sage,
-                  borderRadius: BorderRadius.circular(3),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  _JourneyDisplayStats _getStats(WorldProvider world) {
-    final km = switch (_period) {
-      _JourneyPeriod.day => world.myJourneyKmToday,
-      _JourneyPeriod.week => world.myJourneyKmThisWeek,
-      _JourneyPeriod.month => world.myJourneyKmThisMonth,
-    };
-    final areas = switch (_period) {
-      _JourneyPeriod.day => world.myAreasVisitedToday,
-      _JourneyPeriod.week => world.myAreasVisitedThisWeek,
-      _JourneyPeriod.month => world.myAreasVisitedThisMonth,
-    };
-
-    final distanceLabel = km < 0.05
-        ? 'No movement'
-        : km < 1.0
-            ? '${(km * 1000).round()} m'
-            : '${km.toStringAsFixed(2)} km';
-
-    final steps = km < 0.05 ? 0 : (km * 1300).round();
-    final stepsLabel = steps > 999 ? '${(steps / 1000).toStringAsFixed(1)}k' : '$steps';
-
-    // Active hours: rough estimate (5 km/h walking pace)
-    final activeH = (km / 5.0);
-    final activeLabel = activeH < 0.1
-        ? '< 5 min'
-        : activeH < 1.0
-            ? '${(activeH * 60).round()} min'
-            : '${activeH.toStringAsFixed(1)}h';
-
-    final periodLabels = {
-      _JourneyPeriod.day: 'today',
-      _JourneyPeriod.week: 'this wk',
-      _JourneyPeriod.month: 'this mo',
-    };
-
-    return _JourneyDisplayStats(
-      distanceLabel: distanceLabel,
-      estimatedSteps: stepsLabel,
-      activeHoursLabel: activeLabel,
-      areasCount: areas,
-      periodLabel: periodLabels[_period]!,
-    );
-  }
-
-  String get _periodName => switch (_period) {
-    _JourneyPeriod.day => 'day',
-    _JourneyPeriod.week => 'week',
-    _JourneyPeriod.month => 'month',
-  };
-}
-
-class _JourneyDisplayStats {
-  final String distanceLabel;
-  final String estimatedSteps;
-  final String activeHoursLabel;
-  final int areasCount;
-  final String periodLabel;
-
-  const _JourneyDisplayStats({
-    required this.distanceLabel,
-    required this.estimatedSteps,
-    required this.activeHoursLabel,
-    required this.areasCount,
-    required this.periodLabel,
-  });
 }

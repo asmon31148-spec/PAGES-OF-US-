@@ -11,6 +11,10 @@ class UserLocationData {
   final double? accuracy;
   final bool isSharingEnabled;
   final String updatedAt;
+  final double? journeyKmToday;
+  final int? stepsToday;
+  final int? activeMinutesToday;
+  final String? departurePlace;
 
   UserLocationData({
     required this.userId,
@@ -25,6 +29,10 @@ class UserLocationData {
     this.accuracy,
     this.isSharingEnabled = true,
     required this.updatedAt,
+    this.journeyKmToday,
+    this.stepsToday,
+    this.activeMinutesToday,
+    this.departurePlace,
   });
 
   factory UserLocationData.fromJson(Map<String, dynamic> json) {
@@ -41,6 +49,10 @@ class UserLocationData {
       accuracy: (json['accuracy'] as num?)?.toDouble(),
       isSharingEnabled: json['isSharingEnabled'] != false,
       updatedAt: json['updatedAt']?.toString() ?? DateTime.now().toIso8601String(),
+      journeyKmToday: (json['journeyKmToday'] as num?)?.toDouble(),
+      stepsToday: (json['stepsToday'] as num?)?.toInt(),
+      activeMinutesToday: (json['activeMinutesToday'] as num?)?.toInt(),
+      departurePlace: json['departurePlace']?.toString(),
     );
   }
 
@@ -58,6 +70,10 @@ class UserLocationData {
       'accuracy': accuracy,
       'isSharingEnabled': isSharingEnabled,
       'updatedAt': updatedAt,
+      if (journeyKmToday != null) 'journeyKmToday': journeyKmToday,
+      if (stepsToday != null) 'stepsToday': stepsToday,
+      if (activeMinutesToday != null) 'activeMinutesToday': activeMinutesToday,
+      if (departurePlace != null) 'departurePlace': departurePlace,
     };
   }
 
@@ -74,6 +90,10 @@ class UserLocationData {
     double? accuracy,
     bool? isSharingEnabled,
     String? updatedAt,
+    double? journeyKmToday,
+    int? stepsToday,
+    int? activeMinutesToday,
+    String? departurePlace,
   }) {
     return UserLocationData(
       userId: userId ?? this.userId,
@@ -88,6 +108,10 @@ class UserLocationData {
       accuracy: accuracy ?? this.accuracy,
       isSharingEnabled: isSharingEnabled ?? this.isSharingEnabled,
       updatedAt: updatedAt ?? this.updatedAt,
+      journeyKmToday: journeyKmToday ?? this.journeyKmToday,
+      stepsToday: stepsToday ?? this.stepsToday,
+      activeMinutesToday: activeMinutesToday ?? this.activeMinutesToday,
+      departurePlace: departurePlace ?? this.departurePlace,
     );
   }
 }

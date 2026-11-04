@@ -68,6 +68,8 @@ class WorldProvider extends ChangeNotifier {
   String _cachedPlaceName = 'Nearby';
   String _cachedNeighborhood = '';
   String _cachedCity = '';
+  String? _firstPlaceNameToday;
+  String? _partnerFirstPlaceToday;
 
   // ── Journey log — accumulated GPS points for travel stats ───────────────────
   List<JourneyPoint> _myJourneyLog = [];
@@ -305,6 +307,41 @@ class WorldProvider extends ChangeNotifier {
   double get partnerJourneyKmThisWeek  => _calcJourneyKm(_partnerJourneyLog, const Duration(days: 7));
   double get partnerJourneyKmThisMonth => _calcJourneyKm(_partnerJourneyLog, const Duration(days: 30));
 
+  int get myStepsToday => (myJourneyKmToday * 1300).round();
+  int get myActiveMinutesToday => (myJourneyKmToday / 4.5 * 60).round();
+
+  double get effectivePartnerJourneyKm {
+    if (_partnerId != null && _locations[_partnerId]?.journeyKmToday != null) {
+      return _locations[_partnerId]!.journeyKmToday!;
+    }
+    return partnerJourneyKmToday;
+  }
+
+  int get effectivePartnerSteps {
+    if (_partnerId != null && _locations[_partnerId]?.stepsToday != null) {
+      return _locations[_partnerId]!.stepsToday!;
+    }
+    return (effectivePartnerJourneyKm * 1300).round();
+  }
+
+  int get effectivePartnerActiveMinutes {
+    if (_partnerId != null && _locations[_partnerId]?.activeMinutesToday != null) {
+      return _locations[_partnerId]!.activeMinutesToday!;
+    }
+    return (effectivePartnerJourneyKm / 4.5 * 60).round();
+  }
+
+  String get effectivePartnerDeparturePlace {
+    final fromModel = _locations[_partnerId]?.departurePlace;
+    if (fromModel != null && fromModel.isNotEmpty) return fromModel;
+    if (_partnerFirstPlaceToday != null && _partnerFirstPlaceToday!.isNotEmpty) {
+      return _partnerFirstPlaceToday!;
+    }
+    return _locations[_partnerId]?.neighborhood ?? _locations[_partnerId]?.city ?? 'Starting Point';
+  }
+
+  String get myDeparturePlace => _firstPlaceNameToday ?? (_cachedNeighborhood.isNotEmpty ? _cachedNeighborhood : 'Starting Point');
+
   // ── Convenience methods called by journey_stats_card ───────────────────────
   double myJourneyKm(dynamic period) {
     final name = period?.toString() ?? '';
@@ -462,14 +499,18 @@ class WorldProvider extends ChangeNotifier {
           _partnerId = loc.userId;
         }
         _locations[loc.userId] = loc;
+        if (_partnerFirstPlaceToday == null && loc.placeName != null && loc.placeName!.isNotEmpty && loc.placeName != 'Nearby') {
+          _partnerFirstPlaceToday = loc.placeName;
+        }
         // Accumulate partner's position into their journey log
         _appendPartnerPoint(loc.lat, loc.lng);
+        _syncSameRoofAddresses();
         _checkPartnerGeofence(loc);
         if (_partnerWeather == null) {
           _fetchPartnerWeather(loc.lat, loc.lng);
         }
         if (loc.lat != 0.0 || loc.lng != 0.0) {
-          if (loc.placeName == null || loc.placeName == 'Nearby' || loc.placeName!.trim().isEmpty) {
+          if (loc.placeName == null || loc.placeName == 'Nearby' || loc.placeName!.trim().isEmpty || loc.placeName!.toLowerCase() == 'baruipur, baruipur') {
             _reverseGeocodePartner(loc.userId, loc.lat, loc.lng);
           }
         }
@@ -689,6 +730,14 @@ class WorldProvider extends ChangeNotifier {
       _reverseGeocode(position.latitude, position.longitude);
     }
 
+    final journeyKm = myJourneyKmToday;
+    final steps = (journeyKm * 1300).round();
+    final activeMinutes = (journeyKm / 4.5 * 60).round();
+
+    if (_firstPlaceNameToday == null && _cachedPlaceName.isNotEmpty && _cachedPlaceName != 'Nearby') {
+      _firstPlaceNameToday = _cachedPlaceName;
+    }
+
     final myLocation = UserLocationData(
       userId: _currentUserId!,
       nickname: _currentNickname ?? 'You',
@@ -702,9 +751,14 @@ class WorldProvider extends ChangeNotifier {
       accuracy: position.accuracy,
       isSharingEnabled: _isSharing,
       updatedAt: now.toIso8601String(),
+      journeyKmToday: journeyKm,
+      stepsToday: steps,
+      activeMinutesToday: activeMinutes,
+      departurePlace: _firstPlaceNameToday ?? _cachedPlaceName,
     );
 
     _locations[_currentUserId!] = myLocation;
+    _syncSameRoofAddresses();
     notifyListeners();
 
     // Instant WebSocket broadcast to partner (0-50ms)
@@ -749,6 +803,109 @@ class WorldProvider extends ChangeNotifier {
     });
   }
 
+  String _buildFormattedPlaceName({
+    String? landmark,
+    String? road,
+    String? suburb,
+    String? city,
+    String? state,
+    String? rawDisplayName,
+  }) {
+    final cleanLandmark = (landmark ?? '').trim();
+    final cleanRoad = (road ?? '').trim();
+    final cleanSuburb = (suburb ?? '').trim();
+    final cleanCity = (city ?? '').trim();
+    final cleanState = (state ?? '').trim();
+
+    String specific = '';
+    if (cleanLandmark.isNotEmpty) {
+      specific = cleanLandmark;
+    } else if (cleanRoad.isNotEmpty) {
+      specific = cleanRoad;
+    } else if (cleanSuburb.isNotEmpty) {
+      specific = cleanSuburb;
+    }
+
+    String broad = '';
+    if (specific.isNotEmpty && specific.toLowerCase() == cleanSuburb.toLowerCase()) {
+      broad = cleanCity.isNotEmpty ? cleanCity : cleanState;
+    } else if (cleanSuburb.isNotEmpty && cleanSuburb.toLowerCase() != specific.toLowerCase()) {
+      broad = cleanSuburb;
+    } else if (cleanCity.isNotEmpty && cleanCity.toLowerCase() != specific.toLowerCase()) {
+      broad = cleanCity;
+    } else if (cleanState.isNotEmpty) {
+      broad = cleanState;
+    }
+
+    if (specific.isEmpty && broad.isEmpty) {
+      if (rawDisplayName != null && rawDisplayName.isNotEmpty) {
+        final parts = rawDisplayName.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).take(2).toList();
+        return _deduplicateAddressParts(parts);
+      }
+      return 'Nearby';
+    }
+
+    if (specific.isEmpty) return broad;
+    if (broad.isEmpty) return specific;
+
+    if (specific.toLowerCase() == broad.toLowerCase()) {
+      if (cleanState.isNotEmpty && cleanState.toLowerCase() != specific.toLowerCase()) {
+        return '$specific, $cleanState';
+      }
+      return specific;
+    }
+
+    if (specific.toLowerCase().contains(broad.toLowerCase())) return specific;
+    if (broad.toLowerCase().contains(specific.toLowerCase())) return broad;
+
+    return '$specific, $broad';
+  }
+
+  String _deduplicateAddressParts(List<String> parts) {
+    final seen = <String>{};
+    final unique = <String>[];
+    for (final p in parts) {
+      final lower = p.toLowerCase().trim();
+      if (lower.isNotEmpty && !seen.contains(lower)) {
+        seen.add(lower);
+        unique.add(p.trim());
+      }
+    }
+    return unique.isNotEmpty ? unique.join(', ') : 'Nearby';
+  }
+
+  void _syncSameRoofAddresses() {
+    if (_currentUserId == null || _partnerId == null) return;
+    final myLoc = _locations[_currentUserId];
+    final partnerLoc = _locations[_partnerId];
+    if (myLoc == null || partnerLoc == null) return;
+    if (myLoc.lat == 0.0 || partnerLoc.lat == 0.0) return;
+
+    final distKm = calculateDistanceKm(myLoc.lat, myLoc.lng, partnerLoc.lat, partnerLoc.lng);
+    if (distKm <= 0.06) {
+      final myPlace = myLoc.placeName ?? '';
+      final pPlace = partnerLoc.placeName ?? '';
+
+      final myIsSpecific = myPlace.contains(',') && !myPlace.contains('Nearby') && !myPlace.toLowerCase().contains('baruipur, baruipur');
+      final pIsSpecific = pPlace.contains(',') && !pPlace.contains('Nearby') && !pPlace.toLowerCase().contains('baruipur, baruipur');
+
+      if (myIsSpecific && !pIsSpecific) {
+        _locations[_partnerId!] = partnerLoc.copyWith(
+          placeName: myPlace,
+          neighborhood: myLoc.neighborhood,
+          city: myLoc.city,
+        );
+      } else if (pIsSpecific && !myIsSpecific) {
+        _locations[_currentUserId!] = myLoc.copyWith(
+          placeName: pPlace,
+          neighborhood: partnerLoc.neighborhood,
+          city: partnerLoc.city,
+        );
+        _cachedPlaceName = pPlace;
+      }
+    }
+  }
+
   Future<void> _reverseGeocode(double lat, double lng) async {
     final cacheKey = '${lat.toStringAsFixed(3)},${lng.toStringAsFixed(3)}';
     if (_geocodeCache.containsKey(cacheKey)) {
@@ -762,6 +919,7 @@ class WorldProvider extends ChangeNotifier {
           neighborhood: _cachedNeighborhood,
           city: _cachedCity,
         );
+        _syncSameRoofAddresses();
         notifyListeners();
       }
       return;
@@ -785,22 +943,19 @@ class WorldProvider extends ChangeNotifier {
           final road = (addr['road'] ?? addr['pedestrian'] ?? addr['street'] ?? addr['footway'] ?? '').toString().trim();
           final landmark = (addr['amenity'] ?? addr['building'] ?? addr['shop'] ?? addr['leisure'] ?? addr['tourism'] ?? '').toString().trim();
           final suburb = (addr['suburb'] ?? addr['neighbourhood'] ?? addr['residential'] ?? addr['quarter'] ?? '').toString().trim();
-          final city = (addr['city'] ?? addr['town'] ?? addr['village'] ?? addr['county'] ?? addr['state_district'] ?? addr['state'] ?? '').toString().trim();
+          final city = (addr['city'] ?? addr['town'] ?? addr['village'] ?? addr['county'] ?? addr['state_district'] ?? '').toString().trim();
+          final state = (addr['state'] ?? '').toString().trim();
 
           _cachedNeighborhood = suburb.isNotEmpty ? suburb : (road.isNotEmpty ? road : city);
           _cachedCity = city;
-
-          if (landmark.isNotEmpty) {
-            _cachedPlaceName = suburb.isNotEmpty ? '$landmark, $suburb' : landmark;
-          } else if (road.isNotEmpty) {
-            _cachedPlaceName = suburb.isNotEmpty ? '$road, $suburb' : (city.isNotEmpty ? '$road, $city' : road);
-          } else if (suburb.isNotEmpty) {
-            _cachedPlaceName = city.isNotEmpty ? '$suburb, $city' : suburb;
-          } else {
-            final displayName = geoData['display_name']?.toString() ?? '';
-            final parts = displayName.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).take(2).toList();
-            _cachedPlaceName = parts.isNotEmpty ? parts.join(', ') : 'Nearby';
-          }
+          _cachedPlaceName = _buildFormattedPlaceName(
+            landmark: landmark,
+            road: road,
+            suburb: suburb,
+            city: city,
+            state: state,
+            rawDisplayName: geoData['display_name']?.toString(),
+          );
 
           _geocodeCache[cacheKey] = {
             'place': _cachedPlaceName,
@@ -814,6 +969,7 @@ class WorldProvider extends ChangeNotifier {
               neighborhood: _cachedNeighborhood,
               city: _cachedCity,
             );
+            _syncSameRoofAddresses();
             notifyListeners();
           }
         }
@@ -835,9 +991,14 @@ class WorldProvider extends ChangeNotifier {
         final data = jsonDecode(resp.body) as Map<String, dynamic>;
         final locality = data['locality']?.toString().trim() ?? '';
         final city = (data['city'] ?? data['principalSubdivision'] ?? '').toString().trim();
+        final state = (data['principalSubdivision'] ?? '').toString().trim();
         _cachedNeighborhood = locality;
         _cachedCity = city;
-        _cachedPlaceName = locality.isNotEmpty ? (city.isNotEmpty ? '$locality, $city' : locality) : (city.isNotEmpty ? city : 'Nearby');
+        _cachedPlaceName = _buildFormattedPlaceName(
+          suburb: locality,
+          city: city,
+          state: state,
+        );
 
         _geocodeCache[cacheKey] = {
           'place': _cachedPlaceName,
@@ -850,14 +1011,14 @@ class WorldProvider extends ChangeNotifier {
             neighborhood: _cachedNeighborhood,
             city: _cachedCity,
           );
+          _syncSameRoofAddresses();
           notifyListeners();
         }
       }
     } catch (_) {}
   }
 
-  /// Reverse geocodes the partner's coordinates so their actual town/city resolves
-  /// even if partner's own device sent 'Nearby' due to timeout or rate limiting.
+  /// Reverse geocodes the partner's coordinates with full zoom=18 detail
   Future<void> _reverseGeocodePartner(String partnerId, double lat, double lng) async {
     if (lat == 0.0 && lng == 0.0) return;
     final cacheKey = 'partner_${lat.toStringAsFixed(3)},${lng.toStringAsFixed(3)}';
@@ -870,12 +1031,59 @@ class WorldProvider extends ChangeNotifier {
           neighborhood: cached['neighborhood'],
           city: cached['city'],
         );
+        _syncSameRoofAddresses();
         notifyListeners();
       }
       return;
     }
 
-    // 1. Try Photon reverse geocode (instant, zero rate limits)
+    // 1. Try Nominatim OpenStreetMap at zoom=18 for full neighborhood accuracy
+    try {
+      final geoUrl = Uri.parse(
+        'https://nominatim.openstreetmap.org/reverse?format=json&lat=$lat&lon=$lng&zoom=18&addressdetails=1',
+      );
+      final resp = await http.get(geoUrl, headers: {
+        'User-Agent': 'PagesOfUsApp/1.0 (contact@pagesofus.app)',
+      }).timeout(const Duration(seconds: 4));
+      if (resp.statusCode == 200) {
+        final geoData = jsonDecode(resp.body) as Map<String, dynamic>;
+        final addr = geoData['address'] as Map<String, dynamic>?;
+        if (addr != null) {
+          final road = (addr['road'] ?? addr['pedestrian'] ?? addr['street'] ?? addr['footway'] ?? '').toString().trim();
+          final landmark = (addr['amenity'] ?? addr['building'] ?? addr['shop'] ?? addr['leisure'] ?? addr['tourism'] ?? '').toString().trim();
+          final suburb = (addr['suburb'] ?? addr['neighbourhood'] ?? addr['residential'] ?? addr['town'] ?? addr['village'] ?? '').toString().trim();
+          final city = (addr['city'] ?? addr['county'] ?? addr['state_district'] ?? '').toString().trim();
+          final state = (addr['state'] ?? '').toString().trim();
+
+          final place = _buildFormattedPlaceName(
+            landmark: landmark,
+            road: road,
+            suburb: suburb,
+            city: city,
+            state: state,
+            rawDisplayName: geoData['display_name']?.toString(),
+          );
+
+          _geocodeCache[cacheKey] = {
+            'place': place,
+            'neighborhood': suburb.isNotEmpty ? suburb : (road.isNotEmpty ? road : city),
+            'city': city,
+          };
+          if (_locations.containsKey(partnerId)) {
+            _locations[partnerId] = _locations[partnerId]!.copyWith(
+              placeName: place,
+              neighborhood: suburb.isNotEmpty ? suburb : (road.isNotEmpty ? road : city),
+              city: city,
+            );
+            _syncSameRoofAddresses();
+            notifyListeners();
+          }
+          return;
+        }
+      }
+    } catch (_) {}
+
+    // 2. Try Photon reverse geocode
     try {
       final photonUrl = Uri.parse('https://photon.komoot.io/reverse?lat=$lat&lon=$lng');
       final resp = await http.get(photonUrl).timeout(const Duration(seconds: 4));
@@ -890,16 +1098,13 @@ class WorldProvider extends ChangeNotifier {
             final city = (props['city'] ?? props['county'] ?? props['district'] ?? '').toString().trim();
             final state = (props['state'] ?? '').toString().trim();
 
-            String placeName = '';
-            if (city.isNotEmpty && state.isNotEmpty && city.toLowerCase() != state.toLowerCase()) {
-              placeName = '$city, $state';
-            } else if (name.isNotEmpty && city.isNotEmpty) {
-              placeName = '$name, $city';
-            } else if (name.isNotEmpty && state.isNotEmpty) {
-              placeName = '$name, $state';
-            } else {
-              placeName = city.isNotEmpty ? city : (name.isNotEmpty ? name : state);
-            }
+            final placeName = _buildFormattedPlaceName(
+              landmark: street.isNotEmpty ? name : '',
+              road: street,
+              suburb: street.isEmpty ? name : '',
+              city: city,
+              state: state,
+            );
 
             if (placeName.isNotEmpty) {
               _geocodeCache[cacheKey] = {
@@ -913,58 +1118,11 @@ class WorldProvider extends ChangeNotifier {
                   neighborhood: name.isNotEmpty ? name : street,
                   city: city,
                 );
+                _syncSameRoofAddresses();
                 notifyListeners();
               }
               return;
             }
-          }
-        }
-      }
-    } catch (_) {}
-
-    // 2. Fallback to Nominatim OpenStreetMap
-    try {
-      final geoUrl = Uri.parse(
-        'https://nominatim.openstreetmap.org/reverse?format=json&lat=$lat&lon=$lng&zoom=14&addressdetails=1',
-      );
-      final resp = await http.get(geoUrl, headers: {
-        'User-Agent': 'PagesOfUsApp/1.0 (contact@pagesofus.app)',
-      }).timeout(const Duration(seconds: 4));
-      if (resp.statusCode == 200) {
-        final geoData = jsonDecode(resp.body) as Map<String, dynamic>;
-        final addr = geoData['address'] as Map<String, dynamic>?;
-        if (addr != null) {
-          final suburb = (addr['suburb'] ?? addr['neighbourhood'] ?? addr['town'] ?? addr['village'] ?? '').toString().trim();
-          final city = (addr['city'] ?? addr['county'] ?? addr['state_district'] ?? '').toString().trim();
-          final state = (addr['state'] ?? '').toString().trim();
-
-          String place = '';
-          if (city.isNotEmpty && state.isNotEmpty && city != state) {
-            place = '$city, $state';
-          } else if (suburb.isNotEmpty && city.isNotEmpty) {
-            place = '$suburb, $city';
-          } else if (city.isNotEmpty) {
-            place = city;
-          } else if (state.isNotEmpty) {
-            place = state;
-          } else {
-            final displayName = geoData['display_name']?.toString() ?? '';
-            final parts = displayName.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).take(2).toList();
-            place = parts.isNotEmpty ? parts.join(', ') : 'Nearby';
-          }
-
-          _geocodeCache[cacheKey] = {
-            'place': place,
-            'neighborhood': suburb,
-            'city': city,
-          };
-          if (_locations.containsKey(partnerId)) {
-            _locations[partnerId] = _locations[partnerId]!.copyWith(
-              placeName: place,
-              neighborhood: suburb,
-              city: city,
-            );
-            notifyListeners();
           }
         }
       }
