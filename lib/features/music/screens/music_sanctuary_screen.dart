@@ -60,74 +60,84 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
               children: [
                 // Top Header: Back (<), Title, Headphones, Search (🔍), Add (+)
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                   child: Row(
                     children: [
                       GlassButton(
                         onTap: () => Navigator.pop(context),
-                        width: 42,
-                        height: 42,
+                        width: 38,
+                        height: 38,
                         child: const Center(
-                          child: Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 18),
+                          child: Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 16),
                         ),
                       ),
-                      const SizedBox(width: 14),
-                      Text(
-                        _activeTabIndex == 3
-                            ? 'Atmosphere'
-                            : (_activeTabIndex == 2
-                                ? 'Downloaded'
-                                : (_activeTabIndex == 1 ? 'Playlists' : 'Music Sanctuary')),
-                        style: const TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                          letterSpacing: -0.5,
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          _activeTabIndex == 3
+                              ? 'Atmosphere'
+                              : (_activeTabIndex == 2
+                                  ? 'Downloaded'
+                                  : (_activeTabIndex == 1 ? 'Playlists' : 'Music Sanctuary')),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 19,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                            letterSpacing: -0.4,
+                          ),
                         ),
                       ),
-                      const Spacer(),
+                      const SizedBox(width: 6),
                       GlassButton(
-                        width: 42,
-                        height: 42,
+                        width: 38,
+                        height: 38,
                         onTap: () {
                           audioProvider.toggleBackgroundPlayback();
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: Text(
                                 audioProvider.allowBackgroundPlayback
-                                    ? 'Background playback enabled (plays outside app)'
-                                    : 'Background playback disabled (pauses on exit)',
+                                    ? 'Background playback enabled'
+                                    : 'Background playback disabled',
                               ),
                               duration: const Duration(seconds: 2),
                               behavior: SnackBarBehavior.floating,
                             ),
                           );
                         },
-                        child: Icon(
-                          audioProvider.allowBackgroundPlayback
-                              ? Icons.headphones_rounded
-                              : Icons.headphones_outlined,
-                          color: audioProvider.allowBackgroundPlayback
-                              ? GlassTokens.accent
-                              : Colors.white70,
-                          size: 20,
+                        child: Center(
+                          child: Icon(
+                            audioProvider.allowBackgroundPlayback
+                                ? Icons.headphones_rounded
+                                : Icons.headphones_outlined,
+                            color: audioProvider.allowBackgroundPlayback
+                                ? GlassTokens.accent
+                                : Colors.white70,
+                            size: 19,
+                          ),
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 6),
                       GlassButton(
-                        width: 42,
-                        height: 42,
+                        width: 38,
+                        height: 38,
                         onTap: () => YoutubeMusicSearchSheet.show(context),
-                        child: const Icon(Icons.search_rounded, color: Colors.white, size: 20),
+                        child: const Center(
+                          child: Icon(Icons.search_rounded, color: Colors.white, size: 19),
+                        ),
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 6),
                       GlassButton(
-                        width: 42,
-                        height: 42,
+                        width: 38,
+                        height: 38,
                         tintColor: GlassTokens.accent.withOpacity(0.35),
                         borderColor: GlassTokens.accent.withOpacity(0.7),
                         onTap: () => _showAddSongDialog(context),
-                        child: const Icon(Icons.add_rounded, color: Colors.white, size: 24),
+                        child: const Center(
+                          child: Icon(Icons.add_rounded, color: Colors.white, size: 22),
+                        ),
                       ),
                     ],
                   ),
@@ -439,6 +449,7 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
                   return SizedBox(
                     width: 175,
                     child: GlassCard(
+                      enableBlur: false,
                       padding: const EdgeInsets.all(12),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -639,6 +650,7 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
                     audioProvider.selectSong(originalIndex);
                   },
                   child: GlassCard(
+                    enableBlur: false,
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     borderColor: isCurrent ? GlassTokens.accent.withOpacity(0.7) : null,
                     tintColor: isCurrent ? GlassTokens.accent.withOpacity(0.12) : null,
@@ -813,6 +825,7 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
               return Container(
                 margin: const EdgeInsets.only(bottom: 8),
                 child: GlassCard(
+                  enableBlur: false,
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   borderColor: isCurrent ? GlassTokens.accent.withOpacity(0.7) : null,
                   tintColor: isCurrent ? GlassTokens.accent.withOpacity(0.12) : null,
@@ -977,6 +990,7 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
                     );
                   },
                   child: GlassCard(
+                    enableBlur: false,
                     padding: const EdgeInsets.all(14),
                     child: Row(
                       children: [

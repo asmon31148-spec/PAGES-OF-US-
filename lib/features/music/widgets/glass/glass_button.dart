@@ -89,32 +89,33 @@ class _GlassButtonState extends State<GlassButton> with SingleTickerProviderStat
             scale: _scaleAnimation.value,
             child: child,
           ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(widget.radius),
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: GlassTokens.blurNormal, sigmaY: GlassTokens.blurNormal),
-              child: Container(
-                width: widget.width,
-                height: widget.height,
-                padding: widget.padding ?? const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                decoration: BoxDecoration(
-                  gradient: effectiveTint != null
-                      ? LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            effectiveTint.withOpacity(0.35),
-                            effectiveTint.withOpacity(0.15),
-                          ],
-                        )
-                      : GlassTokens.glassGradient,
-                  borderRadius: BorderRadius.circular(widget.radius),
-                  border: effectiveBorder,
-                  shape: widget.isCircle ? BoxShape.circle : BoxShape.rectangle,
+          child: Container(
+            width: widget.width,
+            height: widget.height,
+            padding: widget.padding ?? const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            decoration: BoxDecoration(
+              gradient: effectiveTint != null
+                  ? LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        effectiveTint.withOpacity(0.35),
+                        effectiveTint.withOpacity(0.15),
+                      ],
+                    )
+                  : GlassTokens.glassGradient,
+              borderRadius: BorderRadius.circular(widget.radius),
+              border: effectiveBorder,
+              shape: widget.isCircle ? BoxShape.circle : BoxShape.rectangle,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.15),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
                 ),
-                child: widget.child,
-              ),
+              ],
             ),
+            child: widget.child,
           ),
         ),
       ),

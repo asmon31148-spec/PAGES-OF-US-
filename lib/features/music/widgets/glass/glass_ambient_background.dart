@@ -51,7 +51,7 @@ class GlassAmbientBackground extends StatelessWidget {
 
                     // Deep blur layer across whole background to create liquid ambient glow
                     BackdropFilter(
-                      filter: ImageFilter.blur(sigmaX: 48, sigmaY: 48),
+                      filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
                       child: Container(
                         color: Colors.black.withOpacity(0.42),
                       ),

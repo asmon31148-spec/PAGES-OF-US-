@@ -174,43 +174,49 @@ class _ListenTogetherScreenState extends State<ListenTogetherScreen> {
               children: [
                 // 1. Top Glass Navigation Header
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                   child: Row(
                     children: [
                       GlassButton(
                         onTap: () => Navigator.pop(context),
-                        width: 42,
-                        height: 42,
+                        width: 38,
+                        height: 38,
                         child: const Center(
-                          child: Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 18),
+                          child: Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 16),
                         ),
                       ),
-                      const SizedBox(width: 14),
-                      const Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Listen Together',
-                            style: TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                              letterSpacing: -0.5,
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Listen Together',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 19,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                                letterSpacing: -0.4,
+                              ),
                             ),
-                          ),
-                          Text(
-                            'Synchronized audio room',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: GlassTokens.textSecondary,
+                            Text(
+                              'Synchronized audio room',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: GlassTokens.textSecondary,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                      const Spacer(),
+                      const SizedBox(width: 8),
                       GlassButton(
                         onTap: () => YoutubeMusicSearchSheet.show(context),
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
                         child: const Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
@@ -587,68 +593,128 @@ class _ListenTogetherScreenState extends State<ListenTogetherScreen> {
                         // Up Next · Shared Queue Section Header
                         Row(
                           children: [
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'Up Next · Shared Queue',
-                                  style: TextStyle(
-                                    fontSize: 17,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                                Text(
-                                  upcomingList.isEmpty
-                                      ? 'Queue is empty'
-                                      : '${upcomingList.length} ${upcomingList.length == 1 ? "track" : "tracks"} upcoming',
-                                  style: const TextStyle(
-                                    fontSize: 11,
-                                    color: GlassTokens.textSecondary,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const Spacer(),
-                            // Queue Playlist Button
-                            GlassButton(
-                              onTap: () => _showQueuePlaylistSheet(context, audioProvider),
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                              child: const Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(Icons.playlist_add_rounded, size: 16, color: GlassTokens.accent),
-                                  SizedBox(width: 4),
-                                  Text(
-                                    'Queue Playlist',
-                                    style: TextStyle(
-                                      fontSize: 11.5,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                ],
+                            const Text(
+                              'Shared Queue',
+                              style: TextStyle(
+                                fontSize: 17,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                                letterSpacing: -0.3,
                               ),
                             ),
                             const SizedBox(width: 8),
-                            // Add Song Button
-                            GlassButton(
-                              onTap: () => YoutubeMusicSearchSheet.show(context),
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                              child: const Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(Icons.add_rounded, size: 16, color: GlassTokens.accent),
-                                  SizedBox(width: 3),
-                                  Text(
-                                    'Add',
-                                    style: TextStyle(
-                                      fontSize: 11.5,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.white,
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.08),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(color: Colors.white12),
+                              ),
+                              child: Text(
+                                upcomingList.isEmpty ? '0' : '${upcomingList.length}',
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  color: GlassTokens.accent,
+                                ),
+                              ),
+                            ),
+                            const Spacer(),
+                            if (upcomingList.isNotEmpty)
+                              GestureDetector(
+                                onTap: () {
+                                  HapticFeedback.mediumImpact();
+                                  showDialog(
+                                    context: context,
+                                    builder: (ctx) => AlertDialog(
+                                      backgroundColor: const Color(0xFF18281E),
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                                      title: const Text('Clear Queue?', style: TextStyle(color: Colors.white)),
+                                      content: const Text(
+                                        'This will remove all upcoming songs from the shared queue on both phones.',
+                                        style: TextStyle(color: GlassTokens.textSecondary),
+                                      ),
+                                      actions: [
+                                        TextButton(
+                                          onPressed: () => Navigator.pop(ctx),
+                                          child: const Text('Cancel', style: TextStyle(color: Colors.white70)),
+                                        ),
+                                        TextButton(
+                                          onPressed: () {
+                                            audioProvider.clearUpcomingQueue();
+                                            Navigator.pop(ctx);
+                                          },
+                                          child: const Text('Clear', style: TextStyle(color: Color(0xFFF87171), fontWeight: FontWeight.bold)),
+                                        ),
+                                      ],
                                     ),
+                                  );
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  child: const Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.clear_all_rounded, size: 14, color: Color(0xFFF87171)),
+                                      SizedBox(width: 4),
+                                      Text(
+                                        'Clear',
+                                        style: TextStyle(color: Color(0xFFF87171), fontSize: 11.5, fontWeight: FontWeight.w600),
+                                      ),
+                                    ],
                                   ),
-                                ],
+                                ),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+
+                        // Equal Width Action Buttons (Queue Playlist & Add Song)
+                        Row(
+                          children: [
+                            Expanded(
+                              child: GlassButton(
+                                onTap: () => _showQueuePlaylistSheet(context, audioProvider),
+                                padding: const EdgeInsets.symmetric(vertical: 8),
+                                child: const Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.playlist_add_rounded, size: 16, color: GlassTokens.accent),
+                                    SizedBox(width: 6),
+                                    Text(
+                                      'Queue Playlist',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: GlassButton(
+                                onTap: () => YoutubeMusicSearchSheet.show(context),
+                                tintColor: GlassTokens.accent.withOpacity(0.2),
+                                borderColor: GlassTokens.accent.withOpacity(0.6),
+                                padding: const EdgeInsets.symmetric(vertical: 8),
+                                child: const Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.add_rounded, size: 16, color: Colors.white),
+                                    SizedBox(width: 4),
+                                    Text(
+                                      'Add Song',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           ],
@@ -658,6 +724,7 @@ class _ListenTogetherScreenState extends State<ListenTogetherScreen> {
                         // Upcoming Tracks List or Empty State
                         if (upcomingList.isEmpty)
                           GlassCard(
+                            enableBlur: false,
                             padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 20),
                             child: Center(
                               child: Column(
@@ -710,56 +777,6 @@ class _ListenTogetherScreenState extends State<ListenTogetherScreen> {
                             ),
                           )
                         else ...[
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            children: [
-                              GestureDetector(
-                                onTap: () {
-                                  HapticFeedback.mediumImpact();
-                                  showDialog(
-                                    context: context,
-                                    builder: (ctx) => AlertDialog(
-                                      backgroundColor: const Color(0xFF18281E),
-                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                                      title: const Text('Clear Queue?', style: TextStyle(color: Colors.white)),
-                                      content: const Text(
-                                        'This will remove all upcoming songs from the shared queue on both phones.',
-                                        style: TextStyle(color: GlassTokens.textSecondary),
-                                      ),
-                                      actions: [
-                                        TextButton(
-                                          onPressed: () => Navigator.pop(ctx),
-                                          child: const Text('Cancel', style: TextStyle(color: Colors.white70)),
-                                        ),
-                                        TextButton(
-                                          onPressed: () {
-                                            audioProvider.clearUpcomingQueue();
-                                            Navigator.pop(ctx);
-                                          },
-                                          child: const Text('Clear', style: TextStyle(color: Color(0xFFF87171), fontWeight: FontWeight.bold)),
-                                        ),
-                                      ],
-                                    ),
-                                  );
-                                },
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                  child: const Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(Icons.clear_all_rounded, size: 14, color: Color(0xFFF87171)),
-                                      SizedBox(width: 4),
-                                      Text(
-                                        'Clear Upcoming',
-                                        style: TextStyle(color: Color(0xFFF87171), fontSize: 11.5, fontWeight: FontWeight.w600),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 6),
                           ListView.builder(
                             shrinkWrap: true,
                             physics: const NeverScrollableScrollPhysics(),
@@ -793,6 +810,7 @@ class _ListenTogetherScreenState extends State<ListenTogetherScreen> {
                                 child: Container(
                                   margin: const EdgeInsets.only(bottom: 8),
                                   child: GlassCard(
+                                    enableBlur: false,
                                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                                     child: Row(
                                       children: [
