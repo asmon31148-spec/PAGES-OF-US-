@@ -177,8 +177,8 @@ Downloading packages...
 + source_span 1.10.2
 + sqflite 2.4.5
 + sqflite_android 2.4.5
-+ sqflite_common 2.5.14
-+ sqflite_darwin 2.4.4+1
++ sqflite_common 2.5.15
++ sqflite_darwin 2.4.5
 + sqflite_platform_interface 2.4.3
 + stack_trace 1.12.2
 + storage_client 2.8.1
@@ -323,67 +323,55 @@ warning • The value of the local variable 'memoriesProvider' isn't used. Try r
    info • 'value' is deprecated and shouldn't be used. Use component accessors like .r or .g, or toARGB32 for an explicit conversion. Try replacing the use of the deprecated member with the replacement • lib/features/music/models/music_models.dart:41:32 • deprecated_member_use
    info • 'value' is deprecated and shouldn't be used. Use component accessors like .r or .g, or toARGB32 for an explicit conversion. Try replacing the use of the deprecated member with the replacement • lib/features/music/models/music_models.dart:110:32 • deprecated_member_use
 warning • Unused import: '../models/music_models.dart'. Try removing the import directive • lib/features/music/screens/listen_together_screen.dart:7:8 • unused_import
-  error • Invalid constant value • lib/features/music/screens/listen_together_screen.dart:60:47 • invalid_constant
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/listen_together_screen.dart:80:44 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/listen_together_screen.dart:82:63 • deprecated_member_use
-  error • Invalid constant value • lib/features/music/screens/listen_together_screen.dart:98:51 • invalid_constant
-  error • Invalid constant value • lib/features/music/screens/listen_together_screen.dart:205:38 • invalid_constant
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/listen_together_screen.dart:260:59 • deprecated_member_use
-  error • Invalid constant value • lib/features/music/screens/listen_together_screen.dart:303:77 • invalid_constant
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/listen_together_screen.dart:322:57 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/listen_together_screen.dart:331:92 • deprecated_member_use
-  error • Invalid constant value • lib/features/music/screens/listen_together_screen.dart:343:87 • invalid_constant
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/listen_together_screen.dart:465:67 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/listen_together_screen.dart:466:69 • deprecated_member_use
-  error • Invalid constant value • lib/features/music/screens/listen_together_screen.dart:509:36 • invalid_constant
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/listen_together_screen.dart:516:49 • deprecated_member_use
-  error • Invalid constant value • lib/features/music/screens/listen_together_screen.dart:607:44 • invalid_constant
-  error • Invalid constant value • lib/features/music/screens/listen_together_screen.dart:674:61 • invalid_constant
-  error • Invalid constant value • lib/features/music/screens/listen_together_screen.dart:727:65 • invalid_constant
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/listen_together_screen.dart:777:55 • deprecated_member_use
-  error • Invalid constant value • lib/features/music/screens/listen_together_screen.dart:805:54 • invalid_constant
-  error • Invalid constant value • lib/features/music/screens/listen_together_screen.dart:857:58 • invalid_constant
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/listen_together_screen.dart:899:51 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/listen_together_screen.dart:900:66 • deprecated_member_use
+warning • The value of the local variable 'pairCode' isn't used. Try removing the variable or using it • lib/features/music/screens/listen_together_screen.dart:148:11 • unused_local_variable
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/listen_together_screen.dart:267:59 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/listen_together_screen.dart:432:67 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/listen_together_screen.dart:433:69 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/listen_together_screen.dart:484:49 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/listen_together_screen.dart:571:53 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/listen_together_screen.dart:662:63 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/listen_together_screen.dart:663:65 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/listen_together_screen.dart:756:55 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/listen_together_screen.dart:879:51 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/listen_together_screen.dart:880:66 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/listen_together_screen.dart:916:31 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/listen_together_screen.dart:938:19 • deprecated_member_use
 warning • Unused import: '../widgets/lyrics_sheet.dart'. Try removing the import directive • lib/features/music/screens/music_sanctuary_screen.dart:12:8 • unused_import
 warning • Unused import: 'now_playing_screen.dart'. Try removing the import directive • lib/features/music/screens/music_sanctuary_screen.dart:14:8 • unused_import
 warning • Unused import: '../widgets/music_interactive_scrubber.dart'. Try removing the import directive • lib/features/music/screens/music_sanctuary_screen.dart:15:8 • unused_import
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/music_sanctuary_screen.dart:127:55 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/music_sanctuary_screen.dart:128:57 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/music_sanctuary_screen.dart:142:43 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/music_sanctuary_screen.dart:272:62 • deprecated_member_use
-  error • Invalid constant value • lib/features/music/screens/music_sanctuary_screen.dart:285:71 • invalid_constant
-  error • Invalid constant value • lib/features/music/screens/music_sanctuary_screen.dart:392:38 • invalid_constant
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/music_sanctuary_screen.dart:452:56 • deprecated_member_use
-  error • Invalid constant value • lib/features/music/screens/music_sanctuary_screen.dart:476:85 • invalid_constant
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/music_sanctuary_screen.dart:558:43 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/music_sanctuary_screen.dart:573:41 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/music_sanctuary_screen.dart:606:72 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/music_sanctuary_screen.dart:617:60 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/music_sanctuary_screen.dart:643:65 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/music_sanctuary_screen.dart:644:63 • deprecated_member_use
-  error • Invalid constant value • lib/features/music/screens/music_sanctuary_screen.dart:706:48 • invalid_constant
-  error • Invalid constant value • lib/features/music/screens/music_sanctuary_screen.dart:757:43 • invalid_constant
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/music_sanctuary_screen.dart:817:63 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/music_sanctuary_screen.dart:818:61 • deprecated_member_use
-  error • Invalid constant value • lib/features/music/screens/music_sanctuary_screen.dart:861:61 • invalid_constant
-  error • Invalid constant value • lib/features/music/screens/music_sanctuary_screen.dart:955:122 • invalid_constant
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/music_sanctuary_screen.dart:988:50 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/music_sanctuary_screen.dart:989:69 • deprecated_member_use
-  error • Invalid constant value • lib/features/music/screens/music_sanctuary_screen.dart:1011:77 • invalid_constant
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/music_sanctuary_screen.dart:1212:59 • deprecated_member_use
-warning • The declaration '_buildCircleIconButton' isn't referenced. Try removing the declaration of '_buildCircleIconButton' • lib/features/music/screens/music_sanctuary_screen.dart:1337:10 • unused_element
-warning • The declaration '_formatDuration' isn't referenced. Try removing the declaration of '_formatDuration' • lib/features/music/screens/music_sanctuary_screen.dart:1360:10 • unused_element
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/music_sanctuary_screen.dart:1418:75 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/music_sanctuary_screen.dart:1526:75 • deprecated_member_use
-  error • Invalid constant value • lib/features/music/screens/music_sanctuary_screen.dart:1707:94 • invalid_constant
-  error • Invalid constant value • lib/features/music/screens/music_sanctuary_screen.dart:1723:101 • invalid_constant
-  error • Invalid constant value • lib/features/music/screens/music_sanctuary_screen.dart:1747:95 • invalid_constant
-  error • Invalid constant value • lib/features/music/screens/music_sanctuary_screen.dart:1769:87 • invalid_constant
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/music_sanctuary_screen.dart:1849:52 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/music_sanctuary_screen.dart:1851:71 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/music_sanctuary_screen.dart:1895:50 • deprecated_member_use
-warning • The declaration '_showSearchModal' isn't referenced. Try removing the declaration of '_showSearchModal' • lib/features/music/screens/music_sanctuary_screen.dart:1938:8 • unused_element
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/music_sanctuary_screen.dart:174:55 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/music_sanctuary_screen.dart:175:57 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/music_sanctuary_screen.dart:191:43 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/music_sanctuary_screen.dart:322:62 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/music_sanctuary_screen.dart:406:39 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/music_sanctuary_screen.dart:407:39 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/music_sanctuary_screen.dart:410:61 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/music_sanctuary_screen.dart:423:52 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/music_sanctuary_screen.dart:430:53 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/music_sanctuary_screen.dart:607:56 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/music_sanctuary_screen.dart:713:43 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/music_sanctuary_screen.dart:728:41 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/music_sanctuary_screen.dart:762:72 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/music_sanctuary_screen.dart:773:60 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/music_sanctuary_screen.dart:800:65 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/music_sanctuary_screen.dart:801:63 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/music_sanctuary_screen.dart:976:63 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/music_sanctuary_screen.dart:977:61 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/music_sanctuary_screen.dart:1148:50 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/music_sanctuary_screen.dart:1149:69 • deprecated_member_use
+  error • The named parameter 'borderRadius' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'borderRadius' • lib/features/music/screens/music_sanctuary_screen.dart:1294:13 • undefined_named_parameter
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/music_sanctuary_screen.dart:1369:59 • deprecated_member_use
+  error • The named parameter 'borderRadius' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'borderRadius' • lib/features/music/screens/music_sanctuary_screen.dart:1413:17 • undefined_named_parameter
+warning • The declaration '_buildCircleIconButton' isn't referenced. Try removing the declaration of '_buildCircleIconButton' • lib/features/music/screens/music_sanctuary_screen.dart:1491:10 • unused_element
+warning • The declaration '_formatDuration' isn't referenced. Try removing the declaration of '_formatDuration' • lib/features/music/screens/music_sanctuary_screen.dart:1514:10 • unused_element
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/music_sanctuary_screen.dart:1572:75 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/music_sanctuary_screen.dart:1680:75 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/music_sanctuary_screen.dart:2003:52 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/music_sanctuary_screen.dart:2005:71 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/music_sanctuary_screen.dart:2049:50 • deprecated_member_use
+warning • The declaration '_showSearchModal' isn't referenced. Try removing the declaration of '_showSearchModal' • lib/features/music/screens/music_sanctuary_screen.dart:2092:8 • unused_element
 warning • Unused import: '../../../core/theme/app_colors.dart'. Try removing the import directive • lib/features/music/screens/now_playing_screen.dart:6:8 • unused_import
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/now_playing_screen.dart:49:34 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/now_playing_screen.dart:50:47 • deprecated_member_use
@@ -396,8 +384,20 @@ warning • Unused import: '../../../core/theme/app_colors.dart'. Try removing t
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/now_playing_screen.dart:378:64 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/now_playing_screen.dart:491:33 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/now_playing_screen.dart:573:70 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/playlist_detail_screen.dart:42:45 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/playlist_detail_screen.dart:91:64 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/playlist_detail_screen.dart:81:55 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/playlist_detail_screen.dart:82:57 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/playlist_detail_screen.dart:111:59 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/playlist_detail_screen.dart:112:59 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/playlist_detail_screen.dart:119:66 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/playlist_detail_screen.dart:157:69 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/playlist_detail_screen.dart:158:71 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/playlist_detail_screen.dart:219:82 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/playlist_detail_screen.dart:295:81 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/playlist_detail_screen.dart:296:79 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/playlist_detail_screen.dart:369:49 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/playlist_detail_screen.dart:370:64 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/playlist_detail_screen.dart:411:43 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/playlist_detail_screen.dart:412:45 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/theme/glass_tokens.dart:11:47 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/theme/glass_tokens.dart:12:49 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/theme/glass_tokens.dart:20:20 • deprecated_member_use
@@ -405,26 +405,24 @@ warning • Unused import: '../../../core/theme/app_colors.dart'. Try removing t
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/theme/glass_tokens.dart:30:20 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/theme/glass_tokens.dart:31:20 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/theme/glass_tokens.dart:42:25 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/theme/glass_tokens.dart:49:51 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/theme/glass_tokens.dart:50:47 • deprecated_member_use
-  error • The getter 'surfaceDark' isn't defined for the type 'GlassTokens'. Try importing the library that defines 'surfaceDark', correcting the name to the name of an existing getter, or defining a getter or field named 'surfaceDark' • lib/features/music/widgets/glass/glass_ambient_background.dart:27:32 • undefined_getter
-  error • The getter 'animNormal' isn't defined for the type 'GlassTokens'. Try importing the library that defines 'animNormal', correcting the name to the name of an existing getter, or defining a getter or field named 'animNormal' • lib/features/music/widgets/glass/glass_ambient_background.dart:35:37 • undefined_getter
    info • 'value' is deprecated and shouldn't be used. Use component accessors like .r or .g, or toARGB32 for an explicit conversion. Try replacing the use of the deprecated member with the replacement • lib/features/music/widgets/glass/glass_ambient_background.dart:39:65 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/widgets/glass/glass_ambient_background.dart:56:45 • deprecated_member_use
-  error • The getter 'surfaceDark' isn't defined for the type 'GlassTokens'. Try importing the library that defines 'surfaceDark', correcting the name to the name of an existing getter, or defining a getter or field named 'surfaceDark' • lib/features/music/widgets/glass/glass_ambient_background.dart:67:41 • undefined_getter
-  error • The getter 'surfaceDark' isn't defined for the type 'GlassTokens'. Try importing the library that defines 'surfaceDark', correcting the name to the name of an existing getter, or defining a getter or field named 'surfaceDark' • lib/features/music/widgets/glass/glass_ambient_background.dart:69:41 • undefined_getter
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/widgets/glass/glass_ambient_background.dart:57:43 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/widgets/glass/glass_ambient_background.dart:67:53 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/widgets/glass/glass_ambient_background.dart:69:53 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/widgets/glass/glass_ambient_background.dart:95:27 • deprecated_member_use
-  error • The getter 'surfaceDark' isn't defined for the type 'GlassTokens'. Try importing the library that defines 'surfaceDark', correcting the name to the name of an existing getter, or defining a getter or field named 'surfaceDark' • lib/features/music/widgets/glass/glass_ambient_background.dart:97:25 • undefined_getter
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/widgets/glass/glass_button.dart:106:43 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/widgets/glass/glass_button.dart:107:43 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/widgets/glass/glass_card.dart:57:36 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/widgets/glass/glass_card.dart:58:36 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/widgets/glass/glass_mini_player.dart:45:37 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/widgets/glass/glass_mini_player.dart:120:57 • deprecated_member_use
-  error • The method 'togglePlay' isn't defined for the type 'AudioProvider'. Try correcting the name to the name of an existing method, or defining a method named 'togglePlay' • lib/features/music/widgets/glass/glass_mini_player.dart:131:37 • undefined_method
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/widgets/glass/glass_mini_player.dart:136:53 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/widgets/glass/glass_mini_player.dart:157:53 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/widgets/glass/glass_mini_player.dart:177:55 • deprecated_member_use
+   info • The import of 'dart:ui' is unnecessary because all of the used elements are also provided by the import of 'package:flutter/material.dart'. Try removing the import directive • lib/features/music/widgets/glass/glass_button.dart:1:8 • unnecessary_import
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/widgets/glass/glass_button.dart:105:39 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/widgets/glass/glass_button.dart:106:39 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/widgets/glass/glass_button.dart:115:39 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/widgets/glass/glass_card.dart:52:26 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/widgets/glass/glass_card.dart:53:26 • deprecated_member_use
+   info • The import of 'dart:ui' is unnecessary because all of the used elements are also provided by the import of 'package:flutter/material.dart'. Try removing the import directive • lib/features/music/widgets/glass/glass_mini_player.dart:1:8 • unnecessary_import
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/widgets/glass/glass_mini_player.dart:41:37 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/widgets/glass/glass_mini_player.dart:60:56 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/widgets/glass/glass_mini_player.dart:121:57 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/widgets/glass/glass_mini_player.dart:137:53 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/widgets/glass/glass_mini_player.dart:158:53 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/widgets/glass/glass_mini_player.dart:184:59 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/widgets/glass/glass_sheet.dart:52:33 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/widgets/glass/glass_sheet.dart:64:46 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/widgets/glass/glass_sheet.dart:67:53 • deprecated_member_use
@@ -432,10 +430,12 @@ warning • Unused import: '../../../core/theme/app_colors.dart'. Try removing t
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/widgets/glass/glass_sheet.dart:69:55 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/widgets/music_interactive_scrubber.dart:57:46 • deprecated_member_use
 warning • Unused import: '../../../core/theme/app_colors.dart'. Try removing the import directive • lib/features/music/widgets/youtube_music_search_sheet.dart:6:8 • unused_import
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/widgets/youtube_music_search_sheet.dart:417:52 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/widgets/youtube_music_search_sheet.dart:419:71 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/widgets/youtube_music_search_sheet.dart:463:50 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/widgets/youtube_music_search_sheet.dart:531:54 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/widgets/youtube_music_search_sheet.dart:423:52 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/widgets/youtube_music_search_sheet.dart:425:71 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/widgets/youtube_music_search_sheet.dart:469:50 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/widgets/youtube_music_search_sheet.dart:537:54 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/widgets/youtube_music_search_sheet.dart:595:43 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/widgets/youtube_music_search_sheet.dart:634:45 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/profile/screens/profile_screen.dart:294:51 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/profile/screens/profile_screen.dart:336:51 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/profile/screens/profile_screen.dart:575:66 • deprecated_member_use
@@ -933,7 +933,6 @@ warning • The operand can't be 'null', so the condition is always 'true'. Remo
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/world/widgets/route_section_tile.dart:58:40 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/world/widgets/route_section_tile.dart:151:39 • deprecated_member_use
 warning • The value of the field '_defaultTemplateSongs' isn't used. Try removing the field, or using it • lib/providers/audio_provider.dart:38:31 • unused_field
-  error • The method 'playSong' isn't defined for the type 'AudioProvider'. Try correcting the name to the name of an existing method, or defining a method named 'playSong' • lib/providers/audio_provider.dart:857:11 • undefined_method
 warning • Unused import: 'package:audioplayers/audioplayers.dart'. Try removing the import directive • lib/providers/memories_provider.dart:4:8 • unused_import
 warning • Unused import: 'package:cloud_firestore/cloud_firestore.dart'. Try removing the import directive • lib/providers/memories_provider.dart:6:8 • unused_import
 warning • The value of the field '_voicePosSub' isn't used. Try removing the field, or using it • lib/providers/memories_provider.dart:44:23 • unused_field
@@ -947,8 +946,35 @@ warning • The value of the local variable 'isPaused' isn't used. Try removing 
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/widgets/sanctuary_voice_player.dart:152:37 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/widgets/sanctuary_voice_player.dart:172:43 • deprecated_member_use
 
-715 issues found. (ran in 14.6s)
+714 issues found. (ran in 9.9s)
 === FLUTTER BUILD LOG ===
+Upgrading build.gradle
+Upgrading gradle.properties
+Upgrading gradle.properties
+Running Gradle task 'assembleRelease'...                        
+Loading package information...                                                  
+Loading local repository...                                                     
+[                                       ] 3% Loading local repository...        
+[                                       ] 3% Fetch remote repository...         
+[=                                      ] 3% Fetch remote repository...         
+[=                                      ] 4% Fetch remote repository...         
+[=                                      ] 5% Fetch remote repository...         
+[==                                     ] 5% Fetch remote repository...         
+[==                                     ] 6% Fetch remote repository...         
+[==                                     ] 7% Fetch remote repository...         
+[==                                     ] 7% Computing updates...               
+[===                                    ] 8% Computing updates...               
+[===                                    ] 10% Computing updates...              
+[===                                    ] 10% Installing NDK (Side by side) 28.2
+[===                                    ] 10% Downloading android-ndk-r28c-linux
+[====                                   ] 10% Downloading android-ndk-r28c-linux
+[====                                   ] 11% Downloading android-ndk-r28c-linux
+[====                                   ] 12% Downloading android-ndk-r28c-linux
+[=====                                  ] 13% Downloading android-ndk-r28c-linux
+[=====                                  ] 14% Downloading android-ndk-r28c-linux
+[=====                                  ] 15% Downloading android-ndk-r28c-linux
+[======                                 ] 15% Downloading android-ndk-r28c-linux
+[======                                 ] 16% Downloading android-ndk-r28c-linux
 [======                                 ] 17% Downloading android-ndk-r28c-linux
 [=======                                ] 18% Downloading android-ndk-r28c-linux
 [=======                                ] 19% Downloading android-ndk-r28c-linux
@@ -1018,169 +1044,18 @@ warning • The value of the local variable 'isPaused' isn't used. Try removing 
 [=====================                  ] 55% Unzipping... android-ndk-r28c/CHAN
 [=======================================] 100% Unzipping... android-ndk-r28c/CHA
 
-lib/providers/audio_provider.dart:857:11: Error: The method 'playSong' isn't defined for the type 'AudioProvider'.
- - 'AudioProvider' is from 'package:pages_of_us/providers/audio_provider.dart' ('lib/providers/audio_provider.dart').
-Try correcting the name to the name of an existing method, or defining a method named 'playSong'.
-    await playSong(0);
-          ^^^^^^^^
-lib/features/music/widgets/glass/glass_ambient_background.dart:27:32: Error: Member not found: 'surfaceDark'.
-            color: GlassTokens.surfaceDark,
-                               ^^^^^^^^^^^
-lib/features/music/widgets/glass/glass_ambient_background.dart:35:37: Error: Member not found: 'animNormal'.
-              duration: GlassTokens.animNormal,
-                                    ^^^^^^^^^^
-lib/features/music/widgets/glass/glass_ambient_background.dart:67:41: Error: Member not found: 'surfaceDark'.
-                            GlassTokens.surfaceDark.withOpacity(0.75),
-                                        ^^^^^^^^^^^
-lib/features/music/widgets/glass/glass_ambient_background.dart:69:41: Error: Member not found: 'surfaceDark'.
-                            GlassTokens.surfaceDark.withOpacity(0.92),
-                                        ^^^^^^^^^^^
-lib/features/music/widgets/glass/glass_ambient_background.dart:97:25: Error: Member not found: 'surfaceDark'.
-            GlassTokens.surfaceDark,
-                        ^^^^^^^^^^^
-lib/features/music/widgets/glass/glass_mini_player.dart:131:37: Error: The method 'togglePlay' isn't defined for the type 'AudioProvider'.
- - 'AudioProvider' is from 'package:pages_of_us/providers/audio_provider.dart' ('lib/providers/audio_provider.dart').
-Try correcting the name to the name of an existing method, or defining a method named 'togglePlay'.
-                              audio.togglePlay();
-                                    ^^^^^^^^^^
-lib/features/music/screens/listen_together_screen.dart:46:19: Error: Constant evaluation error:
-          ? const Padding(
-                  ^
-lib/features/music/screens/listen_together_screen.dart:60:59: Context: The invocation of 'textSecondary' is not allowed in a constant expression.
-                      style: TextStyle(color: GlassTokens.textSecondary, fontSize: 13),
-                                                          ^
-lib/features/music/screens/listen_together_screen.dart:98:34: Error: Constant evaluation error:
-                    style: const TextStyle(color: GlassTokens.textSecondary, fontSize: 12),
-                                 ^
-lib/features/music/screens/listen_together_screen.dart:98:63: Context: The invocation of 'textSecondary' is not allowed in a constant expression.
-                    style: const TextStyle(color: GlassTokens.textSecondary, fontSize: 12),
-                                                              ^
-lib/features/music/screens/listen_together_screen.dart:189:29: Error: Constant evaluation error:
-                      const Column(
-                            ^
-lib/features/music/screens/listen_together_screen.dart:205:50: Context: The invocation of 'textSecondary' is not allowed in a constant expression.
-                              color: GlassTokens.textSecondary,
-                                                 ^
-lib/features/music/screens/listen_together_screen.dart:303:46: Error: Constant evaluation error:
-                                style: const TextStyle(fontSize: 12, color: GlassTokens.textSecondary),
-                                             ^
-lib/features/music/screens/listen_together_screen.dart:303:89: Context: The invocation of 'textSecondary' is not allowed in a constant expression.
-                                style: const TextStyle(fontSize: 12, color: GlassTokens.textSecondary),
-                                                                                        ^
-lib/features/music/screens/listen_together_screen.dart:343:45: Error: Constant evaluation error:
-                                      const Icon(Icons.copy_rounded, size: 13, color: GlassTokens.textSecondary),
-                                            ^
-lib/features/music/screens/listen_together_screen.dart:343:99: Context: The invocation of 'textSecondary' is not allowed in a constant expression.
-                                      const Icon(Icons.copy_rounded, size: 13, color: GlassTokens.textSecondary),
-                                                                                          ^
-lib/features/music/screens/listen_together_screen.dart:504:31: Error: Constant evaluation error:
-                        const Text(
-                              ^
-lib/features/music/screens/listen_together_screen.dart:509:48: Context: The invocation of 'textSecondary' is not allowed in a constant expression.
-                            color: GlassTokens.textSecondary,
-                                               ^
-lib/features/music/screens/listen_together_screen.dart:605:48: Error: Constant evaluation error:
-                                  style: const TextStyle(
-                                               ^
-lib/features/music/screens/listen_together_screen.dart:607:56: Context: The invocation of 'textSecondary' is not allowed in a constant expression.
-                                    color: GlassTokens.textSecondary,
-                                                       ^
-lib/features/music/screens/listen_together_screen.dart:672:41: Error: Constant evaluation error:
-                                  const Text(
-                                        ^
-lib/features/music/screens/listen_together_screen.dart:674:73: Context: The invocation of 'textSecondary' is not allowed in a constant expression.
-                                    style: TextStyle(color: GlassTokens.textSecondary, fontSize: 12),
-                                                                        ^
-lib/features/music/screens/listen_together_screen.dart:725:54: Error: Constant evaluation error:
-                                      content: const Text(
-                                                     ^
-lib/features/music/screens/listen_together_screen.dart:727:77: Context: The invocation of 'textSecondary' is not allowed in a constant expression.
-                                        style: TextStyle(color: GlassTokens.textSecondary),
-                                                                            ^
-lib/features/music/screens/listen_together_screen.dart:804:58: Error: Constant evaluation error:
-                                            style: const TextStyle(
-                                                         ^
-lib/features/music/screens/listen_together_screen.dart:805:66: Context: The invocation of 'textSecondary' is not allowed in a constant expression.
-                                              color: GlassTokens.textSecondary,
-                                                                 ^
-lib/features/music/screens/listen_together_screen.dart:855:62: Error: Constant evaluation error:
-                                                style: const TextStyle(
-                                                             ^
-lib/features/music/screens/listen_together_screen.dart:857:70: Context: The invocation of 'textSecondary' is not allowed in a constant expression.
-                                                  color: GlassTokens.textSecondary,
-                                                                     ^
-lib/features/music/screens/music_sanctuary_screen.dart:285:38: Error: Constant evaluation error:
-                        style: const TextStyle(fontSize: 11.5, color: GlassTokens.textSecondary),
-                                     ^
-lib/features/music/screens/music_sanctuary_screen.dart:285:83: Context: The invocation of 'textSecondary' is not allowed in a constant expression.
-                        style: const TextStyle(fontSize: 11.5, color: GlassTokens.textSecondary),
-                                                                                  ^
-lib/features/music/screens/music_sanctuary_screen.dart:390:42: Error: Constant evaluation error:
-                            style: const TextStyle(
-                                         ^
-lib/features/music/screens/music_sanctuary_screen.dart:392:50: Context: The invocation of 'textSecondary' is not allowed in a constant expression.
-                              color: GlassTokens.textSecondary,
-                                                 ^
-lib/features/music/screens/music_sanctuary_screen.dart:476:52: Error: Constant evaluation error:
-                                      style: const TextStyle(fontSize: 10.5, color: GlassTokens.textSecondary),
-                                                   ^
-lib/features/music/screens/music_sanctuary_screen.dart:476:97: Context: The invocation of 'textSecondary' is not allowed in a constant expression.
-                                      style: const TextStyle(fontSize: 10.5, color: GlassTokens.textSecondary),
-                                                                                          ^
-lib/features/music/screens/music_sanctuary_screen.dart:704:52: Error: Constant evaluation error:
-                                      style: const TextStyle(
-                                                   ^
-lib/features/music/screens/music_sanctuary_screen.dart:706:60: Context: The invocation of 'textSecondary' is not allowed in a constant expression.
-                                        color: GlassTokens.textSecondary,
-                                                           ^
-lib/features/music/screens/music_sanctuary_screen.dart:754:23: Error: Constant evaluation error:
-                const Text(
-                      ^
-lib/features/music/screens/music_sanctuary_screen.dart:757:55: Context: The invocation of 'textSecondary' is not allowed in a constant expression.
-                  style: TextStyle(color: GlassTokens.textSecondary, fontSize: 12.5, height: 1.4),
-                                                      ^
-lib/features/music/screens/music_sanctuary_screen.dart:861:44: Error: Constant evaluation error:
-                              style: const TextStyle(color: GlassTokens.textSecondary, fontSize: 11),
-                                           ^
-lib/features/music/screens/music_sanctuary_screen.dart:861:73: Context: The invocation of 'textSecondary' is not allowed in a constant expression.
-                              style: const TextStyle(color: GlassTokens.textSecondary, fontSize: 11),
-                                                                        ^
-lib/features/music/screens/music_sanctuary_screen.dart:946:19: Error: Constant evaluation error:
-            const GlassCard(
-                  ^
-lib/features/music/screens/music_sanctuary_screen.dart:955:134: Context: The invocation of 'textSecondary' is not allowed in a constant expression.
-                    Text('Create your first playlist to group favorite tracks for both of you.', style: TextStyle(color: GlassTokens.textSecondary, fontSize: 12), textAlign: TextAlign.center),
-                                                                                          ^
-lib/features/music/screens/music_sanctuary_screen.dart:1011:46: Error: Constant evaluation error:
-                                style: const TextStyle(fontSize: 12, color: GlassTokens.textSecondary),
-                                             ^
-lib/features/music/screens/music_sanctuary_screen.dart:1011:89: Context: The invocation of 'textSecondary' is not allowed in a constant expression.
-                                style: const TextStyle(fontSize: 12, color: GlassTokens.textSecondary),
-                                                                                        ^
-lib/features/music/screens/music_sanctuary_screen.dart:1707:29: Error: Constant evaluation error:
-            subtitle: const Text('Insert right after current track', style: TextStyle(color: GlassTokens.textSecondary, fontSize: 11)),
-                            ^
-lib/features/music/screens/music_sanctuary_screen.dart:1707:106: Context: The invocation of 'textSecondary' is not allowed in a constant expression.
-            subtitle: const Text('Insert right after current track', style: TextStyle(color: GlassTokens.textSecondary, fontSize: 11)),
-                                                                                          ^
-lib/features/music/screens/music_sanctuary_screen.dart:1723:29: Error: Constant evaluation error:
-            subtitle: const Text('Append to upcoming songs on both phones', style: TextStyle(color: GlassTokens.textSecondary, fontSize: 11)),
-                            ^
-lib/features/music/screens/music_sanctuary_screen.dart:1723:113: Context: The invocation of 'textSecondary' is not allowed in a constant expression.
-            subtitle: const Text('Append to upcoming songs on both phones', style: TextStyle(color: GlassTokens.textSecondary, fontSize: 11)),
-                                                                                          ^
-lib/features/music/screens/music_sanctuary_screen.dart:1747:29: Error: Constant evaluation error:
-            subtitle: const Text('Start sync session with this song', style: TextStyle(color: GlassTokens.textSecondary, fontSize: 11)),
-                            ^
-lib/features/music/screens/music_sanctuary_screen.dart:1747:107: Context: The invocation of 'textSecondary' is not allowed in a constant expression.
-            subtitle: const Text('Start sync session with this song', style: TextStyle(color: GlassTokens.textSecondary, fontSize: 11)),
-                                                                                          ^
-lib/features/music/screens/music_sanctuary_screen.dart:1769:29: Error: Constant evaluation error:
-            subtitle: const Text('De-clutter your song list', style: TextStyle(color: GlassTokens.textSecondary, fontSize: 11)),
-                            ^
-lib/features/music/screens/music_sanctuary_screen.dart:1769:99: Context: The invocation of 'textSecondary' is not allowed in a constant expression.
-            subtitle: const Text('De-clutter your song list', style: TextStyle(color: GlassTokens.textSecondary, fontSize: 11)),
-                                                                                          ^
+lib/features/music/screens/music_sanctuary_screen.dart:1294:13: Error: No named parameter with the name 'borderRadius'.
+            borderRadius: BorderRadius.circular(24),
+            ^^^^^^^^^^^^
+lib/features/music/widgets/glass/glass_card.dart:21:9: Context: Found this candidate, but the arguments don't match.
+  const GlassCard({
+        ^^^^^^^^^
+lib/features/music/screens/music_sanctuary_screen.dart:1413:17: Error: No named parameter with the name 'borderRadius'.
+                borderRadius: BorderRadius.circular(20),
+                ^^^^^^^^^^^^
+lib/features/music/widgets/glass/glass_card.dart:21:9: Context: Found this candidate, but the arguments don't match.
+  const GlassCard({
+        ^^^^^^^^^
 Target kernel_snapshot_program failed: Exception
 
 
@@ -1196,6 +1071,6 @@ Execution failed for task ':app:compileFlutterBuildRelease'.
 > Run with --scan to get full insights.
 > Get more help at https://help.gradle.org.
 
-BUILD FAILED in 3m 55s
-Running Gradle task 'assembleRelease'...                          235.9s
+BUILD FAILED in 3m 42s
+Running Gradle task 'assembleRelease'...                          223.2s
 Gradle task assembleRelease failed with exit code 1
