@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:file_picker/file_picker.dart';
@@ -16,6 +17,8 @@ import '../../../core/widgets/full_screen_video_player.dart';
 import '../../../data/models/vault_item.dart';
 import '../../../providers/audio_provider.dart';
 import '../../../providers/vault_provider.dart';
+import '../../music/theme/glass_tokens.dart';
+import '../../music/widgets/glass/glass_ambient_background.dart';
 import '../widgets/vault_emblem.dart';
 import '../widgets/downloaded_music_picker_sheet.dart';
 import '../../../core/services/youtube_music_service.dart';
@@ -607,28 +610,50 @@ class _VaultDetailScreenState extends State<VaultDetailScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFF16141F),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: hasMusic ? const Color(0xFFD4AF37).withOpacity(0.3) : Colors.white10,
+        borderRadius: BorderRadius.circular(18),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Colors.white.withOpacity(0.12),
+            Colors.white.withOpacity(0.04),
+          ],
         ),
+        border: Border.all(
+          color: hasMusic ? const Color(0xFFD4AF37).withOpacity(0.4) : Colors.white.withOpacity(0.18),
+          width: 1.0,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.22),
+            blurRadius: 14,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Row(
         children: [
           Container(
-            width: 38,
-            height: 38,
+            width: 40,
+            height: 40,
             decoration: BoxDecoration(
-              color: hasMusic
-                  ? const Color(0xFFD4AF37).withOpacity(0.15)
-                  : Colors.white.withOpacity(0.05),
+              gradient: LinearGradient(
+                colors: [
+                  hasMusic ? const Color(0xFFD4AF37).withOpacity(0.3) : Colors.white.withOpacity(0.1),
+                  hasMusic ? const Color(0xFFD4AF37).withOpacity(0.08) : Colors.white.withOpacity(0.02),
+                ],
+              ),
               shape: BoxShape.circle,
+              border: Border.all(
+                color: hasMusic ? const Color(0xFFD4AF37).withOpacity(0.5) : Colors.white24,
+                width: 0.9,
+              ),
             ),
             child: Icon(
               hasMusic
                   ? (isPlaying ? Icons.music_note_rounded : Icons.pause_rounded)
                   : Icons.music_off_outlined,
-              color: hasMusic ? const Color(0xFFD4AF37) : Colors.white38,
+              color: hasMusic ? const Color(0xFFD4AF37) : Colors.white54,
               size: 20,
             ),
           ),
@@ -640,7 +665,7 @@ class _VaultDetailScreenState extends State<VaultDetailScreen> {
                 Text(
                   'BACKGROUND SOUNDTRACK',
                   style: TextStyle(
-                    color: const Color(0xFFD4AF37).withOpacity(0.8),
+                    color: const Color(0xFFD4AF37).withOpacity(0.9),
                     fontSize: 10,
                     fontWeight: FontWeight.w700,
                     letterSpacing: 1.0,
@@ -674,22 +699,31 @@ class _VaultDetailScreenState extends State<VaultDetailScreen> {
             ),
             const SizedBox(width: 4),
           ],
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFD4AF37).withOpacity(0.18),
-              foregroundColor: const Color(0xFFD4AF37),
-              elevation: 0,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              minimumSize: const Size(0, 32),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-                side: BorderSide(color: const Color(0xFFD4AF37).withOpacity(0.4)),
+          Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              gradient: LinearGradient(
+                colors: [
+                  const Color(0xFFD4AF37).withOpacity(0.28),
+                  const Color(0xFFD4AF37).withOpacity(0.10),
+                ],
               ),
+              border: Border.all(color: const Color(0xFFD4AF37).withOpacity(0.55), width: 0.9),
             ),
-            onPressed: () => _showMusicCustomizationSheet(context),
-            child: const Text(
-              'Change',
-              style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.transparent,
+                shadowColor: Colors.transparent,
+                foregroundColor: const Color(0xFFD4AF37),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                minimumSize: const Size(0, 32),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              onPressed: () => _showMusicCustomizationSheet(context),
+              child: const Text(
+                'Change',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+              ),
             ),
           ),
         ],
@@ -779,57 +813,60 @@ class _VaultDetailScreenState extends State<VaultDetailScreen> {
           _handleBack();
         }
       },
-      child: Scaffold(
-        backgroundColor: const Color(0xFF0D0B12),
-        appBar: AppBar(
-          backgroundColor: const Color(0xFF0D0B12),
-          elevation: 0,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
-            onPressed: _handleBack,
-          ),
-          actions: [
-            // Background Music Quick Action: Mute / Play toggle
-            IconButton(
-              icon: Icon(
-                (_vault.backgroundSong == null || _vault.backgroundSong == 'none' || _isMusicMuted || !vp.isAudioPlaying)
-                    ? Icons.volume_off_rounded
-                    : Icons.volume_up_rounded,
-                color: const Color(0xFFD4AF37),
-                size: 22,
-              ),
-              tooltip: _isMusicMuted || !vp.isAudioPlaying ? 'Play soundtrack' : 'Mute soundtrack',
-              onPressed: _toggleMuteMusic,
+      child: GlassAmbientBackground(
+        fallbackColor: Color(_vault.colorValue),
+        imageUrl: _vault.coverImageUrl,
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
+              onPressed: _handleBack,
             ),
+            actions: [
+              // Background Music Quick Action: Mute / Play toggle
+              IconButton(
+                icon: Icon(
+                  (_vault.backgroundSong == null || _vault.backgroundSong == 'none' || _isMusicMuted || !vp.isAudioPlaying)
+                      ? Icons.volume_off_rounded
+                      : Icons.volume_up_rounded,
+                  color: const Color(0xFFD4AF37),
+                  size: 22,
+                ),
+                tooltip: _isMusicMuted || !vp.isAudioPlaying ? 'Play soundtrack' : 'Mute soundtrack',
+                onPressed: _toggleMuteMusic,
+              ),
 
-            // Edit button (available for both partners)
-            TextButton.icon(
-              onPressed: _navigateToEdit,
-              icon: const Icon(Icons.edit_outlined, color: Color(0xFFD4AF37), size: 16),
-              label: const Text(
-                'Edit',
-                style: TextStyle(
-                  color: Color(0xFFD4AF37),
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13,
+              // Edit button (available for both partners)
+              TextButton.icon(
+                onPressed: _navigateToEdit,
+                icon: const Icon(Icons.edit_outlined, color: Color(0xFFD4AF37), size: 16),
+                label: const Text(
+                  'Edit',
+                  style: TextStyle(
+                    color: Color(0xFFD4AF37),
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                  ),
                 ),
               ),
-            ),
 
-            // Delete button
-            IconButton(
-              icon: const Icon(Icons.delete_outline_rounded, color: Color(0xFFE57373), size: 20),
-              tooltip: 'Delete vault',
-              onPressed: _confirmDeleteVault,
-            ),
-            const SizedBox(width: 4),
-          ],
-        ),
-        body: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+              // Delete button
+              IconButton(
+                icon: const Icon(Icons.delete_outline_rounded, color: Color(0xFFE57373), size: 20),
+                tooltip: 'Delete vault',
+                onPressed: _confirmDeleteVault,
+              ),
+              const SizedBox(width: 4),
+            ],
+          ),
+          body: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
               // 1. Hero Card (Matching Image 3)
               _buildHeroCard(),
               const SizedBox(height: 20),
@@ -871,7 +908,8 @@ class _VaultDetailScreenState extends State<VaultDetailScreen> {
           ),
         ),
       ),
-    );
+    ),
+  );
   }
 
   Widget _buildSectionHeader(String title) {
@@ -1346,33 +1384,58 @@ class _VaultDetailScreenState extends State<VaultDetailScreen> {
   Widget _buildLetterCard() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
-        color: const Color(0xFF16141F),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.white12),
+        borderRadius: BorderRadius.circular(22),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Colors.white.withOpacity(0.14),
+            Colors.white.withOpacity(0.04),
+          ],
+        ),
+        border: Border.all(
+          color: Colors.white.withOpacity(0.24),
+          width: 1.0,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.28),
+            blurRadius: 18,
+            offset: const Offset(0, 6),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.format_quote_rounded, color: Color(0xFFD4AF37), size: 28),
-          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: const Color(0xFFD4AF37).withOpacity(0.18),
+            ),
+            child: const Icon(Icons.format_quote_rounded, color: Color(0xFFD4AF37), size: 24),
+          ),
+          const SizedBox(height: 12),
           Text(
             _vault.letter,
             style: const TextStyle(
               color: Colors.white,
-              fontSize: 15,
-              height: 1.6,
+              fontSize: 15.5,
+              height: 1.65,
               fontWeight: FontWeight.w400,
+              letterSpacing: 0.1,
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 18),
           Align(
             alignment: Alignment.centerRight,
             child: Text(
               '— Written by ${_vault.creatorName}, ${DateFormat("MMMM yyyy").format(_vault.createdAt)}',
               style: TextStyle(
-                color: Colors.white.withOpacity(0.5),
+                color: Colors.white.withOpacity(0.65),
                 fontSize: 12,
                 fontStyle: FontStyle.italic,
               ),

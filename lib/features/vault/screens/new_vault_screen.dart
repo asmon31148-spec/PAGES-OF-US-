@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:ui';
 import 'package:path/path.dart' as p;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -15,6 +16,8 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/services/media_upload_service.dart';
 import '../../../data/models/vault_item.dart';
 import '../../../providers/vault_provider.dart';
+import '../../music/theme/glass_tokens.dart';
+import '../../music/widgets/glass/glass_ambient_background.dart';
 import '../widgets/vault_emblem.dart';
 import '../../../widgets/sanctuary_voice_player.dart';
 import '../widgets/downloaded_music_picker_sheet.dart';
@@ -462,27 +465,29 @@ class _NewVaultScreenState extends State<NewVaultScreen> {
     final isEditing = widget.initialVault != null;
     final memoriesCount = _calculateMemoriesCount();
 
-    return Scaffold(
-      backgroundColor: const Color(0xFF0D0B12),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF0D0B12),
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.close_rounded, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Text(
-          isEditing ? 'Edit Vault' : 'New Vault',
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 0.3,
+    return GlassAmbientBackground(
+      fallbackColor: Color(_selectedColor),
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.close_rounded, color: Colors.white),
+            onPressed: () => Navigator.pop(context),
           ),
+          title: Text(
+            isEditing ? 'Edit Vault' : 'New Vault',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.3,
+            ),
+          ),
+          centerTitle: true,
         ),
-        centerTitle: true,
-      ),
-      body: Stack(
+        body: Stack(
         children: [
           SingleChildScrollView(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
@@ -584,17 +589,31 @@ class _NewVaultScreenState extends State<NewVaultScreen> {
                 _buildSectionHeader('THE LETTER'),
                 const SizedBox(height: 10),
                 Container(
-                  padding: const EdgeInsets.all(14),
+                  padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF16141F),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Colors.white12),
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        Colors.white.withOpacity(0.12),
+                        Colors.white.withOpacity(0.04),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(color: Colors.white.withOpacity(0.20), width: 1.0),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.20),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
                   ),
                   child: TextField(
                     controller: _letterController,
                     onChanged: (_) => setState(() {}),
                     maxLines: 5,
-                    style: const TextStyle(color: Colors.white, fontSize: 14, height: 1.5),
+                    style: const TextStyle(color: Colors.white, fontSize: 14.5, height: 1.55),
                     decoration: InputDecoration(
                       border: InputBorder.none,
                       hintText: 'Write your private note, letter, or vows to be sealed inside this vault...',
@@ -605,20 +624,32 @@ class _NewVaultScreenState extends State<NewVaultScreen> {
                 const SizedBox(height: 36),
 
                 // 11. Create / Save Button
-                SizedBox(
+                Container(
                   width: double.infinity,
                   height: 52,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(26),
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFFE5C058), Color(0xFFC49A28)],
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFFD4AF37).withOpacity(0.35),
+                        blurRadius: 16,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
                   child: ElevatedButton(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFD4AF37),
-                      foregroundColor: Colors.black,
+                      backgroundColor: Colors.transparent,
+                      shadowColor: Colors.transparent,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(26)),
-                      elevation: 2,
                     ),
                     onPressed: _isSaving ? null : _handleSave,
                     child: Text(
                       isEditing ? 'Save Changes' : 'Create Vault',
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black),
                     ),
                   ),
                 ),
@@ -676,7 +707,8 @@ class _NewVaultScreenState extends State<NewVaultScreen> {
             ),
         ],
       ),
-    );
+    ),
+  );
   }
 
   // --- Subcomponents matching Mockups ---
@@ -715,43 +747,56 @@ class _NewVaultScreenState extends State<NewVaultScreen> {
         width: 220,
         height: 270,
         decoration: BoxDecoration(
-          color: Color(_selectedColor),
-          borderRadius: BorderRadius.circular(20),
+          gradient: RadialGradient(
+            center: const Alignment(0, -0.3),
+            radius: 0.95,
+            colors: [
+              Color(_selectedColor).withOpacity(0.9),
+              const Color(0xFF0F0D15),
+            ],
+          ),
+          borderRadius: BorderRadius.circular(24),
           border: Border.all(
-            color: const Color(0xFFD4AF37).withOpacity(0.4),
+            color: const Color(0xFFD4AF37).withOpacity(0.65),
             width: 1.2,
           ),
           boxShadow: [
             BoxShadow(
-              color: Color(_selectedColor).withOpacity(0.5),
-              blurRadius: 20,
+              color: Color(_selectedColor).withOpacity(0.45),
+              blurRadius: 24,
               offset: const Offset(0, 8),
             ),
           ],
         ),
         child: Stack(
           children: [
-            // Top lock badge
+            // Top lock badge (Frosted glass pill)
             Positioned(
               top: 12,
               right: 12,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.4),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.white12),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(badgeIcon, size: 10, color: const Color(0xFFD4AF37)),
-                    const SizedBox(width: 4),
-                    Text(
-                      badgeText,
-                      style: const TextStyle(color: Colors.white, fontSize: 9.5, fontWeight: FontWeight.w500),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.55),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFFD4AF37).withOpacity(0.5)),
                     ),
-                  ],
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(badgeIcon, size: 10, color: const Color(0xFFD4AF37)),
+                        const SizedBox(width: 4),
+                        Text(
+                          badgeText,
+                          style: const TextStyle(color: Colors.white, fontSize: 9.5, fontWeight: FontWeight.w600),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -760,55 +805,86 @@ class _NewVaultScreenState extends State<NewVaultScreen> {
             Center(
               child: _localCoverFile != null
                   ? ClipRRect(
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(18),
                       child: Image.file(
                         _localCoverFile!,
-                        width: 90,
-                        height: 90,
+                        width: 96,
+                        height: 96,
                         fit: BoxFit.cover,
                       ),
                     )
                   : (_remoteCoverUrl != null && _remoteCoverUrl!.isNotEmpty)
                       ? ClipRRect(
-                          borderRadius: BorderRadius.circular(14),
+                          borderRadius: BorderRadius.circular(18),
                           child: CachedNetworkImage(
                             imageUrl: _remoteCoverUrl!,
-                            width: 90,
-                            height: 90,
+                            width: 96,
+                            height: 96,
                             fit: BoxFit.cover,
                           ),
                         )
-                      : VaultEmblem(shape: _selectedEmblem, size: 70),
+                      : Container(
+                          width: 80,
+                          height: 80,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: LinearGradient(
+                              colors: [
+                                Colors.white.withOpacity(0.20),
+                                Colors.white.withOpacity(0.05),
+                              ],
+                            ),
+                            border: Border.all(color: Colors.white.withOpacity(0.3), width: 1.0),
+                          ),
+                          child: Center(
+                            child: VaultEmblem(shape: _selectedEmblem, size: 48),
+                          ),
+                        ),
             ),
 
-            // Bottom title & creator
+            // Bottom title & creator inside frosted glass ribbon
             Positioned(
-              left: 14,
-              right: 14,
-              bottom: 14,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    cardTitle,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 15,
-                      fontWeight: FontWeight.bold,
+              left: 12,
+              right: 12,
+              bottom: 12,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(14),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: Colors.white.withOpacity(0.22), width: 0.8),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          cardTitle,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: -0.2,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'By You · $memoriesCount memories',
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.75),
+                            fontSize: 10.5,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 3),
-                  Text(
-                    'By You · $memoriesCount memories',
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.65),
-                      fontSize: 11,
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
           ],
