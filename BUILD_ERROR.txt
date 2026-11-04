@@ -885,38 +885,40 @@ warning • The value of the field '_myName' isn't used. Try removing the field,
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/widgets/watch_controls_overlay.dart:602:29 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/widgets/watch_controls_overlay.dart:604:48 • deprecated_member_use
 warning • Unused import: '../../../data/models/pinned_place.dart'. Try removing the import directive • lib/features/world/screens/world_screen.dart:15:8 • unused_import
-warning • This default clause is covered by the previous cases. Try removing the default clause, or restructuring the preceding patterns • lib/features/world/screens/world_screen.dart:146:7 • unreachable_switch_default
-warning • This default clause is covered by the previous cases. Try removing the default clause, or restructuring the preceding patterns • lib/features/world/screens/world_screen.dart:165:7 • unreachable_switch_default
-warning • The '!' will have no effect because the receiver can't be null. Try removing the '!' operator • lib/features/world/screens/world_screen.dart:303:43 • unnecessary_non_null_assertion
-warning • The '!' will have no effect because the receiver can't be null. Try removing the '!' operator • lib/features/world/screens/world_screen.dart:308:45 • unnecessary_non_null_assertion
-warning • The '!' will have no effect because the receiver can't be null. Try removing the '!' operator • lib/features/world/screens/world_screen.dart:309:55 • unnecessary_non_null_assertion
-warning • The '!' will have no effect because the receiver can't be null. Try removing the '!' operator • lib/features/world/screens/world_screen.dart:310:55 • unnecessary_non_null_assertion
-   info • 'activeColor' is deprecated and shouldn't be used. Use activeThumbColor instead. This feature was deprecated after v3.31.0-2.0.pre. Try replacing the use of the deprecated member with the replacement • lib/features/world/screens/world_screen.dart:395:33 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/world/screens/world_screen.dart:475:29 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/world/screens/world_screen.dart:476:28 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/world/screens/world_screen.dart:482:51 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/world/screens/world_screen.dart:536:44 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/world/screens/world_screen.dart:613:39 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/world/screens/world_screen.dart:662:46 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/world/screens/world_screen.dart:677:47 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/world/screens/world_screen.dart:749:74 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/world/screens/world_screen.dart:777:74 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/world/screens/world_screen.dart:820:76 • deprecated_member_use
-warning • The operand can't be 'null', so the condition is always 'true'. Remove the condition • lib/features/world/screens/world_screen.dart:877:38 • unnecessary_null_comparison
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/world/screens/world_screen.dart:1024:30 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/world/screens/world_screen.dart:1038:34 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/world/screens/world_screen.dart:1247:48 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/world/screens/world_screen.dart:1248:73 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/world/screens/world_screen.dart:1464:33 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/world/screens/world_screen.dart:1471:38 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/world/screens/world_screen.dart:1512:46 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/world/screens/world_screen.dart:1556:66 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/world/screens/world_screen.dart:1972:58 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/world/widgets/journey_stats_card.dart:76:33 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/world/widgets/journey_stats_card.dart:93:44 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/world/widgets/journey_stats_card.dart:270:34 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/world/widgets/journey_stats_card.dart:271:35 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/world/widgets/journey_stats_card.dart:290:37 • deprecated_member_use
+warning • This default clause is covered by the previous cases. Try removing the default clause, or restructuring the preceding patterns • lib/features/world/screens/world_screen.dart:156:7 • unreachable_switch_default
+warning • This default clause is covered by the previous cases. Try removing the default clause, or restructuring the preceding patterns • lib/features/world/screens/world_screen.dart:175:7 • unreachable_switch_default
+warning • The '!' will have no effect because the receiver can't be null. Try removing the '!' operator • lib/features/world/screens/world_screen.dart:326:43 • unnecessary_non_null_assertion
+warning • The '!' will have no effect because the receiver can't be null. Try removing the '!' operator • lib/features/world/screens/world_screen.dart:331:45 • unnecessary_non_null_assertion
+warning • The '!' will have no effect because the receiver can't be null. Try removing the '!' operator • lib/features/world/screens/world_screen.dart:332:55 • unnecessary_non_null_assertion
+warning • The '!' will have no effect because the receiver can't be null. Try removing the '!' operator • lib/features/world/screens/world_screen.dart:333:55 • unnecessary_non_null_assertion
+   info • 'activeColor' is deprecated and shouldn't be used. Use activeThumbColor instead. This feature was deprecated after v3.31.0-2.0.pre. Try replacing the use of the deprecated member with the replacement • lib/features/world/screens/world_screen.dart:418:33 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/world/screens/world_screen.dart:498:29 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/world/screens/world_screen.dart:499:28 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/world/screens/world_screen.dart:505:51 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/world/screens/world_screen.dart:559:44 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/world/screens/world_screen.dart:636:39 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/world/screens/world_screen.dart:685:46 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/world/screens/world_screen.dart:700:47 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/world/screens/world_screen.dart:772:74 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/world/screens/world_screen.dart:800:74 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/world/screens/world_screen.dart:843:76 • deprecated_member_use
+warning • The operand can't be 'null', so the condition is always 'true'. Remove the condition • lib/features/world/screens/world_screen.dart:900:38 • unnecessary_null_comparison
+  error • The method 'calculateDistanceKm' isn't defined for the type '_WorldScreenState'. Try correcting the name to the name of an existing method, or defining a method named 'calculateDistanceKm' • lib/features/world/screens/world_screen.dart:1007:26 • undefined_method
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/world/screens/world_screen.dart:1061:30 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/world/screens/world_screen.dart:1075:34 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/world/screens/world_screen.dart:1284:48 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/world/screens/world_screen.dart:1285:73 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/world/screens/world_screen.dart:1501:33 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/world/screens/world_screen.dart:1508:38 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/world/screens/world_screen.dart:1549:46 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/world/screens/world_screen.dart:1593:66 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/world/screens/world_screen.dart:2009:58 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/world/widgets/journey_stats_card.dart:147:33 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/world/widgets/journey_stats_card.dart:260:50 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/world/widgets/journey_stats_card.dart:285:42 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/world/widgets/journey_stats_card.dart:286:43 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/world/widgets/journey_stats_card.dart:390:29 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/world/widgets/journey_stats_card.dart:391:28 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/world/widgets/meet_route_sheet.dart:134:37 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/world/widgets/meet_route_sheet.dart:162:48 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/world/widgets/meet_route_sheet.dart:335:39 • deprecated_member_use
@@ -925,11 +927,12 @@ warning • The operand can't be 'null', so the condition is always 'true'. Remo
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/world/widgets/meet_route_sheet.dart:521:31 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/world/widgets/meet_route_sheet.dart:613:31 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/world/widgets/meet_route_sheet.dart:615:50 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/world/widgets/paper_plane_painter.dart:39:60 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/world/widgets/paper_plane_painter.dart:47:34 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/world/widgets/paper_plane_painter.dart:56:29 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/world/widgets/paper_plane_painter.dart:71:30 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/world/widgets/paper_plane_painter.dart:85:46 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/world/widgets/paper_plane_painter.dart:37:58 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/world/widgets/paper_plane_painter.dart:41:60 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/world/widgets/paper_plane_painter.dart:49:34 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/world/widgets/paper_plane_painter.dart:58:29 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/world/widgets/paper_plane_painter.dart:79:30 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/world/widgets/paper_plane_painter.dart:93:46 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/world/widgets/route_section_tile.dart:58:40 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/world/widgets/route_section_tile.dart:151:39 • deprecated_member_use
 warning • The value of the field '_defaultTemplateSongs' isn't used. Try removing the field, or using it • lib/providers/audio_provider.dart:38:31 • unused_field
@@ -946,7 +949,7 @@ warning • The value of the local variable 'isPaused' isn't used. Try removing 
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/widgets/sanctuary_voice_player.dart:152:37 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/widgets/sanctuary_voice_player.dart:172:43 • deprecated_member_use
 
-714 issues found. (ran in 15.3s)
+717 issues found. (ran in 11.7s)
 === FLUTTER BUILD LOG ===
 Upgrading build.gradle
 Upgrading gradle.properties
@@ -1044,6 +1047,11 @@ Loading local repository...
 [=====================                  ] 55% Unzipping... android-ndk-r28c/CHAN
 [=======================================] 100% Unzipping... android-ndk-r28c/CHA
 
+lib/features/world/screens/world_screen.dart:1007:26: Error: The method 'calculateDistanceKm' isn't defined for the type '_WorldScreenState'.
+ - '_WorldScreenState' is from 'package:pages_of_us/features/world/screens/world_screen.dart' ('lib/features/world/screens/world_screen.dart').
+Try correcting the name to the name of an existing method, or defining a method named 'calculateDistanceKm'.
+      final distanceKm = calculateDistanceKm(myLoc.lat, myLoc.lng, partnerLoc.lat, partnerLoc.lng);
+                         ^^^^^^^^^^^^^^^^^^^
 lib/features/music/screens/music_sanctuary_screen.dart:1294:13: Error: No named parameter with the name 'borderRadius'.
             borderRadius: BorderRadius.circular(24),
             ^^^^^^^^^^^^
@@ -1071,6 +1079,6 @@ Execution failed for task ':app:compileFlutterBuildRelease'.
 > Run with --scan to get full insights.
 > Get more help at https://help.gradle.org.
 
-BUILD FAILED in 4m 26s
-Running Gradle task 'assembleRelease'...                          266.7s
+BUILD FAILED in 3m 54s
+Running Gradle task 'assembleRelease'...                          235.0s
 Gradle task assembleRelease failed with exit code 1
