@@ -7,6 +7,7 @@ import '../../theme/glass_tokens.dart';
 class GlassCard extends StatelessWidget {
   final Widget child;
   final double radius;
+  final BorderRadiusGeometry? borderRadius;
   final EdgeInsetsGeometry? padding;
   final EdgeInsetsGeometry? margin;
   final double? width;
@@ -22,6 +23,7 @@ class GlassCard extends StatelessWidget {
     super.key,
     required this.child,
     this.radius = GlassTokens.radiusCard,
+    this.borderRadius,
     this.padding,
     this.margin,
     this.width,
@@ -36,6 +38,7 @@ class GlassCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final effectiveRadius = borderRadius ?? BorderRadius.circular(radius);
     final border = customBorder ??
         (borderColor != null
             ? Border.all(color: borderColor!, width: GlassTokens.borderWidth)
@@ -59,7 +62,7 @@ class GlassCard extends StatelessWidget {
       padding: padding ?? const EdgeInsets.all(16),
       decoration: BoxDecoration(
         gradient: gradient,
-        borderRadius: BorderRadius.circular(radius),
+        borderRadius: effectiveRadius,
         border: border,
       ),
       child: child,
@@ -70,12 +73,12 @@ class GlassCard extends StatelessWidget {
       height: height,
       margin: margin,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(radius),
+        borderRadius: effectiveRadius,
         boxShadow: [GlassTokens.softShadow],
       ),
       child: enableBlur && blurSigma > 0
           ? ClipRRect(
-              borderRadius: BorderRadius.circular(radius),
+              borderRadius: effectiveRadius,
               child: BackdropFilter(
                 filter: ImageFilter.blur(sigmaX: blurSigma, sigmaY: blurSigma),
                 child: innerContainer,

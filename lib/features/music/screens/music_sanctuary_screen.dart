@@ -1291,7 +1291,7 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
           GlassCard(
             enableBlur: false,
             padding: const EdgeInsets.all(16),
-            borderRadius: BorderRadius.circular(24),
+            radius: 24,
             child: Column(
               children: [
                 Row(
@@ -1410,7 +1410,7 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
               return GlassCard(
                 enableBlur: false,
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                borderRadius: BorderRadius.circular(20),
+                radius: 20,
                 child: Row(
                   children: [
                     Container(
