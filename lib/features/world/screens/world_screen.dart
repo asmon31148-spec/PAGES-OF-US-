@@ -1001,6 +1001,15 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
     _mapAnimationController!.forward();
   }
 
+  double _calculateDistanceKm(double lat1, double lng1, double lat2, double lng2) {
+    try {
+      return context.read<WorldProvider>().calculateDistanceKm(lat1, lng1, lat2, lng2);
+    } catch (_) {
+      const Distance dist = Distance();
+      return dist.as(LengthUnit.Kilometer, LatLng(lat1, lng1), LatLng(lat2, lng2));
+    }
+  }
+
   void _fitMapBounds(UserLocationData? myLoc, UserLocationData? partnerLoc) {
     if (!_isMapReady) return;
 
@@ -1008,7 +1017,7 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
     final hasPartner = partnerLoc != null && (partnerLoc.lat != 0.0 || partnerLoc.lng != 0.0);
 
     if (hasMy && hasPartner) {
-      final distanceKm = calculateDistanceKm(myLoc.lat, myLoc.lng, partnerLoc.lat, partnerLoc.lng);
+      final distanceKm = _calculateDistanceKm(myLoc.lat, myLoc.lng, partnerLoc.lat, partnerLoc.lng);
       final centerLat = (myLoc.lat + partnerLoc.lat) / 2;
       final centerLng = (myLoc.lng + partnerLoc.lng) / 2;
       final center = LatLng(centerLat, centerLng);
