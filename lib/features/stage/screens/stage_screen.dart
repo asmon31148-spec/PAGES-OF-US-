@@ -85,122 +85,94 @@ class _StageScreenState extends State<StageScreen> {
     }
 
     return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: GlassAmbientBackground(
-        fallbackColor: AppColors.terra,
-        child: SafeArea(
-          child: Column(
-            children: [
-              // Top Bar
-              AppTopBar(
-                title: 'Pages of Us',
-                showTouch: true,
-                showMusic: true,
-                onOpenProfile: () => ProfileModal.show(context),
-              ),
+      backgroundColor: isDark ? AppColors.darkBg : AppColors.lightBg,
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Top Bar
+            AppTopBar(
+              title: 'Pages of Us',
+              showTouch: true,
+              showMusic: true,
+              onOpenProfile: () => ProfileModal.show(context),
+            ),
 
-              // Scrollable Content with Pull-To-Refresh
-              Expanded(
-                child: RefreshIndicator(
-                  onRefresh: () async {
-                    if (authProvider.user != null) {
-                      await authProvider.refreshUserData(authProvider.user!.id);
-                      final space = authProvider.space;
-                      final user = authProvider.user;
-                      final partner = authProvider.partner;
-                      if (space != null && user != null && context.mounted) {
-                        context.read<StageProvider>().initSpaceListeners(
-                              space.id,
-                              user.id,
-                              partner?.id,
-                            );
-                      }
+            // Scrollable Content with Pull-To-Refresh
+            Expanded(
+              child: RefreshIndicator(
+                onRefresh: () async {
+                  if (authProvider.user != null) {
+                    await authProvider.refreshUserData(authProvider.user!.id);
+                    final space = authProvider.space;
+                    final user = authProvider.user;
+                    final partner = authProvider.partner;
+                    if (space != null && user != null && context.mounted) {
+                      context.read<StageProvider>().initSpaceListeners(
+                            space.id,
+                            user.id,
+                            partner?.id,
+                          );
                     }
-                  },
-                  color: AppColors.terra,
-                  child: SingleChildScrollView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    padding: const EdgeInsets.only(bottom: 24),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Greeting & Anniversary Row (Liquid Glass pill)
-                        Padding(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 16.0, vertical: 6.0),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(18),
-                            child: BackdropFilter(
-                              filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 16.0, vertical: 8.0),
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [
-                                      Colors.white.withOpacity(0.10),
-                                      Colors.white.withOpacity(0.04),
-                                    ],
-                                  ),
-                                  borderRadius: BorderRadius.circular(18),
-                                  border: Border.all(
-                                    color: Colors.white.withOpacity(0.18),
-                                    width: 1,
-                                  ),
-                                ),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      formattedDate,
-                                      style: TextStyle(
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.bold,
-                                        letterSpacing: 1,
-                                        color: isDark
-                                            ? AppColors.darkSoft
-                                            : AppColors.lightSoft,
-                                      ),
-                                    ),
-                                    GestureDetector(
-                                      onTap: () {
-                                        HapticFeedback.lightImpact();
-                                        AnniversaryModal.show(context);
-                                      },
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.end,
-                                        children: [
-                                          Text(
-                                            hasAnniversary
-                                                ? 'Together since ${parsedAnniversary != null ? DateFormat('MMM d, yyyy').format(parsedAnniversary) : stageProvider.anniversaryDate!} ✎'
-                                                : 'Together from date ✎',
-                                            style: TextStyle(
-                                              fontSize: 11,
-                                              fontWeight: FontWeight.w600,
-                                              color: isDark
-                                                  ? AppColors.darkInk
-                                                  : AppColors.lightInk,
-                                            ),
-                                          ),
-                                          Text(
-                                            (hasAnniversary && authProvider.partner != null)
-                                                ? 'Day ${stageProvider.daysTogether} together ✦'
-                                                : 'Set Date ✦',
-                                            style: const TextStyle(
-                                              fontSize: 10,
-                                              fontWeight: FontWeight.bold,
-                                              color: AppColors.terra,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
+                  }
+                },
+                color: AppColors.sage,
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.only(bottom: 24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Greeting & Anniversary Row
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 20.0, vertical: 4.0),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              formattedDate,
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 1,
+                                color: isDark
+                                    ? AppColors.darkSoft
+                                    : AppColors.lightSoft,
                               ),
                             ),
-                          ),
+                            GestureDetector(
+                              onTap: () => AnniversaryModal.show(context),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  Text(
+                                    hasAnniversary
+                                        ? 'Together since ${parsedAnniversary != null ? DateFormat('MMM d, yyyy').format(parsedAnniversary) : stageProvider.anniversaryDate!} ✎'
+                                        : 'Together from date ✎',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                      color: isDark
+                                          ? AppColors.darkInk
+                                          : AppColors.lightInk,
+                                    ),
+                                  ),
+                                  Text(
+                                    (hasAnniversary && authProvider.partner != null)
+                                        ? 'Day ${stageProvider.daysTogether} together ✦'
+                                        : 'Set Date ✦',
+                                    style: const TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                      color: AppColors.terra,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
+                      ),
 
                       // Section 2: Partner Connection Status (Presence Avatars + Aura + Live Pulse Button)
                       StagePresenceView(
@@ -234,7 +206,6 @@ class _StageScreenState extends State<StageScreen> {
           ],
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 }

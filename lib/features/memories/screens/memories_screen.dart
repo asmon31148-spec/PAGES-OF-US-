@@ -51,61 +51,36 @@ class _MemoriesScreenState extends State<MemoriesScreen> {
     final spaceId = authProvider.space?.id ?? 'default_space';
 
     return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: GlassAmbientBackground(
-        fallbackColor: const Color(0xFFE07A5F),
-        child: SafeArea(
-          child: Column(
-            children: [
-              // Top Bar
-              AppTopBar(
-                title: 'Our Memories',
-                subtitle: 'Moments, letters & keepsakes',
-                onOpenProfile: () => ProfileModal.show(context),
-              ),
+      backgroundColor: isDark ? AppColors.darkBg : AppColors.lightBg,
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Top Bar
+            AppTopBar(
+              title: 'Our Memories',
+              subtitle: 'Moments, letters & keepsakes',
+              onOpenProfile: () => ProfileModal.show(context),
+            ),
 
-              // Apple Liquid Glass Segmented Switcher (Captured, Letterbox, Timeline)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(22),
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-                    child: Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            Colors.white.withOpacity(0.12),
-                            Colors.white.withOpacity(0.04),
-                          ],
-                        ),
-                        borderRadius: BorderRadius.circular(22),
-                        border: Border.all(
-                          color: Colors.white.withOpacity(0.22),
-                          width: 1,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.18),
-                            blurRadius: 12,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        children: [
-                          _buildSegmentButton(0, 'Captured 📷', isDark),
-                          _buildSegmentButton(1, 'Letterbox ✉️', isDark),
-                          _buildSegmentButton(2, 'Journey 🌿', isDark),
-                        ],
-                      ),
-                    ),
-                  ),
+            // Segmented Switcher (Captured, Letterbox, Timeline)
+            Container(
+              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
                 ),
               ),
+              child: Row(
+                children: [
+                  _buildSegmentButton(0, 'Captured 📷', isDark),
+                  _buildSegmentButton(1, 'Letterbox ✉️', isDark),
+                  _buildSegmentButton(2, 'Journey 🌿', isDark),
+                ],
+              ),
+            ),
 
               // Scrollable Content
               Expanded(
@@ -135,63 +110,26 @@ class _MemoriesScreenState extends State<MemoriesScreen> {
             ],
           ),
         ),
-      ),
-      floatingActionButton: ClipRRect(
-        borderRadius: BorderRadius.circular(24),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-          child: Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  AppColors.terra.withOpacity(0.92),
-                  const Color(0xFFD4694E),
-                ],
-              ),
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: Colors.white.withOpacity(0.35), width: 1.2),
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.terra.withOpacity(0.4),
-                  blurRadius: 14,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                onTap: () {
-                  HapticFeedback.lightImpact();
-                  if (user != null) {
-                    AddMemoryDialog.show(
-                      context,
-                      spaceId: spaceId,
-                      currentUserId: user.id,
-                      userNickname: user.nickname,
-                      memoriesProvider: memoriesProvider,
-                    );
-                  }
-                },
-                borderRadius: BorderRadius.circular(24),
-                child: const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.add_rounded, color: Colors.white, size: 20),
-                      SizedBox(width: 6),
-                      Text(
-                        'Keep Memory',
-                        style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Colors.white),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
+      floatingActionButton: FloatingActionButton.extended(
+        backgroundColor: AppColors.terra,
+        foregroundColor: Colors.white,
+        elevation: 4,
+        icon: const Icon(Icons.add, size: 20),
+        label: const Text(
+          'Keep Memory',
+          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
         ),
+        onPressed: () {
+          if (user != null) {
+            AddMemoryDialog.show(
+              context,
+              spaceId: spaceId,
+              currentUserId: user.id,
+              userNickname: user.nickname,
+              memoriesProvider: memoriesProvider,
+            );
+          }
+        },
       ),
     );
   }
@@ -200,35 +138,19 @@ class _MemoriesScreenState extends State<MemoriesScreen> {
     final isSelected = _selectedSegment == index;
     return Expanded(
       child: GestureDetector(
-        onTap: () {
-          HapticFeedback.selectionClick();
-          setState(() => _selectedSegment = index);
-        },
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeOutCubic,
+        onTap: () => setState(() => _selectedSegment = index),
+        child: Container(
           padding: const EdgeInsets.symmetric(vertical: 8),
           decoration: BoxDecoration(
-            gradient: isSelected
-                ? LinearGradient(
-                    colors: [
-                      AppColors.terra.withOpacity(0.35),
-                      AppColors.terra.withOpacity(0.12),
-                    ],
-                  )
-                : null,
+            color: isSelected
+                ? (isDark ? AppColors.darkCard : Colors.white)
+                : Colors.transparent,
             borderRadius: BorderRadius.circular(16),
-            border: isSelected
-                ? Border.all(
-                    color: AppColors.terra.withOpacity(0.55),
-                    width: 1,
-                  )
-                : null,
             boxShadow: isSelected
                 ? [
                     BoxShadow(
-                      color: AppColors.terra.withOpacity(0.2),
-                      blurRadius: 8,
+                      color: Colors.black.withOpacity(0.06),
+                      blurRadius: 4,
                       offset: const Offset(0, 2),
                     ),
                   ]
@@ -240,7 +162,9 @@ class _MemoriesScreenState extends State<MemoriesScreen> {
             style: TextStyle(
               fontSize: 11,
               fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-              color: isSelected ? Colors.white : (isDark ? AppColors.darkSoft : AppColors.lightSoft),
+              color: isSelected
+                  ? (isDark ? AppColors.darkInk : AppColors.lightInk)
+                  : (isDark ? AppColors.darkSoft : AppColors.lightSoft),
             ),
           ),
         ),
