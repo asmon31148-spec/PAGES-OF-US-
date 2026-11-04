@@ -1,4 +1,6 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:intl/intl.dart';
@@ -9,6 +11,8 @@ import '../../../providers/auth_provider.dart';
 import '../../../providers/vault_provider.dart';
 import '../../stage/widgets/app_top_bar.dart';
 import '../../stage/widgets/profile_modal.dart';
+import '../../music/theme/glass_tokens.dart';
+import '../../music/widgets/glass/glass_ambient_background.dart';
 import '../widgets/vault_emblem.dart';
 import 'new_vault_screen.dart';
 import 'vault_detail_screen.dart';
@@ -114,75 +118,142 @@ class _VaultScreenState extends State<VaultScreen> {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
-        decoration: const BoxDecoration(
-          color: Color(0xFF16141F),
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Colors.white24,
-                borderRadius: BorderRadius.circular(2),
+      isScrollControlled: true,
+      builder: (ctx) => ClipRRect(
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  const Color(0xFF1E1A29).withOpacity(0.92),
+                  const Color(0xFF0F0D15).withOpacity(0.95),
+                ],
               ),
-            ),
-            const SizedBox(height: 20),
-            Container(
-              width: 60,
-              height: 60,
-              decoration: BoxDecoration(
-                color: const Color(0xFFD4AF37).withOpacity(0.15),
-                shape: BoxShape.circle,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.22),
+                width: 1.0,
               ),
-              child: const Icon(Icons.hourglass_top_rounded, color: Color(0xFFD4AF37), size: 32),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              vault.title,
-              style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Sealed by ${vault.creatorName}',
-              style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 13),
-            ),
-            const SizedBox(height: 14),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              decoration: BoxDecoration(
-                color: Colors.black38,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: Colors.white12),
-              ),
-              child: Text(
-                days > 0
-                    ? 'Unlocks automatically in $days days\n($dateStr)'
-                    : 'Unlocks on $dateStr',
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: Color(0xFFD4AF37), fontSize: 13, height: 1.4),
-              ),
-            ),
-            const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              height: 48,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFD4AF37),
-                  foregroundColor: Colors.black,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.5),
+                  blurRadius: 30,
+                  offset: const Offset(0, -5),
                 ),
-                onPressed: () => Navigator.pop(ctx),
-                child: const Text('I will wait patiently ✨', style: TextStyle(fontWeight: FontWeight.bold)),
-              ),
+              ],
             ),
-          ],
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 44,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.35),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(height: 22),
+                Container(
+                  width: 64,
+                  height: 64,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        const Color(0xFFD4AF37).withOpacity(0.35),
+                        const Color(0xFFD4AF37).withOpacity(0.10),
+                      ],
+                    ),
+                    border: Border.all(
+                      color: const Color(0xFFD4AF37).withOpacity(0.6),
+                      width: 1.2,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFFD4AF37).withOpacity(0.3),
+                        blurRadius: 18,
+                      ),
+                    ],
+                  ),
+                  child: const Icon(Icons.hourglass_top_rounded, color: Color(0xFFD4AF37), size: 32),
+                ),
+                const SizedBox(height: 18),
+                Text(
+                  vault.title,
+                  style: const TextStyle(color: Colors.white, fontSize: 19, fontWeight: FontWeight.bold, letterSpacing: -0.3),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Sealed by ${vault.creatorName}',
+                  style: TextStyle(color: Colors.white.withOpacity(0.65), fontSize: 13),
+                ),
+                const SizedBox(height: 18),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.06),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: const Color(0xFFD4AF37).withOpacity(0.3),
+                      width: 1.0,
+                    ),
+                  ),
+                  child: Text(
+                    days > 0
+                        ? 'Unlocks automatically in $days days\n($dateStr)'
+                        : 'Unlocks on $dateStr',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: Color(0xFFD4AF37), fontSize: 13.5, height: 1.45, fontWeight: FontWeight.w600),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(25),
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFFE5C058), Color(0xFFC49A28)],
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFFD4AF37).withOpacity(0.35),
+                          blurRadius: 14,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.transparent,
+                        shadowColor: Colors.transparent,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
+                      ),
+                      onPressed: () {
+                        HapticFeedback.lightImpact();
+                        Navigator.pop(ctx);
+                      },
+                      child: const Text(
+                        'I will wait patiently ✨',
+                        style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 14),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -194,86 +265,159 @@ class _VaultScreenState extends State<VaultScreen> {
 
     showDialog(
       context: context,
+      barrierColor: Colors.black.withOpacity(0.65),
       builder: (ctx) => StatefulBuilder(
         builder: (context, setDialogState) {
-          return AlertDialog(
-            backgroundColor: const Color(0xFF16141F),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            title: Column(
-              children: [
-                const Icon(Icons.lock_outline_rounded, color: Color(0xFFD4AF37), size: 36),
-                const SizedBox(height: 10),
-                Text(
-                  vault.title,
-                  style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
-                  textAlign: TextAlign.center,
-                ),
-              ],
-            ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'Protected with a secret PIN by ${vault.creatorName}',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 13),
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: pinController,
-                  keyboardType: TextInputType.number,
-                  obscureText: true,
-                  maxLength: 6,
-                  autofocus: true,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(color: Colors.white, fontSize: 22, letterSpacing: 8),
-                  decoration: InputDecoration(
-                    counterText: '',
-                    hintText: '••••',
-                    hintStyle: TextStyle(color: Colors.white.withOpacity(0.2), letterSpacing: 8),
-                    filled: true,
-                    fillColor: Colors.black38,
-                    errorText: errorMessage,
-                    errorStyle: const TextStyle(color: Color(0xFFE57373)),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
-                      borderSide: const BorderSide(color: Color(0xFFD4AF37)),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
-                      borderSide: const BorderSide(color: Color(0xFFD4AF37), width: 1.5),
-                    ),
+          return BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+            child: Dialog(
+              backgroundColor: Colors.transparent,
+              insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      const Color(0xFF221C2F).withOpacity(0.92),
+                      const Color(0xFF13101B).withOpacity(0.95),
+                    ],
                   ),
+                  borderRadius: BorderRadius.circular(26),
+                  border: Border.all(
+                    color: Colors.white.withOpacity(0.24),
+                    width: 1.0,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.55),
+                      blurRadius: 30,
+                      offset: const Offset(0, 10),
+                    ),
+                  ],
                 ),
-              ],
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 58,
+                      height: 58,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            const Color(0xFFD4AF37).withOpacity(0.32),
+                            const Color(0xFFD4AF37).withOpacity(0.08),
+                          ],
+                        ),
+                        border: Border.all(
+                          color: const Color(0xFFD4AF37).withOpacity(0.6),
+                          width: 1.2,
+                        ),
+                      ),
+                      child: const Icon(Icons.lock_outline_rounded, color: Color(0xFFD4AF37), size: 30),
+                    ),
+                    const SizedBox(height: 14),
+                    Text(
+                      vault.title,
+                      style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: -0.2),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Protected with a secret PIN by ${vault.creatorName}',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Colors.white.withOpacity(0.65), fontSize: 13),
+                    ),
+                    const SizedBox(height: 20),
+                    TextField(
+                      controller: pinController,
+                      keyboardType: TextInputType.number,
+                      obscureText: true,
+                      maxLength: 6,
+                      autofocus: true,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: Colors.white, fontSize: 22, letterSpacing: 8),
+                      decoration: InputDecoration(
+                        counterText: '',
+                        hintText: '••••',
+                        hintStyle: TextStyle(color: Colors.white.withOpacity(0.25), letterSpacing: 8),
+                        filled: true,
+                        fillColor: Colors.white.withOpacity(0.07),
+                        errorText: errorMessage,
+                        errorStyle: const TextStyle(color: Color(0xFFFF6B6B)),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide(color: Colors.white.withOpacity(0.2)),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: const BorderSide(color: Color(0xFFD4AF37), width: 1.5),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextButton(
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 13),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                            ),
+                            onPressed: () => Navigator.pop(ctx),
+                            child: const Text('Cancel', style: TextStyle(color: Colors.white60, fontSize: 14)),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Container(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(18),
+                              gradient: const LinearGradient(
+                                colors: [Color(0xFFE5C058), Color(0xFFC49A28)],
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(0xFFD4AF37).withOpacity(0.35),
+                                  blurRadius: 12,
+                                  offset: const Offset(0, 3),
+                                ),
+                              ],
+                            ),
+                            child: ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.transparent,
+                                shadowColor: Colors.transparent,
+                                padding: const EdgeInsets.symmetric(vertical: 13),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                              ),
+                              onPressed: () {
+                                final pin = pinController.text.trim();
+                                final success = context.read<VaultProvider>().unlockWithPin(vault, pin);
+                                if (success) {
+                                  Navigator.pop(ctx);
+                                  _openVaultDetail(vault, spaceId, currentUserId, userNickname, partnerNickname);
+                                } else {
+                                  setDialogState(() {
+                                    errorMessage = 'Incorrect PIN. Try again.';
+                                    pinController.clear();
+                                  });
+                                }
+                              },
+                              child: const Text('Unlock', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 14)),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
             ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: const Text('Cancel', style: TextStyle(color: Colors.white54)),
-              ),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFD4AF37),
-                  foregroundColor: Colors.black,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-                ),
-                onPressed: () {
-                  final pin = pinController.text.trim();
-                  final success = context.read<VaultProvider>().unlockWithPin(vault, pin);
-                  if (success) {
-                    Navigator.pop(ctx);
-                    _openVaultDetail(vault, spaceId, currentUserId, userNickname, partnerNickname);
-                  } else {
-                    setDialogState(() {
-                      errorMessage = 'Incorrect PIN. Try again.';
-                      pinController.clear();
-                    });
-                  }
-                },
-                child: const Text('Unlock', style: TextStyle(fontWeight: FontWeight.bold)),
-              ),
-            ],
           );
         },
       ),
@@ -302,76 +446,163 @@ class _VaultScreenState extends State<VaultScreen> {
     final partnerCount = vaults.where((v) => v.creatorId.isNotEmpty && v.creatorId != currentUserId).length;
     final lockedCount = vaults.where((v) => vaultProvider.isVaultLocked(v, currentUserId)).length;
 
-    return Scaffold(
-      backgroundColor: const Color(0xFF0D0B12),
-      body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 1. Top Bar (Vault has NO day/night mood toggle; permanently luxury dark)
-            AppTopBar(
-              onAvatarTap: _openProfileModal,
-              overrideTitle: 'Our Vaults',
-              overrideSubtitle: '$allCount vaults · $lockedCount locked',
-              showThemeToggle: false,
-              forceDark: true,
-            ),
-
-            // 2. Filter Chips Row (Matching Image 1)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
-              child: Row(
-                children: [
-                  _buildFilterChip(
-                    label: 'All ($allCount)',
-                    isActive: activeFilter == 'all',
-                    onTap: () => vaultProvider.setFilter('all'),
-                  ),
-                  const SizedBox(width: 8),
-                  _buildFilterChip(
-                    label: 'By You ($mineCount)',
-                    isActive: activeFilter == 'mine',
-                    onTap: () => vaultProvider.setFilter('mine'),
-                  ),
-                  const SizedBox(width: 8),
-                  _buildFilterChip(
-                    label: 'By $partnerNickname ($partnerCount)',
-                    isActive: activeFilter == 'partner',
-                    onTap: () => vaultProvider.setFilter('partner'),
-                  ),
-                ],
+    return GlassAmbientBackground(
+      fallbackColor: const Color(0xFFD4AF37),
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: SafeArea(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // 1. Top Bar with Frosted Glass Elegance
+              AppTopBar(
+                onAvatarTap: _openProfileModal,
+                overrideTitle: 'Our Vaults',
+                overrideSubtitle: '$allCount vaults · $lockedCount locked',
+                showThemeToggle: false,
+                forceDark: true,
               ),
-            ),
-            const SizedBox(height: 6),
 
-            // 3. 2-Column Grid (Cards + New Vault Dashed Card)
-            Expanded(
-              child: GridView.builder(
-                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 14,
-                  mainAxisSpacing: 14,
-                  childAspectRatio: 0.74,
+              // 2. Liquid Glass Filter Chips Row
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+                child: Row(
+                  children: [
+                    _buildFilterChip(
+                      label: 'All ($allCount)',
+                      isActive: activeFilter == 'all',
+                      onTap: () => vaultProvider.setFilter('all'),
+                    ),
+                    const SizedBox(width: 8),
+                    _buildFilterChip(
+                      label: 'By You ($mineCount)',
+                      isActive: activeFilter == 'mine',
+                      onTap: () => vaultProvider.setFilter('mine'),
+                    ),
+                    const SizedBox(width: 8),
+                    _buildFilterChip(
+                      label: 'By $partnerNickname ($partnerCount)',
+                      isActive: activeFilter == 'partner',
+                      onTap: () => vaultProvider.setFilter('partner'),
+                    ),
+                  ],
                 ),
-                itemCount: filteredVaults.length + 1, // +1 for "+ New vault" card
-                itemBuilder: (context, index) {
-                  // Last card is always "+ New vault" dashed card
-                  if (index == filteredVaults.length) {
-                    return _buildNewVaultDashedCard();
-                  }
+              ),
+              const SizedBox(height: 6),
 
-                  final vault = filteredVaults[index];
-                  final isLocked = vaultProvider.isVaultLocked(vault, currentUserId);
-                  return _buildVaultCard(
-                    vault: vault,
-                    isLocked: isLocked,
-                    currentUserId: currentUserId,
-                    partnerNickname: partnerNickname,
-                    onTap: () => _onVaultTapped(vault, currentUserId, partnerNickname, spaceId, userNickname),
-                    onLongPress: () => _confirmDeleteVaultFromGrid(vault, spaceId),
-                  );
-                },
+              // 3. 2-Column Liquid Glass Grid
+              Expanded(
+                child: GridView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 14,
+                    mainAxisSpacing: 14,
+                    childAspectRatio: 0.74,
+                  ),
+                  itemCount: filteredVaults.length + 1, // +1 for "+ New vault" card
+                  itemBuilder: (context, index) {
+                    if (index == filteredVaults.length) {
+                      return _buildNewVaultDashedCard();
+                    }
+
+                    final vault = filteredVaults[index];
+                    final isLocked = vaultProvider.isVaultLocked(vault, currentUserId);
+                    return _buildVaultCard(
+                      vault: vault,
+                      isLocked: isLocked,
+                      currentUserId: currentUserId,
+                      partnerNickname: partnerNickname,
+                      onTap: () => _onVaultTapped(vault, currentUserId, partnerNickname, spaceId, userNickname),
+                      onLongPress: () => _confirmDeleteVaultFromGrid(vault, spaceId),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // --- Liquid Glass Filter Chip Pill ---
+
+  Widget _buildFilterChip({
+    required String label,
+    required bool isActive,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.lightImpact();
+        onTap();
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOutCubic,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(GlassTokens.radiusPill),
+          gradient: isActive
+              ? LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    const Color(0xFFD4AF37).withOpacity(0.28),
+                    const Color(0xFFD4AF37).withOpacity(0.10),
+                  ],
+                )
+              : LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Colors.white.withOpacity(0.10),
+                    Colors.white.withOpacity(0.04),
+                  ],
+                ),
+          border: Border.all(
+            color: isActive
+                ? const Color(0xFFD4AF37).withOpacity(0.70)
+                : Colors.white.withOpacity(0.20),
+            width: isActive ? 1.2 : 0.8,
+          ),
+          boxShadow: [
+            if (isActive)
+              BoxShadow(
+                color: const Color(0xFFD4AF37).withOpacity(0.25),
+                blurRadius: 12,
+                offset: const Offset(0, 3),
+              )
+            else
+              BoxShadow(
+                color: Colors.black.withOpacity(0.18),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (isActive) ...[
+              Container(
+                width: 5,
+                height: 5,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Color(0xFFD4AF37),
+                ),
+              ),
+              const SizedBox(width: 6),
+            ],
+            Text(
+              label,
+              style: TextStyle(
+                color: isActive ? Colors.white : Colors.white.withOpacity(0.75),
+                fontSize: 12,
+                fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
+                letterSpacing: 0.2,
               ),
             ),
           ],
@@ -380,66 +611,109 @@ class _VaultScreenState extends State<VaultScreen> {
     );
   }
 
-  // --- Filter Chip Pill ---
-
-  Widget _buildFilterChip({
-    required String label,
-    required bool isActive,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 6),
-        decoration: BoxDecoration(
-          color: isActive ? Colors.white.withOpacity(0.12) : const Color(0xFF16141F),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(
-            color: isActive ? const Color(0xFFD4AF37) : Colors.white12,
-            width: isActive ? 1.2 : 1.0,
-          ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: isActive ? Colors.white : Colors.white60,
-            fontSize: 12,
-            fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
-          ),
-        ),
-      ),
-    );
-  }
-
-  // --- Delete Confirmation Modal ---
+  // --- Liquid Glass Delete Confirmation Modal ---
 
   Future<void> _confirmDeleteVaultFromGrid(VaultItem vault, String spaceId) async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF16141F),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Delete Vault?', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        content: Text(
-          'Are you sure you want to permanently delete "${vault.title}"? This will remove the vault and its memories for both partners.',
-          style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 13.5, height: 1.4),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel', style: TextStyle(color: Colors.white54)),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFE57373),
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      barrierColor: Colors.black.withOpacity(0.65),
+      builder: (ctx) => BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+        child: Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  const Color(0xFF221C2F).withOpacity(0.92),
+                  const Color(0xFF13101B).withOpacity(0.95),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(26),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.24),
+                width: 1.0,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.55),
+                  blurRadius: 30,
+                  offset: const Offset(0, 10),
+                ),
+              ],
             ),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Delete Permanently'),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 54,
+                  height: 54,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: const Color(0xFFE57373).withOpacity(0.18),
+                    border: Border.all(color: const Color(0xFFE57373).withOpacity(0.4), width: 1.2),
+                  ),
+                  child: const Icon(Icons.delete_forever_rounded, color: Color(0xFFE57373), size: 28),
+                ),
+                const SizedBox(height: 14),
+                const Text('Delete Vault?', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 10),
+                Text(
+                  'Are you sure you want to permanently delete "${vault.title}"? This will remove the vault and its memories for both partners.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.white.withOpacity(0.72), fontSize: 13.5, height: 1.4),
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextButton(
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        ),
+                        onPressed: () => Navigator.pop(ctx, false),
+                        child: const Text('Cancel', style: TextStyle(color: Colors.white60, fontSize: 14)),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(16),
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFFEF5350), Color(0xFFC62828)],
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFFEF5350).withOpacity(0.35),
+                              blurRadius: 10,
+                              offset: const Offset(0, 3),
+                            ),
+                          ],
+                        ),
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.transparent,
+                            shadowColor: Colors.transparent,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          ),
+                          onPressed: () => Navigator.pop(ctx, true),
+                          child: const Text('Delete', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
-        ],
+        ),
       ),
     );
 
@@ -456,7 +730,7 @@ class _VaultScreenState extends State<VaultScreen> {
     }
   }
 
-  // --- Vault Grid Card ---
+  // --- Liquid Glass Vault Grid Card ---
 
   Widget _buildVaultCard({
     required VaultItem vault,
@@ -469,7 +743,6 @@ class _VaultScreenState extends State<VaultScreen> {
     final isOwner = vault.creatorId.isEmpty || vault.creatorId == currentUserId;
     final creatorLabel = isOwner ? 'By You' : 'By $partnerNickname';
 
-    // Badge styling & content (Only show lock status; NEVER show count badges)
     String? badgeText;
     IconData? badgeIcon;
 
@@ -485,36 +758,51 @@ class _VaultScreenState extends State<VaultScreen> {
     final hasCoverImage = vault.coverImageUrl != null && vault.coverImageUrl!.isNotEmpty;
 
     return GestureDetector(
-      onTap: onTap,
-      onLongPress: onLongPress,
+      onTap: () {
+        HapticFeedback.lightImpact();
+        onTap();
+      },
+      onLongPress: () {
+        HapticFeedback.mediumImpact();
+        onLongPress();
+      },
       child: Container(
         decoration: BoxDecoration(
-          color: const Color(0xFF14121A),
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(22),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Colors.white.withOpacity(0.16),
+              Colors.white.withOpacity(0.04),
+            ],
+          ),
           border: Border.all(
-            color: Colors.white.withOpacity(0.12),
+            color: isLocked
+                ? const Color(0xFFD4AF37).withOpacity(0.35)
+                : Colors.white.withOpacity(0.24),
             width: 1.0,
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.35),
-              blurRadius: 12,
-              offset: const Offset(0, 5),
+              color: Colors.black.withOpacity(0.32),
+              blurRadius: 16,
+              offset: const Offset(0, 6),
             ),
           ],
         ),
-        clipBehavior: Clip.antiAlias, // Clean corners for image
+        clipBehavior: Clip.antiAlias,
         child: Stack(
           fit: StackFit.expand,
           children: [
-            // Background Cover Image or Color/Emblem
+            // 1. Cover Image or Liquid Jewel Vault Base
             if (hasCoverImage)
               CachedNetworkImage(
                 imageUrl: vault.coverImageUrl!,
                 fit: BoxFit.cover,
                 alignment: Alignment.topCenter,
                 placeholder: (_, __) => Container(
-                  color: Color(vault.colorValue),
+                  color: Color(vault.colorValue).withOpacity(0.6),
                   child: const Center(
                     child: CircularProgressIndicator(
                       strokeWidth: 1.5,
@@ -522,27 +810,17 @@ class _VaultScreenState extends State<VaultScreen> {
                     ),
                   ),
                 ),
-                errorWidget: (_, __, ___) => Container(
-                  color: Color(vault.colorValue),
-                  child: Center(
-                    child: VaultEmblem(shape: vault.emblemShape, size: 52),
-                  ),
-                ),
+                errorWidget: (_, __, ___) => _buildEmblemFallback(vault),
               )
             else
-              Container(
-                color: Color(vault.colorValue),
-                child: Center(
-                  child: VaultEmblem(shape: vault.emblemShape, size: 52),
-                ),
-              ),
+              _buildEmblemFallback(vault),
 
-            // Smooth Dark Scrim at Bottom for Clean Text Readability
+            // 2. Liquid Glass Dark Scrim
             Positioned(
               left: 0,
               right: 0,
               bottom: 0,
-              height: 100,
+              height: 110,
               child: Container(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
@@ -550,80 +828,108 @@ class _VaultScreenState extends State<VaultScreen> {
                     end: Alignment.bottomCenter,
                     colors: [
                       Colors.transparent,
-                      Colors.black.withOpacity(0.55),
-                      Colors.black.withOpacity(0.88),
+                      Colors.black.withOpacity(0.45),
+                      Colors.black.withOpacity(0.85),
                     ],
                   ),
                 ),
               ),
             ),
 
-            // Bottom Section: Title & Date Floating Gracefully
+            // 3. Frosted Glass Bottom Ribbon (Title & Metadata)
             Positioned(
-              left: 12,
-              right: 12,
-              bottom: 12,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    vault.title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 13.5,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 0.1,
-                      shadows: [
-                        Shadow(color: Colors.black87, blurRadius: 4, offset: Offset(0, 1)),
+              left: 10,
+              right: 10,
+              bottom: 10,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(14),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.10),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: Colors.white.withOpacity(0.20),
+                        width: 0.8,
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          vault.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: -0.2,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '${DateFormat("dd/MM/yyyy").format(vault.specialDate ?? vault.createdAt)} · $creatorLabel',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.75),
+                            fontSize: 10,
+                            fontWeight: FontWeight.w400,
+                          ),
+                        ),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 3),
-                  Text(
-                    '${DateFormat("dd/MM/yyyy").format(vault.specialDate ?? vault.createdAt)} · $creatorLabel',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.85),
-                      fontSize: 10.5,
-                      shadows: const [
-                        Shadow(color: Colors.black87, blurRadius: 4, offset: Offset(0, 1)),
-                      ],
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
 
-            // Top Right Badge (ONLY if locked by PIN or countdown timer)
+            // 4. Floating Frosted Glass Lock Badge
             if (badgeText != null)
               Positioned(
                 top: 9,
                 right: 9,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3.5),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.70),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: Colors.white24),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(badgeIcon, size: 9.5, color: const Color(0xFFD4AF37)),
-                      const SizedBox(width: 3.5),
-                      Text(
-                        badgeText,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 9,
-                          fontWeight: FontWeight.w500,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.55),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: const Color(0xFFD4AF37).withOpacity(0.55),
+                          width: 0.9,
                         ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFFD4AF37).withOpacity(0.18),
+                            blurRadius: 8,
+                          ),
+                        ],
                       ),
-                    ],
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(badgeIcon, size: 10.5, color: const Color(0xFFD4AF37)),
+                          const SizedBox(width: 4),
+                          Text(
+                            badgeText,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 9.5,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 0.2,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -633,48 +939,127 @@ class _VaultScreenState extends State<VaultScreen> {
     );
   }
 
-  // --- "+ New vault" Dashed Card (Matching Image 1) ---
+  Widget _buildEmblemFallback(VaultItem vault) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: RadialGradient(
+          center: const Alignment(0, -0.2),
+          radius: 0.9,
+          colors: [
+            Color(vault.colorValue).withOpacity(0.85),
+            const Color(0xFF0D0B12),
+          ],
+        ),
+      ),
+      child: Center(
+        child: Container(
+          width: 72,
+          height: 72,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Colors.white.withOpacity(0.20),
+                Colors.white.withOpacity(0.05),
+              ],
+            ),
+            border: Border.all(
+              color: Colors.white.withOpacity(0.30),
+              width: 1.0,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Color(vault.colorValue).withOpacity(0.4),
+                blurRadius: 20,
+              ),
+            ],
+          ),
+          child: Center(
+            child: VaultEmblem(shape: vault.emblemShape, size: 44),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // --- Liquid Glass "+ New vault" Action Card ---
 
   Widget _buildNewVaultDashedCard() {
     return GestureDetector(
-      onTap: _navigateToNewVault,
+      onTap: () {
+        HapticFeedback.lightImpact();
+        _navigateToNewVault();
+      },
       child: Container(
         decoration: BoxDecoration(
-          color: const Color(0xFF14121B),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: Colors.white.withOpacity(0.25),
-            width: 1.2,
-            style: BorderStyle.solid,
+          borderRadius: BorderRadius.circular(22),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Colors.white.withOpacity(0.12),
+              Colors.white.withOpacity(0.04),
+            ],
           ),
+          border: Border.all(
+            color: const Color(0xFFD4AF37).withOpacity(0.45),
+            width: 1.2,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.25),
+              blurRadius: 14,
+              offset: const Offset(0, 5),
+            ),
+          ],
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              width: 44,
-              height: 44,
+              width: 48,
+              height: 48,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                border: Border.all(color: const Color(0xFFD4AF37), width: 1.2),
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    const Color(0xFFD4AF37).withOpacity(0.30),
+                    const Color(0xFFD4AF37).withOpacity(0.08),
+                  ],
+                ),
+                border: Border.all(
+                  color: const Color(0xFFD4AF37).withOpacity(0.65),
+                  width: 1.2,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFFD4AF37).withOpacity(0.25),
+                    blurRadius: 14,
+                  ),
+                ],
               ),
-              child: const Icon(Icons.add_rounded, color: Color(0xFFD4AF37), size: 24),
+              child: const Icon(Icons.add_rounded, color: Color(0xFFD4AF37), size: 26),
             ),
             const SizedBox(height: 12),
             const Text(
               'New vault',
               style: TextStyle(
                 color: Colors.white,
-                fontSize: 13.5,
-                fontWeight: FontWeight.bold,
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.2,
               ),
             ),
-            const SizedBox(height: 3),
+            const SizedBox(height: 4),
             Text(
               'Lock memories for later',
               style: TextStyle(
-                color: Colors.white.withOpacity(0.45),
-                fontSize: 10.5,
+                color: Colors.white.withOpacity(0.55),
+                fontSize: 11,
               ),
             ),
           ],
