@@ -162,15 +162,19 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
       }
     });
 
-    // Listen for call status changes to guarantee online status during active calls
+    // Listen for call status changes to guarantee online status and audio focus during calls
     _callStatusListener = () {
       if (!mounted || _isLeaving) return;
       final status = WatchCallService.instance.callStatus.value;
-      if ((status == WatchCallStatus.connected || status == WatchCallStatus.calling) &&
-          _syncStatus == SyncStatus.partnerOffline) {
-        setState(() {
-          _syncStatus = SyncStatus.inSync;
-        });
+      if (status == WatchCallStatus.connected || status == WatchCallStatus.calling) {
+        try {
+          _controller.setVolume(1.0);
+        } catch (_) {}
+        if (_syncStatus == SyncStatus.partnerOffline) {
+          setState(() {
+            _syncStatus = SyncStatus.inSync;
+          });
+        }
       }
     };
     WatchCallService.instance.callStatus.addListener(_callStatusListener!);
@@ -179,6 +183,9 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
     try {
       _controller = VideoPlayerController.file(File(widget.localVideoPath));
       await _controller.initialize();
+      try {
+        await _controller.setVolume(1.0);
+      } catch (_) {}
 
       _controller.addListener(_videoPlayerListener);
 
@@ -552,6 +559,21 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
         _aspectRatioLabel = 'Fit';
       }
     });
+
+    final label = switch (_aspectRatioLabel) {
+      'Zoom' => 'Zoom (Crop to Fill Screen) 🔍',
+      'Stretch' => 'Stretch (Edge-to-Edge) ↔️',
+      _ => 'Fit (Original 16:9) 📐',
+    };
+    ScaffoldMessenger.of(context).clearSnackBars();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(label),
+        backgroundColor: Colors.black87,
+        duration: const Duration(milliseconds: 1200),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
   }
 
   void _toggleFullscreen() {
@@ -970,18 +992,21 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
                       child: Stack(
                         alignment: Alignment.center,
                         children: [
-                          Center(
-                            child: FittedBox(
-                              fit: _videoFit,
-                              clipBehavior: Clip.hardEdge,
-                              child: SizedBox(
-                                width: _controller.value.size.width > 0
-                                    ? _controller.value.size.width
-                                    : 16,
-                                height: _controller.value.size.height > 0
-                                    ? _controller.value.size.height
-                                    : 9,
-                                child: VideoPlayer(_controller),
+                          Positioned.fill(
+                            child: SizedBox.expand(
+                              child: FittedBox(
+                                fit: _videoFit,
+                                clipBehavior: Clip.hardEdge,
+                                alignment: Alignment.center,
+                                child: SizedBox(
+                                  width: _controller.value.size.width > 0
+                                      ? _controller.value.size.width
+                                      : 16,
+                                  height: _controller.value.size.height > 0
+                                      ? _controller.value.size.height
+                                      : 9,
+                                  child: VideoPlayer(_controller),
+                                ),
                               ),
                             ),
                           ),
@@ -1142,18 +1167,21 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
                 Stack(
                   fit: StackFit.expand,
                   children: [
-                    Center(
-                      child: FittedBox(
-                        fit: _videoFit,
-                        clipBehavior: Clip.hardEdge,
-                        child: SizedBox(
-                          width: _controller.value.size.width > 0
-                              ? _controller.value.size.width
-                              : 16,
-                          height: _controller.value.size.height > 0
-                              ? _controller.value.size.height
-                              : 9,
-                          child: VideoPlayer(_controller),
+                    Positioned.fill(
+                      child: SizedBox.expand(
+                        child: FittedBox(
+                          fit: _videoFit,
+                          clipBehavior: Clip.hardEdge,
+                          alignment: Alignment.center,
+                          child: SizedBox(
+                            width: _controller.value.size.width > 0
+                                ? _controller.value.size.width
+                                : 16,
+                            height: _controller.value.size.height > 0
+                                ? _controller.value.size.height
+                                : 9,
+                            child: VideoPlayer(_controller),
+                          ),
                         ),
                       ),
                     ),

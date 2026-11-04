@@ -38,15 +38,52 @@ class _WatchCallOverlayState extends State<WatchCallOverlay> {
   // Maximize / Minimize state
   bool _isMaximized = false;
 
+  // Swap video in maximized view (so user can toggle who is in full height vs PiP)
+  bool _isSwappedInMaximized = false;
+
   // Controls visibility inside the video card
   bool _showControls = true;
   Timer? _hideControlsTimer;
+
+  // Ringing haptic feedback timer
+  Timer? _ringingHapticTimer;
 
   @override
   void initState() {
     super.initState();
     _callService.listenForCalls(roomCode: widget.roomCode, myUid: widget.myUid);
+    _callService.callStatus.addListener(_onCallStatusChanged);
     _startControlsHideTimer();
+  }
+
+  @override
+  void didUpdateWidget(WatchCallOverlay oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.myUid != widget.myUid || oldWidget.roomCode != widget.roomCode) {
+      _callService.listenForCalls(roomCode: widget.roomCode, myUid: widget.myUid);
+    }
+  }
+
+  void _onCallStatusChanged() {
+    if (!mounted) return;
+    if (_callService.callStatus.value == WatchCallStatus.ringing) {
+      _startRingingHaptics();
+    } else {
+      _stopRingingHaptics();
+    }
+  }
+
+  void _startRingingHaptics() {
+    _ringingHapticTimer?.cancel();
+    HapticFeedback.heavyImpact();
+    _ringingHapticTimer = Timer.periodic(const Duration(milliseconds: 900), (_) {
+      HapticFeedback.heavyImpact();
+    });
+  }
+
+  void _stopRingingHaptics() {
+    _ringingHapticTimer?.cancel();
+    _ringingHapticTimer = null;
   }
 
   void _startControlsHideTimer() {
@@ -83,6 +120,8 @@ class _WatchCallOverlayState extends State<WatchCallOverlay> {
 
   @override
   void dispose() {
+    _stopRingingHaptics();
+    _callService.callStatus.removeListener(_onCallStatusChanged);
     _hideControlsTimer?.cancel();
     super.dispose();
   }
@@ -113,44 +152,67 @@ class _WatchCallOverlayState extends State<WatchCallOverlay> {
     );
   }
 
-  /// 1. Incoming Call Prompt Banner
+  /// 1. Incoming Call Prompt Banner (High-Visibility with Ringing Haptics)
   Widget _buildRingingBanner() {
     final callerName = _callService.callerNameNotifier.value.isNotEmpty
         ? _callService.callerNameNotifier.value
         : widget.partnerName;
 
     return Positioned(
-      top: widget.isLandscape ? 16 : 44,
+      top: widget.isLandscape ? 16 : 48,
       left: 16,
       right: 16,
       child: Center(
         child: Container(
-          constraints: const BoxConstraints(maxWidth: 360),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          constraints: const BoxConstraints(maxWidth: 380),
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
           decoration: BoxDecoration(
-            color: const Color(0xFF1F1F1F).withOpacity(0.95),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: AppColors.terra.withOpacity(0.8), width: 1.5),
-            boxShadow: const [
-              BoxShadow(color: Colors.black87, blurRadius: 20, offset: Offset(0, 8)),
+            color: const Color(0xFF18181B).withOpacity(0.97),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: const Color(0xFF10B981), width: 2),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF10B981).withOpacity(0.35),
+                blurRadius: 24,
+                spreadRadius: 2,
+              ),
+              const BoxShadow(color: Colors.black87, blurRadius: 20, offset: Offset(0, 8)),
             ],
           ),
           child: Row(
             children: [
-              CircleAvatar(
-                radius: 20,
-                backgroundColor: AppColors.terra.withOpacity(0.3),
-                backgroundImage: widget.partnerAvatarUrl != null && widget.partnerAvatarUrl!.isNotEmpty
-                    ? CachedNetworkImageProvider(widget.partnerAvatarUrl!)
-                    : null,
-                child: widget.partnerAvatarUrl == null || widget.partnerAvatarUrl!.isEmpty
-                    ? Text(
-                        callerName.isNotEmpty ? callerName[0].toUpperCase() : 'P',
-                        style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.terra),
-                      )
-                    : null,
+              // Pulsing green call icon & Avatar
+              Stack(
+                alignment: Alignment.center,
+                children: [
+                  CircleAvatar(
+                    radius: 22,
+                    backgroundColor: AppColors.terra.withOpacity(0.3),
+                    backgroundImage: widget.partnerAvatarUrl != null && widget.partnerAvatarUrl!.isNotEmpty
+                        ? CachedNetworkImageProvider(widget.partnerAvatarUrl!)
+                        : null,
+                    child: widget.partnerAvatarUrl == null || widget.partnerAvatarUrl!.isEmpty
+                        ? Text(
+                            callerName.isNotEmpty ? callerName[0].toUpperCase() : 'P',
+                            style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.terra, fontSize: 16),
+                          )
+                        : null,
+                  ),
+                  Positioned(
+                    bottom: -2,
+                    right: -2,
+                    child: Container(
+                      padding: const EdgeInsets.all(3),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF10B981),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.videocam_rounded, color: Colors.white, size: 10),
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 14),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -158,13 +220,14 @@ class _WatchCallOverlayState extends State<WatchCallOverlay> {
                   children: [
                     Text(
                       callerName,
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.white),
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Colors.white),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
+                    const SizedBox(height: 2),
                     const Text(
                       'Incoming video call 📹',
-                      style: TextStyle(fontSize: 12, color: Colors.white70),
+                      style: TextStyle(fontSize: 12, color: Color(0xFF34D399), fontWeight: FontWeight.w600),
                     ),
                   ],
                 ),
@@ -173,16 +236,18 @@ class _WatchCallOverlayState extends State<WatchCallOverlay> {
               IconButton(
                 onPressed: () {
                   HapticFeedback.lightImpact();
+                  _stopRingingHaptics();
                   _callService.declineCall();
                 },
-                icon: const Icon(Icons.call_end_rounded, color: Colors.redAccent, size: 26),
+                icon: const Icon(Icons.call_end_rounded, color: Colors.redAccent, size: 28),
                 tooltip: 'Decline',
               ),
-              const SizedBox(width: 4),
+              const SizedBox(width: 6),
               // Answer Button
               GestureDetector(
                 onTap: () {
                   HapticFeedback.mediumImpact();
+                  _stopRingingHaptics();
                   _callService.answerCall(
                     roomCode: widget.roomCode,
                     myUid: widget.myUid,
@@ -190,12 +255,19 @@ class _WatchCallOverlayState extends State<WatchCallOverlay> {
                   );
                 },
                 child: Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF10B981), // Emerald green
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF10B981), // Emerald green
                     shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF10B981).withOpacity(0.5),
+                        blurRadius: 12,
+                        spreadRadius: 2,
+                      ),
+                    ],
                   ),
-                  child: const Icon(Icons.videocam_rounded, color: Colors.white, size: 20),
+                  child: const Icon(Icons.videocam_rounded, color: Colors.white, size: 22),
                 ),
               ),
             ],
@@ -317,7 +389,7 @@ class _WatchCallOverlayState extends State<WatchCallOverlay> {
                 right: 8,
                 child: Container(
                   width: 52,
-                  height: 33, // 16:10 mini thumbnail
+                  height: 33,
                   decoration: BoxDecoration(
                     color: Colors.black87,
                     borderRadius: BorderRadius.circular(8),
@@ -437,7 +509,7 @@ class _WatchCallOverlayState extends State<WatchCallOverlay> {
                   ),
                 ),
 
-              // 5. Bottom Controls Bar on the video box (End call, mute, video on/off)
+              // 5. Bottom Controls Bar on the video box
               if (_showControls)
                 Positioned(
                   bottom: 0,
@@ -510,7 +582,7 @@ class _WatchCallOverlayState extends State<WatchCallOverlay> {
                           child: Container(
                             padding: const EdgeInsets.all(4),
                             decoration: const BoxDecoration(
-                              color: Color(0xFFEF4444), // Red
+                              color: Color(0xFFEF4444),
                               shape: BoxShape.circle,
                             ),
                             child: const Icon(Icons.call_end_rounded, color: Colors.white, size: 12),
@@ -527,26 +599,26 @@ class _WatchCallOverlayState extends State<WatchCallOverlay> {
     );
   }
 
-  /// 4. Maximized View (Expands vertically and horizontally like live chat)
+  /// 4. Maximized View (Full Vertical Height in Natural Portrait Aspect Ratio)
   Widget _buildMaximizedView() {
     final screenSize = MediaQuery.of(context).size;
 
     if (widget.isLandscape) {
-      // Landscape: Expands as a vertical column on the right side (top to down almost)
-      final panelWidth = math.min(320.0, screenSize.width * 0.38);
+      // Landscape: Vertical column on right with full vertical space (no 3:2 letterbox squishing!)
+      final panelWidth = math.min(300.0, screenSize.width * 0.35);
 
       return Positioned(
-        top: 12,
-        bottom: 12,
-        right: 12,
+        top: 10,
+        bottom: 10,
+        right: 10,
         width: panelWidth,
         child: Container(
           decoration: BoxDecoration(
-            color: const Color(0xFF141414).withOpacity(0.95),
+            color: const Color(0xFF141414).withOpacity(0.96),
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: AppColors.terra.withOpacity(0.6), width: 1.5),
+            border: Border.all(color: AppColors.terra.withOpacity(0.65), width: 1.5),
             boxShadow: const [
-              BoxShadow(color: Colors.black87, blurRadius: 20, offset: Offset(-4, 0)),
+              BoxShadow(color: Colors.black87, blurRadius: 22, offset: Offset(-4, 0)),
             ],
           ),
           clipBehavior: Clip.antiAlias,
@@ -554,15 +626,15 @@ class _WatchCallOverlayState extends State<WatchCallOverlay> {
             children: [
               // Header
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                color: Colors.black.withOpacity(0.5),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                color: Colors.black.withOpacity(0.6),
                 child: Row(
                   children: [
                     const Icon(Icons.videocam_rounded, color: Color(0xFF10B981), size: 16),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        widget.partnerName,
+                        _isSwappedInMaximized ? 'You' : widget.partnerName,
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 13,
@@ -586,7 +658,25 @@ class _WatchCallOverlayState extends State<WatchCallOverlay> {
                         );
                       },
                     ),
-                    const SizedBox(width: 10),
+                    const SizedBox(width: 8),
+                    // Swap Video Feeds button
+                    GestureDetector(
+                      onTap: () {
+                        HapticFeedback.selectionClick();
+                        setState(() {
+                          _isSwappedInMaximized = !_isSwappedInMaximized;
+                        });
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(5),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.12),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.swap_horiz_rounded, size: 14, color: Colors.white70),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
                     // Minimize button
                     GestureDetector(
                       onTap: _toggleMaximize,
@@ -603,72 +693,105 @@ class _WatchCallOverlayState extends State<WatchCallOverlay> {
                 ),
               ),
 
-              // Partner video (Large)
+              // Full-Height Video Feed (Gives maximum vertical space without head/body cropping)
               Expanded(
-                flex: 3,
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
+                    // Main Feed: Partner (or swapped You) taking 100% of vertical height
                     ValueListenableBuilder<bool>(
-                      valueListenable: _callService.isPartnerCameraOff,
-                      builder: (context, isCameraOff, _) {
-                        if (isCameraOff || _callService.remoteRenderer.srcObject == null) {
-                          return _buildPartnerAvatarPlaceholder(compact: false);
+                      valueListenable: _isSwappedInMaximized
+                          ? _callService.isCameraOff
+                          : _callService.isPartnerCameraOff,
+                      builder: (context, isOff, _) {
+                        final renderer = _isSwappedInMaximized
+                            ? _callService.localRenderer
+                            : _callService.remoteRenderer;
+                        if (isOff || renderer.srcObject == null) {
+                          return _isSwappedInMaximized
+                              ? Container(
+                                  color: const Color(0xFF1C1C1E),
+                                  child: const Center(
+                                    child: Icon(Icons.videocam_off_rounded, size: 28, color: Colors.white38),
+                                  ),
+                                )
+                              : _buildPartnerAvatarPlaceholder(compact: false);
                         }
                         return RTCVideoView(
-                          _callService.remoteRenderer,
+                          renderer,
+                          mirror: _isSwappedInMaximized,
                           objectFit: RTCVideoViewObjectFit.RTCVideoViewObjectFitCover,
                         );
                       },
                     ),
-                  ],
-                ),
-              ),
 
-              const Divider(height: 1, color: Colors.white12),
-
-              // My camera (Secondary section)
-              Expanded(
-                flex: 2,
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    ValueListenableBuilder<bool>(
-                      valueListenable: _callService.isCameraOff,
-                      builder: (context, isCameraOff, _) {
-                        if (isCameraOff || _callService.localRenderer.srcObject == null) {
-                          return Container(
-                            color: const Color(0xFF1C1C1E),
-                            child: const Center(
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(Icons.videocam_off_rounded, size: 24, color: Colors.white38),
-                                  SizedBox(height: 4),
-                                  Text('Camera is off', style: TextStyle(color: Colors.white38, fontSize: 11)),
-                                ],
-                              ),
-                            ),
-                          );
-                        }
-                        return RTCVideoView(
-                          _callService.localRenderer,
-                          mirror: true,
-                          objectFit: RTCVideoViewObjectFit.RTCVideoViewObjectFitCover,
-                        );
-                      },
-                    ),
-                    // "You" label
+                    // Floating Mini PiP (Tall portrait 72x112 aspect ratio, tapped to swap)
                     Positioned(
-                      top: 6,
-                      left: 8,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.6),
-                          borderRadius: BorderRadius.circular(6),
+                      bottom: 8,
+                      right: 8,
+                      child: GestureDetector(
+                        onTap: () {
+                          HapticFeedback.selectionClick();
+                          setState(() {
+                            _isSwappedInMaximized = !_isSwappedInMaximized;
+                          });
+                        },
+                        child: Container(
+                          width: 72,
+                          height: 112, // Tall portrait aspect ratio
+                          decoration: BoxDecoration(
+                            color: Colors.black87,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.white.withOpacity(0.7), width: 1.5),
+                            boxShadow: [
+                              BoxShadow(color: Colors.black.withOpacity(0.6), blurRadius: 8),
+                            ],
+                          ),
+                          clipBehavior: Clip.antiAlias,
+                          child: Stack(
+                            fit: StackFit.expand,
+                            children: [
+                              ValueListenableBuilder<bool>(
+                                valueListenable: _isSwappedInMaximized
+                                    ? _callService.isPartnerCameraOff
+                                    : _callService.isCameraOff,
+                                builder: (context, isOff, _) {
+                                  final pipRenderer = _isSwappedInMaximized
+                                      ? _callService.remoteRenderer
+                                      : _callService.localRenderer;
+                                  if (isOff || pipRenderer.srcObject == null) {
+                                    return Container(
+                                      color: const Color(0xFF1C1C1E),
+                                      child: const Center(
+                                        child: Icon(Icons.videocam_off_rounded, size: 16, color: Colors.white54),
+                                      ),
+                                    );
+                                  }
+                                  return RTCVideoView(
+                                    pipRenderer,
+                                    mirror: !_isSwappedInMaximized,
+                                    objectFit: RTCVideoViewObjectFit.RTCVideoViewObjectFitCover,
+                                  );
+                                },
+                              ),
+                              Positioned(
+                                bottom: 4,
+                                left: 5,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black.withOpacity(0.65),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Text(
+                                    _isSwappedInMaximized ? widget.partnerName : 'You',
+                                    style: const TextStyle(fontSize: 9, color: Colors.white, fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                        child: const Text('You', style: TextStyle(fontSize: 10, color: Colors.white70)),
                       ),
                     ),
                   ],
@@ -677,8 +800,8 @@ class _WatchCallOverlayState extends State<WatchCallOverlay> {
 
               // Bottom Call Action Controls
               Container(
-                padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
-                color: Colors.black.withOpacity(0.7),
+                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                color: Colors.black.withOpacity(0.75),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
@@ -756,8 +879,8 @@ class _WatchCallOverlayState extends State<WatchCallOverlay> {
         ),
       );
     } else {
-      // Portrait: Expands vertically to half screen
-      final height = screenSize.height * 0.48;
+      // Portrait: Expands vertically
+      final height = screenSize.height * 0.52;
 
       return Positioned(
         top: 60,
@@ -766,9 +889,9 @@ class _WatchCallOverlayState extends State<WatchCallOverlay> {
         height: height,
         child: Container(
           decoration: BoxDecoration(
-            color: const Color(0xFF141414).withOpacity(0.95),
+            color: const Color(0xFF141414).withOpacity(0.96),
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: AppColors.terra.withOpacity(0.6), width: 1.5),
+            border: Border.all(color: AppColors.terra.withOpacity(0.65), width: 1.5),
             boxShadow: const [
               BoxShadow(color: Colors.black87, blurRadius: 20, offset: Offset(0, 8)),
             ],
@@ -786,7 +909,7 @@ class _WatchCallOverlayState extends State<WatchCallOverlay> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        widget.partnerName,
+                        _isSwappedInMaximized ? 'You' : widget.partnerName,
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 13,
@@ -825,19 +948,32 @@ class _WatchCallOverlayState extends State<WatchCallOverlay> {
                 ),
               ),
 
-              // Partner video + local PiP
+              // Full Height Partner Video + Local PiP
               Expanded(
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
                     ValueListenableBuilder<bool>(
-                      valueListenable: _callService.isPartnerCameraOff,
-                      builder: (context, isCameraOff, _) {
-                        if (isCameraOff || _callService.remoteRenderer.srcObject == null) {
-                          return _buildPartnerAvatarPlaceholder(compact: false);
+                      valueListenable: _isSwappedInMaximized
+                          ? _callService.isCameraOff
+                          : _callService.isPartnerCameraOff,
+                      builder: (context, isOff, _) {
+                        final renderer = _isSwappedInMaximized
+                            ? _callService.localRenderer
+                            : _callService.remoteRenderer;
+                        if (isOff || renderer.srcObject == null) {
+                          return _isSwappedInMaximized
+                              ? Container(
+                                  color: const Color(0xFF1C1C1E),
+                                  child: const Center(
+                                    child: Icon(Icons.videocam_off_rounded, size: 28, color: Colors.white38),
+                                  ),
+                                )
+                              : _buildPartnerAvatarPlaceholder(compact: false);
                         }
                         return RTCVideoView(
-                          _callService.remoteRenderer,
+                          renderer,
+                          mirror: _isSwappedInMaximized,
                           objectFit: RTCVideoViewObjectFit.RTCVideoViewObjectFitCover,
                         );
                       },
@@ -847,29 +983,42 @@ class _WatchCallOverlayState extends State<WatchCallOverlay> {
                     Positioned(
                       bottom: 12,
                       right: 12,
-                      width: 90,
-                      height: 56,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Colors.black87,
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: Colors.white.withOpacity(0.6), width: 1.2),
-                        ),
-                        clipBehavior: Clip.antiAlias,
-                        child: ValueListenableBuilder<bool>(
-                          valueListenable: _callService.isCameraOff,
-                          builder: (context, isCameraOff, _) {
-                            if (isCameraOff || _callService.localRenderer.srcObject == null) {
-                              return const Center(
-                                child: Icon(Icons.videocam_off_rounded, size: 18, color: Colors.white54),
+                      width: 80,
+                      height: 120,
+                      child: GestureDetector(
+                        onTap: () {
+                          HapticFeedback.selectionClick();
+                          setState(() {
+                            _isSwappedInMaximized = !_isSwappedInMaximized;
+                          });
+                        },
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.black87,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.white.withOpacity(0.7), width: 1.5),
+                          ),
+                          clipBehavior: Clip.antiAlias,
+                          child: ValueListenableBuilder<bool>(
+                            valueListenable: _isSwappedInMaximized
+                                ? _callService.isPartnerCameraOff
+                                : _callService.isCameraOff,
+                            builder: (context, isOff, _) {
+                              final pipRenderer = _isSwappedInMaximized
+                                  ? _callService.remoteRenderer
+                                  : _callService.localRenderer;
+                              if (isOff || pipRenderer.srcObject == null) {
+                                return const Center(
+                                  child: Icon(Icons.videocam_off_rounded, size: 18, color: Colors.white54),
+                                );
+                              }
+                              return RTCVideoView(
+                                pipRenderer,
+                                mirror: !_isSwappedInMaximized,
+                                objectFit: RTCVideoViewObjectFit.RTCVideoViewObjectFitCover,
                               );
-                            }
-                            return RTCVideoView(
-                              _callService.localRenderer,
-                              mirror: true,
-                              objectFit: RTCVideoViewObjectFit.RTCVideoViewObjectFitCover,
-                            );
-                          },
+                            },
+                          ),
                         ),
                       ),
                     ),
