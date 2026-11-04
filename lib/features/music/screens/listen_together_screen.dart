@@ -179,10 +179,11 @@ class _ListenTogetherScreenState extends State<ListenTogetherScreen> {
                     children: [
                       GlassButton(
                         onTap: () => Navigator.pop(context),
-                        width: 38,
-                        height: 38,
+                        width: 40,
+                        height: 40,
+                        isCircle: true,
                         child: const Center(
-                          child: Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 16),
+                          child: Icon(Icons.arrow_back_rounded, color: Colors.white, size: 20),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -258,8 +259,8 @@ class _ListenTogetherScreenState extends State<ListenTogetherScreen> {
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  _buildAvatarCircle(myInitial, const Color(0xFF86EFAC), Colors.black87),
-                                  const SizedBox(width: 10),
+                                  _buildAvatarCircle(user?.avatarUrl, myInitial, const Color(0xFF86EFAC)),
+                                  const SizedBox(width: 14),
                                   Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                     decoration: BoxDecoration(
@@ -290,8 +291,8 @@ class _ListenTogetherScreenState extends State<ListenTogetherScreen> {
                                       ],
                                     ),
                                   ),
-                                  const SizedBox(width: 10),
-                                  _buildAvatarCircle(partnerInitial, const Color(0xFFF97316), Colors.white),
+                                  const SizedBox(width: 14),
+                                  _buildAvatarCircle(partner?.avatarUrl, partnerInitial, const Color(0xFFF97316)),
                                 ],
                               ),
                               const SizedBox(height: 12),
@@ -307,49 +308,6 @@ class _ListenTogetherScreenState extends State<ListenTogetherScreen> {
                               Text(
                                 isPlaying ? 'In sync · Realtime audio stream ✦' : 'In sync · Ready to play',
                                 style: const TextStyle(fontSize: 12, color: GlassTokens.textSecondary),
-                              ),
-                              const SizedBox(height: 12),
-                              // Code copy pill
-                              GestureDetector(
-                                onTap: () {
-                                  HapticFeedback.lightImpact();
-                                  Clipboard.setData(ClipboardData(text: pairCode));
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Sync code copied to clipboard ✦'),
-                                      duration: Duration(seconds: 2),
-                                      behavior: SnackBarBehavior.floating,
-                                    ),
-                                  );
-                                },
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withOpacity(0.06),
-                                    borderRadius: BorderRadius.circular(16),
-                                    border: Border.all(color: Colors.white12),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Text(
-                                        'Code: ',
-                                        style: TextStyle(fontSize: 11, color: Colors.white.withOpacity(0.6)),
-                                      ),
-                                      Text(
-                                        pairCode,
-                                        style: const TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.white,
-                                          letterSpacing: 1,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 6),
-                                      const Icon(Icons.copy_rounded, size: 13, color: GlassTokens.textSecondary),
-                                    ],
-                                  ),
-                                ),
                               ),
                             ],
                           ),
@@ -445,29 +403,32 @@ class _ListenTogetherScreenState extends State<ListenTogetherScreen> {
                               ),
                               const SizedBox(height: 12),
 
-                              // Transport controls
+                              // Transport controls (Perfect circular buttons with centered icons)
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
+                                crossAxisAlignment: CrossAxisAlignment.center,
                                 children: [
                                   GlassButton(
                                     onTap: () {
                                       HapticFeedback.lightImpact();
                                       audioProvider.prevSong();
                                     },
-                                    width: 44,
-                                    height: 44,
+                                    width: 48,
+                                    height: 48,
+                                    isCircle: true,
                                     child: const Center(
                                       child: Icon(Icons.skip_previous_rounded, color: Colors.white, size: 26),
                                     ),
                                   ),
-                                  const SizedBox(width: 24),
+                                  const SizedBox(width: 28),
                                   GlassButton(
                                     onTap: () {
                                       HapticFeedback.mediumImpact();
                                       audioProvider.toggleSongPlay();
                                     },
-                                    width: 58,
-                                    height: 58,
+                                    width: 62,
+                                    height: 62,
+                                    isCircle: true,
                                     tintColor: GlassTokens.accent.withOpacity(0.4),
                                     borderColor: GlassTokens.accent.withOpacity(0.7),
                                     child: Center(
@@ -483,18 +444,19 @@ class _ListenTogetherScreenState extends State<ListenTogetherScreen> {
                                           : Icon(
                                               isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
                                               color: Colors.white,
-                                              size: 32,
+                                              size: 34,
                                             ),
                                     ),
                                   ),
-                                  const SizedBox(width: 24),
+                                  const SizedBox(width: 28),
                                   GlassButton(
                                     onTap: () {
                                       HapticFeedback.lightImpact();
                                       audioProvider.nextSong();
                                     },
-                                    width: 44,
-                                    height: 44,
+                                    width: 48,
+                                    height: 48,
+                                    isCircle: true,
                                     child: const Center(
                                       child: Icon(Icons.skip_next_rounded, color: Colors.white, size: 26),
                                     ),
@@ -942,15 +904,46 @@ class _ListenTogetherScreenState extends State<ListenTogetherScreen> {
     );
   }
 
-  Widget _buildAvatarCircle(String label, Color bg, Color textColor) {
+  Widget _buildAvatarCircle(String? avatarUrl, String fallbackInitial, Color borderTint) {
     return Container(
-      width: 46,
-      height: 46,
-      decoration: BoxDecoration(shape: BoxShape.circle, color: bg),
+      width: 48,
+      height: 48,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(color: borderTint, width: 2),
+        boxShadow: [
+          BoxShadow(
+            color: borderTint.withOpacity(0.35),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: ClipOval(
+        child: (avatarUrl != null && avatarUrl.isNotEmpty)
+            ? CachedNetworkImage(
+                imageUrl: avatarUrl,
+                width: 48,
+                height: 48,
+                fit: BoxFit.cover,
+                errorWidget: (_, __, ___) => _buildInitialFallback(fallbackInitial, borderTint),
+              )
+            : _buildInitialFallback(fallbackInitial, borderTint),
+      ),
+    );
+  }
+
+  Widget _buildInitialFallback(String initial, Color tint) {
+    return Container(
+      color: tint.withOpacity(0.25),
       child: Center(
         child: Text(
-          label,
-          style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: textColor),
+          initial,
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: tint,
+          ),
         ),
       ),
     );

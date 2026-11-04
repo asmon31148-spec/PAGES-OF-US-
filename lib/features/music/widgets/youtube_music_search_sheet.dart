@@ -9,16 +9,17 @@ import '../../../core/services/youtube_music_service.dart';
 import '../../../core/services/music_download_service.dart';
 import '../screens/now_playing_screen.dart';
 
-/// Full-Screen YouTube Music Discovery Screen with Curated Recommendations & 3-Dot Menu
+/// Full-Screen Music Discovery Screen with Curated Recommendations & 3-Dot Menu
 class YoutubeMusicSearchSheet extends StatefulWidget {
-  const YoutubeMusicSearchSheet({super.key});
+  final String? initialQuery;
+  const YoutubeMusicSearchSheet({super.key, this.initialQuery});
 
-  static Future<void> show(BuildContext context) {
+  static Future<void> show(BuildContext context, {String? initialQuery}) {
     HapticFeedback.lightImpact();
     return Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => const YoutubeMusicSearchSheet(),
+        builder: (_) => YoutubeMusicSearchSheet(initialQuery: initialQuery),
         fullscreenDialog: true,
       ),
     );
@@ -51,8 +52,13 @@ class _YoutubeMusicSearchSheetState extends State<YoutubeMusicSearchSheet> {
   @override
   void initState() {
     super.initState();
-    // Load diverse top hits by default
-    _performSearch('Top Romantic Songs');
+    if (widget.initialQuery != null && widget.initialQuery!.isNotEmpty) {
+      _searchController.text = widget.initialQuery!;
+      _performSearch(widget.initialQuery!);
+    } else {
+      // Load diverse top hits by default
+      _performSearch('Top Romantic Songs');
+    }
   }
 
   @override
@@ -540,16 +546,16 @@ class _YoutubeMusicSearchSheetState extends State<YoutubeMusicSearchSheet> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'YouTube Music Discovery',
+                          'Music Discovery',
                           style: TextStyle(
-                            fontSize: 17,
+                            fontSize: 18,
                             fontWeight: FontWeight.bold,
                             color: Colors.white,
                             letterSpacing: -0.3,
                           ),
                         ),
                         Text(
-                          'Stream & queue any song in the world ✦',
+                          'Stream & queue any track in your sanctuary ✦',
                           style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
                         ),
                       ],
@@ -586,11 +592,19 @@ class _YoutubeMusicSearchSheetState extends State<YoutubeMusicSearchSheet> {
                         )
                       : null,
                   filled: true,
-                  fillColor: const Color(0xFF171922),
+                  fillColor: Colors.white.withOpacity(0.08),
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(16),
-                    borderSide: BorderSide.none,
+                    borderSide: const BorderSide(color: Colors.white12),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: const BorderSide(color: Colors.white12),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: const BorderSide(color: Color(0xFFE07A5F), width: 1.2),
                   ),
                 ),
               ),
@@ -617,9 +631,9 @@ class _YoutubeMusicSearchSheetState extends State<YoutubeMusicSearchSheet> {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF1C1F2A),
+                        color: Colors.white.withOpacity(0.06),
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: const Color(0xFF2B2F40)),
+                        border: Border.all(color: Colors.white12),
                       ),
                       alignment: Alignment.center,
                       child: Text(
@@ -643,7 +657,7 @@ class _YoutubeMusicSearchSheetState extends State<YoutubeMusicSearchSheet> {
                           CircularProgressIndicator(strokeWidth: 2.5, color: Color(0xFFE07A5F)),
                           SizedBox(height: 12),
                           Text(
-                            'Searching YouTube Music...',
+                            'Searching music catalog...',
                             style: TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
                           ),
                         ],

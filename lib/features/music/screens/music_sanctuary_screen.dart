@@ -31,6 +31,41 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
   int _activeTabIndex = 0; // 0: Songs, 1: Playlists, 2: Offline, 3: Atmosphere
   String _sortMode = 'recent'; // 'recent', 'title', 'artist', 'offline'
 
+  static final List<Map<String, dynamic>> _curatedMixes = [
+    {
+      'title': 'Late Night Lofi',
+      'subtitle': 'Soft beats & chill vibes',
+      'query': 'Late Night Lofi chill beats',
+      'icon': Icons.nightlight_round,
+      'gradient': [const Color(0xFF6366F1), const Color(0xFF8B5CF6)],
+      'badge': 'Cozy',
+    },
+    {
+      'title': 'Romantic Sanctuary',
+      'subtitle': 'Acoustic Bollywood & love',
+      'query': 'Romantic Bollywood Acoustic Love Songs',
+      'icon': Icons.favorite_rounded,
+      'gradient': [const Color(0xFFEC4899), const Color(0xFFF43F5E)],
+      'badge': 'For Two',
+    },
+    {
+      'title': 'Monsoon Melodies',
+      'subtitle': 'Rain drops & peaceful acoustic',
+      'query': 'Monsoon acoustic relaxing songs',
+      'icon': Icons.water_drop_rounded,
+      'gradient': [const Color(0xFF0EA5E9), const Color(0xFF06B6D4)],
+      'badge': 'Peaceful',
+    },
+    {
+      'title': 'Warm Soul & Indie',
+      'subtitle': 'Gentle guitars & slow melodies',
+      'query': 'Indie acoustic soul ballads',
+      'icon': Icons.album_rounded,
+      'gradient': [const Color(0xFFF59E0B), const Color(0xFFD97706)],
+      'badge': 'Melodic',
+    },
+  ];
+
   @override
   Widget build(BuildContext context) {
     final audioProvider = context.watch<AudioProvider>();
@@ -65,10 +100,11 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
                     children: [
                       GlassButton(
                         onTap: () => Navigator.pop(context),
-                        width: 38,
-                        height: 38,
+                        width: 40,
+                        height: 40,
+                        isCircle: true,
                         child: const Center(
-                          child: Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 16),
+                          child: Icon(Icons.arrow_back_rounded, color: Colors.white, size: 20),
                         ),
                       ),
                       const SizedBox(width: 10),
@@ -91,8 +127,9 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
                       ),
                       const SizedBox(width: 6),
                       GlassButton(
-                        width: 38,
-                        height: 38,
+                        width: 40,
+                        height: 40,
+                        isCircle: true,
                         onTap: () {
                           audioProvider.toggleBackgroundPlayback();
                           ScaffoldMessenger.of(context).showSnackBar(
@@ -115,23 +152,25 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
                             color: audioProvider.allowBackgroundPlayback
                                 ? GlassTokens.accent
                                 : Colors.white70,
-                            size: 19,
+                            size: 20,
                           ),
                         ),
                       ),
                       const SizedBox(width: 6),
                       GlassButton(
-                        width: 38,
-                        height: 38,
+                        width: 40,
+                        height: 40,
+                        isCircle: true,
                         onTap: () => YoutubeMusicSearchSheet.show(context),
                         child: const Center(
-                          child: Icon(Icons.search_rounded, color: Colors.white, size: 19),
+                          child: Icon(Icons.search_rounded, color: Colors.white, size: 20),
                         ),
                       ),
                       const SizedBox(width: 6),
                       GlassButton(
-                        width: 38,
-                        height: 38,
+                        width: 40,
+                        height: 40,
+                        isCircle: true,
                         tintColor: GlassTokens.accent.withOpacity(0.35),
                         borderColor: GlassTokens.accent.withOpacity(0.7),
                         onTap: () => _showAddSongDialog(context),
@@ -324,7 +363,111 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
           ),
           const SizedBox(height: 20),
 
-          // 2. Recently Played Horizontal Carousel (if songs exist)
+          // 2. Curated For You & Zoobiii (Recommended Albums & Mixes)
+          Row(
+            children: [
+              const Icon(Icons.auto_awesome_rounded, size: 16, color: GlassTokens.accent),
+              const SizedBox(width: 6),
+              Text(
+                'Curated for You & $partnerName',
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            height: 126,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              physics: const BouncingScrollPhysics(),
+              itemCount: _curatedMixes.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 12),
+              itemBuilder: (context, index) {
+                final mix = _curatedMixes[index];
+                final gradient = mix['gradient'] as List<Color>;
+                return GestureDetector(
+                  onTap: () {
+                    HapticFeedback.lightImpact();
+                    YoutubeMusicSearchSheet.show(context, initialQuery: mix['query'] as String);
+                  },
+                  child: Container(
+                    width: 154,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(18),
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          gradient[0].withOpacity(0.32),
+                          gradient[1].withOpacity(0.12),
+                        ],
+                      ),
+                      border: Border.all(color: gradient[0].withOpacity(0.4)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Container(
+                              width: 34,
+                              height: 34,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: gradient[0].withOpacity(0.5),
+                              ),
+                              child: Icon(mix['icon'] as IconData, color: Colors.white, size: 18),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                mix['badge'] as String,
+                                style: const TextStyle(fontSize: 9.5, fontWeight: FontWeight.bold, color: Colors.white70),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const Spacer(),
+                        Text(
+                          mix['title'] as String,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          mix['subtitle'] as String,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 10.5,
+                            color: GlassTokens.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          // 3. Recently Played Horizontal Carousel (if songs exist)
           if (recentSongs.isNotEmpty) ...[
             const Row(
               children: [
@@ -626,7 +769,7 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
                     Text(
                       _sortMode == 'offline'
                           ? 'Tap search above to find songs and download them'
-                          : 'Search YouTube Music or upload audio files to start listening',
+                          : 'Search songs or upload audio files to start listening',
                       style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 12),
                       textAlign: TextAlign.center,
                     ),
@@ -766,7 +909,7 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  'Search any song on YouTube Music and tap ⬇ to listen offline anywhere with zero data.',
+                  'Search any song and tap download to listen offline anywhere with zero data.',
                   textAlign: TextAlign.center,
                   style: TextStyle(color: GlassTokens.textSecondary, fontSize: 12.5, height: 1.4),
                 ),
@@ -779,7 +922,7 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
                     children: [
                       Icon(Icons.search_rounded, size: 18, color: GlassTokens.accent),
                       SizedBox(width: 8),
-                      Text('Explore YouTube Music', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                      Text('Explore Music', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                     ],
                   ),
                 ),
@@ -1145,13 +1288,10 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
           const SizedBox(height: 18),
 
           // "Your mix" Master Card
-          Container(
+          GlassCard(
+            enableBlur: false,
             padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: const Color(0xFF111E16),
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: const Color(0xFF18281E)),
-            ),
+            borderRadius: BorderRadius.circular(24),
             child: Column(
               children: [
                 Row(
@@ -1267,13 +1407,10 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
               final stem = stems[key]!;
               final isOff = stem.volume < 0.02;
 
-              return Container(
+              return GlassCard(
+                enableBlur: false,
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF111E16),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: const Color(0xFF18281E)),
-                ),
+                borderRadius: BorderRadius.circular(20),
                 child: Row(
                   children: [
                     Container(
@@ -1444,7 +1581,7 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
                               color: Color(0xFFD97706),
                             ),
                             child: const Center(
-                              child: Icon(Icons.youtube_searched_for_rounded, color: Colors.black, size: 22),
+                              child: Icon(Icons.search_rounded, color: Colors.black, size: 22),
                             ),
                           ),
                           const SizedBox(width: 14),
@@ -1453,7 +1590,7 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: const [
                                 Text(
-                                  'Search YouTube Music',
+                                  'Search Music Catalog',
                                   style: TextStyle(
                                     fontSize: 14,
                                     fontWeight: FontWeight.bold,
