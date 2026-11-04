@@ -244,6 +244,7 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
         children: [
           // 1. Listen Together Elevated Glass Hero Card
           GlassCard(
+            enableBlur: false,
             padding: const EdgeInsets.all(16),
             child: Row(
               children: [
@@ -610,6 +611,7 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
 
           if (displaySongs.isEmpty)
             GlassCard(
+              enableBlur: false,
               padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 20),
               child: Center(
                 child: Column(
@@ -734,7 +736,7 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
                 );
               },
             ),
-          const SizedBox(height: 40),
+          const SizedBox(height: 80),
         ],
       ),
     );
@@ -798,6 +800,7 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
           children: [
             // Storage Header Banner
             GlassCard(
+              enableBlur: false,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               child: Row(
                 children: [

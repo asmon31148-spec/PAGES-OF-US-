@@ -41,20 +41,20 @@ class GlassAmbientBackground extends StatelessWidget {
                   fit: StackFit.expand,
                   children: [
                     if (imageUrl != null && imageUrl!.isNotEmpty)
-                      CachedNetworkImage(
-                        imageUrl: imageUrl!,
-                        fit: BoxFit.cover,
-                        errorWidget: (_, __, ___) => _buildFallbackMesh(),
+                      ImageFiltered(
+                        imageFilter: ImageFilter.blur(sigmaX: 28, sigmaY: 28),
+                        child: CachedNetworkImage(
+                          imageUrl: imageUrl!,
+                          fit: BoxFit.cover,
+                          errorWidget: (_, __, ___) => _buildFallbackMesh(),
+                        ),
                       )
                     else
                       _buildFallbackMesh(),
 
-                    // Deep blur layer across whole background to create liquid ambient glow
-                    BackdropFilter(
-                      filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
-                      child: Container(
-                        color: Colors.black.withOpacity(0.42),
-                      ),
+                    // Tint overlay for contrast
+                    Container(
+                      color: Colors.black.withOpacity(0.42),
                     ),
 
                     // Top and bottom dark gradient overlays for maximum text contrast
