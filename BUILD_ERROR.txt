@@ -321,152 +321,62 @@ warning • The value of the local variable 'memoriesProvider' isn't used. Try r
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/memories/widgets/timeline_subview.dart:1119:74 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/memories/widgets/timeline_subview.dart:1181:69 • deprecated_member_use
    info • 'value' is deprecated and shouldn't be used. Use component accessors like .r or .g, or toARGB32 for an explicit conversion. Try replacing the use of the deprecated member with the replacement • lib/features/music/models/music_models.dart:41:32 • deprecated_member_use
-   info • 'value' is deprecated and shouldn't be used. Use component accessors like .r or .g, or toARGB32 for an explicit conversion. Try replacing the use of the deprecated member with the replacement • lib/features/music/models/music_models.dart:108:32 • deprecated_member_use
+   info • 'value' is deprecated and shouldn't be used. Use component accessors like .r or .g, or toARGB32 for an explicit conversion. Try replacing the use of the deprecated member with the replacement • lib/features/music/models/music_models.dart:110:32 • deprecated_member_use
 warning • Unused import: '../models/music_models.dart'. Try removing the import directive • lib/features/music/screens/listen_together_screen.dart:7:8 • unused_import
-  error • The named parameter 'context' is required, but there's no corresponding argument. Try adding the required argument • lib/features/music/screens/listen_together_screen.dart:42:16 • missing_required_argument
-  error • Too many positional arguments: 0 expected, but 1 found. Try removing the extra positional arguments, or specifying the name for named arguments • lib/features/music/screens/listen_together_screen.dart:43:7 • extra_positional_arguments_could_be_named
   error • Invalid constant value • lib/features/music/screens/listen_together_screen.dart:60:47 • invalid_constant
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/listen_together_screen.dart:80:44 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/listen_together_screen.dart:82:63 • deprecated_member_use
-  error • The getter 'songCount' isn't defined for the type 'PlaylistItem'. Try importing the library that defines 'songCount', correcting the name to the name of an existing getter, or defining a getter or field named 'songCount' • lib/features/music/screens/listen_together_screen.dart:97:27 • undefined_getter
-  error • The getter 'songCount' isn't defined for the type 'PlaylistItem'. Try importing the library that defines 'songCount', correcting the name to the name of an existing getter, or defining a getter or field named 'songCount' • lib/features/music/screens/listen_together_screen.dart:97:43 • undefined_getter
   error • Invalid constant value • lib/features/music/screens/listen_together_screen.dart:98:51 • invalid_constant
-  error • The getter 'songCount' isn't defined for the type 'PlaylistItem'. Try importing the library that defines 'songCount', correcting the name to the name of an existing getter, or defining a getter or field named 'songCount' • lib/features/music/screens/listen_together_screen.dart:106:69 • undefined_getter
-  error • Invalid constant value • lib/features/music/screens/listen_together_screen.dart:116:64 • invalid_constant
-  error • The getter 'accent' isn't defined for the type 'GlassTokens'. Try importing the library that defines 'accent', correcting the name to the name of an existing getter, or defining a getter or field named 'accent' • lib/features/music/screens/listen_together_screen.dart:116:76 • undefined_getter
-  error • The named parameter 'width' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'width' • lib/features/music/screens/listen_together_screen.dart:182:25 • undefined_named_parameter
-  error • The named parameter 'height' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'height' • lib/features/music/screens/listen_together_screen.dart:183:25 • undefined_named_parameter
   error • Invalid constant value • lib/features/music/screens/listen_together_screen.dart:205:38 • invalid_constant
-  error • Invalid constant value • lib/features/music/screens/listen_together_screen.dart:217:73 • invalid_constant
-  error • The getter 'accent' isn't defined for the type 'GlassTokens'. Try importing the library that defines 'accent', correcting the name to the name of an existing getter, or defining a getter or field named 'accent' • lib/features/music/screens/listen_together_screen.dart:217:85 • undefined_getter
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/listen_together_screen.dart:260:59 • deprecated_member_use
-  error • The getter 'accent' isn't defined for the type 'GlassTokens'. Try importing the library that defines 'accent', correcting the name to the name of an existing getter, or defining a getter or field named 'accent' • lib/features/music/screens/listen_together_screen.dart:271:76 • undefined_getter
   error • Invalid constant value • lib/features/music/screens/listen_together_screen.dart:303:77 • invalid_constant
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/listen_together_screen.dart:322:57 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/listen_together_screen.dart:331:92 • deprecated_member_use
   error • Invalid constant value • lib/features/music/screens/listen_together_screen.dart:343:87 • invalid_constant
-  error • The getter 'accent' isn't defined for the type 'GlassTokens'. Try importing the library that defines 'accent', correcting the name to the name of an existing getter, or defining a getter or field named 'accent' • lib/features/music/screens/listen_together_screen.dart:418:76 • undefined_getter
-  error • The named parameter 'width' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'width' • lib/features/music/screens/listen_together_screen.dart:451:37 • undefined_named_parameter
-  error • The named parameter 'height' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'height' • lib/features/music/screens/listen_together_screen.dart:452:37 • undefined_named_parameter
-  error • The named parameter 'width' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'width' • lib/features/music/screens/listen_together_screen.dart:463:37 • undefined_named_parameter
-  error • The named parameter 'height' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'height' • lib/features/music/screens/listen_together_screen.dart:464:37 • undefined_named_parameter
-  error • The named parameter 'tintColor' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'tintColor' • lib/features/music/screens/listen_together_screen.dart:465:37 • undefined_named_parameter
-  error • The getter 'accent' isn't defined for the type 'GlassTokens'. Try importing the library that defines 'accent', correcting the name to the name of an existing getter, or defining a getter or field named 'accent' • lib/features/music/screens/listen_together_screen.dart:465:60 • undefined_getter
-  error • The named parameter 'borderColor' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'borderColor' • lib/features/music/screens/listen_together_screen.dart:466:37 • undefined_named_parameter
-  error • The getter 'accent' isn't defined for the type 'GlassTokens'. Try importing the library that defines 'accent', correcting the name to the name of an existing getter, or defining a getter or field named 'accent' • lib/features/music/screens/listen_together_screen.dart:466:62 • undefined_getter
-  error • The named parameter 'width' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'width' • lib/features/music/screens/listen_together_screen.dart:490:37 • undefined_named_parameter
-  error • The named parameter 'height' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'height' • lib/features/music/screens/listen_together_screen.dart:491:37 • undefined_named_parameter
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/listen_together_screen.dart:465:67 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/listen_together_screen.dart:466:69 • deprecated_member_use
   error • Invalid constant value • lib/features/music/screens/listen_together_screen.dart:509:36 • invalid_constant
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/listen_together_screen.dart:516:49 • deprecated_member_use
-  error • The getter 'accent' isn't defined for the type 'GlassTokens'. Try importing the library that defines 'accent', correcting the name to the name of an existing getter, or defining a getter or field named 'accent' • lib/features/music/screens/listen_together_screen.dart:533:57 • undefined_getter
-  error • The getter 'accent' isn't defined for the type 'GlassTokens'. Try importing the library that defines 'accent', correcting the name to the name of an existing getter, or defining a getter or field named 'accent' • lib/features/music/screens/listen_together_screen.dart:563:57 • undefined_getter
   error • Invalid constant value • lib/features/music/screens/listen_together_screen.dart:607:44 • invalid_constant
-  error • Invalid constant value • lib/features/music/screens/listen_together_screen.dart:620:85 • invalid_constant
-  error • The getter 'accent' isn't defined for the type 'GlassTokens'. Try importing the library that defines 'accent', correcting the name to the name of an existing getter, or defining a getter or field named 'accent' • lib/features/music/screens/listen_together_screen.dart:620:97 • undefined_getter
-  error • Invalid constant value • lib/features/music/screens/listen_together_screen.dart:641:76 • invalid_constant
-  error • The getter 'accent' isn't defined for the type 'GlassTokens'. Try importing the library that defines 'accent', correcting the name to the name of an existing getter, or defining a getter or field named 'accent' • lib/features/music/screens/listen_together_screen.dart:641:88 • undefined_getter
   error • Invalid constant value • lib/features/music/screens/listen_together_screen.dart:674:61 • invalid_constant
-  error • Invalid constant value • lib/features/music/screens/listen_together_screen.dart:687:96 • invalid_constant
-  error • The getter 'accent' isn't defined for the type 'GlassTokens'. Try importing the library that defines 'accent', correcting the name to the name of an existing getter, or defining a getter or field named 'accent' • lib/features/music/screens/listen_together_screen.dart:687:108 • undefined_getter
-  error • Invalid constant value • lib/features/music/screens/listen_together_screen.dart:700:89 • invalid_constant
-  error • The getter 'accent' isn't defined for the type 'GlassTokens'. Try importing the library that defines 'accent', correcting the name to the name of an existing getter, or defining a getter or field named 'accent' • lib/features/music/screens/listen_together_screen.dart:700:101 • undefined_getter
   error • Invalid constant value • lib/features/music/screens/listen_together_screen.dart:727:65 • invalid_constant
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/listen_together_screen.dart:777:55 • deprecated_member_use
   error • Invalid constant value • lib/features/music/screens/listen_together_screen.dart:805:54 • invalid_constant
   error • Invalid constant value • lib/features/music/screens/listen_together_screen.dart:857:58 • invalid_constant
-  error • The named parameter 'tintColor' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'tintColor' • lib/features/music/screens/listen_together_screen.dart:899:29 • undefined_named_parameter
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/listen_together_screen.dart:899:51 • deprecated_member_use
-  error • The named parameter 'borderColor' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'borderColor' • lib/features/music/screens/listen_together_screen.dart:900:29 • undefined_named_parameter
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/listen_together_screen.dart:900:66 • deprecated_member_use
 warning • Unused import: '../widgets/lyrics_sheet.dart'. Try removing the import directive • lib/features/music/screens/music_sanctuary_screen.dart:12:8 • unused_import
 warning • Unused import: 'now_playing_screen.dart'. Try removing the import directive • lib/features/music/screens/music_sanctuary_screen.dart:14:8 • unused_import
 warning • Unused import: '../widgets/music_interactive_scrubber.dart'. Try removing the import directive • lib/features/music/screens/music_sanctuary_screen.dart:15:8 • unused_import
-  error • The named parameter 'width' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'width' • lib/features/music/screens/music_sanctuary_screen.dart:68:25 • undefined_named_parameter
-  error • The named parameter 'height' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'height' • lib/features/music/screens/music_sanctuary_screen.dart:69:25 • undefined_named_parameter
-  error • The named parameter 'width' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'width' • lib/features/music/screens/music_sanctuary_screen.dart:90:25 • undefined_named_parameter
-  error • The named parameter 'height' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'height' • lib/features/music/screens/music_sanctuary_screen.dart:91:25 • undefined_named_parameter
-  error • The getter 'accent' isn't defined for the type 'GlassTokens'. Try importing the library that defines 'accent', correcting the name to the name of an existing getter, or defining a getter or field named 'accent' • lib/features/music/screens/music_sanctuary_screen.dart:111:45 • undefined_getter
-  error • The named parameter 'width' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'width' • lib/features/music/screens/music_sanctuary_screen.dart:118:25 • undefined_named_parameter
-  error • The named parameter 'height' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'height' • lib/features/music/screens/music_sanctuary_screen.dart:119:25 • undefined_named_parameter
-  error • The named parameter 'width' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'width' • lib/features/music/screens/music_sanctuary_screen.dart:125:25 • undefined_named_parameter
-  error • The named parameter 'height' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'height' • lib/features/music/screens/music_sanctuary_screen.dart:126:25 • undefined_named_parameter
-  error • The named parameter 'tintColor' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'tintColor' • lib/features/music/screens/music_sanctuary_screen.dart:127:25 • undefined_named_parameter
-  error • The getter 'accent' isn't defined for the type 'GlassTokens'. Try importing the library that defines 'accent', correcting the name to the name of an existing getter, or defining a getter or field named 'accent' • lib/features/music/screens/music_sanctuary_screen.dart:127:48 • undefined_getter
-  error • The named parameter 'borderColor' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'borderColor' • lib/features/music/screens/music_sanctuary_screen.dart:128:25 • undefined_named_parameter
-  error • The getter 'accent' isn't defined for the type 'GlassTokens'. Try importing the library that defines 'accent', correcting the name to the name of an existing getter, or defining a getter or field named 'accent' • lib/features/music/screens/music_sanctuary_screen.dart:128:50 • undefined_getter
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/music_sanctuary_screen.dart:127:55 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/music_sanctuary_screen.dart:128:57 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/music_sanctuary_screen.dart:142:43 • deprecated_member_use
-  error • The getter 'accent' isn't defined for the type 'GlassTokens'. Try importing the library that defines 'accent', correcting the name to the name of an existing getter, or defining a getter or field named 'accent' • lib/features/music/screens/music_sanctuary_screen.dart:189:45 • undefined_getter
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/music_sanctuary_screen.dart:272:62 • deprecated_member_use
   error • Invalid constant value • lib/features/music/screens/music_sanctuary_screen.dart:285:71 • invalid_constant
-  error • Invalid constant value • lib/features/music/screens/music_sanctuary_screen.dart:320:62 • invalid_constant
-  error • The getter 'accent' isn't defined for the type 'GlassTokens'. Try importing the library that defines 'accent', correcting the name to the name of an existing getter, or defining a getter or field named 'accent' • lib/features/music/screens/music_sanctuary_screen.dart:320:74 • undefined_getter
   error • Invalid constant value • lib/features/music/screens/music_sanctuary_screen.dart:392:38 • invalid_constant
-  error • Invalid constant value • lib/features/music/screens/music_sanctuary_screen.dart:409:72 • invalid_constant
-  error • The getter 'accent' isn't defined for the type 'GlassTokens'. Try importing the library that defines 'accent', correcting the name to the name of an existing getter, or defining a getter or field named 'accent' • lib/features/music/screens/music_sanctuary_screen.dart:409:84 • undefined_getter
-  error • Invalid constant value • lib/features/music/screens/music_sanctuary_screen.dart:424:59 • invalid_constant
-  error • The getter 'accent' isn't defined for the type 'GlassTokens'. Try importing the library that defines 'accent', correcting the name to the name of an existing getter, or defining a getter or field named 'accent' • lib/features/music/screens/music_sanctuary_screen.dart:424:71 • undefined_getter
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/music_sanctuary_screen.dart:452:56 • deprecated_member_use
-  error • The getter 'songCount' isn't defined for the type 'PlaylistItem'. Try importing the library that defines 'songCount', correcting the name to the name of an existing getter, or defining a getter or field named 'songCount' • lib/features/music/screens/music_sanctuary_screen.dart:475:45 • undefined_getter
   error • Invalid constant value • lib/features/music/screens/music_sanctuary_screen.dart:476:85 • invalid_constant
-  error • The getter 'songCount' isn't defined for the type 'PlaylistItem'. Try importing the library that defines 'songCount', correcting the name to the name of an existing getter, or defining a getter or field named 'songCount' • lib/features/music/screens/music_sanctuary_screen.dart:509:83 • undefined_getter
-  error • Invalid constant value • lib/features/music/screens/music_sanctuary_screen.dart:520:91 • invalid_constant
-  error • The getter 'accent' isn't defined for the type 'GlassTokens'. Try importing the library that defines 'accent', correcting the name to the name of an existing getter, or defining a getter or field named 'accent' • lib/features/music/screens/music_sanctuary_screen.dart:520:103 • undefined_getter
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/music_sanctuary_screen.dart:558:43 • deprecated_member_use
-  error • Invalid constant value • lib/features/music/screens/music_sanctuary_screen.dart:563:67 • invalid_constant
-  error • The getter 'accent' isn't defined for the type 'GlassTokens'. Try importing the library that defines 'accent', correcting the name to the name of an existing getter, or defining a getter or field named 'accent' • lib/features/music/screens/music_sanctuary_screen.dart:563:79 • undefined_getter
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/music_sanctuary_screen.dart:573:41 • deprecated_member_use
-  error • Invalid constant value • lib/features/music/screens/music_sanctuary_screen.dart:588:69 • invalid_constant
-  error • The getter 'accent' isn't defined for the type 'GlassTokens'. Try importing the library that defines 'accent', correcting the name to the name of an existing getter, or defining a getter or field named 'accent' • lib/features/music/screens/music_sanctuary_screen.dart:588:81 • undefined_getter
-  error • Invalid constant value • lib/features/music/screens/music_sanctuary_screen.dart:591:71 • invalid_constant
-  error • The getter 'accent' isn't defined for the type 'GlassTokens'. Try importing the library that defines 'accent', correcting the name to the name of an existing getter, or defining a getter or field named 'accent' • lib/features/music/screens/music_sanctuary_screen.dart:591:83 • undefined_getter
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/music_sanctuary_screen.dart:606:72 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/music_sanctuary_screen.dart:617:60 • deprecated_member_use
-  error • The named parameter 'borderColor' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'borderColor' • lib/features/music/screens/music_sanctuary_screen.dart:643:21 • undefined_named_parameter
-  error • The getter 'accent' isn't defined for the type 'GlassTokens'. Try importing the library that defines 'accent', correcting the name to the name of an existing getter, or defining a getter or field named 'accent' • lib/features/music/screens/music_sanctuary_screen.dart:643:58 • undefined_getter
-  error • The getter 'accent' isn't defined for the type 'GlassTokens'. Try importing the library that defines 'accent', correcting the name to the name of an existing getter, or defining a getter or field named 'accent' • lib/features/music/screens/music_sanctuary_screen.dart:644:56 • undefined_getter
-  error • The getter 'accent' isn't defined for the type 'GlassTokens'. Try importing the library that defines 'accent', correcting the name to the name of an existing getter, or defining a getter or field named 'accent' • lib/features/music/screens/music_sanctuary_screen.dart:689:66 • undefined_getter
-  error • Invalid constant value • lib/features/music/screens/music_sanctuary_screen.dart:696:92 • invalid_constant
-  error • The getter 'accent' isn't defined for the type 'GlassTokens'. Try importing the library that defines 'accent', correcting the name to the name of an existing getter, or defining a getter or field named 'accent' • lib/features/music/screens/music_sanctuary_screen.dart:696:104 • undefined_getter
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/music_sanctuary_screen.dart:643:65 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/music_sanctuary_screen.dart:644:63 • deprecated_member_use
   error • Invalid constant value • lib/features/music/screens/music_sanctuary_screen.dart:706:48 • invalid_constant
   error • Invalid constant value • lib/features/music/screens/music_sanctuary_screen.dart:757:43 • invalid_constant
-  error • Invalid constant value • lib/features/music/screens/music_sanctuary_screen.dart:766:67 • invalid_constant
-  error • The getter 'accent' isn't defined for the type 'GlassTokens'. Try importing the library that defines 'accent', correcting the name to the name of an existing getter, or defining a getter or field named 'accent' • lib/features/music/screens/music_sanctuary_screen.dart:766:79 • undefined_getter
-  error • Invalid constant value • lib/features/music/screens/music_sanctuary_screen.dart:792:66 • invalid_constant
-  error • The getter 'accent' isn't defined for the type 'GlassTokens'. Try importing the library that defines 'accent', correcting the name to the name of an existing getter, or defining a getter or field named 'accent' • lib/features/music/screens/music_sanctuary_screen.dart:792:78 • undefined_getter
-  error • Invalid constant value • lib/features/music/screens/music_sanctuary_screen.dart:803:98 • invalid_constant
-  error • The getter 'accent' isn't defined for the type 'GlassTokens'. Try importing the library that defines 'accent', correcting the name to the name of an existing getter, or defining a getter or field named 'accent' • lib/features/music/screens/music_sanctuary_screen.dart:803:110 • undefined_getter
-  error • The named parameter 'borderColor' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'borderColor' • lib/features/music/screens/music_sanctuary_screen.dart:817:19 • undefined_named_parameter
-  error • The getter 'accent' isn't defined for the type 'GlassTokens'. Try importing the library that defines 'accent', correcting the name to the name of an existing getter, or defining a getter or field named 'accent' • lib/features/music/screens/music_sanctuary_screen.dart:817:56 • undefined_getter
-  error • The getter 'accent' isn't defined for the type 'GlassTokens'. Try importing the library that defines 'accent', correcting the name to the name of an existing getter, or defining a getter or field named 'accent' • lib/features/music/screens/music_sanctuary_screen.dart:818:54 • undefined_getter
-  error • The getter 'accent' isn't defined for the type 'GlassTokens'. Try importing the library that defines 'accent', correcting the name to the name of an existing getter, or defining a getter or field named 'accent' • lib/features/music/screens/music_sanctuary_screen.dart:853:64 • undefined_getter
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/music_sanctuary_screen.dart:817:63 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/music_sanctuary_screen.dart:818:61 • deprecated_member_use
   error • Invalid constant value • lib/features/music/screens/music_sanctuary_screen.dart:861:61 • invalid_constant
-  error • The getter 'accent' isn't defined for the type 'GlassTokens'. Try importing the library that defines 'accent', correcting the name to the name of an existing getter, or defining a getter or field named 'accent' • lib/features/music/screens/music_sanctuary_screen.dart:872:50 • undefined_getter
-  error • Invalid constant value • lib/features/music/screens/music_sanctuary_screen.dart:936:62 • invalid_constant
-  error • The getter 'accent' isn't defined for the type 'GlassTokens'. Try importing the library that defines 'accent', correcting the name to the name of an existing getter, or defining a getter or field named 'accent' • lib/features/music/screens/music_sanctuary_screen.dart:936:74 • undefined_getter
   error • Invalid constant value • lib/features/music/screens/music_sanctuary_screen.dart:955:122 • invalid_constant
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/music_sanctuary_screen.dart:988:50 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/music_sanctuary_screen.dart:989:69 • deprecated_member_use
   error • Invalid constant value • lib/features/music/screens/music_sanctuary_screen.dart:1011:77 • invalid_constant
-  error • Invalid constant value • lib/features/music/screens/music_sanctuary_screen.dart:1047:85 • invalid_constant
-  error • The getter 'accent' isn't defined for the type 'GlassTokens'. Try importing the library that defines 'accent', correcting the name to the name of an existing getter, or defining a getter or field named 'accent' • lib/features/music/screens/music_sanctuary_screen.dart:1047:97 • undefined_getter
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/music_sanctuary_screen.dart:1212:59 • deprecated_member_use
 warning • The declaration '_buildCircleIconButton' isn't referenced. Try removing the declaration of '_buildCircleIconButton' • lib/features/music/screens/music_sanctuary_screen.dart:1337:10 • unused_element
 warning • The declaration '_formatDuration' isn't referenced. Try removing the declaration of '_formatDuration' • lib/features/music/screens/music_sanctuary_screen.dart:1360:10 • unused_element
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/music_sanctuary_screen.dart:1418:75 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/screens/music_sanctuary_screen.dart:1526:75 • deprecated_member_use
-  error • The named parameter 'context' is required, but there's no corresponding argument. Try adding the required argument • lib/features/music/screens/music_sanctuary_screen.dart:1585:16 • missing_required_argument
-  error • Too many positional arguments: 0 expected, but 1 found. Try removing the extra positional arguments, or specifying the name for named arguments • lib/features/music/screens/music_sanctuary_screen.dart:1586:7 • extra_positional_arguments_could_be_named
-  error • The getter 'accent' isn't defined for the type 'GlassTokens'. Try importing the library that defines 'accent', correcting the name to the name of an existing getter, or defining a getter or field named 'accent' • lib/features/music/screens/music_sanctuary_screen.dart:1605:59 • undefined_getter
-  error • The getter 'accent' isn't defined for the type 'GlassTokens'. Try importing the library that defines 'accent', correcting the name to the name of an existing getter, or defining a getter or field named 'accent' • lib/features/music/screens/music_sanctuary_screen.dart:1609:43 • undefined_getter
-  error • Invalid constant value • lib/features/music/screens/music_sanctuary_screen.dart:1614:69 • invalid_constant
-  error • The getter 'accent' isn't defined for the type 'GlassTokens'. Try importing the library that defines 'accent', correcting the name to the name of an existing getter, or defining a getter or field named 'accent' • lib/features/music/screens/music_sanctuary_screen.dart:1614:81 • undefined_getter
-  error • The named parameter 'context' is required, but there's no corresponding argument. Try adding the required argument • lib/features/music/screens/music_sanctuary_screen.dart:1698:16 • missing_required_argument
-  error • Too many positional arguments: 0 expected, but 1 found. Try removing the extra positional arguments, or specifying the name for named arguments • lib/features/music/screens/music_sanctuary_screen.dart:1699:7 • extra_positional_arguments_could_be_named
-  error • Invalid constant value • lib/features/music/screens/music_sanctuary_screen.dart:1705:75 • invalid_constant
-  error • The getter 'accent' isn't defined for the type 'GlassTokens'. Try importing the library that defines 'accent', correcting the name to the name of an existing getter, or defining a getter or field named 'accent' • lib/features/music/screens/music_sanctuary_screen.dart:1705:87 • undefined_getter
   error • Invalid constant value • lib/features/music/screens/music_sanctuary_screen.dart:1707:94 • invalid_constant
-  error • Invalid constant value • lib/features/music/screens/music_sanctuary_screen.dart:1721:67 • invalid_constant
-  error • The getter 'accent' isn't defined for the type 'GlassTokens'. Try importing the library that defines 'accent', correcting the name to the name of an existing getter, or defining a getter or field named 'accent' • lib/features/music/screens/music_sanctuary_screen.dart:1721:79 • undefined_getter
   error • Invalid constant value • lib/features/music/screens/music_sanctuary_screen.dart:1723:101 • invalid_constant
   error • Invalid constant value • lib/features/music/screens/music_sanctuary_screen.dart:1747:95 • invalid_constant
   error • Invalid constant value • lib/features/music/screens/music_sanctuary_screen.dart:1769:87 • invalid_constant
@@ -505,10 +415,10 @@ warning • Unused import: '../../../core/theme/app_colors.dart'. Try removing t
   error • The getter 'surfaceDark' isn't defined for the type 'GlassTokens'. Try importing the library that defines 'surfaceDark', correcting the name to the name of an existing getter, or defining a getter or field named 'surfaceDark' • lib/features/music/widgets/glass/glass_ambient_background.dart:69:41 • undefined_getter
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/widgets/glass/glass_ambient_background.dart:95:27 • deprecated_member_use
   error • The getter 'surfaceDark' isn't defined for the type 'GlassTokens'. Try importing the library that defines 'surfaceDark', correcting the name to the name of an existing getter, or defining a getter or field named 'surfaceDark' • lib/features/music/widgets/glass/glass_ambient_background.dart:97:25 • undefined_getter
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/widgets/glass/glass_button.dart:91:42 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/widgets/glass/glass_button.dart:92:42 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/widgets/glass/glass_card.dart:55:36 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/widgets/glass/glass_card.dart:56:36 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/widgets/glass/glass_button.dart:106:43 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/widgets/glass/glass_button.dart:107:43 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/widgets/glass/glass_card.dart:57:36 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/widgets/glass/glass_card.dart:58:36 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/widgets/glass/glass_mini_player.dart:45:37 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/music/widgets/glass/glass_mini_player.dart:120:57 • deprecated_member_use
   error • The method 'togglePlay' isn't defined for the type 'AudioProvider'. Try correcting the name to the name of an existing method, or defining a method named 'togglePlay' • lib/features/music/widgets/glass/glass_mini_player.dart:131:37 • undefined_method
@@ -1037,150 +947,114 @@ warning • The value of the local variable 'isPaused' isn't used. Try removing 
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/widgets/sanctuary_voice_player.dart:152:37 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/widgets/sanctuary_voice_player.dart:172:43 • deprecated_member_use
 
-805 issues found. (ran in 11.1s)
+715 issues found. (ran in 10.9s)
 === FLUTTER BUILD LOG ===
-                        width: 42,
-                        ^^^^^
-lib/features/music/widgets/glass/glass_button.dart:15:9: Context: Found this candidate, but the arguments don't match.
-  const GlassButton({
-        ^^^^^^^^^^^
-lib/features/music/screens/music_sanctuary_screen.dart:118:25: Error: No named parameter with the name 'width'.
-                        width: 42,
-                        ^^^^^
-lib/features/music/widgets/glass/glass_button.dart:15:9: Context: Found this candidate, but the arguments don't match.
-  const GlassButton({
-        ^^^^^^^^^^^
-lib/features/music/screens/music_sanctuary_screen.dart:127:48: Error: Member not found: 'accent'.
-                        tintColor: GlassTokens.accent.withOpacity(0.35),
-                                               ^^^^^^
-lib/features/music/screens/music_sanctuary_screen.dart:128:50: Error: Member not found: 'accent'.
-                        borderColor: GlassTokens.accent.withOpacity(0.7),
-                                                 ^^^^^^
-lib/features/music/screens/music_sanctuary_screen.dart:125:25: Error: No named parameter with the name 'width'.
-                        width: 42,
-                        ^^^^^
-lib/features/music/widgets/glass/glass_button.dart:15:9: Context: Found this candidate, but the arguments don't match.
-  const GlassButton({
-        ^^^^^^^^^^^
-lib/features/music/screens/music_sanctuary_screen.dart:189:45: Error: Member not found: 'accent'.
-            color: isSelected ? GlassTokens.accent : Colors.transparent,
-                                            ^^^^^^
-lib/features/music/screens/music_sanctuary_screen.dart:320:74: Error: Member not found: 'accent'.
-                Icon(Icons.history_rounded, size: 16, color: GlassTokens.accent),
-                                                                         ^^^^^^
-lib/features/music/screens/music_sanctuary_screen.dart:409:84: Error: Member not found: 'accent'.
-                const Icon(Icons.queue_music_rounded, size: 16, color: GlassTokens.accent),
-                                                                                   ^^^^^^
-lib/features/music/screens/music_sanctuary_screen.dart:424:71: Error: Member not found: 'accent'.
-                    style: TextStyle(fontSize: 12, color: GlassTokens.accent, fontWeight: FontWeight.bold),
-                                                                      ^^^^^^
-lib/features/music/screens/music_sanctuary_screen.dart:520:103: Error: Member not found: 'accent'.
-                                        Icon(Icons.playlist_add_rounded, size: 14, color: GlassTokens.accent),
-                                                                                          ^^^^^^
-lib/features/music/screens/music_sanctuary_screen.dart:563:79: Error: Member not found: 'accent'.
-                      style: const TextStyle(fontSize: 11, color: GlassTokens.accent, fontWeight: FontWeight.bold),
-                                                                              ^^^^^^
-lib/features/music/screens/music_sanctuary_screen.dart:588:81: Error: Member not found: 'accent'.
-                        style: const TextStyle(fontSize: 11, color: GlassTokens.accent, fontWeight: FontWeight.bold),
-                                                                                ^^^^^^
-lib/features/music/screens/music_sanctuary_screen.dart:591:83: Error: Member not found: 'accent'.
-                      const Icon(Icons.sort_rounded, size: 13, color: GlassTokens.accent),
-                                                                                  ^^^^^^
-lib/features/music/screens/music_sanctuary_screen.dart:643:58: Error: Member not found: 'accent'.
-                    borderColor: isCurrent ? GlassTokens.accent.withOpacity(0.7) : null,
-                                                         ^^^^^^
-lib/features/music/screens/music_sanctuary_screen.dart:644:56: Error: Member not found: 'accent'.
-                    tintColor: isCurrent ? GlassTokens.accent.withOpacity(0.12) : null,
-                                                       ^^^^^^
-lib/features/music/screens/music_sanctuary_screen.dart:689:66: Error: Member not found: 'accent'.
-                                  color: isCurrent ? GlassTokens.accent : Colors.white,
-                                                                 ^^^^^^
-lib/features/music/screens/music_sanctuary_screen.dart:696:104: Error: Member not found: 'accent'.
-                                    const Icon(Icons.offline_pin_rounded, size: 12, color: GlassTokens.accent),
-                                                                                          ^^^^^^
-lib/features/music/screens/music_sanctuary_screen.dart:643:21: Error: No named parameter with the name 'borderColor'.
-                    borderColor: isCurrent ? GlassTokens.accent.withOpacity(0.7) : null,
-                    ^^^^^^^^^^^
-lib/features/music/widgets/glass/glass_card.dart:19:9: Context: Found this candidate, but the arguments don't match.
-  const GlassCard({
-        ^^^^^^^^^
-lib/features/music/screens/music_sanctuary_screen.dart:475:45: Error: The getter 'songCount' isn't defined for the type 'PlaylistItem'.
- - 'PlaylistItem' is from 'package:pages_of_us/features/music/models/music_models.dart' ('lib/features/music/models/music_models.dart').
-Try correcting the name to the name of an existing getter, or defining a getter or field named 'songCount'.
-                                      '${pl.songCount} songs',
-                                            ^^^^^^^^^
-lib/features/music/screens/music_sanctuary_screen.dart:509:83: Error: The getter 'songCount' isn't defined for the type 'PlaylistItem'.
- - 'PlaylistItem' is from 'package:pages_of_us/features/music/models/music_models.dart' ('lib/features/music/models/music_models.dart').
-Try correcting the name to the name of an existing getter, or defining a getter or field named 'songCount'.
-                                        content: Text('Queued "${pl.title}" (${pl.songCount} tracks) ✦'),
-                                                                                  ^^^^^^^^^
-lib/features/music/screens/music_sanctuary_screen.dart:766:79: Error: Member not found: 'accent'.
-                      Icon(Icons.search_rounded, size: 18, color: GlassTokens.accent),
-                                                                              ^^^^^^
-lib/features/music/screens/music_sanctuary_screen.dart:792:78: Error: Member not found: 'accent'.
-                  const Icon(Icons.download_done_rounded, color: GlassTokens.accent, size: 20),
-                                                                             ^^^^^^
-lib/features/music/screens/music_sanctuary_screen.dart:803:110: Error: Member not found: 'accent'.
-                    child: const Text('+ Download More', style: TextStyle(fontSize: 11.5, color: GlassTokens.accent, fontWeight: FontWeight.bold)),
-                                                                                          ^^^^^^
-lib/features/music/screens/music_sanctuary_screen.dart:817:56: Error: Member not found: 'accent'.
-                  borderColor: isCurrent ? GlassTokens.accent.withOpacity(0.7) : null,
-                                                       ^^^^^^
-lib/features/music/screens/music_sanctuary_screen.dart:818:54: Error: Member not found: 'accent'.
-                  tintColor: isCurrent ? GlassTokens.accent.withOpacity(0.12) : null,
-                                                     ^^^^^^
-lib/features/music/screens/music_sanctuary_screen.dart:853:64: Error: Member not found: 'accent'.
-                                color: isCurrent ? GlassTokens.accent : Colors.white,
-                                                               ^^^^^^
-lib/features/music/screens/music_sanctuary_screen.dart:872:50: Error: Member not found: 'accent'.
-                              color: GlassTokens.accent,
-                                                 ^^^^^^
-lib/features/music/screens/music_sanctuary_screen.dart:817:19: Error: No named parameter with the name 'borderColor'.
-                  borderColor: isCurrent ? GlassTokens.accent.withOpacity(0.7) : null,
-                  ^^^^^^^^^^^
-lib/features/music/widgets/glass/glass_card.dart:19:9: Context: Found this candidate, but the arguments don't match.
-  const GlassCard({
-        ^^^^^^^^^
-lib/features/music/screens/music_sanctuary_screen.dart:936:74: Error: Member not found: 'accent'.
-                    Icon(Icons.add_rounded, size: 16, color: GlassTokens.accent),
-                                                                         ^^^^^^
-lib/features/music/screens/music_sanctuary_screen.dart:1047:97: Error: Member not found: 'accent'.
-                                  Icon(Icons.playlist_add_rounded, size: 15, color: GlassTokens.accent),
-                                                                                          ^^^^^^
-lib/features/music/screens/music_sanctuary_screen.dart:1585:20: Error: Too many positional arguments: 0 allowed, but 1 found.
-Try removing the extra positional arguments.
-    GlassSheet.show(
-                   ^
-lib/features/music/widgets/glass/glass_sheet.dart:20:21: Context: Found this candidate, but the arguments don't match.
-  static Future<T?> show<T>({
-                    ^^^^
-lib/features/music/screens/music_sanctuary_screen.dart:1605:59: Error: Member not found: 'accent'.
-      leading: Icon(icon, color: isSelected ? GlassTokens.accent : const Color(0xFF94A3B8), size: 22),
-                                                          ^^^^^^
-lib/features/music/screens/music_sanctuary_screen.dart:1609:43: Error: Member not found: 'accent'.
-          color: isSelected ? GlassTokens.accent : Colors.white,
-                                          ^^^^^^
-lib/features/music/screens/music_sanctuary_screen.dart:1614:81: Error: Member not found: 'accent'.
-      trailing: isSelected ? const Icon(Icons.check_rounded, color: GlassTokens.accent, size: 20) : null,
-                                                                                ^^^^^^
-lib/features/music/screens/music_sanctuary_screen.dart:1705:87: Error: Member not found: 'accent'.
-            leading: const Icon(Icons.play_circle_outline_rounded, color: GlassTokens.accent),
-                                                                                      ^^^^^^
-lib/features/music/screens/music_sanctuary_screen.dart:1721:79: Error: Member not found: 'accent'.
-            leading: const Icon(Icons.queue_music_rounded, color: GlassTokens.accent),
-                                                                              ^^^^^^
-lib/features/music/screens/music_sanctuary_screen.dart:1698:20: Error: Too many positional arguments: 0 allowed, but 1 found.
-Try removing the extra positional arguments.
-    GlassSheet.show(
-                   ^
-lib/features/music/widgets/glass/glass_sheet.dart:20:21: Context: Found this candidate, but the arguments don't match.
-  static Future<T?> show<T>({
-                    ^^^^
+[======                                 ] 17% Downloading android-ndk-r28c-linux
+[=======                                ] 18% Downloading android-ndk-r28c-linux
+[=======                                ] 19% Downloading android-ndk-r28c-linux
+[=======                                ] 20% Downloading android-ndk-r28c-linux
+[========                               ] 20% Downloading android-ndk-r28c-linux
+[========                               ] 21% Downloading android-ndk-r28c-linux
+[========                               ] 22% Downloading android-ndk-r28c-linux
+[=========                              ] 23% Downloading android-ndk-r28c-linux
+[=========                              ] 24% Downloading android-ndk-r28c-linux
+[=========                              ] 25% Downloading android-ndk-r28c-linux
+[==========                             ] 25% Downloading android-ndk-r28c-linux
+[==========                             ] 26% Downloading android-ndk-r28c-linux
+[==========                             ] 27% Downloading android-ndk-r28c-linux
+[===========                            ] 28% Downloading android-ndk-r28c-linux
+[===========                            ] 29% Downloading android-ndk-r28c-linux
+[===========                            ] 30% Downloading android-ndk-r28c-linux
+[============                           ] 30% Downloading android-ndk-r28c-linux
+[============                           ] 31% Downloading android-ndk-r28c-linux
+[============                           ] 32% Downloading android-ndk-r28c-linux
+[============                           ] 33% Downloading android-ndk-r28c-linux
+[============                           ] 33% Unzipping...                      
+[============                           ] 33% Unzipping... android-ndk-r28c/    
+[============                           ] 33% Unzipping... android-ndk-r28c/READ
+[=============                          ] 33% Unzipping... android-ndk-r28c/READ
+[=============                          ] 33% Unzipping... android-ndk-r28c/meta
+[=============                          ] 33% Unzipping... android-ndk-r28c/shad
+[=============                          ] 33% Unzipping... android-ndk-r28c/ndk-
+[=============                          ] 33% Unzipping... android-ndk-r28c/wrap
+[=============                          ] 33% Unzipping... android-ndk-r28c/ndk-
+[=============                          ] 33% Unzipping... android-ndk-r28c/tool
+[=============                          ] 34% Unzipping... android-ndk-r28c/tool
+[=============                          ] 35% Unzipping... android-ndk-r28c/tool
+[==============                         ] 35% Unzipping... android-ndk-r28c/tool
+[==============                         ] 36% Unzipping... android-ndk-r28c/tool
+[==============                         ] 37% Unzipping... android-ndk-r28c/tool
+[===============                        ] 38% Unzipping... android-ndk-r28c/tool
+[===============                        ] 39% Unzipping... android-ndk-r28c/tool
+[===============                        ] 40% Unzipping... android-ndk-r28c/tool
+[================                       ] 40% Unzipping... android-ndk-r28c/tool
+[================                       ] 41% Unzipping... android-ndk-r28c/tool
+[================                       ] 42% Unzipping... android-ndk-r28c/tool
+[=================                      ] 43% Unzipping... android-ndk-r28c/tool
+[=================                      ] 44% Unzipping... android-ndk-r28c/tool
+[=================                      ] 45% Unzipping... android-ndk-r28c/tool
+[==================                     ] 45% Unzipping... android-ndk-r28c/tool
+[==================                     ] 46% Unzipping... android-ndk-r28c/tool
+[==================                     ] 47% Unzipping... android-ndk-r28c/tool
+[===================                    ] 48% Unzipping... android-ndk-r28c/tool
+[===================                    ] 49% Unzipping... android-ndk-r28c/tool
+[===================                    ] 50% Unzipping... android-ndk-r28c/tool
+[====================                   ] 50% Unzipping... android-ndk-r28c/tool
+[====================                   ] 51% Unzipping... android-ndk-r28c/tool
+[====================                   ] 52% Unzipping... android-ndk-r28c/tool
+[=====================                  ] 53% Unzipping... android-ndk-r28c/tool
+[=====================                  ] 54% Unzipping... android-ndk-r28c/tool
+[=====================                  ] 54% Unzipping... android-ndk-r28c/buil
+[=====================                  ] 54% Unzipping... android-ndk-r28c/sour
+[=====================                  ] 54% Unzipping... android-ndk-r28c/NOTI
+[=====================                  ] 54% Unzipping... android-ndk-r28c/ndk-
+[=====================                  ] 54% Unzipping... android-ndk-r28c/NOTI
+[=====================                  ] 54% Unzipping... android-ndk-r28c/pyth
+[=====================                  ] 54% Unzipping... android-ndk-r28c/preb
+[=====================                  ] 54% Unzipping... android-ndk-r28c/ndk-
+[=====================                  ] 54% Unzipping... android-ndk-r28c/sour
+[=====================                  ] 54% Unzipping... android-ndk-r28c/simp
+[=====================                  ] 55% Unzipping... android-ndk-r28c/simp
+[=====================                  ] 55% Unzipping... android-ndk-r28c/CHAN
+[=======================================] 100% Unzipping... android-ndk-r28c/CHA
+
+lib/providers/audio_provider.dart:857:11: Error: The method 'playSong' isn't defined for the type 'AudioProvider'.
+ - 'AudioProvider' is from 'package:pages_of_us/providers/audio_provider.dart' ('lib/providers/audio_provider.dart').
+Try correcting the name to the name of an existing method, or defining a method named 'playSong'.
+    await playSong(0);
+          ^^^^^^^^
+lib/features/music/widgets/glass/glass_ambient_background.dart:27:32: Error: Member not found: 'surfaceDark'.
+            color: GlassTokens.surfaceDark,
+                               ^^^^^^^^^^^
+lib/features/music/widgets/glass/glass_ambient_background.dart:35:37: Error: Member not found: 'animNormal'.
+              duration: GlassTokens.animNormal,
+                                    ^^^^^^^^^^
+lib/features/music/widgets/glass/glass_ambient_background.dart:67:41: Error: Member not found: 'surfaceDark'.
+                            GlassTokens.surfaceDark.withOpacity(0.75),
+                                        ^^^^^^^^^^^
+lib/features/music/widgets/glass/glass_ambient_background.dart:69:41: Error: Member not found: 'surfaceDark'.
+                            GlassTokens.surfaceDark.withOpacity(0.92),
+                                        ^^^^^^^^^^^
+lib/features/music/widgets/glass/glass_ambient_background.dart:97:25: Error: Member not found: 'surfaceDark'.
+            GlassTokens.surfaceDark,
+                        ^^^^^^^^^^^
 lib/features/music/widgets/glass/glass_mini_player.dart:131:37: Error: The method 'togglePlay' isn't defined for the type 'AudioProvider'.
  - 'AudioProvider' is from 'package:pages_of_us/providers/audio_provider.dart' ('lib/providers/audio_provider.dart').
 Try correcting the name to the name of an existing method, or defining a method named 'togglePlay'.
                               audio.togglePlay();
                                     ^^^^^^^^^^
+lib/features/music/screens/listen_together_screen.dart:46:19: Error: Constant evaluation error:
+          ? const Padding(
+                  ^
+lib/features/music/screens/listen_together_screen.dart:60:59: Context: The invocation of 'textSecondary' is not allowed in a constant expression.
+                      style: TextStyle(color: GlassTokens.textSecondary, fontSize: 13),
+                                                          ^
+lib/features/music/screens/listen_together_screen.dart:98:34: Error: Constant evaluation error:
+                    style: const TextStyle(color: GlassTokens.textSecondary, fontSize: 12),
+                                 ^
+lib/features/music/screens/listen_together_screen.dart:98:63: Context: The invocation of 'textSecondary' is not allowed in a constant expression.
+                    style: const TextStyle(color: GlassTokens.textSecondary, fontSize: 12),
+                                                              ^
 lib/features/music/screens/listen_together_screen.dart:189:29: Error: Constant evaluation error:
                       const Column(
                             ^
@@ -1253,12 +1127,24 @@ lib/features/music/screens/music_sanctuary_screen.dart:476:52: Error: Constant e
 lib/features/music/screens/music_sanctuary_screen.dart:476:97: Context: The invocation of 'textSecondary' is not allowed in a constant expression.
                                       style: const TextStyle(fontSize: 10.5, color: GlassTokens.textSecondary),
                                                                                           ^
+lib/features/music/screens/music_sanctuary_screen.dart:704:52: Error: Constant evaluation error:
+                                      style: const TextStyle(
+                                                   ^
+lib/features/music/screens/music_sanctuary_screen.dart:706:60: Context: The invocation of 'textSecondary' is not allowed in a constant expression.
+                                        color: GlassTokens.textSecondary,
+                                                           ^
 lib/features/music/screens/music_sanctuary_screen.dart:754:23: Error: Constant evaluation error:
                 const Text(
                       ^
 lib/features/music/screens/music_sanctuary_screen.dart:757:55: Context: The invocation of 'textSecondary' is not allowed in a constant expression.
                   style: TextStyle(color: GlassTokens.textSecondary, fontSize: 12.5, height: 1.4),
                                                       ^
+lib/features/music/screens/music_sanctuary_screen.dart:861:44: Error: Constant evaluation error:
+                              style: const TextStyle(color: GlassTokens.textSecondary, fontSize: 11),
+                                           ^
+lib/features/music/screens/music_sanctuary_screen.dart:861:73: Context: The invocation of 'textSecondary' is not allowed in a constant expression.
+                              style: const TextStyle(color: GlassTokens.textSecondary, fontSize: 11),
+                                                                        ^
 lib/features/music/screens/music_sanctuary_screen.dart:946:19: Error: Constant evaluation error:
             const GlassCard(
                   ^
@@ -1271,6 +1157,30 @@ lib/features/music/screens/music_sanctuary_screen.dart:1011:46: Error: Constant 
 lib/features/music/screens/music_sanctuary_screen.dart:1011:89: Context: The invocation of 'textSecondary' is not allowed in a constant expression.
                                 style: const TextStyle(fontSize: 12, color: GlassTokens.textSecondary),
                                                                                         ^
+lib/features/music/screens/music_sanctuary_screen.dart:1707:29: Error: Constant evaluation error:
+            subtitle: const Text('Insert right after current track', style: TextStyle(color: GlassTokens.textSecondary, fontSize: 11)),
+                            ^
+lib/features/music/screens/music_sanctuary_screen.dart:1707:106: Context: The invocation of 'textSecondary' is not allowed in a constant expression.
+            subtitle: const Text('Insert right after current track', style: TextStyle(color: GlassTokens.textSecondary, fontSize: 11)),
+                                                                                          ^
+lib/features/music/screens/music_sanctuary_screen.dart:1723:29: Error: Constant evaluation error:
+            subtitle: const Text('Append to upcoming songs on both phones', style: TextStyle(color: GlassTokens.textSecondary, fontSize: 11)),
+                            ^
+lib/features/music/screens/music_sanctuary_screen.dart:1723:113: Context: The invocation of 'textSecondary' is not allowed in a constant expression.
+            subtitle: const Text('Append to upcoming songs on both phones', style: TextStyle(color: GlassTokens.textSecondary, fontSize: 11)),
+                                                                                          ^
+lib/features/music/screens/music_sanctuary_screen.dart:1747:29: Error: Constant evaluation error:
+            subtitle: const Text('Start sync session with this song', style: TextStyle(color: GlassTokens.textSecondary, fontSize: 11)),
+                            ^
+lib/features/music/screens/music_sanctuary_screen.dart:1747:107: Context: The invocation of 'textSecondary' is not allowed in a constant expression.
+            subtitle: const Text('Start sync session with this song', style: TextStyle(color: GlassTokens.textSecondary, fontSize: 11)),
+                                                                                          ^
+lib/features/music/screens/music_sanctuary_screen.dart:1769:29: Error: Constant evaluation error:
+            subtitle: const Text('De-clutter your song list', style: TextStyle(color: GlassTokens.textSecondary, fontSize: 11)),
+                            ^
+lib/features/music/screens/music_sanctuary_screen.dart:1769:99: Context: The invocation of 'textSecondary' is not allowed in a constant expression.
+            subtitle: const Text('De-clutter your song list', style: TextStyle(color: GlassTokens.textSecondary, fontSize: 11)),
+                                                                                          ^
 Target kernel_snapshot_program failed: Exception
 
 
@@ -1286,6 +1196,6 @@ Execution failed for task ':app:compileFlutterBuildRelease'.
 > Run with --scan to get full insights.
 > Get more help at https://help.gradle.org.
 
-BUILD FAILED in 3m 6s
-Running Gradle task 'assembleRelease'...                          186.6s
+BUILD FAILED in 3m 49s
+Running Gradle task 'assembleRelease'...                          230.1s
 Gradle task assembleRelease failed with exit code 1
