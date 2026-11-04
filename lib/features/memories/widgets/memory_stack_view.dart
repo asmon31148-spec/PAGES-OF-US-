@@ -666,7 +666,9 @@ class _MemoryStackViewState extends State<MemoryStackView> {
           ),
         ],
       ),
-    );
+    ),
+  ),
+);
   }
 
   void _openLightbox(BuildContext context, String imageUrl, String title) {
@@ -828,9 +830,7 @@ class _MemoryStackViewState extends State<MemoryStackView> {
           ),
         ),
       ),
-    ),
-  ),
-);
+    );
   }
 
   /// High-resolution video thumbnail generator with Cloudinary & ImageKit support

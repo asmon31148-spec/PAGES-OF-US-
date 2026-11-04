@@ -1169,7 +1169,7 @@ warning • The value of the local variable 'isPaused' isn't used. Try removing 
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/widgets/sanctuary_voice_player.dart:152:37 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/widgets/sanctuary_voice_player.dart:172:43 • deprecated_member_use
 
-937 issues found. (ran in 15.7s)
+937 issues found. (ran in 15.2s)
 === FLUTTER BUILD LOG ===
 Upgrading build.gradle
 Upgrading gradle.properties
@@ -1337,5 +1337,5 @@ Execution failed for task ':app:compileFlutterBuildRelease'.
 > Get more help at https://help.gradle.org.
 
 BUILD FAILED in 4m 2s
-Running Gradle task 'assembleRelease'...                          242.8s
+Running Gradle task 'assembleRelease'...                          242.9s
 Gradle task assembleRelease failed with exit code 1
