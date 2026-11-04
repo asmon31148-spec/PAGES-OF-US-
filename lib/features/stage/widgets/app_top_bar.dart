@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -117,48 +118,69 @@ class AppTopBar extends StatelessWidget {
                       ),
                     );
                   },
-                  child: Container(
-                    height: 32,
-                    padding: const EdgeInsets.symmetric(horizontal: 10),
-                    margin: const EdgeInsets.only(right: 6),
-                    decoration: BoxDecoration(
-                      color: isPartnerTouching
-                          ? const Color(0xFF10B981).withOpacity(0.18)
-                          : (forceDark
-                              ? AppColors.romanceSurface
-                              : (isDark ? AppColors.darkSurface : AppColors.lightSurface)),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: isPartnerTouching
-                            ? const Color(0xFF10B981)
-                            : (forceDark
-                                ? AppColors.romanceBorder
-                                : (isDark ? AppColors.darkBorder : AppColors.lightBorder)),
-                        width: isPartnerTouching ? 1.5 : 1,
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.fingerprint_rounded,
-                          size: 15,
-                          color: isPartnerTouching ? const Color(0xFF10B981) : AppColors.terra,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          isPartnerTouching ? 'Touching!' : 'Touch',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: isPartnerTouching ? FontWeight.bold : FontWeight.w600,
-                            color: isPartnerTouching
-                                ? const Color(0xFF10B981)
-                                : (forceDark
-                                    ? AppColors.romanceInk
-                                    : (isDark ? AppColors.darkInk : AppColors.lightInk)),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+                      child: Container(
+                        height: 32,
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        margin: const EdgeInsets.only(right: 6),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: isPartnerTouching
+                                ? [
+                                    const Color(0xFF10B981).withOpacity(0.32),
+                                    const Color(0xFF10B981).withOpacity(0.12),
+                                  ]
+                                : [
+                                    Colors.white.withOpacity(0.12),
+                                    Colors.white.withOpacity(0.04),
+                                  ],
                           ),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: isPartnerTouching
+                                ? const Color(0xFF10B981).withOpacity(0.7)
+                                : Colors.white.withOpacity(0.24),
+                            width: isPartnerTouching ? 1.4 : 1,
+                          ),
+                          boxShadow: isPartnerTouching
+                              ? [
+                                  BoxShadow(
+                                    color: const Color(0xFF10B981).withOpacity(0.4),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ]
+                              : null,
                         ),
-                      ],
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.fingerprint_rounded,
+                              size: 15,
+                              color: isPartnerTouching ? const Color(0xFF10B981) : AppColors.terra,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              isPartnerTouching ? 'Touching!' : 'Touch',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: isPartnerTouching ? FontWeight.bold : FontWeight.w600,
+                                color: isPartnerTouching
+                                    ? const Color(0xFF10B981)
+                                    : (forceDark
+                                        ? AppColors.romanceInk
+                                        : (isDark ? AppColors.darkInk : AppColors.lightInk)),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -168,6 +190,7 @@ class AppTopBar extends StatelessWidget {
               if (showMusic || audioProvider.isPlaying) ...[
                 GestureDetector(
                   onTap: () {
+                    HapticFeedback.lightImpact();
                     Navigator.push(
                       context,
                       MaterialPageRoute(
@@ -175,52 +198,73 @@ class AppTopBar extends StatelessWidget {
                       ),
                     );
                   },
-                  child: Container(
-                    height: 32,
-                    padding: EdgeInsets.symmetric(horizontal: audioProvider.isPlaying ? 8 : 0),
-                    width: audioProvider.isPlaying ? null : 32,
-                    margin: const EdgeInsets.only(right: 6),
-                    decoration: BoxDecoration(
-                      color: audioProvider.isPlaying
-                          ? AppColors.terra.withOpacity(0.15)
-                          : (forceDark
-                              ? AppColors.romanceSurface
-                              : (isDark ? AppColors.darkSurface : AppColors.lightSurface)),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: audioProvider.isPlaying
-                            ? AppColors.terra
-                            : (forceDark
-                                ? AppColors.romanceBorder
-                                : (isDark ? AppColors.darkBorder : AppColors.lightBorder)),
-                        width: 1,
-                      ),
-                    ),
-                    alignment: Alignment.center,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.music_note_rounded,
-                          size: 15,
-                          color: audioProvider.isPlaying
-                              ? AppColors.terra
-                              : (forceDark
-                                  ? AppColors.romanceInk
-                                  : (isDark ? AppColors.darkInk : AppColors.lightInk)),
-                        ),
-                        if (audioProvider.isPlaying) ...[
-                          const SizedBox(width: 3),
-                          const Text(
-                            'Playing',
-                            style: TextStyle(
-                              fontSize: 10.5,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.terra,
-                            ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+                      child: Container(
+                        height: 32,
+                        padding: EdgeInsets.symmetric(horizontal: audioProvider.isPlaying ? 10 : 0),
+                        width: audioProvider.isPlaying ? null : 32,
+                        margin: const EdgeInsets.only(right: 6),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: audioProvider.isPlaying
+                                ? [
+                                    AppColors.terra.withOpacity(0.35),
+                                    AppColors.terra.withOpacity(0.12),
+                                  ]
+                                : [
+                                    Colors.white.withOpacity(0.12),
+                                    Colors.white.withOpacity(0.04),
+                                  ],
                           ),
-                        ],
-                      ],
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: audioProvider.isPlaying
+                                ? AppColors.terra.withOpacity(0.7)
+                                : Colors.white.withOpacity(0.24),
+                            width: 1,
+                          ),
+                          boxShadow: audioProvider.isPlaying
+                              ? [
+                                  BoxShadow(
+                                    color: AppColors.terra.withOpacity(0.35),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ]
+                              : null,
+                        ),
+                        alignment: Alignment.center,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.music_note_rounded,
+                              size: 15,
+                              color: audioProvider.isPlaying
+                                  ? Colors.white
+                                  : (forceDark
+                                      ? AppColors.romanceInk
+                                      : (isDark ? AppColors.darkInk : AppColors.lightInk)),
+                            ),
+                            if (audioProvider.isPlaying) ...[
+                              const SizedBox(width: 4),
+                              const Text(
+                                'Playing',
+                                style: TextStyle(
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -229,25 +273,39 @@ class AppTopBar extends StatelessWidget {
               // Light / Dark Theme Switcher
               if (showThemeToggle) ...[
                 GestureDetector(
-                  onTap: () => themeProvider.toggleDarkLight(),
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    themeProvider.toggleDarkLight();
+                  },
                   onLongPress: () => ThemeModal.show(context),
-                  child: Container(
-                    width: 32,
-                    height: 32,
-                    margin: const EdgeInsets.only(right: 6),
-                    decoration: BoxDecoration(
-                      color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
-                        width: 1,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+                      child: Container(
+                        width: 32,
+                        height: 32,
+                        margin: const EdgeInsets.only(right: 6),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              Colors.white.withOpacity(0.12),
+                              Colors.white.withOpacity(0.04),
+                            ],
+                          ),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.22),
+                            width: 1,
+                          ),
+                        ),
+                        alignment: Alignment.center,
+                        child: Icon(
+                          isDark ? Icons.wb_sunny_rounded : Icons.nightlight_round,
+                          size: 15,
+                          color: isDark ? const Color(0xFFFBBF24) : AppColors.terra,
+                        ),
                       ),
-                    ),
-                    alignment: Alignment.center,
-                    child: Icon(
-                      isDark ? Icons.wb_sunny_rounded : Icons.nightlight_round,
-                      size: 15,
-                      color: isDark ? const Color(0xFFFBBF24) : AppColors.terra,
                     ),
                   ),
                 ),
