@@ -947,7 +947,7 @@ warning • The value of the local variable 'isPaused' isn't used. Try removing 
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/widgets/sanctuary_voice_player.dart:152:37 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/widgets/sanctuary_voice_player.dart:172:43 • deprecated_member_use
 
-715 issues found. (ran in 10.9s)
+715 issues found. (ran in 14.6s)
 === FLUTTER BUILD LOG ===
 [======                                 ] 17% Downloading android-ndk-r28c-linux
 [=======                                ] 18% Downloading android-ndk-r28c-linux
@@ -1196,6 +1196,6 @@ Execution failed for task ':app:compileFlutterBuildRelease'.
 > Run with --scan to get full insights.
 > Get more help at https://help.gradle.org.
 
-BUILD FAILED in 3m 49s
-Running Gradle task 'assembleRelease'...                          230.1s
+BUILD FAILED in 3m 55s
+Running Gradle task 'assembleRelease'...                          235.9s
 Gradle task assembleRelease failed with exit code 1

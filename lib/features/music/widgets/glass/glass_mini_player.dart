@@ -128,7 +128,7 @@ class GlassMiniPlayer extends StatelessWidget {
                           GestureDetector(
                             onTap: () {
                               HapticFeedback.lightImpact();
-                              audio.togglePlay();
+                              audio.toggleSongPlay();
                             },
                             child: Container(
                               padding: const EdgeInsets.all(8),

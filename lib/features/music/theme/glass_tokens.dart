@@ -44,10 +44,15 @@ class GlassTokens {
     offset: const Offset(0, 8),
   );
 
+  // Surfaces & animation
+  static const Color surfaceDark = Color(0xFF07100B);
+  static const Color surfaceLight = Color(0xFF111E16);
+  static const Duration animNormal = Duration(milliseconds: 300);
+
   // Colors
   static const Color textPrimary = Colors.white;
-  static final Color textSecondary = Colors.white.withOpacity(0.65);
-  static final Color textMuted = Colors.white.withOpacity(0.40);
+  static const Color textSecondary = Color(0xA6FFFFFF);
+  static const Color textMuted = Color(0x66FFFFFF);
   static const Color accent = Color(0xFFE07A5F);
   static const Color accentTerra = Color(0xFFE07A5F);
   static const Color accentEmerald = Color(0xFF10B981);

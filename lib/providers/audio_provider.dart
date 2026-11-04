@@ -854,7 +854,7 @@ class AudioProvider extends ChangeNotifier {
     }
     _songs.insertAll(0, playlistSongs);
     _persistSongs();
-    await playSong(0);
+    await selectSong(0);
   }
 
   /// Add all songs from a playlist into the upcoming queue
