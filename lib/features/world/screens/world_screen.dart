@@ -15,7 +15,6 @@ import '../../stage/widgets/profile_modal.dart';
 import '../../../data/models/user_location_model.dart';
 import '../../../data/models/pinned_place.dart';
 import '../widgets/journey_stats_card.dart';
-import '../widgets/meet_route_sheet.dart';
 import '../../music/widgets/glass/glass_ambient_background.dart';
 import '../../music/widgets/glass/glass_card.dart';
 import '../../music/theme/glass_tokens.dart';
@@ -326,20 +325,7 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
                               userAvatarUrl: user?.avatarUrl,
                             ),
 
-                            // 5. Couple Reunion & Date Planner
-                            if (hasPartner &&
-                                distanceKm != null &&
-                                myLoc != null &&
-                                partnerLoc != null)
-                              _buildReunionBanner(
-                                isDark: isDark,
-                                myLoc: myLoc!,
-                                partnerLoc: partnerLoc!,
-                                distanceKm: distanceKm!,
-                                partnerName: partner?.nickname ?? 'Partner',
-                              ),
-
-                            // 6. Quick Action Grid
+                            // 5. Quick Action Grid
                             Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                       child: Row(
@@ -480,126 +466,6 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
       ),
     ),
   ),
-);
-}
-
-  /// Couple Reunion & Date Planner banner
-  Widget _buildReunionBanner({
-    required bool isDark,
-    required UserLocationData myLoc,
-    required UserLocationData partnerLoc,
-    required double distanceKm,
-    required String partnerName,
-  }) {
-    final isLongDistance = distanceKm > 50;
-    final distStr = distanceKm > 1000
-        ? '${(distanceKm / 1000).toStringAsFixed(1)}k km'
-        : (distanceKm < 1 ? '${(distanceKm * 1000).round()} m' : '${distanceKm.toStringAsFixed(0)} km');
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(20),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-          child: Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  AppColors.terra.withOpacity(isDark ? 0.22 : 0.16),
-                  AppColors.rose.withOpacity(isDark ? 0.14 : 0.08),
-                ],
-                begin: Alignment.centerLeft,
-                end: Alignment.centerRight,
-              ),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: Colors.white.withOpacity(0.25), width: 1),
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.terra.withOpacity(0.16),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Row(
-        children: [
-          Text(isLongDistance ? '✈️' : '✨', style: const TextStyle(fontSize: 26)),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  isLongDistance
-                      ? 'You & $partnerName are $distStr apart'
-                      : 'Plan a Romantic Date with $partnerName',
-                  style: TextStyle(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w700,
-                    color: isDark ? AppColors.darkInk : AppColors.lightInk,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  isLongDistance
-                      ? 'AI reunion itinerary, halfway rendezvous & live routes'
-                      : 'AI-curated cozy cafes, sunset viewpoints & dinner itinerary',
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: isDark ? AppColors.darkSoft : AppColors.lightSoft,
-                    height: 1.3,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 10),
-          GestureDetector(
-            onTap: () {
-              HapticFeedback.mediumImpact();
-              MeetRouteSheet.show(
-                context,
-                isDark: isDark,
-                myLat: myLoc.lat,
-                myLng: myLoc.lng,
-                myCity: myLoc.city ?? myLoc.placeName ?? '',
-                partnerLat: partnerLoc.lat,
-                partnerLng: partnerLoc.lng,
-                partnerCity: partnerLoc.city ?? partnerLoc.placeName ?? '',
-                partnerName: partnerName,
-                distanceKm: distanceKm,
-              );
-            },
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-              decoration: BoxDecoration(
-                color: AppColors.terra,
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.terra.withOpacity(0.35),
-                    blurRadius: 8,
-                    offset: const Offset(0, 3),
-                  ),
-                ],
-              ),
-              child: const Text(
-                'Plan 🗺️',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    ),
-  ),
-),
 );
 }
 
