@@ -320,10 +320,9 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
                               userAvatarUrl: user?.avatarUrl,
                             ),
 
-                            // 5. Long-distance Reunion Planner — only shown when > 50 km apart
+                            // 5. Couple Reunion & Date Planner
                             if (hasPartner &&
                                 distanceKm != null &&
-                                distanceKm! > 50 &&
                                 myLoc != null &&
                                 partnerLoc != null)
                               _buildReunionBanner(
@@ -477,7 +476,7 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
   );
 }
 
-  /// Reunion planner banner — only shown when couple is > 50 km apart.
+  /// Couple Reunion & Date Planner banner
   Widget _buildReunionBanner({
     required bool isDark,
     required UserLocationData myLoc,
@@ -485,9 +484,10 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
     required double distanceKm,
     required String partnerName,
   }) {
+    final isLongDistance = distanceKm > 50;
     final distStr = distanceKm > 1000
         ? '${(distanceKm / 1000).toStringAsFixed(1)}k km'
-        : '${distanceKm.toStringAsFixed(0)} km';
+        : (distanceKm < 1 ? '${(distanceKm * 1000).round()} m' : '${distanceKm.toStringAsFixed(0)} km');
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
@@ -506,23 +506,27 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
       ),
       child: Row(
         children: [
-          const Text('✈️', style: TextStyle(fontSize: 26)),
+          Text(isLongDistance ? '✈️' : '✨', style: const TextStyle(fontSize: 26)),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'You & $partnerName are $distStr apart',
+                  isLongDistance
+                      ? 'You & $partnerName are $distStr apart'
+                      : 'Plan a Romantic Date with $partnerName',
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: 12.5,
                     fontWeight: FontWeight.w700,
                     color: isDark ? AppColors.darkInk : AppColors.lightInk,
                   ),
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  'See flights, trains, hotels & the best route to meet',
+                  isLongDistance
+                      ? 'AI reunion itinerary, halfway rendezvous & live routes'
+                      : 'AI-curated cozy cafes, sunset viewpoints & dinner itinerary',
                   style: TextStyle(
                     fontSize: 10,
                     color: isDark ? AppColors.darkSoft : AppColors.lightSoft,
