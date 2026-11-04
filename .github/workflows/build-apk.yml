@@ -61,6 +61,11 @@ jobs:
           channel: 'stable'
           cache: true
 
+      - name: Verify Android NDK
+        run: |
+          echo "Checking pre-installed Android NDK versions:"
+          ls -la /usr/local/lib/android/sdk/ndk/ || true
+
       - name: Verify google-services.json
         run: |
           if [ ! -f "android/app/google-services.json" ]; then
