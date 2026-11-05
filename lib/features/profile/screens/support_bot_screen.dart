@@ -129,56 +129,56 @@ class _SupportBotScreenState extends State<SupportBotScreen> {
     final soft = isDark ? AppColors.darkSoft : AppColors.lightSoft;
     final cardBg = isDark ? AppColors.darkCard : AppColors.lightCard;
 
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      appBar: AppBar(
+    return LiquidGlassBackground(
+      child: Scaffold(
         backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_new, size: 18, color: ink),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Row(
-          children: [
-            Container(
-              width: 32,
-              height: 32,
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: LinearGradient(
-                  colors: [AppColors.sage, AppColors.forest],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-              ),
-              child: const Center(
-                child: Text('🌿', style: TextStyle(fontSize: 16)),
-              ),
-            ),
-            const SizedBox(width: 10),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Sanctuary Concierge',
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
-                    color: ink,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          leading: IconButton(
+            icon: Icon(Icons.arrow_back_ios_new, size: 18, color: ink),
+            onPressed: () => Navigator.pop(context),
+          ),
+          title: Row(
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(
+                    colors: [AppColors.sage, AppColors.forest],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                   ),
                 ),
-                Text(
-                  'Always here to listen & help',
-                  style: TextStyle(fontSize: 10, color: soft),
+                child: const Center(
+                  child: Text('🌿', style: TextStyle(fontSize: 16)),
                 ),
-              ],
-            ),
-          ],
+              ),
+              const SizedBox(width: 10),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Sanctuary Concierge',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                      color: ink,
+                    ),
+                  ),
+                  Text(
+                    'Always here to listen & help',
+                    style: TextStyle(fontSize: 10, color: soft),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
-      ),
-      body: LiquidGlassBackground(
-        child: SafeArea(
-        child: Column(
+        body: SafeArea(
+          child: Column(
           children: [
             // Chat message list
             Expanded(

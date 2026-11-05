@@ -247,40 +247,40 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ? user!.nickname.substring(0, 1).toUpperCase()
         : '✦';
 
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      appBar: AppBar(
+    return LiquidGlassBackground(
+      child: Scaffold(
         backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_new, size: 18, color: ink),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Text(
-          'Your Sanctuary Profile',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: ink,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          leading: IconButton(
+            icon: Icon(Icons.arrow_back_ios_new, size: 18, color: ink),
+            onPressed: () => Navigator.pop(context),
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => _confirmLogout(context, authProvider),
-            child: const Text(
-              'Log out',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: Colors.redAccent,
-              ),
+          title: Text(
+            'Your Sanctuary Profile',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: ink,
             ),
           ),
-        ],
-      ),
-      body: LiquidGlassBackground(
-        child: SafeArea(
-        child: SingleChildScrollView(
+          actions: [
+            TextButton(
+              onPressed: () => _confirmLogout(context, authProvider),
+              child: const Text(
+                'Log out',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.redAccent,
+                ),
+              ),
+            ),
+          ],
+        ),
+        body: SafeArea(
+          child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
