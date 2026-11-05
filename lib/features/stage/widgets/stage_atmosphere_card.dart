@@ -181,12 +181,19 @@ class _StageAtmosphereCardState extends State<StageAtmosphereCard> {
             width: 46,
             height: 46,
             decoration: BoxDecoration(
-              color: isDark ? AppColors.darkCard : AppColors.lightCard,
+              color: isDark ? Colors.white.withOpacity(0.08) : Colors.white.withOpacity(0.64),
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
-                color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                color: isDark ? Colors.white.withOpacity(0.16) : Colors.white.withOpacity(0.75),
                 width: 0.8,
               ),
+              boxShadow: [
+                BoxShadow(
+                  color: isDark ? Colors.black.withOpacity(0.2) : const Color(0xFFB89578).withOpacity(0.10),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
             alignment: Alignment.center,
             child: Text(
@@ -273,12 +280,19 @@ class _StageAtmosphereCardState extends State<StageAtmosphereCard> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
             decoration: BoxDecoration(
-              color: isDark ? AppColors.darkCard : AppColors.lightCard,
+              color: isDark ? Colors.white.withOpacity(0.08) : Colors.white.withOpacity(0.64),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                color: isDark ? Colors.white.withOpacity(0.16) : Colors.white.withOpacity(0.75),
                 width: 0.8,
               ),
+              boxShadow: [
+                BoxShadow(
+                  color: isDark ? Colors.black.withOpacity(0.2) : const Color(0xFFB89578).withOpacity(0.10),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,

@@ -559,21 +559,30 @@ class _StagePulseBeaconState extends State<StagePulseBeacon>
                                 ]
                               : [
                                   isDark
-                                      ? AppColors.darkCard
-                                      : AppColors.lightCard,
+                                      ? Colors.white.withOpacity(0.12)
+                                      : Colors.white.withOpacity(0.75),
                                   isDark
-                                      ? AppColors.darkSurface
-                                      : AppColors.lightSurface,
+                                      ? Colors.white.withOpacity(0.04)
+                                      : Colors.white.withOpacity(0.58),
                                 ],
                         ),
                         border: Border.all(
                           color: isPulsing
                               ? AppColors.terra
                               : (isDark
-                                  ? AppColors.darkBorder
-                                  : AppColors.lightBorder),
-                          width: isPulsing ? 2.0 : 1.2,
+                                  ? Colors.white.withOpacity(0.20)
+                                  : Colors.white.withOpacity(0.80)),
+                          width: isPulsing ? 2.0 : 1.0,
                         ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: isDark
+                                ? Colors.black.withOpacity(0.25)
+                                : const Color(0xFFB89578).withOpacity(0.12),
+                            blurRadius: 10,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
                       ),
                       alignment: Alignment.center,
                       child: isPulsing

@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -44,35 +45,38 @@ class CustomBottomNav extends StatelessWidget {
       },
     ];
 
-    return Container(
-      decoration: BoxDecoration(
-        color: isVault
-            ? const Color(0xFF110D18).withOpacity(0.94)
-            : (isDark
-                ? const Color(0xFF101216).withOpacity(0.92)
-                : Colors.white.withOpacity(0.94)),
-        border: Border(
-          top: BorderSide(
+    return ClipRect(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+        child: Container(
+          decoration: BoxDecoration(
             color: isVault
-                ? const Color(0x33D4AF37)
-                : (isDark ? Colors.white.withOpacity(0.10) : Colors.black.withOpacity(0.06)),
-            width: 0.5,
+                ? const Color(0xFF110D18).withOpacity(0.92)
+                : (isDark
+                    ? const Color(0xFF101216).withOpacity(0.85)
+                    : Colors.white.withOpacity(0.68)),
+            border: Border(
+              top: BorderSide(
+                color: isVault
+                    ? const Color(0x55D4AF37)
+                    : (isDark ? Colors.white.withOpacity(0.14) : Colors.white.withOpacity(0.80)),
+                width: 0.8,
+              ),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: isDark ? Colors.black.withOpacity(0.30) : const Color(0xFFB89578).withOpacity(0.14),
+                blurRadius: 16,
+                offset: const Offset(0, -3),
+              ),
+            ],
           ),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.25 : 0.04),
-            blurRadius: 10,
-            offset: const Offset(0, -2),
-          ),
-        ],
-      ),
-      child: SafeArea(
-        top: false,
-        child: SizedBox(
-          height: 50,
-          child: Row(
-            children: List.generate(tabs.length, (index) {
+          child: SafeArea(
+            top: false,
+            child: SizedBox(
+              height: 50,
+              child: Row(
+                children: List.generate(tabs.length, (index) {
               final isSelected = currentIndex == index;
               final tab = tabs[index];
 
@@ -124,6 +128,8 @@ class CustomBottomNav extends StatelessWidget {
           ),
         ),
       ),
+    ),
+    ),
     );
   }
 }

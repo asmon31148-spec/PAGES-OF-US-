@@ -7,6 +7,8 @@ import 'package:latlong2/latlong.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/liquid_glass/liquid_glass_background.dart';
+import '../../../core/widgets/liquid_glass/liquid_glass_theme.dart';
 import '../../../providers/theme_provider.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../providers/world_provider.dart';
@@ -250,7 +252,8 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
       },
       child: Scaffold(
         backgroundColor: Colors.transparent,
-        body: SafeArea(
+        body: LiquidGlassBackground(
+          child: SafeArea(
           child: _isFullScreenMap
               ? _buildMapCard(
                   isDark: isDark,
@@ -376,11 +379,13 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
                       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+                        color: isDark ? const Color(0xFF141722).withOpacity(0.78) : Colors.white.withOpacity(0.66),
                         borderRadius: BorderRadius.circular(24),
                         border: Border.all(
-                          color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                          color: isDark ? Colors.white.withOpacity(0.16) : Colors.white.withOpacity(0.78),
+                          width: 1.0,
                         ),
+                        boxShadow: LiquidGlassTheme.cardShadow(isDark),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -461,6 +466,7 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
             ),
           ],
         ),
+      ),
       ),
     ),
   );
@@ -1091,11 +1097,13 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+        color: isDark ? const Color(0xFF141722).withOpacity(0.78) : Colors.white.withOpacity(0.66),
         borderRadius: BorderRadius.circular(22),
         border: Border.all(
-          color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+          color: isDark ? Colors.white.withOpacity(0.16) : Colors.white.withOpacity(0.78),
+          width: 1.0,
         ),
+        boxShadow: LiquidGlassTheme.cardShadow(isDark),
       ),
       child: Row(
         children: [

@@ -178,21 +178,21 @@ class StageQuickPortalBar extends StatelessWidget {
                                 Colors.white.withOpacity(0.04),
                               ]
                             : [
-                                Colors.white,
-                                const Color(0xFFF7F4EE),
+                                Colors.white.withOpacity(0.70),
+                                Colors.white.withOpacity(0.55),
                               ]),
                   ),
                   border: Border.all(
                     color: isActive
                         ? AppColors.terra.withOpacity(0.7)
-                        : (isDark ? Colors.white.withOpacity(0.24) : Colors.black.withOpacity(0.08)),
-                    width: 1.2,
+                        : (isDark ? Colors.white.withOpacity(0.24) : Colors.white.withOpacity(0.80)),
+                    width: 1.0,
                   ),
                   boxShadow: [
                     BoxShadow(
                       color: isActive
                           ? AppColors.terra.withOpacity(0.35)
-                          : (isDark ? Colors.black.withOpacity(0.25) : const Color(0x1A2B2D38)),
+                          : (isDark ? Colors.black.withOpacity(0.25) : const Color(0xFFB89578).withOpacity(0.12)),
                       blurRadius: 12,
                       offset: const Offset(0, 4),
                     ),
