@@ -203,15 +203,7 @@ class WorldProvider extends ChangeNotifier {
 
   WorldProvider() {
     AuthProvider.registerSignOutHook(resetState);
-    _startClockTimer();
     _loadJourneyLog();
-  }
-
-  void _startClockTimer() {
-    _clockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      _now = DateTime.now();
-      notifyListeners();
-    });
   }
 
   @override
