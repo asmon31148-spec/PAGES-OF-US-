@@ -495,8 +495,9 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
     String partnerActiveStatus = 'Standby';
     if (partnerLoc != null) {
       try {
-        final updated = DateTime.parse(partnerLoc.updatedAt);
-        final diff = now.difference(updated);
+        final updatedUtc = DateTime.parse(partnerLoc.updatedAt).toUtc();
+        final rawDiff = DateTime.now().toUtc().difference(updatedUtc);
+        final diff = rawDiff.isNegative ? Duration.zero : rawDiff;
         if (diff.inMinutes < 3) {
           isPartnerLive = true;
           partnerActiveStatus = 'Live';
@@ -505,7 +506,7 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
         } else if (diff.inHours < 24) {
           partnerActiveStatus = '${diff.inHours}h ago';
         } else {
-          partnerActiveStatus = DateFormat('d MMM').format(updated);
+          partnerActiveStatus = DateFormat('d MMM').format(updatedUtc.toLocal());
         }
       } catch (_) {}
     }
@@ -1156,8 +1157,12 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
     String partnerActiveStatus = 'Standby';
 
     if (partnerLoc != null && (partnerLoc.lat != 0.0 || partnerLoc.lng != 0.0)) {
-      // Estimate partner's civil clock using timezone-aware offset (handles fractional-offset countries)
-      final partnerOffset = _estimatePartnerOffset(partnerLoc.lat, partnerLoc.lng);
+      // Estimate or retrieve partner's exact civil clock using device timezone offset
+      final partnerOffset = _estimatePartnerOffset(
+        partnerLoc.lat,
+        partnerLoc.lng,
+        exactOffsetMinutes: partnerLoc.timeZoneOffsetMinutes,
+      );
       partnerDateTime = now.toUtc().add(partnerOffset);
 
       // Solar astronomical time difference (the sun's position: 4 mins per longitude degree)
@@ -1166,8 +1171,9 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
 
       // Activity recency
       try {
-        final updated = DateTime.parse(partnerLoc.updatedAt);
-        final diff = now.difference(updated);
+        final updatedUtc = DateTime.parse(partnerLoc.updatedAt).toUtc();
+        final rawDiff = DateTime.now().toUtc().difference(updatedUtc);
+        final diff = rawDiff.isNegative ? Duration.zero : rawDiff;
         if (diff.inMinutes < 3) {
           isPartnerLive = true;
           partnerActiveStatus = 'Live';
@@ -1176,7 +1182,7 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
         } else if (diff.inHours < 24) {
           partnerActiveStatus = '${diff.inHours}h ago';
         } else {
-          partnerActiveStatus = DateFormat('d MMM').format(updated);
+          partnerActiveStatus = DateFormat('d MMM').format(updatedUtc.toLocal());
         }
       } catch (_) {}
     }
@@ -1443,8 +1449,9 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
     String partnerActiveStatus = 'Standby';
     if (partnerLoc != null) {
       try {
-        final updated = DateTime.parse(partnerLoc.updatedAt);
-        final diff = now.difference(updated);
+        final updatedUtc = DateTime.parse(partnerLoc.updatedAt).toUtc();
+        final rawDiff = DateTime.now().toUtc().difference(updatedUtc);
+        final diff = rawDiff.isNegative ? Duration.zero : rawDiff;
         if (diff.inMinutes < 3) {
           partnerActiveStatus = 'Live now';
         } else if (diff.inMinutes < 60) {
@@ -1452,7 +1459,7 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
         } else if (diff.inHours < 24) {
           partnerActiveStatus = '${diff.inHours}h ago';
         } else {
-          partnerActiveStatus = DateFormat('d MMM').format(updated);
+          partnerActiveStatus = DateFormat('d MMM').format(updatedUtc.toLocal());
         }
       } catch (_) {}
     }
@@ -2063,10 +2070,14 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
     );
   }
 
-  /// Estimates the UTC offset for a geographic coordinate, correctly handling
-  /// countries with fractional-hour timezones (Nepal, Iran, Afghanistan, Myanmar, etc.).
+  /// Estimates or retrieves the exact UTC offset for a geographic coordinate,
+  /// preferring exact civil telemetry offset if reported by the partner device,
+  /// and correctly handling countries with fractional-hour timezones (Nepal, Iran, Afghanistan, Myanmar, etc.).
   /// Falls back to the nearest whole-hour zone for all other locations.
-  Duration _estimatePartnerOffset(double lat, double lng) {
+  Duration _estimatePartnerOffset(double lat, double lng, {int? exactOffsetMinutes}) {
+    if (exactOffsetMinutes != null) {
+      return Duration(minutes: exactOffsetMinutes);
+    }
     // India (IST UTC+5:30) — excludes Nepal and Sri Lanka sub-regions below
     if (lat >= 6.0 && lat <= 38.0 && lng >= 68.0 && lng <= 98.0) {
       final isNepal = lat >= 26.0 && lat <= 31.0 && lng >= 80.0 && lng <= 89.0;

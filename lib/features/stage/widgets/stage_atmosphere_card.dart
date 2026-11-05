@@ -61,17 +61,7 @@ class _StageAtmosphereCardState extends State<StageAtmosphereCard> {
       if (lat != null && lng != null && (lat != 0.0 || lng != 0.0)) {
         info = await WeatherService.fetchWeather(lat, lng);
       } else {
-        info = (isPaired ? world.partnerWeather : null) ??
-            WeatherInfo(
-              temperature: 26.0,
-              apparentTemperature: 28.0,
-              humidity: 65,
-              windSpeed: 10.0,
-              weatherCode: 0,
-              isDay: DateTime.now().hour >= 6 && DateTime.now().hour < 19,
-              condition: 'Sanctuary Calm',
-              emoji: '✨',
-            );
+        info = isPaired ? world.partnerWeather : null;
       }
 
       if (mounted) {
@@ -114,19 +104,11 @@ class _StageAtmosphereCardState extends State<StageAtmosphereCard> {
       );
     }
 
-    final weather = (isPaired && world.partnerWeather != null)
-        ? world.partnerWeather!
-        : (_weather ??
-            WeatherInfo(
-              temperature: 26.0,
-              apparentTemperature: 28.0,
-              humidity: 65,
-              windSpeed: 10.0,
-              weatherCode: 0,
-              isDay: true,
-              condition: 'Sanctuary Calm',
-              emoji: '🌿',
-            ));
+    final targetLoc = isPaired ? partnerLoc : myLoc;
+    final hasGps = targetLoc != null && (targetLoc.lat != 0.0 || targetLoc.lng != 0.0);
+    final WeatherInfo? liveWeather = isPaired ? world.partnerWeather : _weather;
+    final bool hasRealWeather = hasGps && liveWeather != null;
+    final weather = liveWeather;
 
     final title = isPaired
         ? "${partner.nickname}'s Atmosphere"
@@ -144,9 +126,9 @@ class _StageAtmosphereCardState extends State<StageAtmosphereCard> {
     final partnerName = partner?.nickname ?? 'Your partner';
     final city = partnerLoc?.placeName ?? '';
     if (isPaired) {
-      if (partnerLoc == null || (partnerLoc.lat == 0.0 && partnerLoc.lng == 0.0)) {
+      if (!hasRealWeather || partnerLoc == null || (partnerLoc.lat == 0.0 && partnerLoc.lng == 0.0)) {
         romanticHook = 'Waiting for $partnerName to connect GPS atmosphere 🛰️';
-      } else if ((weather.weatherCode >= 51 && weather.weatherCode <= 67) || (weather.weatherCode >= 80 && weather.weatherCode <= 82)) {
+      } else if ((weather!.weatherCode >= 51 && weather.weatherCode <= 67) || (weather.weatherCode >= 80 && weather.weatherCode <= 82)) {
         romanticHook = '$partnerName is resting under gentle rain ${city.isNotEmpty ? "in $city" : "today"} 🌧️';
       } else if (weather.weatherCode >= 95) {
         romanticHook = 'Thunderstorms rolling over $partnerName ${city.isNotEmpty ? "in $city" : ""} ⛈️';
@@ -158,7 +140,9 @@ class _StageAtmosphereCardState extends State<StageAtmosphereCard> {
         romanticHook = '$partnerName is soaking in the calm daylight ${city.isNotEmpty ? "in $city" : "today"} 🌿';
       }
     } else {
-      if (weather.weatherCode >= 51) {
+      if (!hasRealWeather) {
+        romanticHook = 'Enable GPS to connect to your local atmosphere 🌿';
+      } else if (weather!.weatherCode >= 51) {
         romanticHook = 'Listening to soft rain falling outside 🌧️';
       } else if (!weather.isDay) {
         romanticHook = 'Resting under the calm night sky 🌙';
@@ -197,7 +181,7 @@ class _StageAtmosphereCardState extends State<StageAtmosphereCard> {
             ),
             alignment: Alignment.center,
             child: Text(
-              weather.emoji,
+              hasRealWeather ? weather!.emoji : '🛰️',
               style: const TextStyle(fontSize: 24),
             ),
           ),
@@ -239,7 +223,9 @@ class _StageAtmosphereCardState extends State<StageAtmosphereCard> {
 
                 // Primary Temp & Condition
                 Text(
-                  '${weather.temperature.round()}°C · ${weather.condition}',
+                  hasRealWeather
+                      ? '${weather!.temperature.round()}°C · ${weather.condition}'
+                      : '--°C · Awaiting Telemetry',
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
@@ -263,7 +249,9 @@ class _StageAtmosphereCardState extends State<StageAtmosphereCard> {
 
                 // Detailed Weather Metrics: Feels Like, Humidity, Wind
                 Text(
-                  'Feels like ${weather.apparentTemperature.round()}°C  •  💧 ${weather.humidity}%  •  💨 ${weather.windSpeed.round()} km/h',
+                  hasRealWeather
+                      ? 'Feels like ${weather!.apparentTemperature.round()}°C  •  💧 ${weather.humidity}%  •  💨 ${weather.windSpeed.round()} km/h'
+                      : 'Feels like --°C  •  💧 --%  •  💨 -- km/h',
                   style: TextStyle(
                     fontSize: 10,
                     color: isDark ? AppColors.darkSoft : AppColors.lightSoft,
@@ -298,7 +286,9 @@ class _StageAtmosphereCardState extends State<StageAtmosphereCard> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  weather.isDay ? '☀️ Daylight' : '🌙 Nightfall',
+                  hasRealWeather
+                      ? (weather!.isDay ? '☀️ Daylight' : '🌙 Nightfall')
+                      : '🛰️ Standby',
                   style: const TextStyle(
                     fontSize: 9.5,
                     fontWeight: FontWeight.bold,

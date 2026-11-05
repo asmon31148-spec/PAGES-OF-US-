@@ -85,7 +85,10 @@ class StageProvider extends ChangeNotifier {
     if (_anniversaryDate == null || _anniversaryDate!.isEmpty) return 1;
     try {
       final start = DateTime.parse(_anniversaryDate!);
-      final diff = DateTime.now().difference(start).inDays;
+      final startDateOnly = DateTime(start.year, start.month, start.day);
+      final now = DateTime.now();
+      final todayDateOnly = DateTime(now.year, now.month, now.day);
+      final diff = todayDateOnly.difference(startDateOnly).inDays;
       return diff >= 0 ? diff + 1 : 1;
     } catch (_) {
       return 1;

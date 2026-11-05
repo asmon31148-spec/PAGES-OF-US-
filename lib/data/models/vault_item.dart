@@ -60,7 +60,10 @@ class VaultItem {
 
   int get daysRemaining {
     if (specialDate == null) return 0;
-    final diff = specialDate!.difference(DateTime.now()).inDays;
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final target = DateTime(specialDate!.year, specialDate!.month, specialDate!.day);
+    final diff = target.difference(today).inDays;
     return diff > 0 ? diff : 0;
   }
 

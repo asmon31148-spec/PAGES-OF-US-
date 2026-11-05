@@ -15,6 +15,8 @@ class UserLocationData {
   final int? stepsToday;
   final int? activeMinutesToday;
   final String? departurePlace;
+  final int? timeZoneOffsetMinutes;
+  final double? speedMps;
 
   UserLocationData({
     required this.userId,
@@ -33,6 +35,8 @@ class UserLocationData {
     this.stepsToday,
     this.activeMinutesToday,
     this.departurePlace,
+    this.timeZoneOffsetMinutes,
+    this.speedMps,
   });
 
   factory UserLocationData.fromJson(Map<String, dynamic> json) {
@@ -48,11 +52,13 @@ class UserLocationData {
       customLabel: json['customLabel']?.toString(),
       accuracy: (json['accuracy'] as num?)?.toDouble(),
       isSharingEnabled: json['isSharingEnabled'] != false,
-      updatedAt: json['updatedAt']?.toString() ?? DateTime.now().toIso8601String(),
+      updatedAt: json['updatedAt']?.toString() ?? DateTime.now().toUtc().toIso8601String(),
       journeyKmToday: (json['journeyKmToday'] as num?)?.toDouble(),
       stepsToday: (json['stepsToday'] as num?)?.toInt(),
       activeMinutesToday: (json['activeMinutesToday'] as num?)?.toInt(),
       departurePlace: json['departurePlace']?.toString(),
+      timeZoneOffsetMinutes: (json['timeZoneOffsetMinutes'] as num?)?.toInt(),
+      speedMps: (json['speedMps'] as num?)?.toDouble(),
     );
   }
 
@@ -74,6 +80,8 @@ class UserLocationData {
       if (stepsToday != null) 'stepsToday': stepsToday,
       if (activeMinutesToday != null) 'activeMinutesToday': activeMinutesToday,
       if (departurePlace != null) 'departurePlace': departurePlace,
+      if (timeZoneOffsetMinutes != null) 'timeZoneOffsetMinutes': timeZoneOffsetMinutes,
+      if (speedMps != null) 'speedMps': speedMps,
     };
   }
 
@@ -94,6 +102,8 @@ class UserLocationData {
     int? stepsToday,
     int? activeMinutesToday,
     String? departurePlace,
+    int? timeZoneOffsetMinutes,
+    double? speedMps,
   }) {
     return UserLocationData(
       userId: userId ?? this.userId,
@@ -112,6 +122,8 @@ class UserLocationData {
       stepsToday: stepsToday ?? this.stepsToday,
       activeMinutesToday: activeMinutesToday ?? this.activeMinutesToday,
       departurePlace: departurePlace ?? this.departurePlace,
+      timeZoneOffsetMinutes: timeZoneOffsetMinutes ?? this.timeZoneOffsetMinutes,
+      speedMps: speedMps ?? this.speedMps,
     );
   }
 }

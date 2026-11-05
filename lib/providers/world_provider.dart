@@ -21,12 +21,14 @@ class JourneyPoint {
   final double lng;
   final DateTime timestamp;
   final String city;
+  final double speedMps;
 
   const JourneyPoint({
     required this.lat,
     required this.lng,
     required this.timestamp,
     this.city = '',
+    this.speedMps = 0.0,
   });
 
   Map<String, dynamic> toJson() => {
@@ -34,6 +36,7 @@ class JourneyPoint {
     'lng': lng,
     'ts': timestamp.millisecondsSinceEpoch,
     'city': city,
+    'sp': speedMps,
   };
 
   factory JourneyPoint.fromJson(Map<String, dynamic> j) => JourneyPoint(
@@ -41,6 +44,7 @@ class JourneyPoint {
     lng: (j['lng'] as num).toDouble(),
     timestamp: DateTime.fromMillisecondsSinceEpoch((j['ts'] as num).toInt()),
     city: j['city']?.toString() ?? '',
+    speedMps: (j['sp'] as num?)?.toDouble() ?? 0.0,
   );
 }
 
@@ -414,6 +418,7 @@ class WorldProvider extends ChangeNotifier {
       lng: position.longitude,
       timestamp: DateTime.now(),
       city: _cachedCity,
+      speedMps: position.speed >= 0 ? position.speed : 0.0,
     );
 
     // Filter out indoor GPS drift (< 35m displacement when stationary / speed < 0.6 m/s)
@@ -435,9 +440,9 @@ class WorldProvider extends ChangeNotifier {
   }
 
   /// Accumulates the partner's incoming location into their journey log (session only).
-  void _appendPartnerPoint(double lat, double lng) {
+  void _appendPartnerPoint(double lat, double lng, {double speedMps = 0.0}) {
     if (lat == 0.0 && lng == 0.0) return;
-    final point = JourneyPoint(lat: lat, lng: lng, timestamp: DateTime.now());
+    final point = JourneyPoint(lat: lat, lng: lng, timestamp: DateTime.now(), speedMps: speedMps);
 
     if (_partnerJourneyLog.isNotEmpty) {
       final last = _partnerJourneyLog.last;
@@ -469,6 +474,27 @@ class WorldProvider extends ChangeNotifier {
     return total;
   }
 
+  double _calcWalkingKm(List<JourneyPoint> log, Duration period) {
+    final since = DateTime.now().subtract(period);
+    final filtered = log.where((p) => p.timestamp.isAfter(since)).toList();
+    if (filtered.length < 2) return 0.0;
+    double total = 0.0;
+    for (int i = 1; i < filtered.length; i++) {
+      final p1 = filtered[i - 1];
+      final p2 = filtered[i];
+      // Skip high-speed vehicle transit (> 5.0 m/s = ~18 km/h) from walking distance
+      if (p2.speedMps > 5.0 || p1.speedMps > 5.0) continue;
+      final d = calculateDistanceKm(
+        p1.lat, p1.lng,
+        p2.lat, p2.lng,
+      );
+      if (d > 0.035 && d < 1.0) {
+        total += d;
+      }
+    }
+    return total;
+  }
+
   int _countAreas(List<JourneyPoint> log, Duration period) {
     final since = DateTime.now().subtract(period);
     final cities = log
@@ -483,6 +509,10 @@ class WorldProvider extends ChangeNotifier {
   double get myJourneyKmThisWeek  => _calcJourneyKm(_myJourneyLog, const Duration(days: 7));
   double get myJourneyKmThisMonth => _calcJourneyKm(_myJourneyLog, const Duration(days: 30));
 
+  double get myWalkingKmToday     => _calcWalkingKm(_myJourneyLog, const Duration(hours: 24));
+  double get myWalkingKmThisWeek  => _calcWalkingKm(_myJourneyLog, const Duration(days: 7));
+  double get myWalkingKmThisMonth => _calcWalkingKm(_myJourneyLog, const Duration(days: 30));
+
   int get myAreasVisitedToday     => _countAreas(_myJourneyLog, const Duration(hours: 24));
   int get myAreasVisitedThisWeek  => _countAreas(_myJourneyLog, const Duration(days: 7));
   int get myAreasVisitedThisMonth => _countAreas(_myJourneyLog, const Duration(days: 30));
@@ -491,8 +521,8 @@ class WorldProvider extends ChangeNotifier {
   double get partnerJourneyKmThisWeek  => _calcJourneyKm(_partnerJourneyLog, const Duration(days: 7));
   double get partnerJourneyKmThisMonth => _calcJourneyKm(_partnerJourneyLog, const Duration(days: 30));
 
-  int get myStepsToday => (myJourneyKmToday * 1300).round();
-  int get myActiveMinutesToday => (myJourneyKmToday / 4.5 * 60).round();
+  int get myStepsToday => (myWalkingKmToday * 1300).round();
+  int get myActiveMinutesToday => (myWalkingKmToday / 4.5 * 60).round();
 
   double get effectivePartnerJourneyKm {
     if (_partnerId != null && _locations[_partnerId]?.journeyKmToday != null) {
@@ -692,7 +722,7 @@ class WorldProvider extends ChangeNotifier {
           _partnerFirstPlaceToday = loc.placeName;
         }
         // Accumulate partner's position into their journey log
-        _appendPartnerPoint(loc.lat, loc.lng);
+        _appendPartnerPoint(loc.lat, loc.lng, speedMps: loc.speedMps ?? 0.0);
         _recordPartnerStayPoint(loc.lat, loc.lng, loc.placeName ?? '');
         _syncSameRoofAddresses();
         _checkPartnerGeofence(loc);
@@ -920,9 +950,10 @@ class WorldProvider extends ChangeNotifier {
       _reverseGeocode(position.latitude, position.longitude);
     }
 
+    final walkingKm = myWalkingKmToday;
     final journeyKm = myJourneyKmToday;
-    final steps = (journeyKm * 1300).round();
-    final activeMinutes = (journeyKm / 4.5 * 60).round();
+    final steps = (walkingKm * 1300).round();
+    final activeMinutes = (walkingKm / 4.5 * 60).round();
 
     if (_firstPlaceNameToday == null && _cachedPlaceName.isNotEmpty && _cachedPlaceName != 'Nearby') {
       _firstPlaceNameToday = _cachedPlaceName;
@@ -940,11 +971,13 @@ class WorldProvider extends ChangeNotifier {
       customLabel: _locations[_currentUserId]?.customLabel,
       accuracy: position.accuracy,
       isSharingEnabled: _isSharing,
-      updatedAt: now.toIso8601String(),
+      updatedAt: now.toUtc().toIso8601String(),
       journeyKmToday: journeyKm,
       stepsToday: steps,
       activeMinutesToday: activeMinutes,
       departurePlace: _firstPlaceNameToday ?? _cachedPlaceName,
+      timeZoneOffsetMinutes: DateTime.now().timeZoneOffset.inMinutes,
+      speedMps: position.speed >= 0 ? position.speed : 0.0,
     );
 
     _locations[_currentUserId!] = myLocation;
