@@ -118,14 +118,10 @@ class AppTopBar extends StatelessWidget {
                       ),
                     );
                   },
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(16),
-                    child: BackdropFilter(
-                      filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-                      child: Container(
-                        height: 32,
-                        padding: const EdgeInsets.symmetric(horizontal: 10),
-                        margin: const EdgeInsets.only(right: 6),
+                  child: Container(
+                    height: 32,
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    margin: const EdgeInsets.only(right: 6),
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
                             begin: Alignment.topLeft,
@@ -182,9 +178,7 @@ class AppTopBar extends StatelessWidget {
                         ),
                       ),
                     ),
-                  ),
-                ),
-              ],
+                  ],
 
               // Music & Atmosphere Studio Shortcut
               if (showMusic || audioProvider.isPlaying) ...[
@@ -198,15 +192,11 @@ class AppTopBar extends StatelessWidget {
                       ),
                     );
                   },
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(16),
-                    child: BackdropFilter(
-                      filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-                      child: Container(
-                        height: 32,
-                        padding: EdgeInsets.symmetric(horizontal: audioProvider.isPlaying ? 10 : 0),
-                        width: audioProvider.isPlaying ? null : 32,
-                        margin: const EdgeInsets.only(right: 6),
+                  child: Container(
+                    height: 32,
+                    padding: EdgeInsets.symmetric(horizontal: audioProvider.isPlaying ? 10 : 0),
+                    width: audioProvider.isPlaying ? null : 32,
+                    margin: const EdgeInsets.only(right: 6),
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
                             begin: Alignment.topLeft,
@@ -266,9 +256,7 @@ class AppTopBar extends StatelessWidget {
                         ),
                       ),
                     ),
-                  ),
-                ),
-              ],
+                  ],
 
               // Light / Dark Theme Switcher
               if (showThemeToggle) ...[
@@ -278,34 +266,28 @@ class AppTopBar extends StatelessWidget {
                     themeProvider.toggleDarkLight();
                   },
                   onLongPress: () => ThemeModal.show(context),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(16),
-                    child: BackdropFilter(
-                      filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-                      child: Container(
-                        width: 32,
-                        height: 32,
-                        margin: const EdgeInsets.only(right: 6),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              Colors.white.withOpacity(0.12),
-                              Colors.white.withOpacity(0.04),
-                            ],
-                          ),
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: Colors.white.withOpacity(0.22),
-                            width: 1,
-                          ),
-                        ),
-                        alignment: Alignment.center,
-                        child: Icon(
-                          isDark ? Icons.wb_sunny_rounded : Icons.nightlight_round,
-                          size: 15,
-                          color: isDark ? const Color(0xFFFBBF24) : AppColors.terra,
-                        ),
+                  child: Container(
+                    width: 32,
+                    height: 32,
+                    margin: const EdgeInsets.only(right: 6),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          Colors.white.withOpacity(0.12),
+                          Colors.white.withOpacity(0.04),
+                        ],
                       ),
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: Colors.white.withOpacity(0.22),
+                        width: 1,
+                      ),
+                    ),
+                    alignment: Alignment.center,
+                    child: Icon(
+                      isDark ? Icons.wb_sunny_rounded : Icons.nightlight_round,
+                      size: 15,
+                      color: isDark ? const Color(0xFFFBBF24) : AppColors.terra,
                     ),
                   ),
                 ),
