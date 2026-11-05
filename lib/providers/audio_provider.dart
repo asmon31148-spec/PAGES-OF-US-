@@ -379,6 +379,10 @@ class AudioProvider extends ChangeNotifier {
   }
 
   Future<void> resumeSong() async {
+    // Optimistic immediate UI update (0ms delay):
+    _isSongPlaying = true;
+    notifyListeners();
+
     try {
       if (_songPosition == Duration.zero ||
           _songPlayer.state == PlayerState.stopped ||
@@ -388,7 +392,6 @@ class AudioProvider extends ChangeNotifier {
       } else {
         await _songPlayer.resume();
       }
-      _isSongPlaying = true;
       _syncNotificationState();
       _broadcastSync('PLAY', _songPosition.inSeconds);
       notifyListeners();
@@ -1418,33 +1421,57 @@ class AudioProvider extends ChangeNotifier {
   bool _wasAtmosphereMuted = false;
 
   /// Top Bar Master Mute / Unmute Toggle:
-  /// Instantly turns off/on any currently playing song or atmosphere soundscape.
+  /// Instantly turns off/on any currently playing song or atmosphere soundscape with 0ms UI delay.
   Future<void> toggleMasterMute() async {
-    if (isPlaying) {
+    final currentlyPlaying = isPlaying;
+
+    if (currentlyPlaying) {
+      // 1. INSTANT OPTIMISTIC UI FLIP (0ms reaction, zero delay):
       _wasSongMuted = _isSongPlaying;
       _wasAtmosphereMuted = _isAtmospherePlaying;
-      if (_isSongPlaying) {
-        await pauseSong();
+      _isSongPlaying = false;
+      _isAtmospherePlaying = false;
+      notifyListeners();
+
+      // 2. Dispatch audio pause asynchronously in background:
+      if (_wasSongMuted) {
+        _syncNotificationState();
+        _broadcastSync('PAUSE', _songPosition.inSeconds);
+        _songPlayer.pause().catchError((e) {
+          debugPrint('Error pausing song in mute: $e');
+        });
       }
-      if (_isAtmospherePlaying) {
-        await pauseAtmosphere();
+      if (_wasAtmosphereMuted) {
+        pauseAtmosphere().catchError((e) {
+          debugPrint('Error pausing atmosphere in mute: $e');
+        });
       }
     } else {
-      if (_wasSongMuted) {
-        await resumeSong();
-      } else if (_wasAtmosphereMuted) {
-        await resumeAtmosphere();
-      } else {
-        if (_songs.isNotEmpty) {
+      // 1. INSTANT OPTIMISTIC UI FLIP (0ms reaction, zero delay):
+      final shouldResumeSong = _wasSongMuted || (_songs.isNotEmpty && !_wasAtmosphereMuted);
+      final shouldResumeAtmo = _wasAtmosphereMuted || (!_wasSongMuted && _songs.isEmpty);
+
+      if (shouldResumeSong) _isSongPlaying = true;
+      if (shouldResumeAtmo) _isAtmospherePlaying = true;
+      notifyListeners();
+
+      // 2. Resume audio in background:
+      try {
+        if (shouldResumeSong) {
           await resumeSong();
-        } else {
+        }
+        if (shouldResumeAtmo) {
           await resumeAtmosphere();
         }
+      } catch (e) {
+        debugPrint('Error resuming audio in unmute: $e');
+      } finally {
+        _wasSongMuted = false;
+        _wasAtmosphereMuted = false;
+        _syncNotificationState();
+        notifyListeners();
       }
-      _wasSongMuted = false;
-      _wasAtmosphereMuted = false;
     }
-    notifyListeners();
   }
 
   Future<void> toggleMusic() async {
