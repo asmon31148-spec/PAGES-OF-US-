@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../theme/models/theme_palette.dart';
+import '../../theme/models/theme_palette.dart';
 
 /// Centralized Apple Liquid Glass Design System tokens
 /// Tuned for visible specular refraction, translucent living depth, and high contrast legibility.
