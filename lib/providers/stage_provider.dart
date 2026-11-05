@@ -355,6 +355,9 @@ class StageProvider extends ChangeNotifier {
     fetchGoals(spaceId);
 
     // 5.5 Daily Care Schedules Live Listener (Auto-schedules alarms on both partner phones)
+    final cachedPartner = LocalCacheService.getCachedPartner();
+    final partnerNickname = cachedPartner?['nickname']?.toString() ?? 'Partner';
+
     _dailyCareSub?.cancel();
     _dailyCareSub = FirebaseService.streamFeatureDoc(spaceId, 'daily_care_schedules').listen((snap) {
       if (snap.exists && snap.data() != null) {
