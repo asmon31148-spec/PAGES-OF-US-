@@ -234,11 +234,32 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
                 ? LatLng(partnerLoc.lat, partnerLoc.lng)
                 : const LatLng(22.365, 88.432)));
 
-    // Automatic camera fly-to framing BOTH partners at maximum zoom by default
-    final currentCoordKey = '${myLoc?.lat.toStringAsFixed(4)},${myLoc?.lng.toStringAsFixed(4)}_${partnerLoc?.lat.toStringAsFixed(4)},${partnerLoc?.lng.toStringAsFixed(4)}';
-    if (_isMapReady && (!_hasInitialMapCentered || (_lastFittedCoordKey != currentCoordKey && hasPartnerValid))) {
+    // Smart initial zoom calculation so FlutterMap immediately requests the correct tiles on boot
+    double smartInitialZoom = 15.0;
+    if (hasMyValid && hasPartnerValid) {
+      final distKm = _calculateDistanceKm(myLoc.lat, myLoc.lng, partnerLoc.lat, partnerLoc.lng);
+      if (distKm > 800) {
+        smartInitialZoom = 4.8;
+      } else if (distKm > 300) {
+        smartInitialZoom = 5.8;
+      } else if (distKm > 100) {
+        smartInitialZoom = 7.2;
+      } else if (distKm > 20) {
+        smartInitialZoom = 10.5;
+      } else if (distKm > 2) {
+        smartInitialZoom = 13.5;
+      } else if (distKm > 0.2) {
+        smartInitialZoom = 16.0;
+      } else {
+        smartInitialZoom = 18.0;
+      }
+    } else if (hasMyValid || hasPartnerValid) {
+      smartInitialZoom = 16.5;
+    }
+
+    // Initial camera centering: only trigger on first map load, NOT on every continuous GPS jitter
+    if (_isMapReady && !_hasInitialMapCentered && (hasMyValid || hasPartnerValid)) {
       _hasInitialMapCentered = true;
-      _lastFittedCoordKey = currentCoordKey;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted && _isMapReady) {
           _fitMapBounds(myLoc, partnerLoc);
@@ -548,17 +569,21 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
             mapController: _mapController,
             options: MapOptions(
               initialCenter: defaultCenter,
-              initialZoom: 17.5,
+              initialZoom: smartInitialZoom,
               maxZoom: 21.0,
               minZoom: 3.0,
               onMapReady: () {
                 _isMapReady = true;
-                _fitMapBounds(myLoc, partnerLoc);
+                if (!_hasInitialMapCentered) {
+                  _hasInitialMapCentered = true;
+                  _fitMapBounds(myLoc, partnerLoc);
+                }
               },
             ),
             children: [
               // Clean verified high-detail tile layer with Google Maps engine
               TileLayer(
+                key: ValueKey('tile_layer_${_mapStyle.name}'),
                 urlTemplate: _getTileUrl(_mapStyle),
                 subdomains: _getSubdomains(_mapStyle),
                 userAgentPackageName: 'com.pagesofus.app',
@@ -678,82 +703,87 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
             ],
           ),
 
-          // Unified Top Controls Row (No overlap between Status Pill & Basemap Switcher)
+          // Unified Top Controls Row: Status Pill on Left, Basemap Switcher on Right
           Positioned(
             top: 14,
             left: 14,
             right: 14,
             child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                // Exit Full Screen button (Visible when in full screen)
-                if (isFullScreen) ...[
-                  Material(
-                    color: (isDark ? const Color(0xFF191823) : Colors.white).withOpacity(0.92),
-                    shape: const CircleBorder(),
-                    elevation: 4,
-                    child: InkWell(
-                      customBorder: const CircleBorder(),
-                      onTap: () {
-                        HapticFeedback.lightImpact();
-                        setState(() => _isFullScreenMap = false);
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.all(9),
-                        child: Icon(
-                          Icons.arrow_back_rounded,
-                          size: 19,
-                          color: isDark ? AppColors.darkInk : AppColors.lightInk,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                ],
-
-                // Top Live Status Pill (Flex-constrained to avoid touching/overlapping basemap)
-                Expanded(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: (isDark ? const Color(0xFF191823) : Colors.white).withOpacity(0.92),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: isDark ? Colors.white12 : Colors.black12,
-                      ),
-                      boxShadow: const [
-                        BoxShadow(color: Colors.black12, blurRadius: 4),
-                      ],
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          width: 8,
-                          height: 8,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: mapStatusColor,
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        Flexible(
-                          child: Text(
-                            mapStatusText,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                              color: isDark ? Colors.white70 : Colors.black87,
+                // Left Cluster: Exit Fullscreen (if active) + Compact Live Status Pill
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (isFullScreen) ...[
+                      Material(
+                        color: (isDark ? const Color(0xFF191823) : Colors.white).withOpacity(0.92),
+                        shape: const CircleBorder(),
+                        elevation: 4,
+                        child: InkWell(
+                          customBorder: const CircleBorder(),
+                          onTap: () {
+                            HapticFeedback.lightImpact();
+                            setState(() => _isFullScreenMap = false);
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.all(9),
+                            child: Icon(
+                              Icons.arrow_back_rounded,
+                              size: 19,
+                              color: isDark ? AppColors.darkInk : AppColors.lightInk,
                             ),
                           ),
                         ),
-                      ],
-                    ),
-                  ),
-                ),
+                      ),
+                      const SizedBox(width: 8),
+                    ],
 
-                const SizedBox(width: 8),
+                    // Compact Live Status Pill: Hugs content neatly without giant empty black bar
+                    Container(
+                      constraints: BoxConstraints(
+                        maxWidth: MediaQuery.of(context).size.width * 0.54,
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: (isDark ? const Color(0xFF191823) : Colors.white).withOpacity(0.92),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: isDark ? Colors.white12 : Colors.black12,
+                        ),
+                        boxShadow: const [
+                          BoxShadow(color: Colors.black12, blurRadius: 4),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 7,
+                            height: 7,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: mapStatusColor,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Flexible(
+                            child: Text(
+                              mapStatusText,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.bold,
+                                color: isDark ? Colors.white70 : Colors.black87,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
 
                 // Top-Right Basemap Style Switcher
                 GestureDetector(

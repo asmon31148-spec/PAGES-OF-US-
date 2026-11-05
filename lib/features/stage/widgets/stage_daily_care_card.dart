@@ -34,15 +34,9 @@ class StageDailyCareCard extends StatelessWidget {
 
     return Container(
       margin: EdgeInsets.zero,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.darkBg : AppColors.lightBg,
-        border: Border(
-          bottom: BorderSide(
-            color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
-            width: 0.8,
-          ),
-        ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: const BoxDecoration(
+        color: Colors.transparent,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -167,15 +161,15 @@ class StageDailyCareCard extends StatelessWidget {
                                   ? AppColors.sage.withOpacity(0.2)
                                   : AppColors.sage.withOpacity(0.12))
                               : (isDark
-                                  ? const Color(0xFF1B2520)
-                                  : const Color(0xFFF3F7F5)),
+                                  ? Colors.white.withOpacity(0.08)
+                                  : Colors.white.withOpacity(0.65)),
                           borderRadius: BorderRadius.circular(11),
                           border: Border.all(
                             color: isDone
                                 ? AppColors.sage.withOpacity(0.45)
                                 : (isDark
-                                    ? AppColors.darkBorder.withOpacity(0.6)
-                                    : AppColors.lightBorder.withOpacity(0.8)),
+                                    ? Colors.white.withOpacity(0.12)
+                                    : Colors.black.withOpacity(0.08)),
                             width: isDone ? 1.1 : 0.8,
                           ),
                         ),

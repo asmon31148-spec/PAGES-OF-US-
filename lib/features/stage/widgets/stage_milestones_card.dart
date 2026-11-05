@@ -33,15 +33,9 @@ class StageMilestonesCard extends StatelessWidget {
       behavior: HitTestBehavior.opaque,
       child: Container(
         margin: EdgeInsets.zero,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        decoration: BoxDecoration(
-          color: isDark ? AppColors.darkBg : AppColors.lightBg,
-          border: Border(
-            bottom: BorderSide(
-              color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
-              width: 0.8,
-            ),
-          ),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: const BoxDecoration(
+          color: Colors.transparent,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -96,12 +90,12 @@ class StageMilestonesCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF1B2520) : const Color(0xFFF3F7F5),
+                color: (isDark ? Colors.white : Colors.black).withOpacity(isDark ? 0.08 : 0.04),
                 borderRadius: BorderRadius.circular(13),
                 border: Border.all(
                   color: isDark
-                      ? AppColors.darkBorder.withOpacity(0.6)
-                      : AppColors.lightBorder.withOpacity(0.8),
+                      ? Colors.white.withOpacity(0.12)
+                      : Colors.black.withOpacity(0.08),
                   width: 0.8,
                 ),
               ),

@@ -188,17 +188,17 @@ class _StageScreenState extends State<StageScreen> {
                       // Section 1: Weather Status Atmosphere Card
                       const StageAtmosphereCard(),
 
-                      // Section 2: Living Daily Care & Routine
-                      const StageDailyCareCard(),
-
-                      // Section 3: Milestones & Dreams
-                      const StageMilestonesCard(),
-
-                      // Section 4: Highlight Screen Section (Memory Spotlight Hero Deck)
+                      // Section 2: Highlight Screen Section (Memory Spotlight Hero Deck & Voice Whisper)
                       StageMemoryHeroCard(
                         onGoToMemories: widget.onGoToMemories,
                         onSelectTab: widget.onSelectTab,
                       ),
+
+                      // Section 3: Living Daily Care & Routine
+                      const StageDailyCareCard(),
+
+                      // Section 4: Milestones & Dreams
+                      const StageMilestonesCard(),
 
                       // Section 6: Pinned Message Section
                       const StagePinnedCorkboard(),
