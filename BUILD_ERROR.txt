@@ -550,15 +550,28 @@ warning • Unused import: '../theme/glass_tokens.dart'. Try removing the import
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/profile/screens/profile_screen.dart:242:75 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/profile/screens/profile_screen.dart:243:42 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/profile/screens/profile_screen.dart:243:75 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/profile/screens/profile_screen.dart:301:51 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/profile/screens/profile_screen.dart:343:51 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/profile/screens/profile_screen.dart:582:66 • deprecated_member_use
-warning • The '!' will have no effect because the receiver can't be null. Try removing the '!' operator • lib/features/profile/screens/profile_screen.dart:603:36 • unnecessary_non_null_assertion
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/profile/screens/profile_screen.dart:648:70 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/profile/screens/profile_screen.dart:649:69 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/profile/screens/profile_screen.dart:655:45 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/profile/screens/profile_screen.dart:776:64 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/profile/screens/profile_screen.dart:283:48 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/profile/screens/profile_screen.dart:284:48 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/profile/screens/profile_screen.dart:287:50 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/profile/screens/profile_screen.dart:288:50 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/profile/screens/profile_screen.dart:314:53 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/profile/screens/profile_screen.dart:316:55 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/profile/screens/profile_screen.dart:353:51 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/profile/screens/profile_screen.dart:395:51 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/profile/screens/profile_screen.dart:634:66 • deprecated_member_use
+warning • The '!' will have no effect because the receiver can't be null. Try removing the '!' operator • lib/features/profile/screens/profile_screen.dart:655:36 • unnecessary_non_null_assertion
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/profile/screens/profile_screen.dart:700:70 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/profile/screens/profile_screen.dart:701:69 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/profile/screens/profile_screen.dart:707:45 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/profile/screens/profile_screen.dart:828:64 • deprecated_member_use
 warning • The value of the local variable 'bg' isn't used. Try removing the variable or using it • lib/features/profile/screens/support_bot_screen.dart:127:11 • unused_local_variable
+  error • The method 'SystemUiOverlayStyle' isn't defined for the type '_SupportBotScreenState'. Try correcting the name to the name of an existing method, or defining a method named 'SystemUiOverlayStyle' • lib/features/profile/screens/support_bot_screen.dart:132:27 • undefined_method
+  error • The name 'SystemUiOverlayStyle' isn't a type, so it can't be used as a type argument. Try correcting the name to an existing type, or defining a type named 'SystemUiOverlayStyle' • lib/features/profile/screens/support_bot_screen.dart:140:28 • non_type_as_type_argument
+  error • Undefined name 'HapticFeedback'. Try correcting the name to one that is defined, or defining the name • lib/features/profile/screens/support_bot_screen.dart:156:27 • undefined_identifier
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/profile/screens/support_bot_screen.dart:164:48 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/profile/screens/support_bot_screen.dart:165:48 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/profile/screens/support_bot_screen.dart:168:50 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/profile/screens/support_bot_screen.dart:169:50 • deprecated_member_use
 warning • Unused import: '../../../core/widgets/liquid_glass/liquid_glass_theme.dart'. Try removing the import directive • lib/features/profile/screens/theme_picker_screen.dart:10:8 • unused_import
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/profile/screens/theme_picker_screen.dart:52:56 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/profile/screens/theme_picker_screen.dart:52:89 • deprecated_member_use
@@ -1292,8 +1305,6 @@ warning • Unused import: '../../../core/widgets/liquid_glass/liquid_glass_card
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/world/widgets/date_planner_card.dart:671:83 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/world/widgets/date_planner_card.dart:687:44 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/world/widgets/date_planner_card.dart:701:50 • deprecated_member_use
-  error • The getter 'vicinity' isn't defined for the type 'DatePlaceOption'. Try importing the library that defines 'vicinity', correcting the name to the name of an existing getter, or defining a getter or field named 'vicinity' • lib/features/world/widgets/date_planner_card.dart:721:74 • undefined_getter
-  error • The getter 'vicinity' isn't defined for the type 'DatePlaceOption'. Try importing the library that defines 'vicinity', correcting the name to the name of an existing getter, or defining a getter or field named 'vicinity' • lib/features/world/widgets/date_planner_card.dart:721:102 • undefined_getter
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/world/widgets/date_planner_card.dart:744:47 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/world/widgets/date_planner_card.dart:762:91 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/world/widgets/date_planner_card.dart:783:69 • deprecated_member_use
@@ -1370,7 +1381,7 @@ warning • Unused import: 'package:pages_of_us/core/theme/models/theme_palette.
    info • 'green' is deprecated and shouldn't be used. Use (*.g * 255.0).round().clamp(0, 255). Try replacing the use of the deprecated member with the replacement • test/theme_contrast_test.dart:19:29 • deprecated_member_use
    info • 'blue' is deprecated and shouldn't be used. Use (*.b * 255.0).round().clamp(0, 255). Try replacing the use of the deprecated member with the replacement • test/theme_contrast_test.dart:20:29 • deprecated_member_use
 
-1143 issues found. (ran in 12.7s)
+1154 issues found. (ran in 11.1s)
 === FLUTTER BUILD LOG ===
 Upgrading build.gradle
 Upgrading gradle.properties
@@ -1476,16 +1487,19 @@ Preparing "Install NDK (Side by side) 28.2.13676358 v.28.2.13676358".
 Installing NDK (Side by side) 28.2.13676358 in /usr/local/lib/android/sdk/ndk/28.2.13676358
 "Install NDK (Side by side) 28.2.13676358 v.28.2.13676358" complete.
 "Install NDK (Side by side) 28.2.13676358 v.28.2.13676358" finished.
-lib/features/world/widgets/date_planner_card.dart:721:74: Error: The getter 'vicinity' isn't defined for the type 'DatePlaceOption'.
- - 'DatePlaceOption' is from 'package:pages_of_us/core/services/date_planner_service.dart' ('lib/core/services/date_planner_service.dart').
-Try correcting the name to the name of an existing getter, or defining a getter or field named 'vicinity'.
-                              '${place.category.toUpperCase()} • ${place.vicinity.isNotEmpty ? place.vicinity : "Exact Spot"}',
-                                                                         ^^^^^^^^
-lib/features/world/widgets/date_planner_card.dart:721:102: Error: The getter 'vicinity' isn't defined for the type 'DatePlaceOption'.
- - 'DatePlaceOption' is from 'package:pages_of_us/core/services/date_planner_service.dart' ('lib/core/services/date_planner_service.dart').
-Try correcting the name to the name of an existing getter, or defining a getter or field named 'vicinity'.
-                              '${place.category.toUpperCase()} • ${place.vicinity.isNotEmpty ? place.vicinity : "Exact Spot"}',
-                                                                                          ^^^^^^^^
+lib/features/profile/screens/support_bot_screen.dart:140:28: Error: 'SystemUiOverlayStyle' isn't a type.
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+                           ^^^^^^^^^^^^^^^^^^^^
+lib/features/profile/screens/support_bot_screen.dart:132:27: Error: The method 'SystemUiOverlayStyle' isn't defined for the type '_SupportBotScreenState'.
+ - '_SupportBotScreenState' is from 'package:pages_of_us/features/profile/screens/support_bot_screen.dart' ('lib/features/profile/screens/support_bot_screen.dart').
+Try correcting the name to the name of an existing method, or defining a method named 'SystemUiOverlayStyle'.
+    final systemOverlay = SystemUiOverlayStyle(
+                          ^^^^^^^^^^^^^^^^^^^^
+lib/features/profile/screens/support_bot_screen.dart:156:27: Error: The getter 'HapticFeedback' isn't defined for the type '_SupportBotScreenState'.
+ - '_SupportBotScreenState' is from 'package:pages_of_us/features/profile/screens/support_bot_screen.dart' ('lib/features/profile/screens/support_bot_screen.dart').
+Try correcting the name to the name of an existing getter, or defining a getter or field named 'HapticFeedback'.
+                          HapticFeedback.lightImpact();
+                          ^^^^^^^^^^^^^^
 Target kernel_snapshot_program failed: Exception
 
 
@@ -1501,6 +1515,6 @@ Execution failed for task ':app:compileFlutterBuildRelease'.
 > Run with --scan to get full insights.
 > Get more help at https://help.gradle.org.
 
-BUILD FAILED in 3m 22s
-Running Gradle task 'assembleRelease'...                          203.0s
+BUILD FAILED in 3m 43s
+Running Gradle task 'assembleRelease'...                          224.0s
 Gradle task assembleRelease failed with exit code 1
