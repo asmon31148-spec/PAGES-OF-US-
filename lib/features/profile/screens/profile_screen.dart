@@ -247,45 +247,97 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ? user!.nickname.substring(0, 1).toUpperCase()
         : '✦';
 
-    return LiquidGlassBackground(
+    final systemOverlay = SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+      statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
+      systemNavigationBarColor: isDark ? palette.canvasBackground : Colors.white,
+      systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+    );
+
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: systemOverlay,
       child: Scaffold(
         backgroundColor: Colors.transparent,
-        appBar: AppBar(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          leading: IconButton(
-            icon: Icon(Icons.arrow_back_ios_new, size: 18, color: ink),
-            onPressed: () => Navigator.pop(context),
-          ),
-          title: Text(
-            'Your Sanctuary Profile',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: ink,
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => _confirmLogout(context, authProvider),
-              child: const Text(
-                'Log out',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.redAccent,
+        body: LiquidGlassBackground(
+          child: SafeArea(
+            bottom: false,
+            child: Column(
+              children: [
+                // Top Custom Seamless Header (Apple Liquid Glass pill navigation)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      GestureDetector(
+                        onTap: () {
+                          HapticFeedback.lightImpact();
+                          Navigator.pop(context);
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.all(9),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: isDark
+                                ? Colors.white.withOpacity(0.10)
+                                : Colors.black.withOpacity(0.05),
+                            border: Border.all(
+                              color: isDark
+                                  ? Colors.white.withOpacity(0.12)
+                                  : Colors.black.withOpacity(0.08),
+                              width: 0.8,
+                            ),
+                          ),
+                          child: Icon(
+                            Icons.arrow_back_ios_new_rounded,
+                            size: 16,
+                            color: ink,
+                          ),
+                        ),
+                      ),
+                      Text(
+                        'Your Sanctuary Profile',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: -0.2,
+                          color: ink,
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: () => _confirmLogout(context, authProvider),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(14),
+                            color: Colors.redAccent.withOpacity(isDark ? 0.16 : 0.08),
+                            border: Border.all(
+                              color: Colors.redAccent.withOpacity(0.28),
+                              width: 0.8,
+                            ),
+                          ),
+                          child: const Text(
+                            'Log out',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.redAccent,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ),
-          ],
-        ),
-        body: SafeArea(
-          child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              // 1. Large Profile Avatar with Camera Badge
+                // Scrollable Profile Sections
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        // 1. Large Profile Avatar with Camera Badge
               Center(
                 child: Stack(
                   alignment: Alignment.bottomRight,
@@ -872,8 +924,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ),
       ),
-    ),
-  );
+    ],
+  ),
+),
+),
+),
+);
 }
 
   Widget _buildAvatarFallback(String initial) {

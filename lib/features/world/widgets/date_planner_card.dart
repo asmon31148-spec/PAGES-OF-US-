@@ -718,7 +718,7 @@ class _DatePlannerCardState extends State<DatePlannerCard> {
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              '${place.category.toUpperCase()} • ${place.vicinity.isNotEmpty ? place.vicinity : "Exact Spot"}',
+                              '${place.category.toUpperCase()} • ${place.address.isNotEmpty ? place.address : "Exact Spot"}',
                               style: TextStyle(
                                 fontSize: 11.5,
                                 color: isDark ? AppColors.darkSoft : AppColors.lightSoft,
