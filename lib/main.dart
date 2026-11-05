@@ -27,6 +27,7 @@ import 'features/memories/screens/memories_screen.dart';
 import 'features/vault/screens/vault_screen.dart';
 import 'features/splash/screens/splash_screen.dart';
 import 'features/music/screens/listen_together_screen.dart';
+import 'features/stage/screens/daily_care_screen.dart';
 import 'widgets/custom_bottom_nav.dart';
 import 'core/services/update_service.dart';
 import 'core/widgets/liquid_glass/shared_living_theme_background.dart';
@@ -214,6 +215,12 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold> with Wi
           _currentIndex = 0;
           _loadedTabs.add(0);
         });
+      } else if (payload == 'daily_care') {
+        setState(() {
+          _currentIndex = 0;
+          _loadedTabs.add(0);
+        });
+        DailyCareScreen.show(context);
       } else if (payload == 'tab_1' || payload == 'partner_weather') {
         setState(() {
           _currentIndex = 1;

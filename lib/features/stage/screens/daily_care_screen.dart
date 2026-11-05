@@ -8,6 +8,7 @@ import '../../../providers/theme_provider.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../providers/stage_provider.dart';
 import '../../../data/models/daily_care_item.dart';
+import '../../../core/services/notification_service.dart';
 
 /// Full-Screen Daily Care Schedule & Partner Checkup Screen
 class DailyCareScreen extends StatefulWidget {
@@ -569,11 +570,11 @@ class _DailyCareScreenState extends State<DailyCareScreen> with SingleTickerProv
                           ),
                         ],
                       ),
-                      const SizedBox(height: 3),
+                      const SizedBox(height: 4),
                       Row(
                         children: [
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
                             decoration: BoxDecoration(
                               color: isDark ? Colors.white10 : Colors.black.withOpacity(0.05),
                               borderRadius: BorderRadius.circular(8),
@@ -581,13 +582,41 @@ class _DailyCareScreenState extends State<DailyCareScreen> with SingleTickerProv
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const Icon(Icons.access_time_rounded, size: 10.5, color: AppColors.slate),
+                                const Icon(Icons.access_time_rounded, size: 11, color: AppColors.slate),
                                 const SizedBox(width: 4),
                                 Text(
-                                  '${item.scheduledTime} · ${_capitalize(item.timeSlot)}',
+                                  NotificationService.formatWithAmPm(item.scheduledTime),
+                                  style: const TextStyle(
+                                    fontSize: 10.5,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.slate,
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                                  decoration: BoxDecoration(
+                                    color: item.scheduledTime.toUpperCase().contains('PM')
+                                        ? Colors.purple.withOpacity(0.18)
+                                        : Colors.amber.withOpacity(0.20),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Text(
+                                    item.scheduledTime.toUpperCase().contains('PM') ? 'PM' : 'AM',
+                                    style: TextStyle(
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w800,
+                                      color: item.scheduledTime.toUpperCase().contains('PM')
+                                          ? (isDark ? Colors.purpleAccent : Colors.purple[700])
+                                          : (isDark ? Colors.amberAccent : Colors.orange[900]),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  '· ${_capitalize(item.timeSlot)}',
                                   style: const TextStyle(
                                     fontSize: 10,
-                                    fontWeight: FontWeight.w600,
                                     color: AppColors.slate,
                                   ),
                                 ),
@@ -722,7 +751,13 @@ class _DailyCareScreenState extends State<DailyCareScreen> with SingleTickerProv
                     onPressed: () {
                       HapticFeedback.lightImpact();
                       final stage = context.read<StageProvider>();
-                      stage.sendCareNudge(spaceId, item.id, currentUserName, partnerName);
+                      stage.sendCareNudge(
+                        spaceId,
+                        item.id,
+                        currentUserName,
+                        partnerName,
+                        currentUserId: currentUserId,
+                      );
                       ScaffoldMessenger.of(context).hideCurrentSnackBar();
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
@@ -961,40 +996,190 @@ class _DailyCareScreenState extends State<DailyCareScreen> with SingleTickerProv
                     ),
                     const SizedBox(height: 12),
 
-                    // Time Slot & Scheduled Time Row
-                    Row(
-                      children: [
-                        // Slot dropdown
-                        Expanded(
-                          child: DropdownButtonFormField<String>(
-                            value: selectedTimeSlot,
-                            decoration: InputDecoration(
-                              labelText: 'Time Slot',
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                            ),
-                            items: const [
-                              DropdownMenuItem(value: 'morning', child: Text('🌅 Morning')),
-                              DropdownMenuItem(value: 'afternoon', child: Text('☀️ Afternoon')),
-                              DropdownMenuItem(value: 'evening', child: Text('🌆 Evening')),
-                              DropdownMenuItem(value: 'night', child: Text('🌙 Night')),
-                            ],
-                            onChanged: (val) {
-                              if (val != null) setModalState(() => selectedTimeSlot = val);
-                            },
-                          ),
-                        ),
-                        const SizedBox(width: 10),
+                    // Time Slot Dropdown
+                    DropdownButtonFormField<String>(
+                      value: selectedTimeSlot,
+                      decoration: InputDecoration(
+                        labelText: 'Time Slot Category',
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      ),
+                      items: const [
+                        DropdownMenuItem(value: 'morning', child: Text('🌅 Morning (5 AM - 12 PM)')),
+                        DropdownMenuItem(value: 'afternoon', child: Text('☀️ Afternoon (12 PM - 5 PM)')),
+                        DropdownMenuItem(value: 'evening', child: Text('🌆 Evening (5 PM - 9 PM)')),
+                        DropdownMenuItem(value: 'night', child: Text('🌙 Night (9 PM - 5 AM)')),
+                      ],
+                      onChanged: (val) {
+                        if (val != null) setModalState(() => selectedTimeSlot = val);
+                      },
+                    ),
+                    const SizedBox(height: 12),
 
-                        // Time text picker
-                        Expanded(
-                          child: TextField(
-                            controller: TextEditingController(text: scheduledTime),
-                            decoration: InputDecoration(
-                              labelText: 'Time (e.g. 09:00 AM)',
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    // Scheduled Exact Time & AM/PM Dual Selector
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Exact Notification Time & AM/PM',
+                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 6),
+                        Row(
+                          children: [
+                            // 1. Clock Picker Card (Tap to pick hour:min on clock)
+                            Expanded(
+                              child: GestureDetector(
+                                onTap: () async {
+                                  HapticFeedback.selectionClick();
+                                  final tod = NotificationService.parseTimeString(scheduledTime) ??
+                                      const TimeOfDay(hour: 8, minute: 30);
+                                  final picked = await showTimePicker(
+                                    context: ctx,
+                                    initialTime: tod,
+                                    builder: (context, child) {
+                                      return Theme(
+                                        data: isDark ? ThemeData.dark() : ThemeData.light(),
+                                        child: child!,
+                                      );
+                                    },
+                                  );
+                                  if (picked != null) {
+                                    setModalState(() {
+                                      final hour = picked.hourOfPeriod == 0 ? 12 : picked.hourOfPeriod;
+                                      final minute = picked.minute.toString().padLeft(2, '0');
+                                      final period = picked.period == DayPeriod.am ? 'AM' : 'PM';
+                                      scheduledTime = '${hour.toString().padLeft(2, '0')}:$minute $period';
+                                      if (picked.hour >= 5 && picked.hour < 12) {
+                                        selectedTimeSlot = 'morning';
+                                      } else if (picked.hour >= 12 && picked.hour < 17) {
+                                        selectedTimeSlot = 'afternoon';
+                                      } else if (picked.hour >= 17 && picked.hour < 21) {
+                                        selectedTimeSlot = 'evening';
+                                      } else {
+                                        selectedTimeSlot = 'night';
+                                      }
+                                    });
+                                  }
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+                                  decoration: BoxDecoration(
+                                    color: isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.04),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: isDark ? Colors.white.withOpacity(0.15) : Colors.black.withOpacity(0.12),
+                                      width: 1,
+                                    ),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      const Icon(Icons.access_time_filled_rounded, size: 18, color: AppColors.sage),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        NotificationService.formatWithAmPm(scheduledTime),
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.bold,
+                                          letterSpacing: 0.2,
+                                          color: isDark ? AppColors.darkInk : AppColors.lightInk,
+                                        ),
+                                      ),
+                                      const Spacer(),
+                                      const Icon(Icons.touch_app_rounded, size: 14, color: AppColors.slate),
+                                    ],
+                                  ),
+                                ),
+                              ),
                             ),
-                            onChanged: (val) => scheduledTime = val,
-                          ),
+                            const SizedBox(width: 8),
+
+                            // 2. Clear AM / PM Quick Switcher Chips
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                GestureDetector(
+                                  onTap: () {
+                                    HapticFeedback.lightImpact();
+                                    final tod = NotificationService.parseTimeString(scheduledTime) ??
+                                        const TimeOfDay(hour: 8, minute: 30);
+                                    final hour12 = tod.hourOfPeriod == 0 ? 12 : tod.hourOfPeriod;
+                                    final minute = tod.minute.toString().padLeft(2, '0');
+                                    setModalState(() {
+                                      scheduledTime = '${hour12.toString().padLeft(2, '0')}:$minute AM';
+                                      selectedTimeSlot = (hour12 >= 5 && hour12 < 12) ? 'morning' : 'night';
+                                    });
+                                  },
+                                  child: AnimatedContainer(
+                                    duration: const Duration(milliseconds: 200),
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                                    decoration: BoxDecoration(
+                                      color: scheduledTime.toUpperCase().contains('AM')
+                                          ? AppColors.gold.withOpacity(0.25)
+                                          : (isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.03)),
+                                      borderRadius: BorderRadius.circular(10),
+                                      border: Border.all(
+                                        color: scheduledTime.toUpperCase().contains('AM')
+                                            ? AppColors.gold
+                                            : Colors.transparent,
+                                        width: 1.2,
+                                      ),
+                                    ),
+                                    child: Text(
+                                      '☀️ AM',
+                                      style: TextStyle(
+                                        fontSize: 11.5,
+                                        fontWeight: FontWeight.bold,
+                                        color: scheduledTime.toUpperCase().contains('AM')
+                                            ? (isDark ? Colors.amberAccent : Colors.orange[900])
+                                            : (isDark ? AppColors.darkSoft : AppColors.lightSoft),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 5),
+                                GestureDetector(
+                                  onTap: () {
+                                    HapticFeedback.lightImpact();
+                                    final tod = NotificationService.parseTimeString(scheduledTime) ??
+                                        const TimeOfDay(hour: 8, minute: 30);
+                                    final hour12 = tod.hourOfPeriod == 0 ? 12 : tod.hourOfPeriod;
+                                    final minute = tod.minute.toString().padLeft(2, '0');
+                                    setModalState(() {
+                                      scheduledTime = '${hour12.toString().padLeft(2, '0')}:$minute PM';
+                                      selectedTimeSlot = (hour12 < 5 || hour12 == 12) ? 'afternoon' : (hour12 < 9 ? 'evening' : 'night');
+                                    });
+                                  },
+                                  child: AnimatedContainer(
+                                    duration: const Duration(milliseconds: 200),
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                                    decoration: BoxDecoration(
+                                      color: scheduledTime.toUpperCase().contains('PM')
+                                          ? Colors.purple.withOpacity(0.25)
+                                          : (isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.03)),
+                                      borderRadius: BorderRadius.circular(10),
+                                      border: Border.all(
+                                        color: scheduledTime.toUpperCase().contains('PM')
+                                            ? Colors.purpleAccent
+                                            : Colors.transparent,
+                                        width: 1.2,
+                                      ),
+                                    ),
+                                    child: Text(
+                                      '🌙 PM',
+                                      style: TextStyle(
+                                        fontSize: 11.5,
+                                        fontWeight: FontWeight.bold,
+                                        color: scheduledTime.toUpperCase().contains('PM')
+                                            ? (isDark ? Colors.purpleAccent : Colors.purple[800])
+                                            : (isDark ? AppColors.darkSoft : AppColors.lightSoft),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
                       ],
                     ),
@@ -1064,7 +1249,12 @@ class _DailyCareScreenState extends State<DailyCareScreen> with SingleTickerProv
                             createdByName: currentUserName,
                           );
 
-                          context.read<StageProvider>().addCareItem(spaceId, newItem);
+                          context.read<StageProvider>().addCareItem(
+                            spaceId,
+                            newItem,
+                            currentUserId: currentUserId,
+                            partnerName: partnerName,
+                          );
                           Navigator.pop(modalCtx);
                           HapticFeedback.lightImpact();
 

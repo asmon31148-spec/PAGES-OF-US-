@@ -354,20 +354,56 @@ class StageProvider extends ChangeNotifier {
     });
     fetchGoals(spaceId);
 
-    // 5.5 Daily Care Schedules Live Listener
+    // 5.5 Daily Care Schedules Live Listener (Auto-schedules alarms on both partner phones)
     _dailyCareSub?.cancel();
     _dailyCareSub = FirebaseService.streamFeatureDoc(spaceId, 'daily_care_schedules').listen((snap) {
       if (snap.exists && snap.data() != null) {
-        final list = snap.data()!['care_items'] as List?;
+        final data = snap.data()!;
+        final list = data['care_items'] as List?;
         if (list != null) {
           _dailyCareItems = list
               .map((e) => DailyCareItem.fromJson(Map<String, dynamic>.from(e as Map)))
               .toList();
+
+          // Reschedule local exact alarm notifications for this device
+          NotificationService.scheduleDailyCareNotifications(
+            items: _dailyCareItems,
+            currentUserId: userId,
+            partnerName: partnerNickname,
+          );
+
+          // Check if partner just scheduled a new care item or nudged me right now
+          final sender = data['senderId'] as String?;
+          final target = data['targetUserId'] as String?;
+          final action = data['lastAction'] as String?;
+          final itemTitle = data['lastItemTitle'] as String?;
+          final itemTime = data['lastItemTime'] as String?;
+
+          if (sender != null && sender != userId && (target == null || target == userId || target.isEmpty)) {
+            final now = DateTime.now();
+            final updatedStr = data['updatedAt'] as String?;
+            final updatedTime = updatedStr != null ? DateTime.tryParse(updatedStr) : null;
+            if (updatedTime != null && now.difference(updatedTime).inMinutes < 2) {
+              if (action == 'new_care' && itemTitle != null) {
+                NotificationService.showInstantDailyCareScheduledNotification(
+                  partnerName: partnerNickname,
+                  careTitle: itemTitle,
+                  scheduledTime: itemTime ?? '',
+                );
+              } else if (action == 'nudge' && itemTitle != null) {
+                NotificationService.showInstantDailyCareNudgeNotification(
+                  partnerName: partnerNickname,
+                  careTitle: itemTitle,
+                );
+              }
+            }
+          }
+
           notifyListeners();
         }
       }
     });
-    fetchDailyCare(spaceId);
+    fetchDailyCare(spaceId, currentUserId: userId, partnerName: partnerNickname);
 
     // 6. Dual Pulse Live Listener (Guaranteed delivery if socket packet dropped)
     _pulseSub?.cancel();
@@ -1166,7 +1202,7 @@ class StageProvider extends ChangeNotifier {
     ),
   ];
 
-  Future<void> fetchDailyCare(String spaceId) async {
+  Future<void> fetchDailyCare(String spaceId, {String? currentUserId, String? partnerName}) async {
     final supabase = SupabaseService.client;
     if (supabase != null) {
       try {
@@ -1181,6 +1217,11 @@ class StageProvider extends ChangeNotifier {
             _dailyCareItems = list
                 .map((e) => DailyCareItem.fromJson(Map<String, dynamic>.from(e as Map)))
                 .toList();
+            NotificationService.scheduleDailyCareNotifications(
+              items: _dailyCareItems,
+              currentUserId: currentUserId,
+              partnerName: partnerName,
+            );
             notifyListeners();
             return;
           }
@@ -1190,6 +1231,11 @@ class StageProvider extends ChangeNotifier {
     if (_dailyCareItems.isEmpty) {
       _dailyCareItems = List.from(defaultPresetCareItems);
     }
+    NotificationService.scheduleDailyCareNotifications(
+      items: _dailyCareItems,
+      currentUserId: currentUserId,
+      partnerName: partnerName,
+    );
     notifyListeners();
   }
 
@@ -1213,18 +1259,42 @@ class StageProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> addCareItem(String spaceId, DailyCareItem item) async {
+  Future<void> addCareItem(String spaceId, DailyCareItem item, {String? currentUserId, String? partnerName}) async {
     _dailyCareItems.add(item);
     notifyListeners();
-    _syncDailyCareToCloud(spaceId);
+    _syncDailyCareToCloud(
+      spaceId,
+      senderId: currentUserId ?? item.createdById,
+      lastAction: 'new_care',
+      lastItemTitle: item.title,
+      lastItemTime: item.scheduledTime,
+      targetUserId: item.targetUserId,
+    );
+    NotificationService.scheduleDailyCareNotifications(
+      items: _dailyCareItems,
+      currentUserId: currentUserId,
+      partnerName: partnerName,
+    );
   }
 
-  Future<void> updateCareItem(String spaceId, DailyCareItem item) async {
+  Future<void> updateCareItem(String spaceId, DailyCareItem item, {String? currentUserId, String? partnerName}) async {
     final idx = _dailyCareItems.indexWhere((c) => c.id == item.id);
     if (idx != -1) {
       _dailyCareItems[idx] = item;
       notifyListeners();
-      _syncDailyCareToCloud(spaceId);
+      _syncDailyCareToCloud(
+        spaceId,
+        senderId: currentUserId ?? item.createdById,
+        lastAction: 'update_care',
+        lastItemTitle: item.title,
+        lastItemTime: item.scheduledTime,
+        targetUserId: item.targetUserId,
+      );
+      NotificationService.scheduleDailyCareNotifications(
+        items: _dailyCareItems,
+        currentUserId: currentUserId,
+        partnerName: partnerName,
+      );
     }
   }
 
@@ -1232,27 +1302,43 @@ class StageProvider extends ChangeNotifier {
     _dailyCareItems.removeWhere((c) => c.id == careId);
     notifyListeners();
     _syncDailyCareToCloud(spaceId);
+    NotificationService.cancelDailyCareNotification(careId);
   }
 
   Future<void> sendCareNudge(
     String spaceId,
     String careId,
     String senderName,
-    String recipientName,
-  ) async {
+    String recipientName, {
+    String? currentUserId,
+  }) async {
     final idx = _dailyCareItems.indexWhere((c) => c.id == careId);
     if (idx != -1) {
-      final currentNudges = _dailyCareItems[idx].reminderNudgeCount;
-      _dailyCareItems[idx] = _dailyCareItems[idx].copyWith(
+      final item = _dailyCareItems[idx];
+      final currentNudges = item.reminderNudgeCount;
+      _dailyCareItems[idx] = item.copyWith(
         reminderNudgeCount: currentNudges + 1,
         lastNudgedAt: DateTime.now().toIso8601String(),
       );
       notifyListeners();
-      _syncDailyCareToCloud(spaceId);
+      _syncDailyCareToCloud(
+        spaceId,
+        senderId: currentUserId,
+        lastAction: 'nudge',
+        lastItemTitle: item.title,
+        targetUserId: item.targetUserId,
+      );
     }
   }
 
-  Future<void> _syncDailyCareToCloud(String spaceId) async {
+  Future<void> _syncDailyCareToCloud(
+    String spaceId, {
+    String? senderId,
+    String? lastAction,
+    String? lastItemTitle,
+    String? lastItemTime,
+    String? targetUserId,
+  }) async {
     final jsonList = _dailyCareItems.map((c) => c.toJson()).toList();
     final supabase = SupabaseService.client;
     if (supabase != null) {
@@ -1268,6 +1354,11 @@ class StageProvider extends ChangeNotifier {
       await FirebaseService.saveFeatureDoc(spaceId, 'daily_care_schedules', {
         'care_items': jsonList,
         'updatedAt': DateTime.now().toIso8601String(),
+        if (senderId != null) 'senderId': senderId,
+        if (lastAction != null) 'lastAction': lastAction,
+        if (lastItemTitle != null) 'lastItemTitle': lastItemTitle,
+        if (lastItemTime != null) 'lastItemTime': lastItemTime,
+        if (targetUserId != null) 'targetUserId': targetUserId,
       });
     } catch (_) {}
   }

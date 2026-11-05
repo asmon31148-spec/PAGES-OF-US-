@@ -10,6 +10,7 @@ import 'package:timezone/timezone.dart' as tz;
 
 import 'local_cache_service.dart';
 import '../../data/services/supabase_service.dart';
+import '../../data/models/daily_care_item.dart';
 
 class _NotifCopy {
   final String title;
@@ -948,6 +949,207 @@ class NotificationService {
             UILocalNotificationDateInterpretation.absoluteTime,
         matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
       );
+    } catch (_) {}
+  }
+
+  // ==========================================
+  // DAILY CARE & ROUTINE NOTIFICATIONS
+  // ==========================================
+
+  /// Robust parser for time string, e.g. "08:30 AM", "1:15 PM", "14:30"
+  static TimeOfDay? parseTimeString(String raw) {
+    if (raw.trim().isEmpty) return null;
+    try {
+      final clean = raw.trim().toUpperCase();
+      final hasAm = clean.contains('AM');
+      final hasPm = clean.contains('PM');
+
+      final digitsAndColon = clean.replaceAll(RegExp(r'[^0-9:]'), '');
+      final parts = digitsAndColon.split(':');
+      if (parts.isEmpty) return null;
+
+      int rawHour = int.parse(parts[0]);
+      int minute = parts.length > 1 ? (int.tryParse(parts[1]) ?? 0) : 0;
+
+      int finalHour = rawHour;
+      if (hasPm) {
+        if (finalHour < 12) finalHour += 12;
+      } else if (hasAm) {
+        if (finalHour == 12) finalHour = 0;
+      }
+
+      if (finalHour < 0 || finalHour > 23 || minute < 0 || minute > 59) return null;
+      return TimeOfDay(hour: finalHour, minute: minute);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Formats any time string or TimeOfDay into unambiguous "HH:MM AM/PM"
+  static String formatWithAmPm(String rawTime) {
+    final clean = rawTime.trim();
+    if (clean.isEmpty) return '09:00 AM';
+    final tod = parseTimeString(clean);
+    if (tod == null) return clean;
+    final hour = tod.hourOfPeriod == 0 ? 12 : tod.hourOfPeriod;
+    final minute = tod.minute.toString().padLeft(2, '0');
+    final period = tod.period == DayPeriod.am ? 'AM' : 'PM';
+    return '${hour.toString().padLeft(2, '0')}:$minute $period';
+  }
+
+  /// Schedules local exact repeating alarms on the device for daily care items
+  static Future<void> scheduleDailyCareNotifications({
+    required List<DailyCareItem> items,
+    required String? currentUserId,
+    String? partnerName,
+  }) async {
+    try {
+      _configureLocalTimeZone();
+      final effectivePartner = (partnerName != null && partnerName.trim().isNotEmpty)
+          ? partnerName.trim()
+          : 'Your partner';
+
+      final now = tz.TZDateTime.now(tz.local);
+      final todayKey = now.toIso8601String().split('T')[0];
+
+      for (final item in items) {
+        // Deterministic ID per care item in range 70000 - 79999
+        final notifId = 70000 + (item.id.hashCode.abs() % 9999);
+
+        // Cancel previous registration to avoid duplicates
+        await _localNotifications.cancel(notifId);
+
+        // Only schedule items targeted for this phone's owner
+        final isForCurrentUser = currentUserId == null ||
+            currentUserId.isEmpty ||
+            item.targetUserId == currentUserId ||
+            (item.targetUserId.isEmpty && item.createdById != currentUserId);
+
+        if (!isForCurrentUser) continue;
+
+        final tod = parseTimeString(item.scheduledTime);
+        if (tod == null) continue;
+
+        final isDoneToday = item.isCompletedForDate(todayKey);
+
+        var scheduledDate = tz.TZDateTime(
+          tz.local,
+          now.year,
+          now.month,
+          now.day,
+          tod.hour,
+          tod.minute,
+        );
+
+        if (scheduledDate.isBefore(now) || isDoneToday) {
+          scheduledDate = scheduledDate.add(const Duration(days: 1));
+        }
+
+        final title = '${item.icon} ${item.title} (${formatWithAmPm(item.scheduledTime)})';
+        final body = item.caringNote.trim().isNotEmpty
+            ? item.caringNote.trim()
+            : '$effectivePartner lovingly scheduled this care checkup for you 💕';
+
+        const androidDetails = AndroidNotificationDetails(
+          partnerChannelId,
+          partnerChannelName,
+          channelDescription: 'Daily care routines, medicines, water, and sweet partner checkups',
+          importance: Importance.max,
+          priority: Priority.high,
+          icon: _smallIcon,
+          largeIcon: _largeAppIcon,
+          color: _brandColor,
+          enableVibration: true,
+          styleInformation: BigTextStyleInformation(''),
+          actions: _quickLoveActions,
+        );
+
+        await _localNotifications.zonedSchedule(
+          notifId,
+          title,
+          body,
+          scheduledDate,
+          const NotificationDetails(android: androidDetails),
+          androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+          uiLocalNotificationDateInterpretation:
+              UILocalNotificationDateInterpretation.absoluteTime,
+          matchDateTimeComponents: DateTimeComponents.time,
+          payload: 'daily_care',
+        );
+
+        debugPrint('[NotificationService] Scheduled Daily Care "${item.title}" at ${item.scheduledTime} (ID: $notifId, Next: $scheduledDate)');
+      }
+    } catch (e) {
+      debugPrint('[NotificationService] Error scheduling daily care notifications: $e');
+    }
+  }
+
+  /// Instant notification when partner schedules a new care item
+  static Future<void> showInstantDailyCareScheduledNotification({
+    required String? partnerName,
+    required String careTitle,
+    required String scheduledTime,
+  }) async {
+    try {
+      final name = (partnerName != null && partnerName.trim().isNotEmpty) ? partnerName.trim() : 'Your partner';
+      const androidDetails = AndroidNotificationDetails(
+        partnerChannelId,
+        partnerChannelName,
+        importance: Importance.high,
+        priority: Priority.high,
+        icon: _smallIcon,
+        largeIcon: _largeAppIcon,
+        color: _brandColor,
+        enableVibration: true,
+        actions: _quickLoveActions,
+      );
+      await _localNotifications.show(
+        80010,
+        '💖 New Care Checkup from $name',
+        '$name added "$careTitle" scheduled for ${formatWithAmPm(scheduledTime)} ✨',
+        const NotificationDetails(android: androidDetails),
+        payload: 'daily_care',
+      );
+    } catch (e) {
+      debugPrint('[NotificationService] Error showing instant daily care notification: $e');
+    }
+  }
+
+  /// Instant notification when partner lovingly nudges a care item
+  static Future<void> showInstantDailyCareNudgeNotification({
+    required String? partnerName,
+    required String careTitle,
+  }) async {
+    try {
+      final name = (partnerName != null && partnerName.trim().isNotEmpty) ? partnerName.trim() : 'Your partner';
+      const androidDetails = AndroidNotificationDetails(
+        partnerChannelId,
+        partnerChannelName,
+        importance: Importance.high,
+        priority: Priority.high,
+        icon: _smallIcon,
+        largeIcon: _largeAppIcon,
+        color: _brandColor,
+        enableVibration: true,
+        actions: _quickLoveActions,
+      );
+      await _localNotifications.show(
+        80011,
+        '🌸 Gentle Care Nudge from $name',
+        '$name is lovingly reminding you: "$careTitle" 💕',
+        const NotificationDetails(android: androidDetails),
+        payload: 'daily_care',
+      );
+    } catch (e) {
+      debugPrint('[NotificationService] Error showing daily care nudge notification: $e');
+    }
+  }
+
+  /// Cancel a single daily care notification if item is deleted
+  static Future<void> cancelDailyCareNotification(String itemId) async {
+    try {
+      final notifId = 70000 + (itemId.hashCode.abs() % 9999);
+      await _localNotifications.cancel(notifId);
     } catch (_) {}
   }
 }

@@ -6,6 +6,7 @@ import '../../../providers/theme_provider.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../providers/stage_provider.dart';
 import '../screens/daily_care_screen.dart';
+import '../../../core/services/notification_service.dart';
 
 /// Living Daily Care & Routine In-Feed Widget
 class StageDailyCareCard extends StatelessWidget {
@@ -200,6 +201,24 @@ class StageDailyCareCard extends StatelessWidget {
                                     : (isDark ? AppColors.darkInk : AppColors.lightInk),
                                 decoration: isDone ? TextDecoration.lineThrough : null,
                                 decorationColor: AppColors.sage,
+                              ),
+                            ),
+                            const SizedBox(width: 5),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                              decoration: BoxDecoration(
+                                color: (isDark ? Colors.white : Colors.black).withOpacity(0.06),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                NotificationService.formatWithAmPm(item.scheduledTime),
+                                style: TextStyle(
+                                  fontSize: 9.5,
+                                  fontWeight: FontWeight.w600,
+                                  color: isDone
+                                      ? AppColors.sage.withOpacity(0.8)
+                                      : (isDark ? AppColors.darkSoft : AppColors.lightSoft),
+                                ),
                               ),
                             ),
                           ],
