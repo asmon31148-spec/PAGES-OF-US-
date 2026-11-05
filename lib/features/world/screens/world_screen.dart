@@ -17,6 +17,7 @@ import '../../stage/widgets/profile_modal.dart';
 import '../../../data/models/user_location_model.dart';
 import '../../../data/models/pinned_place.dart';
 import '../widgets/journey_stats_card.dart';
+import '../widgets/date_planner_card.dart';
 import '../../music/widgets/glass/glass_ambient_background.dart';
 import '../../music/widgets/glass/glass_card.dart';
 import '../../music/theme/glass_tokens.dart';
@@ -374,10 +375,10 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
                       ),
                     ),
 
-                    // 7. Privacy & History Options Card
+                    // 7. Mutual Location Tether Card (Clean & Compact)
                     Container(
                       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                       decoration: BoxDecoration(
                         color: isDark ? const Color(0xFF141722).withOpacity(0.78) : Colors.white.withOpacity(0.66),
                         borderRadius: BorderRadius.circular(24),
@@ -387,26 +388,41 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
                         ),
                         boxShadow: LiquidGlassTheme.cardShadow(isDark),
                       ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Row(
-                                children: [
-                                  const Icon(Icons.security, size: 16, color: AppColors.sage),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    'Mutual Location Tether',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.bold,
-                                      color: isDark ? AppColors.darkInk : AppColors.lightInk,
-                                    ),
-                                  ),
-                                ],
+                              const Icon(Icons.security, size: 16, color: AppColors.sage),
+                              const SizedBox(width: 8),
+                              Text(
+                                'Mutual Location Tether',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: isDark ? AppColors.darkInk : AppColors.lightInk,
+                                ),
                               ),
+                            ],
+                          ),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              TextButton(
+                                style: TextButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  minimumSize: Size.zero,
+                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                  foregroundColor: isDark ? AppColors.darkSoft : AppColors.lightSoft,
+                                ),
+                                onPressed: () {
+                                  if (spaceId.isNotEmpty) {
+                                    worldProvider.clearLocationHistory(spaceId);
+                                  }
+                                },
+                                child: const Text('Clear History', style: TextStyle(fontSize: 10.5)),
+                              ),
+                              const SizedBox(width: 4),
                               Switch(
                                 value: worldProvider.isSharing,
                                 activeColor: AppColors.sage,
@@ -421,44 +437,24 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
                               ),
                             ],
                           ),
-                          const SizedBox(height: 6),
-                          Text(
-                            'Your coordinates stream continuously and privately between your two paired phones. Turning sharing off hides your location and partner tether simultaneously.',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: isDark ? AppColors.darkSoft : AppColors.lightSoft,
-                              height: 1.4,
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              TextButton.icon(
-                                style: TextButton.styleFrom(
-                                  padding: EdgeInsets.zero,
-                                  foregroundColor: isDark ? AppColors.darkSoft : AppColors.lightSoft,
-                                ),
-                                icon: const Icon(Icons.search, size: 14),
-                                label: const Text('Search Coordinates', style: TextStyle(fontSize: 11)),
-                                onPressed: () => _showSearchModal(context),
-                              ),
-                              TextButton(
-                                style: TextButton.styleFrom(
-                                  padding: EdgeInsets.zero,
-                                  foregroundColor: Colors.redAccent,
-                                ),
-                                onPressed: () {
-                                  if (spaceId.isNotEmpty) {
-                                    worldProvider.clearLocationHistory(spaceId);
-                                  }
-                                },
-                                child: const Text('Clear History', style: TextStyle(fontSize: 11)),
-                              ),
-                            ],
-                          ),
                         ],
                       ),
+                    ),
+
+                    // 8. Date Planner AI (Part C)
+                    DatePlannerCard(
+                      isTetherOn: worldProvider.isSharing,
+                      isDark: isDark,
+                      userLat: myLoc?.lat ?? 0.0,
+                      userLng: myLoc?.lng ?? 0.0,
+                      userCity: myLoc?.placeName ?? 'Your Location',
+                      partnerLat: worldProvider.isSharing ? (partnerLoc?.lat ?? 0.0) : 0.0,
+                      partnerLng: worldProvider.isSharing ? (partnerLoc?.lng ?? 0.0) : 0.0,
+                      partnerCity: worldProvider.isSharing ? (partnerLoc?.placeName ?? 'Partner Location') : '',
+                      partnerNickname: partner?.nickname ?? 'Partner',
+                      onPlaceSelected: (pLat, pLng) {
+                        _mapController.move(LatLng(pLat, pLng), 14.5);
+                      },
                     ),
                   ],
                 ),
