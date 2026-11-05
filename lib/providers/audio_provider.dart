@@ -244,7 +244,7 @@ class AudioProvider extends ChangeNotifier {
 
   /// Sanitizes playlists to ensure unique songIds and consistent clean state
   List<PlaylistItem> _sanitizePlaylists(List<PlaylistItem> playlists) {
-    return playlists.map((pl) {
+    return playlists.map<PlaylistItem>((pl) {
       final seen = <String>{};
       final uniqueIds = <String>[];
       for (final id in pl.songIds) {

@@ -103,6 +103,20 @@ class PlaylistItem {
 
   int get songCount => songIds.length;
 
+  PlaylistItem copyWith({
+    String? id,
+    String? title,
+    Color? coverColor,
+    List<String>? songIds,
+  }) {
+    return PlaylistItem(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      coverColor: coverColor ?? this.coverColor,
+      songIds: songIds ?? this.songIds,
+    );
+  }
+
   Map<String, dynamic> toJson() {
     return {
       'id': id,
