@@ -85,7 +85,7 @@ class _StageScreenState extends State<StageScreen> {
     }
 
     return Scaffold(
-      backgroundColor: isDark ? AppColors.darkBg : AppColors.lightBg,
+      backgroundColor: Colors.transparent,
       body: SafeArea(
         child: Column(
           children: [

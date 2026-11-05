@@ -250,7 +250,9 @@ class _TimelineSubviewState extends State<TimelineSubview> {
     required String spaceId,
     required String partnerNickname,
   }) {
-    final branchColor = milestone.isMine ? AppColors.sage : AppColors.terra;
+    final branchColor = milestone.isMine
+        ? (isDark ? AppColors.sageLight : AppColors.sage)
+        : AppColors.terra;
 
     return IntrinsicHeight(
       child: Row(
@@ -497,7 +499,9 @@ class _TimelineSubviewState extends State<TimelineSubview> {
       builder: (ctx) {
         final memoriesProvider = ctx.watch<MemoriesProvider>();
         final audioProvider = ctx.watch<AudioProvider>();
-        final branchColor = milestone.isMine ? AppColors.sage : AppColors.terra;
+        final branchColor = milestone.isMine
+        ? (isDark ? AppColors.sageLight : AppColors.sage)
+        : AppColors.terra;
 
 
         return Container(

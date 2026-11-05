@@ -123,10 +123,14 @@ class _LetterboxSubviewState extends State<LetterboxSubview> {
     List<LetterItem> allLetters,
     int index,
   ) {
-    Color sealColor = AppColors.sage;
+    Color sealColor = isDark ? AppColors.sageLight : AppColors.sage;
     if (letter.sealType == 'terra') sealColor = AppColors.terra;
-    if (letter.sealType == 'slate') sealColor = AppColors.slate;
-    if (letter.sealType == 'rose') sealColor = AppColors.rose;
+    if (letter.sealType == 'slate') sealColor = isDark ? const Color(0xFF94A3B8) : AppColors.slate;
+    if (letter.sealType == 'rose') sealColor = isDark ? const Color(0xFFF472B6) : AppColors.rose;
+
+    final badgeTextColor = isDark
+        ? (sealColor == AppColors.sage ? AppColors.sageLight : sealColor)
+        : sealColor;
 
     // Check sealed until date
     bool isSealed = false;
@@ -194,17 +198,18 @@ class _LetterboxSubviewState extends State<LetterboxSubview> {
                 Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
                       decoration: BoxDecoration(
-                        color: sealColor.withOpacity(0.12),
+                        color: badgeTextColor.withOpacity(isDark ? 0.22 : 0.12),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
                         letter.category.toUpperCase(),
                         style: TextStyle(
-                          fontSize: 9,
+                          fontSize: 9.5,
                           fontWeight: FontWeight.bold,
-                          color: sealColor,
+                          letterSpacing: 0.5,
+                          color: badgeTextColor,
                         ),
                       ),
                     ),

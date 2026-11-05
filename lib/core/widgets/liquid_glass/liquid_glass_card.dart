@@ -8,7 +8,7 @@ import 'liquid_glass_theme.dart';
 /// Authentic Apple iOS / visionOS Liquid Glass Card
 /// High-performance GPU-optimized implementation:
 /// Uses 1px specular rim gradient, top-down gloss refraction, and ambient drop shadow.
-/// Avoids heavy per-frame saveLayer Gaussian blurs in scrollable lists for locked 120 FPS.
+/// Translucent inner glass lets the living atmospheric background shine through.
 class LiquidGlassCard extends StatelessWidget {
   final Widget child;
   final double radius;
@@ -37,7 +37,10 @@ class LiquidGlassCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = context.watch<ThemeProvider>().isDark;
+    final themeProvider = context.watch<ThemeProvider>();
+    final isDark = themeProvider.isDark;
+    final palette = themeProvider.currentPalette;
+
     final borderRadius = BorderRadius.circular(radius);
     final innerRadius = BorderRadius.circular((radius - 1.0).clamp(0.0, 999.0));
 
@@ -45,7 +48,7 @@ class LiquidGlassCard extends StatelessWidget {
       padding: padding ?? const EdgeInsets.all(16),
       decoration: BoxDecoration(
         borderRadius: innerRadius,
-        gradient: LiquidGlassTheme.cardGloss(isDark, tint: tint),
+        gradient: LiquidGlassTheme.cardGloss(isDark, tint: tint, palette: palette),
       ),
       child: child,
     );
@@ -56,7 +59,7 @@ class LiquidGlassCard extends StatelessWidget {
       margin: margin,
       decoration: BoxDecoration(
         borderRadius: borderRadius,
-        gradient: LiquidGlassTheme.specularBorder(isDark),
+        gradient: LiquidGlassTheme.specularBorder(isDark, palette),
         boxShadow: LiquidGlassTheme.cardShadow(isDark),
       ),
       padding: const EdgeInsets.all(1.0), // 1px specular rim light reflection

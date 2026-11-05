@@ -167,6 +167,32 @@ class LocalCacheService {
     await _prefs?.setBool(AppConstants.prefIsDark, isDark);
   }
 
+  // Living Shared Couple Theme
+  static String? getCachedThemeId() => _prefs?.getString('cached_couple_theme_id');
+  static Future<void> setCachedThemeId(String themeId) async {
+    await _prefs?.setString('cached_couple_theme_id', themeId);
+  }
+
+  static String? getCachedBrightnessMode() => _prefs?.getString('cached_couple_brightness_mode');
+  static Future<void> setCachedBrightnessMode(String mode) async {
+    await _prefs?.setString('cached_couple_brightness_mode', mode);
+  }
+
+  static String? getCachedPerformanceLevel() => _prefs?.getString('cached_couple_performance_level');
+  static Future<void> setCachedPerformanceLevel(String level) async {
+    await _prefs?.setString('cached_couple_performance_level', level);
+  }
+
+  static String? getCachedThemeUpdatedByName() => _prefs?.getString('cached_couple_theme_updated_by_name');
+  static Future<void> setCachedThemeUpdatedByName(String name) async {
+    await _prefs?.setString('cached_couple_theme_updated_by_name', name);
+  }
+
+  static String? getCachedThemeUpdatedAt() => _prefs?.getString('cached_couple_theme_updated_at');
+  static Future<void> setCachedThemeUpdatedAt(String isoDate) async {
+    await _prefs?.setString('cached_couple_theme_updated_at', isoDate);
+  }
+
   // Music Songs & Deleted IDs (Persistent across app restarts)
   static List<Map<String, dynamic>>? getCachedSongs() {
     final str = _prefs?.getString('cached_music_songs');

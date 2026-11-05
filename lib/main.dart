@@ -29,6 +29,7 @@ import 'features/splash/screens/splash_screen.dart';
 import 'features/music/screens/listen_together_screen.dart';
 import 'widgets/custom_bottom_nav.dart';
 import 'core/services/update_service.dart';
+import 'core/widgets/liquid_glass/shared_living_theme_background.dart';
 
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -182,11 +183,28 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold> with Wi
   String? _syncedSpaceId;
   String? _syncedPartnerId;
   StreamSubscription? _notifSub;
+  StreamSubscription? _themeSub;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+
+    // Toast when partner changes shared theme in real-time
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _themeSub = context.read<ThemeProvider>().partnerThemeUpdates.listen((msg) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(msg),
+              behavior: SnackBarBehavior.floating,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
+      });
+    });
 
     // Deep-linking from notification taps
     _notifSub = NotificationService.selectNotificationStream.stream.listen((payload) {
@@ -231,6 +249,7 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold> with Wi
   @override
   void dispose() {
     _notifSub?.cancel();
+    _themeSub?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -300,6 +319,11 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold> with Wi
                 partnerNickname: partner?.nickname,
               );
           context.read<AudioProvider>().initMusicSync(effectiveSpaceId);
+          context.read<ThemeProvider>().initThemeSync(
+                effectiveSpaceId,
+                user.id,
+                user.nickname,
+              );
         });
       }
     }
@@ -346,10 +370,12 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold> with Wi
       child: AnnotatedRegion<SystemUiOverlayStyle>(
         value: systemOverlay,
         child: Scaffold(
-          backgroundColor: isDark ? AppColors.darkBg : AppColors.lightBg,
-          body: IndexedStack(
-            index: _currentIndex,
-            children: screens,
+          backgroundColor: Colors.transparent,
+          body: SharedLivingThemeBackground(
+            child: IndexedStack(
+              index: _currentIndex,
+              children: screens,
+            ),
           ),
           bottomNavigationBar: CustomBottomNav(
             currentIndex: _currentIndex,
