@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/liquid_glass/liquid_glass_background.dart';
 import '../../../providers/theme_provider.dart';
 import '../../../data/models/letter_item.dart';
 import '../../../widgets/sanctuary_voice_player.dart';
@@ -77,8 +78,9 @@ class _LetterBookScreenState extends State<LetterBookScreen> {
         systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
       ),
       child: Scaffold(
-        backgroundColor: bgColor,
-        body: SafeArea(
+        backgroundColor: Colors.transparent,
+        body: LiquidGlassBackground(
+          child: SafeArea(
           child: Column(
             children: [
               // 1. Top Book Navigation Bar
@@ -310,8 +312,9 @@ class _LetterBookScreenState extends State<LetterBookScreen> {
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   // Beautiful Keepsake Open Letter Page
   Widget _buildOpenLetterPage({

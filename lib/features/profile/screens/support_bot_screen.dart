@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/liquid_glass/liquid_glass_background.dart';
 import '../../../providers/theme_provider.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../core/services/support_service.dart';
@@ -129,9 +130,9 @@ class _SupportBotScreenState extends State<SupportBotScreen> {
     final cardBg = isDark ? AppColors.darkCard : AppColors.lightCard;
 
     return Scaffold(
-      backgroundColor: bg,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
-        backgroundColor: bg,
+        backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
           icon: Icon(Icons.arrow_back_ios_new, size: 18, color: ink),
@@ -175,7 +176,8 @@ class _SupportBotScreenState extends State<SupportBotScreen> {
           ],
         ),
       ),
-      body: SafeArea(
+      body: LiquidGlassBackground(
+        child: SafeArea(
         child: Column(
           children: [
             // Chat message list
@@ -282,8 +284,9 @@ class _SupportBotScreenState extends State<SupportBotScreen> {
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildMessageBubble(ChatMessage msg, bool isDark) {
     final isUser = msg.isUser;

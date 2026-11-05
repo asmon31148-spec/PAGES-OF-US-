@@ -225,18 +225,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = context.watch<ThemeProvider>().isDark;
+    final themeProvider = context.watch<ThemeProvider>();
+    final isDark = themeProvider.isDark;
+    final palette = themeProvider.currentPalette;
     final authProvider = context.watch<AuthProvider>();
     final user = authProvider.user;
     final partner = authProvider.partner;
     final space = authProvider.space;
 
-    final bg = isDark ? AppColors.darkBg : AppColors.lightBg;
-    final surface = isDark ? AppColors.darkSurface : AppColors.lightSurface;
-    final ink = isDark ? AppColors.darkInk : AppColors.lightInk;
-    final soft = isDark ? AppColors.darkSoft : AppColors.lightSoft;
-    final cardBg = isDark ? AppColors.darkCard : AppColors.lightCard;
-    final border = isDark ? AppColors.darkBorder : AppColors.lightBorder;
+    final bg = Colors.transparent;
+    final surface = isDark
+        ? palette.cardBackground.withOpacity(0.78)
+        : Colors.white.withOpacity(0.85);
+    final ink = isDark ? palette.primaryText : palette.primaryText;
+    final soft = isDark ? palette.secondaryText : palette.secondaryText;
+    final cardBg = isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.04);
+    final border = isDark ? Colors.white.withOpacity(0.12) : Colors.black.withOpacity(0.08);
 
     final avatarUrl = user?.avatarUrl;
     final initial = (user?.nickname.isNotEmpty ?? false)
