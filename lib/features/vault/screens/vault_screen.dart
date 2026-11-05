@@ -8,6 +8,7 @@ import 'package:intl/intl.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/models/vault_item.dart';
 import '../../../providers/auth_provider.dart';
+import '../../../providers/theme_provider.dart';
 import '../../../providers/vault_provider.dart';
 import '../../stage/widgets/app_top_bar.dart';
 import '../../stage/widgets/profile_modal.dart';
