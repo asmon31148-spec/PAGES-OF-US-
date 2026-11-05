@@ -93,7 +93,7 @@ class _StageScreenState extends State<StageScreen> {
             // Top Bar
             AppTopBar(
               title: 'Pages of Us',
-              showTouch: true,
+              showTouch: false,
               showMusic: true,
               onOpenProfile: () => ProfileModal.show(context),
             ),

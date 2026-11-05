@@ -5,6 +5,8 @@ import 'package:provider/provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../providers/theme_provider.dart';
 import '../../../providers/audio_provider.dart';
+import '../../../providers/auth_provider.dart';
+import '../../../providers/stage_provider.dart';
 import '../../watch_together/screens/watch_lobby_screen.dart';
 import '../screens/touch_sanctuary_screen.dart';
 import '../screens/daily_care_screen.dart';
@@ -154,57 +156,51 @@ class StageQuickPortalBar extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Apple Liquid Glass Circular Icon Frame
-          ClipRRect(
-            borderRadius: BorderRadius.circular(28),
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-              child: Container(
-                width: 56,
-                height: 56,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: isActive
+          // Apple Liquid Glass Circular Icon Frame (GPU-optimized without BackdropFilter)
+          Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: isActive
+                    ? [
+                        AppColors.terra.withOpacity(0.35),
+                        AppColors.terra.withOpacity(0.12),
+                      ]
+                    : (isDark
                         ? [
-                            AppColors.terra.withOpacity(0.35),
-                            AppColors.terra.withOpacity(0.12),
+                            Colors.white.withOpacity(0.14),
+                            Colors.white.withOpacity(0.04),
                           ]
-                        : (isDark
-                            ? [
-                                Colors.white.withOpacity(0.14),
-                                Colors.white.withOpacity(0.04),
-                              ]
-                            : [
-                                Colors.white.withOpacity(0.70),
-                                Colors.white.withOpacity(0.55),
-                              ]),
-                  ),
-                  border: Border.all(
-                    color: isActive
-                        ? AppColors.terra.withOpacity(0.7)
-                        : (isDark ? Colors.white.withOpacity(0.24) : Colors.white.withOpacity(0.80)),
-                    width: 1.0,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: isActive
-                          ? AppColors.terra.withOpacity(0.35)
-                          : (isDark ? Colors.black.withOpacity(0.25) : const Color(0xFFB89578).withOpacity(0.12)),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                alignment: Alignment.center,
-                child: Icon(
-                  icon,
-                  size: 24,
-                  color: isActive ? Colors.white : AppColors.terra,
-                ),
+                        : [
+                            Colors.white.withOpacity(0.85),
+                            Colors.white.withOpacity(0.70),
+                          ]),
               ),
+              border: Border.all(
+                color: isActive
+                    ? AppColors.terra.withOpacity(0.7)
+                    : (isDark ? Colors.white.withOpacity(0.24) : Colors.white.withOpacity(0.90)),
+                width: 1.0,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: isActive
+                      ? AppColors.terra.withOpacity(0.35)
+                      : (isDark ? Colors.black.withOpacity(0.25) : const Color(0xFFB89578).withOpacity(0.12)),
+                  blurRadius: 10,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
+            alignment: Alignment.center,
+            child: Icon(
+              icon,
+              size: 24,
+              color: isActive ? Colors.white : AppColors.terra,
             ),
           ),
           const SizedBox(height: 7),
@@ -224,85 +220,266 @@ class StageQuickPortalBar extends StatelessWidget {
   }
 
   void _showQuickNoteSheet(BuildContext context, bool isDark) {
+    final authProvider = context.read<AuthProvider>();
+    final stageProvider = context.read<StageProvider>();
+    final user = authProvider.user;
+    final partner = authProvider.partner;
+    final space = authProvider.space;
+
+    final myExistingNote = user != null ? stageProvider.pinnedNotes[user.id]?.text : null;
+    final otherNotes = stageProvider.pinnedNotes.entries.where((e) => e.key != user?.id);
+    final partnerEntry = otherNotes.isNotEmpty ? otherNotes.first : null;
+    final partnerExistingNote = (partner != null && stageProvider.pinnedNotes.containsKey(partner.id))
+        ? stageProvider.pinnedNotes[partner.id]?.text
+        : partnerEntry?.value.text;
+    final partnerDisplayName = partner?.nickname ??
+        (partnerEntry?.value.authorNickname.isNotEmpty == true
+            ? partnerEntry!.value.authorNickname
+            : 'Partner');
+
+    final noteController = TextEditingController(text: myExistingNote ?? '');
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) {
-        return ClipRRect(
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 28, sigmaY: 28),
-            child: Container(
-              decoration: BoxDecoration(
-                color: isDark
-                    ? const Color(0xFF13151B).withOpacity(0.88)
-                    : Colors.white.withOpacity(0.88),
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-                border: Border(
-                  top: BorderSide(
-                    color: isDark ? Colors.white.withOpacity(0.25) : Colors.black.withOpacity(0.1),
-                    width: 1.2,
-                  ),
-                ),
-              ),
-              padding: EdgeInsets.only(
-                left: 20,
-                right: 20,
-                top: 20,
-                bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-              Center(
+        return StatefulBuilder(
+          builder: (modalContext, setModalState) {
+            return ClipRRect(
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
                 child: Container(
-                  width: 40,
-                  height: 4,
                   decoration: BoxDecoration(
-                    color: Colors.grey.withOpacity(0.4),
-                    borderRadius: BorderRadius.circular(2),
+                    color: isDark
+                        ? const Color(0xFF13151B).withOpacity(0.92)
+                        : Colors.white.withOpacity(0.94),
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+                    border: Border(
+                      top: BorderSide(
+                        color: isDark ? Colors.white.withOpacity(0.25) : Colors.black.withOpacity(0.1),
+                        width: 1.2,
+                      ),
+                    ),
+                  ),
+                  padding: EdgeInsets.only(
+                    left: 20,
+                    right: 20,
+                    top: 16,
+                    bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+                  ),
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Drag Handle
+                        Center(
+                          child: Container(
+                            width: 40,
+                            height: 4,
+                            decoration: BoxDecoration(
+                              color: Colors.grey.withOpacity(0.4),
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Title Header
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(7),
+                              decoration: BoxDecoration(
+                                color: AppColors.terra.withOpacity(0.14),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: const Icon(Icons.edit_note_rounded, color: AppColors.terra, size: 22),
+                            ),
+                            const SizedBox(width: 10),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Daily Love Notes',
+                                  style: TextStyle(
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.bold,
+                                    color: isDark ? AppColors.darkInk : AppColors.lightInk,
+                                  ),
+                                ),
+                                Text(
+                                  'Pinned on your sanctuary corkboard for each other',
+                                  style: TextStyle(
+                                    fontSize: 11.5,
+                                    color: isDark ? AppColors.darkSoft : AppColors.lightSoft,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 18),
+
+                        // Partner's Note Card (if available)
+                        if (partnerExistingNote?.isNotEmpty == true) ...[
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              color: isDark ? const Color(0xFF261D1A) : AppColors.terra.withOpacity(0.12),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: isDark ? AppColors.terra.withOpacity(0.35) : Colors.white.withOpacity(0.80),
+                                width: 1.0,
+                              ),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    const Text('💌 ', style: TextStyle(fontSize: 12)),
+                                    Text(
+                                      'From $partnerDisplayName',
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                        color: AppColors.terra,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                SelectableText(
+                                  partnerExistingNote!,
+                                  style: TextStyle(
+                                    fontSize: 13.5,
+                                    height: 1.45,
+                                    color: isDark ? AppColors.darkInk : AppColors.lightInk,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                        ],
+
+                        // User's Note Field
+                        Row(
+                          children: [
+                            const Text('✍️ ', style: TextStyle(fontSize: 12)),
+                            Text(
+                              'Your Note For $partnerDisplayName',
+                              style: TextStyle(
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.bold,
+                                color: isDark ? AppColors.sageLight : AppColors.sage,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+
+                        TextField(
+                          controller: noteController,
+                          maxLines: 4,
+                          minLines: 3,
+                          style: TextStyle(
+                            fontSize: 13.5,
+                            color: isDark ? AppColors.darkInk : AppColors.lightInk,
+                          ),
+                          decoration: InputDecoration(
+                            hintText: 'Leave a sweet whisper or thought for $partnerDisplayName...',
+                            hintStyle: TextStyle(
+                              fontSize: 12.5,
+                              color: isDark ? AppColors.darkSoft : AppColors.lightSoft,
+                            ),
+                            filled: true,
+                            fillColor: isDark ? AppColors.darkCard : AppColors.lightCard,
+                            contentPadding: const EdgeInsets.all(14),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              borderSide: BorderSide.none,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+
+                        // Action Buttons: Pin Note & Clear
+                        Row(
+                          children: [
+                            if (myExistingNote?.isNotEmpty == true)
+                              Padding(
+                                padding: const EdgeInsets.only(right: 8),
+                                child: TextButton.icon(
+                                  onPressed: () async {
+                                    HapticFeedback.lightImpact();
+                                    if (space != null && user != null) {
+                                      await stageProvider.savePinnedNote(space.id, user.id, user.nickname, '');
+                                    }
+                                    if (modalContext.mounted) {
+                                      Navigator.pop(modalContext);
+                                    }
+                                  },
+                                  icon: const Icon(Icons.delete_outline_rounded, size: 16, color: Colors.redAccent),
+                                  label: const Text('Clear', style: TextStyle(color: Colors.redAccent, fontSize: 12.5)),
+                                ),
+                              ),
+                            Expanded(
+                              child: ElevatedButton.icon(
+                                onPressed: () async {
+                                  HapticFeedback.mediumImpact();
+                                  final text = noteController.text.trim();
+                                  if (space != null && user != null) {
+                                    await stageProvider.savePinnedNote(
+                                      space.id,
+                                      user.id,
+                                      user.nickname,
+                                      text,
+                                    );
+                                  }
+                                  if (modalContext.mounted) {
+                                    Navigator.pop(modalContext);
+                                  }
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        text.isNotEmpty
+                                            ? 'Pinned note saved for $partnerDisplayName! 📌'
+                                            : 'Note cleared.',
+                                      ),
+                                      backgroundColor: AppColors.terra,
+                                      duration: const Duration(seconds: 2),
+                                      behavior: SnackBarBehavior.floating,
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                    ),
+                                  );
+                                },
+                                icon: const Icon(Icons.push_pin_rounded, size: 18),
+                                label: const Text(
+                                  'Pin Note to Corkboard 📌',
+                                  style: TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.terra,
+                                  foregroundColor: Colors.white,
+                                  minimumSize: const Size.fromHeight(46),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
-              const Row(
-                children: [
-                  Icon(Icons.edit_note_rounded, color: AppColors.terra, size: 20),
-                  SizedBox(width: 8),
-                  Text(
-                    'Daily Pinned Notes',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Leave a love note on the corkboard for your partner to see.',
-                style: TextStyle(
-                  fontSize: 12.5,
-                  color: isDark ? AppColors.darkSoft : AppColors.lightSoft,
-                ),
-              ),
-              const SizedBox(height: 18),
-              SizedBox(
-                width: double.infinity,
-                height: 46,
-                child: ElevatedButton(
-                  onPressed: () => Navigator.pop(ctx),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.terra,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                  ),
-                  child: const Text('View Pinned Notes Below 📌'),
-                ),
-              ),
-                ],
-              ),
-            ),
-          ),
+            );
+          },
         );
       },
     );
