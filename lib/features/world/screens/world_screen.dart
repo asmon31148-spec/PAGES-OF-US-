@@ -96,11 +96,11 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
   String _getStyleLabel(MapBasemapStyle style) {
     switch (style) {
       case MapBasemapStyle.streets:
-        return '🗺️ Google Street';
+        return '🗺️ Street';
       case MapBasemapStyle.satellite:
-        return '🛰️ Google Satellite';
+        return '🛰️ Satellite';
       case MapBasemapStyle.dark:
-        return '🌙 Dark (Detailed)';
+        return '🌙 Dark';
       case MapBasemapStyle.terrain:
         return '🏔️ Terrain';
     }
@@ -513,7 +513,7 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
 
     final pNick = partner?.nickname ?? 'Partner';
     final mapStatusText = partnerLoc != null
-        ? (isPartnerLive ? 'Both Live Tethered' : 'Tethered · $pNick active $partnerActiveStatus')
+        ? (isPartnerLive ? '● Both Live' : '$pNick: $partnerActiveStatus')
         : worldProvider.gpsStatus;
     final mapStatusColor = partnerLoc != null
         ? (isPartnerLive ? AppColors.sage : Colors.orangeAccent)

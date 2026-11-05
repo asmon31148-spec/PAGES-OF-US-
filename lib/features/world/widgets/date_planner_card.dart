@@ -88,15 +88,42 @@ class _DatePlannerCardState extends State<DatePlannerCard> {
     }
   }
 
-  Future<void> _openGoogleMaps(String url) async {
-    if (url.isEmpty) return;
+  Future<void> _openGoogleMaps(String url, {double? lat, double? lng, String? name}) async {
     HapticFeedback.selectionClick();
-    final uri = Uri.parse(url);
-    try {
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
+
+    // 1. First priority: Direct native Google Maps app intent via geo: URI
+    if (lat != null && lng != null && lat != 0.0 && lng != 0.0) {
+      final queryParam = name != null && name.isNotEmpty ? Uri.encodeComponent('$name ($lat,$lng)') : '$lat,$lng';
+      final geoUri = Uri.parse('geo:$lat,$lng?q=$queryParam');
+      try {
+        final launched = await launchUrl(geoUri, mode: LaunchMode.externalApplication);
+        if (launched) return;
+      } catch (_) {}
+    }
+
+    // 2. Second priority: Standard Google Maps navigation URL
+    if (url.isNotEmpty) {
+      final uri = Uri.parse(url);
+      try {
+        if (await launchUrl(uri, mode: LaunchMode.externalApplication)) return;
+      } catch (_) {
+        try {
+          if (await launchUrl(uri, mode: LaunchMode.platformDefault)) return;
+        } catch (_) {}
       }
-    } catch (_) {}
+    }
+
+    // 3. Fallback direct web search
+    if (lat != null && lng != null) {
+      final fallbackUri = Uri.parse('https://www.google.com/maps/search/?api=1&query=$lat,$lng');
+      try {
+        await launchUrl(fallbackUri, mode: LaunchMode.externalApplication);
+      } catch (_) {
+        try {
+          await launchUrl(fallbackUri, mode: LaunchMode.platformDefault);
+        } catch (_) {}
+      }
+    }
   }
 
   @override
@@ -475,7 +502,12 @@ class _DatePlannerCardState extends State<DatePlannerCard> {
                     if (widget.onPlaceSelected != null) {
                       widget.onPlaceSelected!(place.lat, place.lng, place.name, place.category);
                     } else {
-                      _openGoogleMaps(place.googleMapsUrl);
+                      _openGoogleMaps(
+                        place.googleMapsUrl,
+                        lat: place.lat,
+                        lng: place.lng,
+                        name: place.name,
+                      );
                     }
                   },
                   child: Container(
@@ -872,7 +904,12 @@ class _DatePlannerCardState extends State<DatePlannerCard> {
                         child: OutlinedButton.icon(
                           onPressed: () {
                             Navigator.pop(ctx);
-                            _openGoogleMaps(place.googleMapsUrl);
+                            _openGoogleMaps(
+                              place.googleMapsUrl,
+                              lat: place.lat,
+                              lng: place.lng,
+                              name: place.name,
+                            );
                           },
                           icon: const Icon(Icons.directions_rounded, size: 18),
                           label: const Text('Google Maps ↗'),

@@ -102,8 +102,9 @@ class _JourneyStatsCardState extends State<JourneyStatsCard>
         ? world.effectivePartnerActiveMinutes
         : world.myActiveMinutesToday;
 
-    // A person is stationary if true movement today is under 150m (filters indoor GPS noise)
-    final bool isStationary = km < 0.15;
+    // A person is actively traveling if currently moving (> 3 km/h or recent displacement)
+    final bool isMovingNow = effectiveShowPartner ? world.isPartnerMoving : world.isMyMoving;
+    final bool isStationary = !isMovingNow;
 
     // Origin and destination place names
     final String rawOrigin = effectiveShowPartner
@@ -117,10 +118,10 @@ class _JourneyStatsCardState extends State<JourneyStatsCard>
     final String originLabel = _cleanPlace(rawOrigin);
     final String destLabel = _cleanPlace(rawDest);
 
-    // Stay points / visited stops for current selected user
+    // Stay points / visited stops for current selected user for TODAY
     final List<StayPoint> stayPoints = effectiveShowPartner
-        ? world.partnerStayPoints
-        : world.myStayPoints;
+        ? world.partnerStayPointsToday
+        : world.myStayPointsToday;
 
     final bool isDark = widget.isDark;
     final Color surfaceColor =
@@ -130,19 +131,19 @@ class _JourneyStatsCardState extends State<JourneyStatsCard>
     final Color inkColor = isDark ? AppColors.darkInk : AppColors.lightInk;
     final Color softColor = isDark ? AppColors.darkSoft : AppColors.lightSoft;
 
-    final distanceLabel = isStationary
+    final distanceLabel = km < 0.05
         ? '0 m'
         : km < 1.0
             ? '${(km * 1000).round()} m'
             : '${km.toStringAsFixed(2)} km';
 
-    final stepsLabel = (isStationary && steps < 120)
+    final stepsLabel = (km < 0.05 && steps < 50)
         ? '0'
         : steps > 999
             ? '${(steps / 1000).toStringAsFixed(1)}k'
             : '$steps';
 
-    final activeLabel = isStationary || activeMinutes < 5
+    final activeLabel = activeMinutes < 5
         ? 'Resting'
         : activeMinutes < 60
             ? '$activeMinutes min'
@@ -341,27 +342,29 @@ class _JourneyStatsCardState extends State<JourneyStatsCard>
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                         decoration: BoxDecoration(
-                          color: AppColors.terra.withOpacity(0.16),
+                          color: isMovingNow
+                              ? AppColors.terra.withOpacity(0.16)
+                              : AppColors.sage.withOpacity(0.16),
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Text(
-                              '✈️ Moving',
+                            Text(
+                              isMovingNow ? '✈️ Moving' : '🏡 Resting',
                               style: TextStyle(
                                 fontSize: 9.5,
                                 fontWeight: FontWeight.bold,
-                                color: AppColors.terra,
+                                color: isMovingNow ? AppColors.terra : AppColors.sage,
                               ),
                             ),
                             const SizedBox(width: 4),
                             Text(
                               '· $distanceLabel',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 9.5,
                                 fontWeight: FontWeight.bold,
-                                color: AppColors.terra,
+                                color: isMovingNow ? AppColors.terra : AppColors.sage,
                               ),
                             ),
                           ],
@@ -427,8 +430,8 @@ class _JourneyStatsCardState extends State<JourneyStatsCard>
                 _statChip('📏', distanceLabel, 'traveled', inkColor, softColor),
                 _statChip('⏱️', activeLabel, 'active', inkColor, softColor),
                 _statChip(
-                  isStationary ? '🏡' : '📍',
-                  isStationary ? 'Stationary' : 'On Move',
+                  isMovingNow ? '📍' : '🏡',
+                  isMovingNow ? 'On Move' : 'Resting',
                   'status',
                   inkColor,
                   softColor,
@@ -527,73 +530,141 @@ class _JourneyStatsCardState extends State<JourneyStatsCard>
                           final stop = stayPoints[index];
                           final isLast = index == stayPoints.length - 1;
                           return Padding(
-                            padding: const EdgeInsets.only(bottom: 6),
-                            child: Row(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Column(
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.all(5),
-                                      decoration: BoxDecoration(
-                                        color: (stop.isCurrent ? AppColors.terra : AppColors.sage)
-                                            .withOpacity(0.18),
-                                        shape: BoxShape.circle,
-                                      ),
-                                      child: Text(stop.icon, style: const TextStyle(fontSize: 11)),
-                                    ),
-                                    if (!isLast)
-                                      Container(
-                                        width: 1.5,
-                                        height: 16,
-                                        color: isDark ? Colors.white12 : Colors.black12,
-                                      ),
-                                  ],
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Column(
+                                // If user traveled (>= 100m) to reach this stop, show trip leg:
+                                if (stop.hasTripLeg) ...[
+                                  Row(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      Row(
-                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      Column(
                                         children: [
-                                          Expanded(
-                                            child: Text(
-                                              stop.placeName,
-                                              style: TextStyle(
-                                                fontSize: 11.5,
-                                                fontWeight: FontWeight.bold,
-                                                color: inkColor,
-                                              ),
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
+                                          Container(
+                                            padding: const EdgeInsets.all(4),
+                                            decoration: BoxDecoration(
+                                              color: AppColors.terra.withOpacity(0.12),
+                                              shape: BoxShape.circle,
+                                            ),
+                                            child: const Icon(
+                                              Icons.directions_walk_rounded,
+                                              size: 11,
+                                              color: AppColors.terra,
                                             ),
                                           ),
-                                          if (stop.isCurrent)
-                                            Container(
-                                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
-                                              decoration: BoxDecoration(
-                                                color: AppColors.terra.withOpacity(0.18),
-                                                borderRadius: BorderRadius.circular(6),
-                                              ),
-                                              child: const Text(
-                                                'Current Spot',
-                                                style: TextStyle(
-                                                  fontSize: 8.5,
+                                          Container(
+                                            width: 1.5,
+                                            height: 14,
+                                            color: AppColors.terra.withOpacity(0.35),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Padding(
+                                          padding: const EdgeInsets.only(top: 2),
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                'Traveled ${stop.tripDistanceText} (${stop.tripTimeRangeText})',
+                                                style: const TextStyle(
+                                                  fontSize: 10.5,
                                                   fontWeight: FontWeight.bold,
                                                   color: AppColors.terra,
                                                 ),
                                               ),
-                                            ),
-                                        ],
-                                      ),
-                                      Text(
-                                        '${stop.timeRangeText}  •  ${stop.durationText}',
-                                        style: TextStyle(fontSize: 9.5, color: softColor),
+                                              Text(
+                                                stop.fromPlaceName!.toLowerCase() == stop.placeName.toLowerCase()
+                                                    ? 'Within ${stop.placeName} (Local transit)'
+                                                    : '${stop.fromPlaceName} → ${stop.placeName}',
+                                                style: TextStyle(
+                                                  fontSize: 9.5,
+                                                  fontStyle: FontStyle.italic,
+                                                  color: softColor,
+                                                ),
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                              const SizedBox(height: 6),
+                                            ],
+                                          ),
+                                        ),
                                       ),
                                     ],
                                   ),
+                                ],
+
+                                // The Stop / Destination Spot:
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Column(
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.all(5),
+                                          decoration: BoxDecoration(
+                                            color: (stop.isCurrent ? AppColors.terra : AppColors.sage)
+                                                .withOpacity(0.18),
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: Text(stop.icon, style: const TextStyle(fontSize: 11)),
+                                        ),
+                                        if (!isLast)
+                                          Container(
+                                            width: 1.5,
+                                            height: 16,
+                                            color: isDark ? Colors.white12 : Colors.black12,
+                                          ),
+                                      ],
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Row(
+                                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                            children: [
+                                              Expanded(
+                                                child: Text(
+                                                  stop.placeName,
+                                                  style: TextStyle(
+                                                    fontSize: 11.5,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: inkColor,
+                                                  ),
+                                                  maxLines: 1,
+                                                  overflow: TextOverflow.ellipsis,
+                                                ),
+                                              ),
+                                              if (stop.isCurrent)
+                                                Container(
+                                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                                                  decoration: BoxDecoration(
+                                                    color: AppColors.terra.withOpacity(0.18),
+                                                    borderRadius: BorderRadius.circular(6),
+                                                  ),
+                                                  child: const Text(
+                                                    'Current Spot',
+                                                    style: TextStyle(
+                                                      fontSize: 8.5,
+                                                      fontWeight: FontWeight.bold,
+                                                      color: AppColors.terra,
+                                                    ),
+                                                  ),
+                                                ),
+                                            ],
+                                          ),
+                                          Text(
+                                            '${stop.timeRangeText}  •  ${stop.durationText}',
+                                            style: TextStyle(fontSize: 9.5, color: softColor),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ],
                             ),

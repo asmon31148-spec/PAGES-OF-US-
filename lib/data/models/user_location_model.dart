@@ -17,6 +17,7 @@ class UserLocationData {
   final String? departurePlace;
   final int? timeZoneOffsetMinutes;
   final double? speedMps;
+  final List<Map<String, dynamic>>? stayPoints;
 
   UserLocationData({
     required this.userId,
@@ -37,6 +38,7 @@ class UserLocationData {
     this.departurePlace,
     this.timeZoneOffsetMinutes,
     this.speedMps,
+    this.stayPoints,
   });
 
   factory UserLocationData.fromJson(Map<String, dynamic> json) {
@@ -59,6 +61,9 @@ class UserLocationData {
       departurePlace: json['departurePlace']?.toString(),
       timeZoneOffsetMinutes: (json['timeZoneOffsetMinutes'] as num?)?.toInt(),
       speedMps: (json['speedMps'] as num?)?.toDouble(),
+      stayPoints: (json['stayPoints'] as List?)
+          ?.map((e) => Map<String, dynamic>.from(e as Map))
+          .toList(),
     );
   }
 
@@ -82,6 +87,7 @@ class UserLocationData {
       if (departurePlace != null) 'departurePlace': departurePlace,
       if (timeZoneOffsetMinutes != null) 'timeZoneOffsetMinutes': timeZoneOffsetMinutes,
       if (speedMps != null) 'speedMps': speedMps,
+      if (stayPoints != null) 'stayPoints': stayPoints,
     };
   }
 
@@ -104,6 +110,7 @@ class UserLocationData {
     String? departurePlace,
     int? timeZoneOffsetMinutes,
     double? speedMps,
+    List<Map<String, dynamic>>? stayPoints,
   }) {
     return UserLocationData(
       userId: userId ?? this.userId,
@@ -124,6 +131,7 @@ class UserLocationData {
       departurePlace: departurePlace ?? this.departurePlace,
       timeZoneOffsetMinutes: timeZoneOffsetMinutes ?? this.timeZoneOffsetMinutes,
       speedMps: speedMps ?? this.speedMps,
+      stayPoints: stayPoints ?? this.stayPoints,
     );
   }
 }

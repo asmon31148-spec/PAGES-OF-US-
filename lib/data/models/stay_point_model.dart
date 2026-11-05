@@ -12,6 +12,9 @@ class StayPoint {
   DateTime? departureTime;
   bool isCurrent;
   final String icon;
+  final double? tripDistanceKm;
+  final String? fromPlaceName;
+  final DateTime? tripStartTime;
 
   StayPoint({
     required this.id,
@@ -23,7 +26,31 @@ class StayPoint {
     this.departureTime,
     this.isCurrent = false,
     this.icon = '📍',
+    this.tripDistanceKm,
+    this.fromPlaceName,
+    this.tripStartTime,
   });
+
+  bool get hasTripLeg =>
+      tripDistanceKm != null &&
+      tripDistanceKm! >= 0.1 &&
+      fromPlaceName != null &&
+      fromPlaceName!.isNotEmpty &&
+      tripStartTime != null;
+
+  String get tripDistanceText {
+    if (tripDistanceKm == null) return '';
+    if (tripDistanceKm! < 1.0) {
+      return '${(tripDistanceKm! * 1000).round()} m';
+    }
+    return '${tripDistanceKm!.toStringAsFixed(1)} km';
+  }
+
+  String get tripTimeRangeText {
+    if (tripStartTime == null) return '';
+    final format = DateFormat('h:mm a');
+    return '${format.format(tripStartTime!)} – ${format.format(arrivalTime)}';
+  }
 
   String get durationText {
     final end = departureTime ?? DateTime.now();
@@ -55,6 +82,9 @@ class StayPoint {
         'departureTime': departureTime?.toIso8601String(),
         'isCurrent': isCurrent,
         'icon': icon,
+        if (tripDistanceKm != null) 'tripDistanceKm': tripDistanceKm,
+        if (fromPlaceName != null) 'fromPlaceName': fromPlaceName,
+        if (tripStartTime != null) 'tripStartTime': tripStartTime!.toIso8601String(),
       };
 
   factory StayPoint.fromJson(Map<String, dynamic> json) => StayPoint(
@@ -71,5 +101,10 @@ class StayPoint {
             : null,
         isCurrent: json['isCurrent'] as bool? ?? false,
         icon: json['icon'] as String? ?? '📍',
+        tripDistanceKm: (json['tripDistanceKm'] as num?)?.toDouble(),
+        fromPlaceName: json['fromPlaceName']?.toString(),
+        tripStartTime: json['tripStartTime'] != null
+            ? DateTime.parse(json['tripStartTime'] as String)
+            : null,
       );
 }

@@ -238,6 +238,22 @@ class WorldProvider extends ChangeNotifier {
   List<StayPoint> get myStayPoints => List.unmodifiable(_myStayPoints);
   List<StayPoint> get partnerStayPoints => List.unmodifiable(_partnerStayPoints);
 
+  List<StayPoint> get myStayPointsToday {
+    final start = _startOfToday;
+    return _myStayPoints.where((p) => (p.departureTime ?? DateTime.now()).isAfter(start)).toList();
+  }
+
+  List<StayPoint> get partnerStayPointsToday {
+    final start = _startOfToday;
+    return _partnerStayPoints.where((p) => (p.departureTime ?? DateTime.now()).isAfter(start)).toList();
+  }
+
+  double? _candidateLat;
+  double? _candidateLng;
+  DateTime? _candidateArrivalTime;
+  String? _candidatePlace;
+  DateTime? _lastDepartureTime;
+
   String get _stayPointsPrefKey => 'pages_stay_points_${_currentUserId ?? "me"}';
 
   Future<void> _persistStayPoints() async {
@@ -256,8 +272,8 @@ class WorldProvider extends ChangeNotifier {
         final list = jsonDecode(raw) as List<dynamic>;
         _myStayPoints.clear();
         _myStayPoints.addAll(list.map((e) => StayPoint.fromJson(Map<String, dynamic>.from(e as Map))));
-        final cutoff = DateTime.now().subtract(const Duration(days: 3));
-        _myStayPoints.removeWhere((p) => p.arrivalTime.isBefore(cutoff));
+        final cutoff = DateTime.now().subtract(const Duration(hours: 24));
+        _myStayPoints.removeWhere((p) => (p.departureTime ?? p.arrivalTime).isBefore(cutoff));
       }
     } catch (_) {}
   }
@@ -287,9 +303,13 @@ class WorldProvider extends ChangeNotifier {
     }
 
     final current = _myStayPoints.lastWhere((p) => p.isCurrent, orElse: () => _myStayPoints.last);
-    final distM = calculateDistanceKm(current.lat, current.lng, lat, lng) * 1000;
+    final distFromCurrentM = calculateDistanceKm(current.lat, current.lng, lat, lng) * 1000;
 
-    if (distM < 60) {
+    // Inside current spot (within 30m)
+    if (distFromCurrentM < 30) {
+      _candidateLat = null;
+      _candidateLng = null;
+      _candidateArrivalTime = null;
       if (cleanName != 'Current Spot' && cleanName != 'Nearby' && current.placeName != cleanName) {
         final idx = _myStayPoints.indexOf(current);
         _myStayPoints[idx] = StayPoint(
@@ -302,40 +322,84 @@ class WorldProvider extends ChangeNotifier {
           departureTime: current.departureTime,
           isCurrent: current.isCurrent,
           icon: current.icon,
+          tripDistanceKm: current.tripDistanceKm,
+          fromPlaceName: current.fromPlaceName,
+          tripStartTime: current.tripStartTime,
         );
         _persistStayPoints();
         notifyListeners();
       }
-    } else if (distM >= 120) {
+      return;
+    }
+
+    // User moved away by >= 100m from current stop
+    if (distFromCurrentM >= 100) {
       if (current.isCurrent) {
         current.departureTime = now;
         current.isCurrent = false;
-      }
-      String icon = '📍';
-      final lower = cleanName.toLowerCase();
-      if (lower.contains('cafe') || lower.contains('coffee')) {
-        icon = '☕';
-      } else if (lower.contains('home') || lower.contains('house')) {
-        icon = '🏡';
-      } else if (lower.contains('park') || lower.contains('garden')) {
-        icon = '🌿';
-      } else if (lower.contains('market') || lower.contains('mall') || lower.contains('shop')) {
-        icon = '🛍️';
+        _lastDepartureTime = now;
       }
 
-      final newPoint = StayPoint(
-        id: 'stay_${now.millisecondsSinceEpoch}',
-        userId: _currentUserId ?? 'me',
-        placeName: cleanName,
-        lat: lat,
-        lng: lng,
-        arrivalTime: now,
-        isCurrent: true,
-        icon: icon,
-      );
-      _myStayPoints.add(newPoint);
-      _persistStayPoints();
-      notifyListeners();
+      // Check candidate stop location (inside 25m)
+      if (_candidateLat == null || _candidateLng == null) {
+        _candidateLat = lat;
+        _candidateLng = lng;
+        _candidateArrivalTime = now;
+        _candidatePlace = cleanName;
+        return;
+      }
+
+      final distFromCandidateM = calculateDistanceKm(_candidateLat!, _candidateLng!, lat, lng) * 1000;
+      if (distFromCandidateM > 25) {
+        // Still moving/traveling, reset candidate to current position
+        _candidateLat = lat;
+        _candidateLng = lng;
+        _candidateArrivalTime = now;
+        _candidatePlace = cleanName;
+        return;
+      }
+
+      // User has stopped and stayed inside candidate 25m circle
+      final stayedMinutes = now.difference(_candidateArrivalTime!).inMinutes;
+      final speed = _locations[_currentUserId]?.speedMps ?? 0.0;
+      // Confirm stop if stayed >= 15 min OR stationary (< 0.6 m/s)
+      if (stayedMinutes >= 15 || speed < 0.6) {
+        String icon = '📍';
+        final lower = cleanName.toLowerCase();
+        if (lower.contains('cafe') || lower.contains('coffee')) {
+          icon = '☕';
+        } else if (lower.contains('home') || lower.contains('house')) {
+          icon = '🏡';
+        } else if (lower.contains('park') || lower.contains('garden')) {
+          icon = '🌿';
+        } else if (lower.contains('market') || lower.contains('mall') || lower.contains('shop')) {
+          icon = '🛍️';
+        }
+
+        final tripDistKm = calculateDistanceKm(current.lat, current.lng, lat, lng);
+        final tripStart = current.departureTime ?? _lastDepartureTime ?? _candidateArrivalTime!.subtract(const Duration(minutes: 10));
+
+        final newPoint = StayPoint(
+          id: 'stay_${now.millisecondsSinceEpoch}',
+          userId: _currentUserId ?? 'me',
+          placeName: cleanName,
+          lat: lat,
+          lng: lng,
+          arrivalTime: _candidateArrivalTime!,
+          isCurrent: true,
+          icon: icon,
+          tripDistanceKm: tripDistKm >= 0.1 ? tripDistKm : null,
+          fromPlaceName: current.placeName,
+          tripStartTime: tripDistKm >= 0.1 ? tripStart : null,
+        );
+
+        _myStayPoints.add(newPoint);
+        _persistStayPoints();
+        _candidateLat = null;
+        _candidateLng = null;
+        _candidateArrivalTime = null;
+        notifyListeners();
+      }
     }
   }
 
@@ -456,6 +520,54 @@ class WorldProvider extends ChangeNotifier {
     _partnerJourneyLog.removeWhere((p) => p.timestamp.isBefore(cutoff));
   }
 
+  DateTime get _startOfToday {
+    final now = DateTime.now();
+    return DateTime(now.year, now.month, now.day);
+  }
+
+  double _calcJourneyKmSince(List<JourneyPoint> log, DateTime since) {
+    final filtered = log.where((p) => p.timestamp.isAfter(since)).toList();
+    if (filtered.length < 2) return 0.0;
+    double total = 0.0;
+    for (int i = 1; i < filtered.length; i++) {
+      final d = calculateDistanceKm(
+        filtered[i - 1].lat, filtered[i - 1].lng,
+        filtered[i].lat, filtered[i].lng,
+      );
+      if (d > 0.035) {
+        total += d;
+      }
+    }
+    return total;
+  }
+
+  double _calcWalkingKmSince(List<JourneyPoint> log, DateTime since) {
+    final filtered = log.where((p) => p.timestamp.isAfter(since)).toList();
+    if (filtered.length < 2) return 0.0;
+    double total = 0.0;
+    for (int i = 1; i < filtered.length; i++) {
+      final p1 = filtered[i - 1];
+      final p2 = filtered[i];
+      if (p2.speedMps > 5.0 || p1.speedMps > 5.0) continue;
+      final d = calculateDistanceKm(
+        p1.lat, p1.lng,
+        p2.lat, p2.lng,
+      );
+      if (d > 0.035 && d < 1.0) {
+        total += d;
+      }
+    }
+    return total;
+  }
+
+  int _countAreasSince(List<JourneyPoint> log, DateTime since) {
+    final cities = log
+        .where((p) => p.timestamp.isAfter(since) && p.city.isNotEmpty)
+        .map((p) => p.city)
+        .toSet();
+    return cities.isEmpty ? 0 : cities.length;
+  }
+
   double _calcJourneyKm(List<JourneyPoint> log, Duration period) {
     final since = DateTime.now().subtract(period);
     final filtered = log.where((p) => p.timestamp.isAfter(since)).toList();
@@ -504,25 +616,57 @@ class WorldProvider extends ChangeNotifier {
     return cities.isEmpty ? 0 : cities.length;
   }
 
-  // ── Public journey getters ──────────────────────────────────────────────────
-  double get myJourneyKmToday     => _calcJourneyKm(_myJourneyLog, const Duration(hours: 24));
+  // ── Public journey getters (Refreshes each day at 12:00 AM midnight) ────────
+  double get myJourneyKmToday     => _calcJourneyKmSince(_myJourneyLog, _startOfToday);
   double get myJourneyKmThisWeek  => _calcJourneyKm(_myJourneyLog, const Duration(days: 7));
   double get myJourneyKmThisMonth => _calcJourneyKm(_myJourneyLog, const Duration(days: 30));
 
-  double get myWalkingKmToday     => _calcWalkingKm(_myJourneyLog, const Duration(hours: 24));
+  double get myWalkingKmToday     => _calcWalkingKmSince(_myJourneyLog, _startOfToday);
   double get myWalkingKmThisWeek  => _calcWalkingKm(_myJourneyLog, const Duration(days: 7));
   double get myWalkingKmThisMonth => _calcWalkingKm(_myJourneyLog, const Duration(days: 30));
 
-  int get myAreasVisitedToday     => _countAreas(_myJourneyLog, const Duration(hours: 24));
+  int get myAreasVisitedToday     => _countAreasSince(_myJourneyLog, _startOfToday);
   int get myAreasVisitedThisWeek  => _countAreas(_myJourneyLog, const Duration(days: 7));
   int get myAreasVisitedThisMonth => _countAreas(_myJourneyLog, const Duration(days: 30));
 
-  double get partnerJourneyKmToday     => _calcJourneyKm(_partnerJourneyLog, const Duration(hours: 24));
+  double get partnerJourneyKmToday     => _calcJourneyKmSince(_partnerJourneyLog, _startOfToday);
   double get partnerJourneyKmThisWeek  => _calcJourneyKm(_partnerJourneyLog, const Duration(days: 7));
   double get partnerJourneyKmThisMonth => _calcJourneyKm(_partnerJourneyLog, const Duration(days: 30));
 
   int get myStepsToday => (myWalkingKmToday * 1300).round();
   int get myActiveMinutesToday => (myWalkingKmToday / 4.5 * 60).round();
+
+  /// True ONLY when currently physically traveling (> 3 km/h or recent displacement)
+  bool get isMyMoving {
+    final my = myLocation;
+    if (my == null) return false;
+    if ((my.speedMps ?? 0.0) >= 0.8) return true;
+    if (_myJourneyLog.length >= 2) {
+      final now = DateTime.now();
+      final recent = _myJourneyLog.where((p) => now.difference(p.timestamp).inMinutes <= 3).toList();
+      if (recent.length >= 2) {
+        final d = calculateDistanceKm(recent.first.lat, recent.first.lng, recent.last.lat, recent.last.lng) * 1000;
+        if (d >= 35.0) return true;
+      }
+    }
+    return false;
+  }
+
+  /// True ONLY when partner is currently physically moving
+  bool get isPartnerMoving {
+    final pLoc = partnerLocation;
+    if (pLoc == null) return false;
+    if ((pLoc.speedMps ?? 0.0) >= 0.8) return true;
+    if (_partnerJourneyLog.length >= 2) {
+      final now = DateTime.now();
+      final recent = _partnerJourneyLog.where((p) => now.difference(p.timestamp).inMinutes <= 3).toList();
+      if (recent.length >= 2) {
+        final d = calculateDistanceKm(recent.first.lat, recent.first.lng, recent.last.lat, recent.last.lng) * 1000;
+        if (d >= 35.0) return true;
+      }
+    }
+    return false;
+  }
 
   double get effectivePartnerJourneyKm {
     if (_partnerId != null && _locations[_partnerId]?.journeyKmToday != null) {
@@ -723,7 +867,12 @@ class WorldProvider extends ChangeNotifier {
         }
         // Accumulate partner's position into their journey log
         _appendPartnerPoint(loc.lat, loc.lng, speedMps: loc.speedMps ?? 0.0);
-        _recordPartnerStayPoint(loc.lat, loc.lng, loc.placeName ?? '');
+        if (loc.stayPoints != null && loc.stayPoints!.isNotEmpty) {
+          _partnerStayPoints.clear();
+          _partnerStayPoints.addAll(loc.stayPoints!.map((m) => StayPoint.fromJson(m)));
+        } else {
+          _recordPartnerStayPoint(loc.lat, loc.lng, loc.placeName ?? '');
+        }
         _syncSameRoofAddresses();
         _checkPartnerGeofence(loc);
         if (_partnerWeather == null) {
@@ -959,6 +1108,8 @@ class WorldProvider extends ChangeNotifier {
       _firstPlaceNameToday = _cachedPlaceName;
     }
 
+    _recordMyStayPoint(position.latitude, position.longitude, _cachedPlaceName);
+
     final myLocation = UserLocationData(
       userId: _currentUserId!,
       nickname: _currentNickname ?? 'You',
@@ -978,10 +1129,10 @@ class WorldProvider extends ChangeNotifier {
       departurePlace: _firstPlaceNameToday ?? _cachedPlaceName,
       timeZoneOffsetMinutes: DateTime.now().timeZoneOffset.inMinutes,
       speedMps: position.speed >= 0 ? position.speed : 0.0,
+      stayPoints: _myStayPoints.map((s) => s.toJson()).toList(),
     );
 
     _locations[_currentUserId!] = myLocation;
-    _recordMyStayPoint(position.latitude, position.longitude, _cachedPlaceName);
     _syncSameRoofAddresses();
     notifyListeners();
 
