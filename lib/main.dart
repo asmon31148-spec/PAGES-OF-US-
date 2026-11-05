@@ -285,8 +285,6 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold> with Wi
   Widget build(BuildContext context) {
     final isDark = context.watch<ThemeProvider>().isDark;
     final authProvider = context.watch<AuthProvider>();
-    final isVaultTab = _currentIndex == 3;
-    final isDarkScreen = isVaultTab || isDark;
 
     // Reactively connect space listeners whenever user pairs or space changes
     final space = authProvider.space;
@@ -337,12 +335,10 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold> with Wi
 
     final systemOverlay = SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
-      statusBarIconBrightness: isDarkScreen ? Brightness.light : Brightness.dark,
-      statusBarBrightness: isDarkScreen ? Brightness.dark : Brightness.light,
-      systemNavigationBarColor: isVaultTab
-          ? const Color(0xFF130F1A)
-          : (isDark ? AppColors.darkSurface : AppColors.lightSurface),
-      systemNavigationBarIconBrightness: isDarkScreen ? Brightness.light : Brightness.dark,
+      statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+      statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
+      systemNavigationBarColor: Colors.transparent,
+      systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
     );
 
     final screens = [
@@ -378,6 +374,7 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold> with Wi
         value: systemOverlay,
         child: Scaffold(
           backgroundColor: Colors.transparent,
+          extendBody: true,
           body: SharedLivingThemeBackground(
             child: IndexedStack(
               index: _currentIndex,

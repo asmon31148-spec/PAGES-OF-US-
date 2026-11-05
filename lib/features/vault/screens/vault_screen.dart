@@ -446,81 +446,89 @@ class _VaultScreenState extends State<VaultScreen> {
     final partnerCount = vaults.where((v) => v.creatorId.isNotEmpty && v.creatorId != currentUserId).length;
     final lockedCount = vaults.where((v) => vaultProvider.isVaultLocked(v, currentUserId)).length;
 
-    return GlassAmbientBackground(
-      fallbackColor: const Color(0xFFD4AF37),
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        body: SafeArea(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // 1. Top Bar with Frosted Glass Elegance
-              AppTopBar(
-                onAvatarTap: _openProfileModal,
-                overrideTitle: 'Our Vaults',
-                overrideSubtitle: '$allCount vaults · $lockedCount locked',
-                showThemeToggle: false,
-                forceDark: true,
-              ),
+    final themeProvider = context.watch<ThemeProvider>();
+    final isDark = themeProvider.isDark;
+    final palette = themeProvider.currentPalette;
 
-              // 2. Liquid Glass Filter Chips Row
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
-                child: Row(
-                  children: [
-                    _buildFilterChip(
-                      label: 'All ($allCount)',
-                      isActive: activeFilter == 'all',
-                      onTap: () => vaultProvider.setFilter('all'),
-                    ),
-                    const SizedBox(width: 8),
-                    _buildFilterChip(
-                      label: 'By You ($mineCount)',
-                      isActive: activeFilter == 'mine',
-                      onTap: () => vaultProvider.setFilter('mine'),
-                    ),
-                    const SizedBox(width: 8),
-                    _buildFilterChip(
-                      label: 'By $partnerNickname ($partnerCount)',
-                      isActive: activeFilter == 'partner',
-                      onTap: () => vaultProvider.setFilter('partner'),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 6),
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      body: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // 1. Top Bar with Frosted Glass Elegance
+            AppTopBar(
+              onAvatarTap: _openProfileModal,
+              overrideTitle: 'Our Vaults',
+              overrideSubtitle: '$allCount vaults · $lockedCount locked',
+              showThemeToggle: true,
+            ),
 
-              // 3. 2-Column Liquid Glass Grid
-              Expanded(
-                child: GridView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    crossAxisSpacing: 14,
-                    mainAxisSpacing: 14,
-                    childAspectRatio: 0.74,
+            // 2. Liquid Glass Filter Chips Row
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+              child: Row(
+                children: [
+                  _buildFilterChip(
+                    label: 'All ($allCount)',
+                    isActive: activeFilter == 'all',
+                    onTap: () => vaultProvider.setFilter('all'),
+                    isDark: isDark,
+                    accentColor: palette.accentColor,
                   ),
-                  itemCount: filteredVaults.length + 1, // +1 for "+ New vault" card
-                  itemBuilder: (context, index) {
-                    if (index == filteredVaults.length) {
-                      return _buildNewVaultDashedCard();
-                    }
-
-                    final vault = filteredVaults[index];
-                    final isLocked = vaultProvider.isVaultLocked(vault, currentUserId);
-                    return _buildVaultCard(
-                      vault: vault,
-                      isLocked: isLocked,
-                      currentUserId: currentUserId,
-                      partnerNickname: partnerNickname,
-                      onTap: () => _onVaultTapped(vault, currentUserId, partnerNickname, spaceId, userNickname),
-                      onLongPress: () => _confirmDeleteVaultFromGrid(vault, spaceId),
-                    );
-                  },
-                ),
+                  const SizedBox(width: 8),
+                  _buildFilterChip(
+                    label: 'By You ($mineCount)',
+                    isActive: activeFilter == 'mine',
+                    onTap: () => vaultProvider.setFilter('mine'),
+                    isDark: isDark,
+                    accentColor: palette.accentColor,
+                  ),
+                  const SizedBox(width: 8),
+                  _buildFilterChip(
+                    label: 'By $partnerNickname ($partnerCount)',
+                    isActive: activeFilter == 'partner',
+                    onTap: () => vaultProvider.setFilter('partner'),
+                    isDark: isDark,
+                    accentColor: palette.accentColor,
+                  ),
+                ],
               ),
-            ],
-          ),
+            ),
+            const SizedBox(height: 6),
+
+            // 3. 2-Column Liquid Glass Grid
+            Expanded(
+              child: GridView.builder(
+                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  crossAxisSpacing: 14,
+                  mainAxisSpacing: 14,
+                  childAspectRatio: 0.74,
+                ),
+                itemCount: filteredVaults.length + 1, // +1 for "+ New vault" card
+                itemBuilder: (context, index) {
+                  if (index == filteredVaults.length) {
+                    return _buildNewVaultDashedCard(isDark: isDark, accentColor: palette.accentColor);
+                  }
+
+                  final vault = filteredVaults[index];
+                  final isLocked = vaultProvider.isVaultLocked(vault, currentUserId);
+                  return _buildVaultCard(
+                    vault: vault,
+                    isLocked: isLocked,
+                    currentUserId: currentUserId,
+                    partnerNickname: partnerNickname,
+                    onTap: () => _onVaultTapped(vault, currentUserId, partnerNickname, spaceId, userNickname),
+                    onLongPress: () => _confirmDeleteVaultFromGrid(vault, spaceId),
+                    isDark: isDark,
+                    accentColor: palette.accentColor,
+                  );
+                },
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -532,6 +540,8 @@ class _VaultScreenState extends State<VaultScreen> {
     required String label,
     required bool isActive,
     required VoidCallback onTap,
+    required bool isDark,
+    required Color accentColor,
   }) {
     return GestureDetector(
       onTap: () {
@@ -549,34 +559,39 @@ class _VaultScreenState extends State<VaultScreen> {
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: [
-                    const Color(0xFFD4AF37).withOpacity(0.28),
-                    const Color(0xFFD4AF37).withOpacity(0.10),
+                    accentColor.withOpacity(isDark ? 0.35 : 0.22),
+                    accentColor.withOpacity(isDark ? 0.14 : 0.08),
                   ],
                 )
               : LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [
-                    Colors.white.withOpacity(0.10),
-                    Colors.white.withOpacity(0.04),
-                  ],
+                  colors: isDark
+                      ? [
+                          Colors.white.withOpacity(0.10),
+                          Colors.white.withOpacity(0.04),
+                        ]
+                      : [
+                          Colors.white.withOpacity(0.70),
+                          Colors.white.withOpacity(0.40),
+                        ],
                 ),
           border: Border.all(
             color: isActive
-                ? const Color(0xFFD4AF37).withOpacity(0.70)
-                : Colors.white.withOpacity(0.20),
+                ? accentColor.withOpacity(0.70)
+                : (isDark ? Colors.white.withOpacity(0.20) : Colors.white.withOpacity(0.60)),
             width: isActive ? 1.2 : 0.8,
           ),
           boxShadow: [
             if (isActive)
               BoxShadow(
-                color: const Color(0xFFD4AF37).withOpacity(0.25),
+                color: accentColor.withOpacity(0.25),
                 blurRadius: 12,
                 offset: const Offset(0, 3),
               )
             else
               BoxShadow(
-                color: Colors.black.withOpacity(0.18),
+                color: isDark ? Colors.black.withOpacity(0.18) : const Color(0xFF8C7355).withOpacity(0.08),
                 blurRadius: 8,
                 offset: const Offset(0, 2),
               ),
@@ -589,9 +604,9 @@ class _VaultScreenState extends State<VaultScreen> {
               Container(
                 width: 5,
                 height: 5,
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: Color(0xFFD4AF37),
+                  color: accentColor,
                 ),
               ),
               const SizedBox(width: 6),
@@ -599,7 +614,9 @@ class _VaultScreenState extends State<VaultScreen> {
             Text(
               label,
               style: TextStyle(
-                color: isActive ? Colors.white : Colors.white.withOpacity(0.75),
+                color: isActive
+                    ? (isDark ? Colors.white : accentColor)
+                    : (isDark ? Colors.white.withOpacity(0.75) : const Color(0xFF52525B)),
                 fontSize: 12,
                 fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
                 letterSpacing: 0.2,
@@ -739,6 +756,8 @@ class _VaultScreenState extends State<VaultScreen> {
     required String partnerNickname,
     required VoidCallback onTap,
     required VoidCallback onLongPress,
+    required bool isDark,
+    required Color accentColor,
   }) {
     final isOwner = vault.creatorId.isEmpty || vault.creatorId == currentUserId;
     final creatorLabel = isOwner ? 'By You' : 'By $partnerNickname';
@@ -772,20 +791,25 @@ class _VaultScreenState extends State<VaultScreen> {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [
-              Colors.white.withOpacity(0.16),
-              Colors.white.withOpacity(0.04),
-            ],
+            colors: isDark
+                ? [
+                    Colors.white.withOpacity(0.16),
+                    Colors.white.withOpacity(0.04),
+                  ]
+                : [
+                    Colors.white.withOpacity(0.85),
+                    Colors.white.withOpacity(0.55),
+                  ],
           ),
           border: Border.all(
             color: isLocked
-                ? const Color(0xFFD4AF37).withOpacity(0.35)
-                : Colors.white.withOpacity(0.24),
+                ? (const Color(0xFFD4AF37).withOpacity(0.45))
+                : (isDark ? Colors.white.withOpacity(0.24) : Colors.white.withOpacity(0.80)),
             width: 1.0,
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.32),
+              color: isDark ? Colors.black.withOpacity(0.32) : const Color(0xFF8C7355).withOpacity(0.10),
               blurRadius: 16,
               offset: const Offset(0, 6),
             ),
@@ -981,7 +1005,7 @@ class _VaultScreenState extends State<VaultScreen> {
 
   // --- Liquid Glass "+ New vault" Action Card ---
 
-  Widget _buildNewVaultDashedCard() {
+  Widget _buildNewVaultDashedCard({required bool isDark, required Color accentColor}) {
     return GestureDetector(
       onTap: () {
         HapticFeedback.lightImpact();
@@ -993,18 +1017,23 @@ class _VaultScreenState extends State<VaultScreen> {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [
-              Colors.white.withOpacity(0.12),
-              Colors.white.withOpacity(0.04),
-            ],
+            colors: isDark
+                ? [
+                    Colors.white.withOpacity(0.12),
+                    Colors.white.withOpacity(0.04),
+                  ]
+                : [
+                    Colors.white.withOpacity(0.80),
+                    Colors.white.withOpacity(0.45),
+                  ],
           ),
           border: Border.all(
-            color: const Color(0xFFD4AF37).withOpacity(0.45),
+            color: accentColor.withOpacity(0.45),
             width: 1.2,
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.25),
+              color: isDark ? Colors.black.withOpacity(0.25) : const Color(0xFF8C7355).withOpacity(0.08),
               blurRadius: 14,
               offset: const Offset(0, 5),
             ),
@@ -1022,28 +1051,28 @@ class _VaultScreenState extends State<VaultScreen> {
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: [
-                    const Color(0xFFD4AF37).withOpacity(0.30),
-                    const Color(0xFFD4AF37).withOpacity(0.08),
+                    accentColor.withOpacity(0.30),
+                    accentColor.withOpacity(0.08),
                   ],
                 ),
                 border: Border.all(
-                  color: const Color(0xFFD4AF37).withOpacity(0.65),
+                  color: accentColor.withOpacity(0.65),
                   width: 1.2,
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFFD4AF37).withOpacity(0.25),
+                    color: accentColor.withOpacity(0.25),
                     blurRadius: 14,
                   ),
                 ],
               ),
-              child: const Icon(Icons.add_rounded, color: Color(0xFFD4AF37), size: 26),
+              child: Icon(Icons.add_rounded, color: accentColor, size: 26),
             ),
             const SizedBox(height: 12),
-            const Text(
+            Text(
               'New vault',
               style: TextStyle(
-                color: Colors.white,
+                color: isDark ? Colors.white : Colors.black87,
                 fontSize: 14,
                 fontWeight: FontWeight.w700,
                 letterSpacing: -0.2,
@@ -1053,7 +1082,7 @@ class _VaultScreenState extends State<VaultScreen> {
             Text(
               'Lock memories for later',
               style: TextStyle(
-                color: Colors.white.withOpacity(0.55),
+                color: isDark ? Colors.white.withOpacity(0.55) : const Color(0xFF71717A),
                 fontSize: 11,
               ),
             ),
