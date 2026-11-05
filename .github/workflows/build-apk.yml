@@ -149,12 +149,13 @@ jobs:
 
       - name: Release APK to GitHub Releases
         uses: softprops/action-gh-release@v2
-        if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/flutter-migration'
+        if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main'
         with:
           tag_name: v${{ steps.app_version.outputs.version }}
           target_commitish: ${{ github.sha }}
           name: "Pages of Us v${{ steps.app_version.outputs.version }} — Sanctuary Edition"
           make_latest: true
+          overwrite: true
           body: |
             ### ✨ What is New in Pages of Us v${{ steps.app_version.outputs.version }}
 
