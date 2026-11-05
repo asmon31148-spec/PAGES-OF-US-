@@ -489,57 +489,101 @@ class ThemePickerScreen extends StatelessWidget {
     ];
 
     return Column(
-      children: levels.map((level) {
-        final isSelected = themeProvider.performanceLevel == level;
-        return Container(
-          margin: const EdgeInsets.only(bottom: 8),
-          child: LiquidGlassCard(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            radius: 18,
-            onTap: () {
-              HapticFeedback.selectionClick();
-              themeProvider.setPerformanceLevel(
-                level,
-                spaceId: spaceId,
-                userId: userId,
-                userName: userName,
-              );
-            },
-            child: Row(
-              children: [
-                Icon(
-                  isSelected ? Icons.radio_button_checked_rounded : Icons.radio_button_off_rounded,
-                  color: isSelected ? palette.accentColor : palette.secondaryText,
-                  size: 20,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        level.displayName,
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
-                          color: palette.primaryText,
-                        ),
-                      ),
-                      Text(
-                        level.description,
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: palette.secondaryText,
-                        ),
-                      ),
-                    ],
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // 1. Live Interactive Fluidity Preview Box
+        LivingAtmospherePreview(
+          palette: palette,
+          performance: themeProvider.performanceLevel,
+          isDark: isDark,
+        ),
+        const SizedBox(height: 12),
+
+        // 2. Selectable Mode Cards
+        ...levels.map((level) {
+          final isSelected = themeProvider.performanceLevel == level;
+          return Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            child: LiquidGlassCard(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              radius: 18,
+              tint: isSelected ? palette.accentColor.withOpacity(0.12) : null,
+              onTap: () {
+                HapticFeedback.selectionClick();
+                themeProvider.setPerformanceLevel(
+                  level,
+                  spaceId: spaceId,
+                  userId: userId,
+                  userName: userName,
+                );
+              },
+              child: Row(
+                children: [
+                  Icon(
+                    isSelected ? Icons.radio_button_checked_rounded : Icons.radio_button_off_rounded,
+                    color: isSelected ? palette.accentColor : palette.secondaryText,
+                    size: 20,
                   ),
-                ),
-              ],
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Text(
+                              level.displayName,
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: palette.primaryText,
+                              ),
+                            ),
+                            if (isSelected) ...[
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(8),
+                                  color: palette.accentColor.withOpacity(0.20),
+                                  border: Border.all(
+                                    color: palette.accentColor.withOpacity(0.40),
+                                    width: 0.8,
+                                  ),
+                                ),
+                                child: Text(
+                                  'Active',
+                                  style: TextStyle(
+                                    fontSize: 9.5,
+                                    fontWeight: FontWeight.bold,
+                                    color: palette.accentColor,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          level == ThemePerformanceLevel.full
+                              ? 'Living moving blobs & subtle organic drift at 30 fps'
+                              : level == ThemePerformanceLevel.balanced
+                                  ? 'Gentle slow ambient pulse with lower GPU cycles'
+                                  : 'Static frozen gradient with zero animation overhead',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: isSelected ? palette.primaryText.withOpacity(0.85) : palette.secondaryText,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-        );
-      }).toList(),
+          );
+        }),
+      ],
     );
   }
 }
