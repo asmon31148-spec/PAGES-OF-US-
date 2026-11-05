@@ -16,7 +16,9 @@ class CustomBottomNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = context.watch<ThemeProvider>().isDark;
+    final themeProvider = context.watch<ThemeProvider>();
+    final isDark = themeProvider.isDark;
+    final palette = themeProvider.currentPalette;
     final isVault = currentIndex == 3;
 
     final tabs = [
@@ -29,19 +31,21 @@ class CustomBottomNav extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: isVault
-            ? const Color(0xFF130F1A)
-            : (isDark ? const Color(0xFF10131B) : Colors.white),
+            ? const Color(0xFF130F1A).withOpacity(0.88)
+            : (isDark
+                ? palette.cardBackground.withOpacity(0.82)
+                : Colors.white.withOpacity(0.86)),
         border: Border(
           top: BorderSide(
             color: isVault
                 ? const Color(0x66E89A8A)
-                : (isDark ? Colors.white.withOpacity(0.24) : Colors.black.withOpacity(0.08)),
-            width: 1.2,
+                : (isDark ? Colors.white.withOpacity(0.25) : Colors.black.withOpacity(0.08)),
+            width: 1.0,
           ),
         ),
         boxShadow: [
           BoxShadow(
-            color: isDark ? Colors.black.withOpacity(0.45) : Colors.black.withOpacity(0.06),
+            color: isDark ? Colors.black.withOpacity(0.35) : Colors.black.withOpacity(0.05),
             blurRadius: 18,
             offset: const Offset(0, -4),
           ),
@@ -67,12 +71,12 @@ class CustomBottomNav extends StatelessWidget {
                 dotColor = isSelected ? const Color(0xFFD4AF37) : Colors.transparent;
               } else {
                 iconColor = isSelected
-                    ? AppColors.terra
+                    ? palette.accentColor
                     : (isDark ? Colors.white.withOpacity(0.65) : const Color(0xFF6B7280));
                 textColor = isSelected
-                    ? (isDark ? Colors.white : AppColors.terra)
+                    ? (isDark ? Colors.white : palette.accentColor)
                     : (isDark ? Colors.white.withOpacity(0.65) : const Color(0xFF6B7280));
-                dotColor = isSelected ? AppColors.terra : Colors.transparent;
+                dotColor = isSelected ? palette.accentColor : Colors.transparent;
               }
 
               return GestureDetector(
@@ -90,17 +94,30 @@ class CustomBottomNav extends StatelessWidget {
                         ? (isVault
                             ? const Color(0xFFD4AF37).withOpacity(0.20)
                             : (isDark
-                                ? AppColors.terra.withOpacity(0.24)
-                                : AppColors.terra.withOpacity(0.14)))
+                                ? palette.accentColor.withOpacity(0.24)
+                                : palette.accentColor.withOpacity(0.14)))
                         : Colors.transparent,
                     borderRadius: BorderRadius.circular(20),
                     border: isSelected
                         ? Border.all(
                             color: isVault
                                 ? const Color(0xFFD4AF37).withOpacity(0.50)
-                                : AppColors.terra.withOpacity(0.45),
-                            width: 1.2,
+                                : (isDark
+                                    ? palette.accentColor.withOpacity(0.55)
+                                    : palette.accentColor.withOpacity(0.40)),
+                            width: 1,
                           )
+                        : null,
+                    boxShadow: isSelected
+                        ? [
+                            BoxShadow(
+                              color: isVault
+                                  ? const Color(0xFFD4AF37).withOpacity(0.25)
+                                  : palette.accentColor.withOpacity(0.20),
+                              blurRadius: 10,
+                              offset: const Offset(0, 3),
+                            ),
+                          ]
                         : null,
                   ),
                   child: Column(
@@ -115,27 +132,19 @@ class CustomBottomNav extends StatelessWidget {
                       Text(
                         tab['label'] as String,
                         style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                          fontSize: 10.5,
+                          fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                           color: textColor,
+                          letterSpacing: 0.2,
                         ),
                       ),
                       const SizedBox(height: 2),
-                      AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        width: isSelected ? 4 : 0,
+                      Container(
+                        width: 4,
                         height: 4,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           color: dotColor,
-                          boxShadow: isSelected
-                              ? [
-                                  BoxShadow(
-                                    color: dotColor.withOpacity(0.6),
-                                    blurRadius: 4,
-                                  ),
-                                ]
-                              : null,
                         ),
                       ),
                     ],

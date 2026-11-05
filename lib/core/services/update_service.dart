@@ -25,7 +25,7 @@ class UpdateInfo {
 
 class UpdateService {
   // Fallback version in case native platform package info is unreachable
-  static const String fallbackCurrentVersion = '1.0.84';
+  static const String fallbackCurrentVersion = '1.0.85';
   static const String currentVersion = fallbackCurrentVersion;
 
   // Distribution repository

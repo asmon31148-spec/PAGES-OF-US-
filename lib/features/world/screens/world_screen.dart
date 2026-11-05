@@ -249,7 +249,7 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
         }
       },
       child: Scaffold(
-        backgroundColor: isDark ? AppColors.darkBg : AppColors.lightBg,
+        backgroundColor: Colors.transparent,
         body: SafeArea(
           child: _isFullScreenMap
               ? _buildMapCard(

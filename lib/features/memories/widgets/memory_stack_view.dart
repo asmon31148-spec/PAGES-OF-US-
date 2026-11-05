@@ -315,15 +315,15 @@ class _MemoryStackViewState extends State<MemoryStackView> {
     bool isDark,
   ) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 10, 16, 40),
+      padding: const EdgeInsets.fromLTRB(18, 10, 18, 40),
       child: GridView.builder(
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: 2,
-          crossAxisSpacing: 14,
-          mainAxisSpacing: 14,
-          childAspectRatio: 0.82,
+          crossAxisSpacing: 16,
+          mainAxisSpacing: 16,
+          childAspectRatio: 0.80,
         ),
         itemCount: memories.length,
         itemBuilder: (context, index) {
@@ -354,7 +354,7 @@ class _MemoryStackViewState extends State<MemoryStackView> {
                 gradient: LiquidGlassTheme.specularBorder(isDark),
                 boxShadow: LiquidGlassTheme.cardShadow(isDark),
               ),
-              padding: const EdgeInsets.all(1.0),
+              padding: const EdgeInsets.all(1.2),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(21),
                 child: Container(
@@ -362,7 +362,7 @@ class _MemoryStackViewState extends State<MemoryStackView> {
                     gradient: LiquidGlassTheme.cardGloss(isDark),
                     borderRadius: BorderRadius.circular(21),
                   ),
-                  padding: const EdgeInsets.all(4.5), // Apple Glass floating bezel
+                  padding: const EdgeInsets.all(5.5), // Apple Glass floating bezel
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(16.5),
                     child: Stack(
