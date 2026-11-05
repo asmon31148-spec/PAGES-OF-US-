@@ -397,30 +397,24 @@ class _MemoryStackViewState extends State<MemoryStackView> {
                           _buildFilmFallback(memory, isDark),
                         // Dark tint
                         Container(color: Colors.black.withOpacity(0.25)),
-                        // Centered Play Pip
+                        // Centered Play Pip (GPU-optimized zero BackdropFilter)
                         Center(
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(22),
-                            child: BackdropFilter(
-                              filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
-                              child: Container(
-                                width: 44,
-                                height: 44,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: Colors.black.withOpacity(0.45),
-                                  border: Border.all(color: Colors.white.withOpacity(0.45), width: 1.2),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withOpacity(0.35),
-                                      blurRadius: 10,
-                                    ),
-                                  ],
+                          child: Container(
+                            width: 44,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Colors.black.withOpacity(0.50),
+                              border: Border.all(color: Colors.white.withOpacity(0.45), width: 1.2),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.35),
+                                  blurRadius: 10,
                                 ),
-                                child: const Center(
-                                  child: Icon(Icons.play_arrow_rounded, color: Colors.white, size: 26),
-                                ),
-                              ),
+                              ],
+                            ),
+                            child: const Center(
+                              child: Icon(Icons.play_arrow_rounded, color: Colors.white, size: 26),
                             ),
                           ),
                         ),
@@ -434,40 +428,34 @@ class _MemoryStackViewState extends State<MemoryStackView> {
                   Positioned(
                     top: 8,
                     right: 8,
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(10),
-                      child: BackdropFilter(
-                        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3.5),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withOpacity(0.45),
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: Colors.white.withOpacity(0.3), width: 0.8),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3.5),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.55),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.white.withOpacity(0.3), width: 0.8),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            memory.mediaType == 'video'
+                                ? Icons.videocam_rounded
+                                : (memory.mediaType == 'audio' ? Icons.graphic_eq_rounded : Icons.photo_camera_rounded),
+                            size: 11,
+                            color: Colors.white,
                           ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                memory.mediaType == 'video'
-                                    ? Icons.videocam_rounded
-                                    : (memory.mediaType == 'audio' ? Icons.graphic_eq_rounded : Icons.photo_camera_rounded),
-                                size: 11,
-                                color: Colors.white,
-                              ),
-                              const SizedBox(width: 3.5),
-                              Text(
-                                memory.mediaType.toUpperCase(),
-                                style: const TextStyle(
-                                  fontSize: 8.5,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                  letterSpacing: 0.4,
-                                ),
-                              ),
-                            ],
+                          const SizedBox(width: 3.5),
+                          Text(
+                            memory.mediaType.toUpperCase(),
+                            style: const TextStyle(
+                              fontSize: 8.5,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                              letterSpacing: 0.4,
+                            ),
                           ),
-                        ),
+                        ],
                       ),
                     ),
                   ),
@@ -477,47 +465,41 @@ class _MemoryStackViewState extends State<MemoryStackView> {
                     bottom: 0,
                     left: 0,
                     right: 0,
-                    child: ClipRRect(
-                      borderRadius: const BorderRadius.vertical(bottom: Radius.circular(19)),
-                      child: BackdropFilter(
-                        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                        child: Container(
-                          padding: const EdgeInsets.fromLTRB(10, 14, 10, 8),
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: [
-                                Colors.transparent,
-                                Colors.black.withOpacity(0.8),
-                              ],
+                    child: Container(
+                      padding: const EdgeInsets.fromLTRB(10, 14, 10, 8),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.transparent,
+                            Colors.black.withOpacity(0.85),
+                          ],
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            memory.title.isNotEmpty ? memory.title : 'Memory',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
                             ),
                           ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                memory.title.isNotEmpty ? memory.title : 'Memory',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                              ),
-                              const SizedBox(height: 1),
-                              Text(
-                                memory.createdAt.split('T').first,
-                                style: TextStyle(
-                                  fontSize: 9.5,
-                                  color: Colors.white.withOpacity(0.75),
-                                ),
-                              ),
-                            ],
+                          const SizedBox(height: 1),
+                          Text(
+                            memory.createdAt.split('T').first,
+                            style: TextStyle(
+                              fontSize: 9.5,
+                              color: Colors.white.withOpacity(0.75),
+                            ),
                           ),
-                        ),
+                        ],
                       ),
                     ),
                   ),
