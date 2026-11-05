@@ -980,42 +980,49 @@ class _NewVaultScreenState extends State<NewVaultScreen> {
   }
 
   Widget _buildPhotosHorizontalList() {
+    final remoteCount = _remotePhotos.length;
+    final localCount = _localPhotos.length;
+    final totalCount = 1 + remoteCount + localCount;
+
     return SizedBox(
       height: 90,
-      child: ListView(
+      child: ListView.builder(
         scrollDirection: Axis.horizontal,
-        children: [
-          // Add photos button
-          InkWell(
-            onTap: _pickMultiplePhotos,
-            borderRadius: BorderRadius.circular(12),
-            child: Container(
-              width: 80,
-              height: 90,
-              decoration: BoxDecoration(
-                color: const Color(0xFF16141F),
+        itemCount: totalCount,
+        itemBuilder: (context, index) {
+          if (index == 0) {
+            return Padding(
+              padding: const EdgeInsets.only(right: 10),
+              child: InkWell(
+                onTap: _pickMultiplePhotos,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.white24),
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.add_rounded, color: Color(0xFFD4AF37), size: 24),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Add photos',
-                    style: TextStyle(color: Colors.white.withOpacity(0.65), fontSize: 10),
+                child: Container(
+                  width: 80,
+                  height: 90,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF16141F),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.white24),
                   ),
-                ],
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.add_rounded, color: Color(0xFFD4AF37), size: 24),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Add photos',
+                        style: TextStyle(color: Colors.white.withOpacity(0.65), fontSize: 10),
+                      ),
+                    ],
+                  ),
+                ),
               ),
-            ),
-          ),
-          const SizedBox(width: 10),
+            );
+          }
 
-          // Existing remote photos
-          ..._remotePhotos.asMap().entries.map((entry) {
-            final idx = entry.key;
-            final url = entry.value;
+          final adjustedIndex = index - 1;
+          if (adjustedIndex < remoteCount) {
+            final url = _remotePhotos[adjustedIndex];
             return Padding(
               padding: const EdgeInsets.only(right: 10),
               child: Stack(
@@ -1033,7 +1040,7 @@ class _NewVaultScreenState extends State<NewVaultScreen> {
                     top: 4,
                     right: 4,
                     child: GestureDetector(
-                      onTap: () => setState(() => _remotePhotos.removeAt(idx)),
+                      onTap: () => setState(() => _remotePhotos.removeAt(adjustedIndex)),
                       child: Container(
                         padding: const EdgeInsets.all(3),
                         decoration: const BoxDecoration(
@@ -1047,12 +1054,9 @@ class _NewVaultScreenState extends State<NewVaultScreen> {
                 ],
               ),
             );
-          }),
-
-          // Local photos
-          ..._localPhotos.asMap().entries.map((entry) {
-            final idx = entry.key;
-            final file = entry.value;
+          } else {
+            final localIndex = adjustedIndex - remoteCount;
+            final file = _localPhotos[localIndex];
             return Padding(
               padding: const EdgeInsets.only(right: 10),
               child: Stack(
@@ -1070,7 +1074,7 @@ class _NewVaultScreenState extends State<NewVaultScreen> {
                     top: 4,
                     right: 4,
                     child: GestureDetector(
-                      onTap: () => setState(() => _localPhotos.removeAt(idx)),
+                      onTap: () => setState(() => _localPhotos.removeAt(localIndex)),
                       child: Container(
                         padding: const EdgeInsets.all(3),
                         decoration: const BoxDecoration(
@@ -1084,8 +1088,8 @@ class _NewVaultScreenState extends State<NewVaultScreen> {
                 ],
               ),
             );
-          }),
-        ],
+          }
+        },
       ),
     );
   }

@@ -559,21 +559,15 @@ class _YoutubeMusicSearchSheetState extends State<YoutubeMusicSearchSheet> {
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 child: Row(
                   children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(14),
-                      child: BackdropFilter(
-                        filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.08),
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(color: Colors.white.withOpacity(0.18)),
-                          ),
-                          child: IconButton(
-                            icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 18),
-                            onPressed: () => Navigator.pop(context),
-                          ),
-                        ),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.10),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: Colors.white.withOpacity(0.20)),
+                      ),
+                      child: IconButton(
+                        icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 18),
+                        onPressed: () => Navigator.pop(context),
                       ),
                     ),
                     const SizedBox(width: 10),
@@ -614,21 +608,15 @@ class _YoutubeMusicSearchSheetState extends State<YoutubeMusicSearchSheet> {
                         ],
                       ),
                     ),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(14),
-                      child: BackdropFilter(
-                        filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.08),
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(color: Colors.white.withOpacity(0.18)),
-                          ),
-                          child: IconButton(
-                            icon: const Icon(Icons.close_rounded, color: Colors.white70, size: 20),
-                            onPressed: () => Navigator.pop(context),
-                          ),
-                        ),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.10),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: Colors.white.withOpacity(0.20)),
+                      ),
+                      child: IconButton(
+                        icon: const Icon(Icons.close_rounded, color: Colors.white70, size: 20),
+                        onPressed: () => Navigator.pop(context),
                       ),
                     ),
                   ],
@@ -712,43 +700,37 @@ class _YoutubeMusicSearchSheetState extends State<YoutubeMusicSearchSheet> {
                         _searchController.text = query;
                         _performSearch(query);
                       },
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(999),
-                        child: BackdropFilter(
-                          filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 7),
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                                colors: isTopHits
-                                    ? [
-                                        const Color(0xFFE07A5F).withOpacity(0.32),
-                                        const Color(0xFFE07A5F).withOpacity(0.12),
-                                      ]
-                                    : [
-                                        Colors.white.withOpacity(0.12),
-                                        Colors.white.withOpacity(0.04),
-                                      ],
-                              ),
-                              borderRadius: BorderRadius.circular(999),
-                              border: Border.all(
-                                color: isTopHits
-                                    ? const Color(0xFFE07A5F).withOpacity(0.6)
-                                    : Colors.white.withOpacity(0.24),
-                                width: 1,
-                              ),
-                            ),
-                            alignment: Alignment.center,
-                            child: Text(
-                              vibe,
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: isTopHits ? Colors.white : const Color(0xFFEDEAE5),
-                                fontWeight: isTopHits ? FontWeight.w700 : FontWeight.w500,
-                              ),
-                            ),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 7),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: isTopHits
+                                ? [
+                                    const Color(0xFFE07A5F).withOpacity(0.32),
+                                    const Color(0xFFE07A5F).withOpacity(0.12),
+                                  ]
+                                : [
+                                    Colors.white.withOpacity(0.12),
+                                    Colors.white.withOpacity(0.04),
+                                  ],
+                          ),
+                          borderRadius: BorderRadius.circular(999),
+                          border: Border.all(
+                            color: isTopHits
+                                ? const Color(0xFFE07A5F).withOpacity(0.6)
+                                : Colors.white.withOpacity(0.24),
+                            width: 1,
+                          ),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          vibe,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: isTopHits ? Colors.white : const Color(0xFFEDEAE5),
+                            fontWeight: isTopHits ? FontWeight.w700 : FontWeight.w500,
                           ),
                         ),
                       ),
@@ -827,12 +809,8 @@ class _YoutubeMusicSearchSheetState extends State<YoutubeMusicSearchSheet> {
                                         ),
                                       ],
                                     ),
-                                    child: ClipRRect(
-                                      borderRadius: BorderRadius.circular(18),
-                                      child: BackdropFilter(
-                                        filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
-                                        child: ListTile(
-                                          contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                    child: ListTile(
+                                      contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                           leading: ClipRRect(
                                             borderRadius: BorderRadius.circular(12),
                                             child: track.thumbnailUrl.isNotEmpty
@@ -945,9 +923,7 @@ class _YoutubeMusicSearchSheetState extends State<YoutubeMusicSearchSheet> {
                                           ),
                                           onTap: () => _playTrack(context, audio, track),
                                         ),
-                                      ),
-                                    ),
-                                  );
+                                      );
                                 },
                               ),
               ),
@@ -966,12 +942,8 @@ class _YoutubeMusicSearchSheetState extends State<YoutubeMusicSearchSheet> {
                         ),
                       );
                     },
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(22),
-                      child: BackdropFilter(
-                        filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
                               begin: Alignment.topLeft,
@@ -1068,8 +1040,6 @@ class _YoutubeMusicSearchSheetState extends State<YoutubeMusicSearchSheet> {
                         ),
                       ),
                     ),
-                  ),
-                ),
             ],
           ),
         ),

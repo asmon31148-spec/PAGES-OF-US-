@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -24,6 +25,13 @@ class MemoryStackView extends StatefulWidget {
 
 class _MemoryStackViewState extends State<MemoryStackView> {
   bool _isGridView = false;
+  Timer? _searchDebounce;
+
+  @override
+  void dispose() {
+    _searchDebounce?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -42,7 +50,12 @@ class _MemoryStackViewState extends State<MemoryStackView> {
           child: Column(
             children: [
               TextField(
-                onChanged: memoriesProvider.setSearchQuery,
+                onChanged: (val) {
+                  _searchDebounce?.cancel();
+                  _searchDebounce = Timer(const Duration(milliseconds: 300), () {
+                    memoriesProvider.setSearchQuery(val);
+                  });
+                },
                 decoration: InputDecoration(
                   hintText: 'Search memories by title or caption...',
                   hintStyle: TextStyle(

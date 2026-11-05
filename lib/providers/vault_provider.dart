@@ -208,7 +208,8 @@ class VaultProvider extends ChangeNotifier {
               .from('app_content')
               .select('content')
               .eq('id', 'user_vaults_$currentUserId')
-              .maybeSingle();
+              .maybeSingle()
+              .timeout(const Duration(seconds: 12));
           if (userRes != null && userRes['content'] is List) {
             for (final e in (userRes['content'] as List)) {
               if (e is Map) {
@@ -225,7 +226,8 @@ class VaultProvider extends ChangeNotifier {
               .from('app_content')
               .select('content')
               .eq('id', 'user_vaults_$partnerId')
-              .maybeSingle();
+              .maybeSingle()
+              .timeout(const Duration(seconds: 12));
           if (partnerRes != null && partnerRes['content'] is List) {
             for (final e in (partnerRes['content'] as List)) {
               if (e is Map) {
@@ -241,14 +243,16 @@ class VaultProvider extends ChangeNotifier {
             .from('app_content')
             .select('content')
             .eq('id', vaultDocId)
-            .maybeSingle();
+            .maybeSingle()
+            .timeout(const Duration(seconds: 12));
 
         if (res == null || res['content'] == null) {
           res = await supabase
               .from('app_content')
               .select('content')
               .eq('id', 'vault_capsules_$spaceId')
-              .maybeSingle();
+              .maybeSingle()
+              .timeout(const Duration(seconds: 12));
         }
 
         if (res != null && res['content'] != null && res['content'] is List) {

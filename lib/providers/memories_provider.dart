@@ -327,7 +327,10 @@ class MemoriesProvider extends ChangeNotifier {
         query = query.filter('author', 'ilike', '%$currentUserId%');
       }
 
-      final data = await query.order('created_at', ascending: false);
+      final data = await query
+          .order('created_at', ascending: false)
+          .limit(50)
+          .timeout(const Duration(seconds: 12));
 
       _memories = (data as List)
           .map((row) => MemoryItem.fromJson(
@@ -381,7 +384,10 @@ class MemoriesProvider extends ChangeNotifier {
         query = query.filter('author', 'ilike', '%$currentUserId%');
       }
 
-      final data = await query.order('created_at', ascending: false);
+      final data = await query
+          .order('created_at', ascending: false)
+          .limit(50)
+          .timeout(const Duration(seconds: 12));
 
       _letters = (data as List)
           .map((row) => LetterItem.fromJson(
@@ -417,7 +423,10 @@ class MemoriesProvider extends ChangeNotifier {
         query = query.filter('author', 'ilike', '%$currentUserId%');
       }
 
-      final data = await query.order('event_date', ascending: false);
+      final data = await query
+          .order('event_date', ascending: false)
+          .limit(50)
+          .timeout(const Duration(seconds: 12));
 
       final list = (data as List)
           .map((row) => MilestoneItem.fromJson(
