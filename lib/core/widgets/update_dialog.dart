@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/update_service.dart';
 
 class UpdateDialog extends StatefulWidget {
@@ -198,7 +199,14 @@ class _UpdateDialogState extends State<UpdateDialog> {
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
                     TextButton(
-                      onPressed: () => Navigator.pop(context),
+                      onPressed: () async {
+                        try {
+                          final prefs = await SharedPreferences.getInstance();
+                          await prefs.setString('dismissed_update_version', widget.updateInfo.version);
+                          await prefs.setInt('last_update_prompt_timestamp', DateTime.now().millisecondsSinceEpoch);
+                        } catch (_) {}
+                        if (context.mounted) Navigator.pop(context);
+                      },
                       child: const Text(
                         'Next time',
                         style: TextStyle(

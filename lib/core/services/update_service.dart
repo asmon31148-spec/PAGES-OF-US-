@@ -6,6 +6,7 @@ import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import '../widgets/update_dialog.dart';
 
 class UpdateInfo {
@@ -23,13 +24,26 @@ class UpdateInfo {
 }
 
 class UpdateService {
-  // ⚠️ Keep this in sync with the version field in pubspec.yaml whenever bumping the app version
-  static const String currentVersion = '1.0.75';
-  // Distribution repository — update this if the app repo is ever moved or renamed
+  // Fallback version in case native platform package info is unreachable
+  static const String fallbackCurrentVersion = '1.0.84';
+
+  // Distribution repository
   static const String githubRepo = 'asmon31148-spec/PAGES-OF-US-';
+
+  /// Dynamically retrieves the true installed version from Android runtime
+  static Future<String> getCurrentVersion() async {
+    try {
+      final info = await PackageInfo.fromPlatform();
+      final clean = info.version.replaceAll(RegExp(r'[^0-9.]'), '');
+      if (clean.isNotEmpty) return clean;
+    } catch (_) {}
+    return fallbackCurrentVersion;
+  }
 
   /// Checks Firestore remote config and GitHub releases for a newer APK version
   static Future<UpdateInfo?> checkLatestRelease() async {
+    final currentVersion = await getCurrentVersion();
+
     // 1. First Priority: Firebase Firestore remote config document ('app_config/update')
     try {
       final doc = await FirebaseFirestore.instance.collection('app_config').doc('update').get();
@@ -99,14 +113,18 @@ class UpdateService {
       debugPrint('Check GitHub API error: $e');
     }
 
-    // 3. Third Priority Fallback: Direct Raw Repository Metadata (No Rate Limits)
+    // 3. Third Priority Fallback: Direct Raw Repository Metadata with Cache-Busting
+    // Cache-busting query parameter (?_t=...) prevents CDN caching from serving stale versions
     try {
-      final rawUrl = Uri.parse('https://raw.githubusercontent.com/$githubRepo/master/pubspec.yaml');
+      final rawUrl = Uri.parse(
+        'https://raw.githubusercontent.com/$githubRepo/master/pubspec.yaml?_t=${DateTime.now().millisecondsSinceEpoch}',
+      );
       final rawRes = await http.get(
         rawUrl,
         headers: {
           'User-Agent': 'PagesOfUs-App/1.0',
-          'Cache-Control': 'no-cache',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
         },
       ).timeout(const Duration(seconds: 6));
 
@@ -131,7 +149,7 @@ class UpdateService {
     return null;
   }
 
-  /// Compares semantic version numbers (e.g. 1.0.1 > 1.0.0)
+  /// Compares semantic version numbers (e.g. 1.0.84 > 1.0.83)
   static bool _isNewerVersion(String latest, String current) {
     if (latest.isEmpty || current.isEmpty) return false;
     final latestParts = latest.split('.').map((e) => int.tryParse(e) ?? 0).toList();
@@ -194,35 +212,39 @@ class UpdateService {
 
   static bool _hasPromptedThisSession = false;
 
-  /// Prompts the user with the Echo-style update popup if available
+  /// Prompts the user with the update popup if a newer version is available.
+  /// Intelligently checks per-version dismissal so a NEW version will always prompt
+  /// on both phones immediately, while not nagging for the same dismissed version repeatedly.
   static Future<void> checkAndPrompt(BuildContext context, {bool force = false}) async {
     if (!force && _hasPromptedThisSession) return;
+
+    final update = await checkLatestRelease();
+    if (update == null || !context.mounted) return;
 
     if (!force) {
       try {
         final prefs = await SharedPreferences.getInstance();
-        final lastPrompt = prefs.getInt('last_update_prompt_timestamp') ?? 0;
+        final lastDismissedVersion = prefs.getString('dismissed_update_version');
+        final lastPromptTime = prefs.getInt('last_update_prompt_timestamp') ?? 0;
         final now = DateTime.now().millisecondsSinceEpoch;
-        // Don't auto-prompt more than once every 6 hours
-        if (now - lastPrompt < 6 * 3600 * 1000) {
+
+        // If the user already tapped "Next time" for THIS EXACT version, don't nag them again within 8 hours
+        if (lastDismissedVersion == update.version && (now - lastPromptTime < 8 * 3600 * 1000)) {
           return;
         }
       } catch (_) {}
     }
 
-    final update = await checkLatestRelease();
-    if (update != null && context.mounted) {
-      _hasPromptedThisSession = true;
-      try {
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setInt('last_update_prompt_timestamp', DateTime.now().millisecondsSinceEpoch);
-      } catch (_) {}
+    _hasPromptedThisSession = true;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt('last_update_prompt_timestamp', DateTime.now().millisecondsSinceEpoch);
+    } catch (_) {}
 
-      showDialog(
-        context: context,
-        barrierDismissible: true,
-        builder: (_) => UpdateDialog(updateInfo: update),
-      );
-    }
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (_) => UpdateDialog(updateInfo: update),
+    );
   }
 }
