@@ -383,162 +383,166 @@ class _YoutubeMusicSearchSheetState extends State<YoutubeMusicSearchSheet> {
 
   void _showAddToPlaylistSheet(BuildContext context, YoutubeTrack track) {
     HapticFeedback.lightImpact();
-    final audio = context.read<AudioProvider>();
-    final playlists = audio.playlists;
 
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (ctx) => ClipRRect(
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 28, sigmaY: 28),
-          child: Container(
-            height: MediaQuery.of(context).size.height * 0.72,
-            padding: const EdgeInsets.all(22),
-            decoration: BoxDecoration(
-              color: const Color(0xFF13151B).withOpacity(0.88),
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-              border: Border(
-                top: BorderSide(color: Colors.white.withOpacity(0.25), width: 1.2),
-              ),
-            ),
-            child: SafeArea(
-              child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Add to Playlist',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
+      builder: (ctx) => Consumer<AudioProvider>(
+        builder: (context, audio, _) {
+          final playlists = audio.playlists;
+
+          return ClipRRect(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 28, sigmaY: 28),
+              child: Container(
+                height: MediaQuery.of(context).size.height * 0.72,
+                padding: const EdgeInsets.all(22),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF13151B).withOpacity(0.88),
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+                  border: Border(
+                    top: BorderSide(color: Colors.white.withOpacity(0.25), width: 1.2),
+                  ),
+                ),
+                child: SafeArea(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Add to Playlist',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  track.title,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
+                                ),
+                              ],
+                            ),
+                          ),
+                          GestureDetector(
+                            onTap: () => Navigator.pop(ctx),
+                            child: const Icon(Icons.close_rounded, color: Color(0xFF94A3B8), size: 22),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      // + Create New Playlist Action Button
+                      GestureDetector(
+                        onTap: () {
+                          Navigator.pop(ctx);
+                          _showCreatePlaylistForTrackDialog(context, track);
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                          margin: const EdgeInsets.only(bottom: 12),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFE07A5F).withOpacity(0.14),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: const Color(0xFFE07A5F).withOpacity(0.4)),
+                          ),
+                          child: Row(
+                            children: const [
+                              Icon(Icons.add_circle_outline_rounded, color: Color(0xFFE07A5F), size: 22),
+                              SizedBox(width: 12),
+                              Text(
+                                'Create New Playlist',
+                                style: TextStyle(
+                                  color: Color(0xFFE07A5F),
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                        const SizedBox(height: 2),
-                        Text(
-                          track.title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
-                        ),
-                      ],
-                    ),
-                  ),
-                  GestureDetector(
-                    onTap: () => Navigator.pop(ctx),
-                    child: const Icon(Icons.close_rounded, color: Color(0xFF94A3B8), size: 22),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              // + Create New Playlist Action Button
-              GestureDetector(
-                onTap: () {
-                  Navigator.pop(ctx);
-                  _showCreatePlaylistForTrackDialog(context, track);
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                  margin: const EdgeInsets.only(bottom: 12),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFE07A5F).withOpacity(0.14),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: const Color(0xFFE07A5F).withOpacity(0.4)),
-                  ),
-                  child: Row(
-                    children: const [
-                      Icon(Icons.add_circle_outline_rounded, color: Color(0xFFE07A5F), size: 22),
-                      SizedBox(width: 12),
-                      Text(
-                        'Create New Playlist',
-                        style: TextStyle(
-                          color: Color(0xFFE07A5F),
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                        ),
                       ),
+                      if (playlists.isEmpty)
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 24),
+                          child: Center(
+                            child: Text(
+                              'No playlists yet. Go to Playlists tab to create one!',
+                              style: TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
+                            ),
+                          ),
+                        )
+                      else
+                        Expanded(
+                          child: ListView.separated(
+                            itemCount: playlists.length,
+                            separatorBuilder: (_, __) => const SizedBox(height: 8),
+                            itemBuilder: (_, i) {
+                              final pl = playlists[i];
+                              final contains = pl.songIds.contains(track.id);
+                              return ListTile(
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                                tileColor: const Color(0xFF1B1D26),
+                                leading: Container(
+                                  width: 40,
+                                  height: 40,
+                                  decoration: BoxDecoration(
+                                    color: pl.coverColor.withOpacity(0.2),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Center(
+                                    child: Icon(Icons.music_note_rounded, color: pl.coverColor, size: 20),
+                                  ),
+                                ),
+                                title: Text(
+                                  pl.title,
+                                  style: const TextStyle(color: Colors.white, fontSize: 13.5, fontWeight: FontWeight.bold),
+                                ),
+                                subtitle: Text(
+                                  '${pl.songIds.length} songs',
+                                  style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 11),
+                                ),
+                                trailing: contains
+                                    ? const Icon(Icons.check_circle_rounded, color: Color(0xFF81B29A), size: 22)
+                                    : const Icon(Icons.add_circle_outline_rounded, color: Color(0xFFE07A5F), size: 22),
+                                onTap: () {
+                                  HapticFeedback.mediumImpact();
+                                  audio.addYoutubeTrackToPlaylist(pl.id, track);
+                                  Navigator.pop(ctx);
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('Added "${track.title}" to ${pl.title} ✦', style: const TextStyle(color: Colors.white)),
+                                      backgroundColor: const Color(0xFF1E212B),
+                                      behavior: SnackBarBehavior.floating,
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                                      duration: const Duration(seconds: 2),
+                                    ),
+                                  );
+                                },
+                              );
+                            },
+                          ),
+                        ),
                     ],
                   ),
                 ),
               ),
-              if (playlists.isEmpty)
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 24),
-                  child: Center(
-                    child: Text(
-                      'No playlists yet. Go to Playlists tab to create one!',
-                      style: TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
-                    ),
-                  ),
-                )
-              else
-                Expanded(
-                  child: ListView.separated(
-                    itemCount: playlists.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 8),
-                    itemBuilder: (_, i) {
-                      final pl = playlists[i];
-                      final contains = pl.songIds.contains(track.id);
-                      return ListTile(
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                        tileColor: const Color(0xFF1B1D26),
-                        leading: Container(
-                          width: 40,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            color: pl.coverColor.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Center(
-                            child: Icon(Icons.music_note_rounded, color: pl.coverColor, size: 20),
-                          ),
-                        ),
-                        title: Text(
-                          pl.title,
-                          style: const TextStyle(color: Colors.white, fontSize: 13.5, fontWeight: FontWeight.bold),
-                        ),
-                        subtitle: Text(
-                          '${pl.songIds.length} songs',
-                          style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 11),
-                        ),
-                        trailing: contains
-                            ? const Icon(Icons.check_circle_rounded, color: Color(0xFF81B29A), size: 22)
-                            : const Icon(Icons.add_circle_outline_rounded, color: Color(0xFFE07A5F), size: 22),
-                        onTap: () {
-                          HapticFeedback.mediumImpact();
-                          audio.addYoutubeTrackToPlaylist(pl.id, track);
-                          Navigator.pop(ctx);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Added "${track.title}" to ${pl.title} ✦', style: const TextStyle(color: Colors.white)),
-                              backgroundColor: const Color(0xFF1E212B),
-                              behavior: SnackBarBehavior.floating,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                              duration: const Duration(seconds: 2),
-                            ),
-                          );
-                        },
-                      );
-                    },
-                  ),
-                ),
-            ],
-          ),
-        ),
+            ),
+          );
+        },
       ),
-    ),
-  ),
-);
+    );
   }
 
   @override

@@ -225,6 +225,37 @@ class AudioProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Eliminates duplicate tracks by unique ID and normalized title+artist
+  List<SongItem> _deduplicateSongs(List<SongItem> songs) {
+    final seenIds = <String>{};
+    final seenTitles = <String>{};
+    final unique = <SongItem>[];
+    for (final s in songs) {
+      if (_deletedSongIds.contains(s.id)) continue;
+      final titleKey = '${s.title.trim().toLowerCase()}_${s.artist.trim().toLowerCase()}';
+      if (!seenIds.contains(s.id) && !seenTitles.contains(titleKey)) {
+        seenIds.add(s.id);
+        if (s.title.trim().isNotEmpty) seenTitles.add(titleKey);
+        unique.add(s);
+      }
+    }
+    return unique;
+  }
+
+  /// Sanitizes playlists to ensure unique songIds and consistent clean state
+  List<PlaylistItem> _sanitizePlaylists(List<PlaylistItem> playlists) {
+    return playlists.map((pl) {
+      final seen = <String>{};
+      final uniqueIds = <String>[];
+      for (final id in pl.songIds) {
+        if (id.trim().isNotEmpty && seen.add(id.trim())) {
+          uniqueIds.add(id.trim());
+        }
+      }
+      return pl.copyWith(songIds: uniqueIds);
+    }).toList();
+  }
+
   void _loadPersistedSongs() {
     try {
       final deleted = LocalCacheService.getCachedDeletedSongIds();
@@ -232,10 +263,10 @@ class AudioProvider extends ChangeNotifier {
 
       final cached = LocalCacheService.getCachedSongs();
       if (cached != null) {
-        _songs = cached
+        _songs = _deduplicateSongs(cached
             .map((e) => SongItem.fromJson(e))
             .where((s) => !_deletedSongIds.contains(s.id))
-            .toList();
+            .toList());
       } else {
         _songs = [];
       }
@@ -243,12 +274,7 @@ class AudioProvider extends ChangeNotifier {
       final cachedPlaylists = LocalCacheService.getCachedPlaylists();
       if (cachedPlaylists != null) {
         _playlists.clear();
-        _playlists.addAll(cachedPlaylists.map((e) => PlaylistItem.fromJson(e)));
-      }
-
-      // Clean up any stale/deleted song IDs from playlists
-      for (final pl in _playlists) {
-        pl.songIds.removeWhere((id) => !_songs.any((s) => s.id == id));
+        _playlists.addAll(_sanitizePlaylists(cachedPlaylists.map((e) => PlaylistItem.fromJson(e)).toList()));
       }
     } catch (_) {
       _songs = [];
@@ -788,7 +814,7 @@ class AudioProvider extends ChangeNotifier {
               .where((s) => !_deletedSongIds.contains(s.id))
               .toList();
           if (list.isNotEmpty || _songs.isNotEmpty) {
-            _songs = list;
+            _songs = _deduplicateSongs(list);
             LocalCacheService.setCachedSongs(_songs.map((s) => s.toJson()).toList());
             hasChanges = true;
           }
@@ -805,41 +831,20 @@ class AudioProvider extends ChangeNotifier {
       }
     });
 
-    // Realtime stream for playlists from Firebase
+    // Realtime stream for playlists from Firebase (Single source of truth)
     _playlistFirebaseSub?.cancel();
     _playlistFirebaseSub = FirebaseService.streamFeatureDoc(spaceId, 'playlists').listen((snap) {
       if (snap.exists && snap.data() != null) {
         final list = snap.data()!['playlists'] as List<dynamic>?;
         if (list != null && list.isNotEmpty) {
+          final incoming = list.map((e) => PlaylistItem.fromJson(Map<String, dynamic>.from(e as Map))).toList();
           _playlists.clear();
-          _playlists.addAll(list.map((e) => PlaylistItem.fromJson(Map<String, dynamic>.from(e as Map))));
+          _playlists.addAll(_sanitizePlaylists(incoming));
           LocalCacheService.setCachedPlaylists(_playlists.map((p) => p.toJson()).toList());
           notifyListeners();
         }
       }
     });
-
-    // Supabase app_content fetch for shared space playlists
-    try {
-      final client = SupabaseService.client;
-      if (client != null) {
-        client
-            .from('app_content')
-            .select('content')
-            .eq('id', 'playlists_$spaceId')
-            .maybeSingle()
-            .then((res) {
-          if (res != null && res['content'] != null && res['content'] is List) {
-            final list = res['content'] as List;
-            if (list.isNotEmpty) {
-              _playlists.clear();
-              _playlists.addAll(list.map((e) => PlaylistItem.fromJson(Map<String, dynamic>.from(e as Map))));
-              notifyListeners();
-            }
-          }
-        });
-      }
-    } catch (_) {}
   }
 
   // -------------------------------------------------------------
@@ -853,14 +858,6 @@ class AudioProvider extends ChangeNotifier {
           'playlists': _playlists.map((p) => p.toJson()).toList(),
           'updated_at': DateTime.now().toIso8601String(),
         });
-        final client = SupabaseService.client;
-        if (client != null) {
-          client.from('app_content').upsert({
-            'id': 'playlists_$_syncSpaceId',
-            'content': _playlists.map((p) => p.toJson()).toList(),
-            'updated_at': DateTime.now().toIso8601String(),
-          }).then((_) {});
-        }
       }
     } catch (_) {}
   }
@@ -897,7 +894,7 @@ class AudioProvider extends ChangeNotifier {
   void removeSongFromPlaylist(String playlistId, String songId) {
     final idx = _playlists.indexWhere((p) => p.id == playlistId);
     if (idx != -1) {
-      _playlists[idx].songIds.remove(songId);
+      _playlists[idx].songIds.removeWhere((id) => id == songId);
       _savePlaylistsLocally();
       notifyListeners();
     }
@@ -918,7 +915,12 @@ class AudioProvider extends ChangeNotifier {
       thumbnailUrl: track.thumbnailUrl,
     );
 
-    final existingIdx = _songs.indexWhere((s) => s.id == song.id || s.youtubeId == song.id);
+    final existingIdx = _songs.indexWhere((s) =>
+        s.id == song.id ||
+        (s.youtubeId != null && s.youtubeId == song.id) ||
+        (s.title.trim().toLowerCase() == song.title.trim().toLowerCase() &&
+            s.artist.trim().toLowerCase() == song.artist.trim().toLowerCase()));
+
     if (existingIdx == -1) {
       _songs.add(song);
       _persistSongs();
@@ -927,6 +929,23 @@ class AudioProvider extends ChangeNotifier {
     }
 
     addSongToPlaylist(playlistId, song.id);
+  }
+
+  /// Plays a playlist starting directly from a specific tapped song index
+  Future<void> playSongFromPlaylist(PlaylistItem playlist, int playlistIndex) async {
+    final playlistSongs = <SongItem>[];
+    for (final sid in playlist.songIds) {
+      final s = _songs.where((x) => x.id == sid || (x.youtubeId != null && x.youtubeId == sid)).toList();
+      if (s.isNotEmpty) playlistSongs.add(s.first);
+    }
+    if (playlistSongs.isEmpty || playlistIndex < 0 || playlistIndex >= playlistSongs.length) return;
+
+    for (final s in playlistSongs) {
+      _songs.removeWhere((x) => x.id == s.id);
+    }
+    _songs.insertAll(0, playlistSongs);
+    _persistSongs();
+    await selectSong(playlistIndex);
   }
 
   /// Add YouTube Track directly to shared/local playback queue

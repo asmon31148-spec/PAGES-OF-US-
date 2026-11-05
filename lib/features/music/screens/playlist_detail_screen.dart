@@ -22,7 +22,21 @@ class PlaylistDetailScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final audioProvider = context.watch<AudioProvider>();
     final allSongs = audioProvider.songs;
-    final playlistSongs = allSongs.where((s) => playlist.songIds.contains(s.id)).toList();
+
+    // Reactively resolve current playlist state from provider
+    final currentPlaylist = audioProvider.playlists.firstWhere(
+      (p) => p.id == playlist.id,
+      orElse: () => playlist,
+    );
+
+    // Resolve playlist tracks maintaining playlist sequence
+    final playlistSongs = <SongItem>[];
+    for (final sid in currentPlaylist.songIds) {
+      final matches = allSongs.where((s) => s.id == sid || (s.youtubeId != null && s.youtubeId == sid));
+      if (matches.isNotEmpty) {
+        playlistSongs.add(matches.first);
+      }
+    }
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
@@ -39,7 +53,7 @@ class PlaylistDetailScreen extends StatelessWidget {
           child: GlassMiniPlayer(),
         ),
         body: GlassAmbientBackground(
-          fallbackColor: playlist.coverColor,
+          fallbackColor: currentPlaylist.coverColor,
           child: SafeArea(
             bottom: false,
             child: Column(
@@ -61,7 +75,7 @@ class PlaylistDetailScreen extends StatelessWidget {
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
-                          playlist.title,
+                          currentPlaylist.title,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
@@ -74,7 +88,7 @@ class PlaylistDetailScreen extends StatelessWidget {
                       ),
                       const SizedBox(width: 8),
                       GlassButton(
-                        onTap: () => _showAddSongToPlaylistDialog(context, audioProvider),
+                        onTap: () => _showAddSongToPlaylistDialog(context, audioProvider, currentPlaylist),
                         width: 40,
                         height: 40,
                         isCircle: true,
@@ -108,27 +122,27 @@ class PlaylistDetailScreen extends StatelessWidget {
                                   borderRadius: BorderRadius.circular(24),
                                   gradient: LinearGradient(
                                     colors: [
-                                      playlist.coverColor.withOpacity(0.7),
-                                      playlist.coverColor.withOpacity(0.3),
+                                      currentPlaylist.coverColor.withOpacity(0.7),
+                                      currentPlaylist.coverColor.withOpacity(0.3),
                                     ],
                                     begin: Alignment.topLeft,
                                     end: Alignment.bottomRight,
                                   ),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: playlist.coverColor.withOpacity(0.35),
+                                      color: currentPlaylist.coverColor.withOpacity(0.35),
                                       blurRadius: 20,
                                       offset: const Offset(0, 4),
                                     ),
                                   ],
                                 ),
                                 child: Center(
-                                  child: Icon(Icons.music_note_rounded, size: 44, color: playlist.coverColor),
+                                  child: Icon(Icons.music_note_rounded, size: 44, color: currentPlaylist.coverColor),
                                 ),
                               ),
                               const SizedBox(height: 14),
                               Text(
-                                playlist.title,
+                                currentPlaylist.title,
                                 style: const TextStyle(
                                   fontSize: 22,
                                   fontWeight: FontWeight.bold,
@@ -151,7 +165,7 @@ class PlaylistDetailScreen extends StatelessWidget {
                                     child: GlassButton(
                                       onTap: () {
                                         if (playlistSongs.isNotEmpty) {
-                                          audioProvider.playPlaylist(playlist);
+                                          audioProvider.playPlaylist(currentPlaylist);
                                         }
                                       },
                                       tintColor: GlassTokens.accent.withOpacity(0.4),
@@ -175,10 +189,10 @@ class PlaylistDetailScreen extends StatelessWidget {
                                     child: GlassButton(
                                       onTap: () {
                                         if (playlistSongs.isNotEmpty) {
-                                          audioProvider.queuePlaylist(playlist);
+                                          audioProvider.queuePlaylist(currentPlaylist);
                                           ScaffoldMessenger.of(context).showSnackBar(
                                             SnackBar(
-                                              content: Text('Queued "${playlist.title}" ✦'),
+                                              content: Text('Queued "${currentPlaylist.title}" ✦'),
                                               duration: const Duration(seconds: 2),
                                               behavior: SnackBarBehavior.floating,
                                             ),
@@ -244,7 +258,7 @@ class PlaylistDetailScreen extends StatelessWidget {
                                   ),
                                   const SizedBox(height: 14),
                                   GlassButton(
-                                    onTap: () => _showAddSongToPlaylistDialog(context, audioProvider),
+                                    onTap: () => _showAddSongToPlaylistDialog(context, audioProvider, currentPlaylist),
                                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                                     child: const Row(
                                       mainAxisSize: MainAxisSize.min,
@@ -270,7 +284,7 @@ class PlaylistDetailScreen extends StatelessWidget {
                               final isCurrent = audioProvider.currentSong.id == song.id;
 
                               return Dismissible(
-                                key: Key('${playlist.id}_${song.id}'),
+                                key: ValueKey('${currentPlaylist.id}_${song.id}_$i'),
                                 direction: DismissDirection.endToStart,
                                 background: Container(
                                   alignment: Alignment.centerRight,
@@ -282,12 +296,20 @@ class PlaylistDetailScreen extends StatelessWidget {
                                   child: const Icon(Icons.delete_outline_rounded, color: Colors.white, size: 22),
                                 ),
                                 onDismissed: (_) {
-                                  audioProvider.removeSongFromPlaylist(playlist.id, song.id);
+                                  HapticFeedback.mediumImpact();
+                                  audioProvider.removeSongFromPlaylist(currentPlaylist.id, song.id);
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('Removed "${song.title}" from ${currentPlaylist.title}'),
+                                      duration: const Duration(seconds: 1),
+                                      behavior: SnackBarBehavior.floating,
+                                    ),
+                                  );
                                 },
                                 child: GestureDetector(
                                   onTap: () {
-                                    final originalIdx = allSongs.indexWhere((s) => s.id == song.id);
-                                    if (originalIdx != -1) audioProvider.selectSong(originalIdx);
+                                    HapticFeedback.lightImpact();
+                                    audioProvider.playSongFromPlaylist(currentPlaylist, i);
                                   },
                                   child: GlassCard(
                                     enableBlur: false,
@@ -346,7 +368,15 @@ class PlaylistDetailScreen extends StatelessWidget {
                                         IconButton(
                                           icon: const Icon(Icons.remove_circle_outline_rounded, color: Colors.white38, size: 20),
                                           onPressed: () {
-                                            audioProvider.removeSongFromPlaylist(playlist.id, song.id);
+                                            HapticFeedback.lightImpact();
+                                            audioProvider.removeSongFromPlaylist(currentPlaylist.id, song.id);
+                                            ScaffoldMessenger.of(context).showSnackBar(
+                                              SnackBar(
+                                                content: Text('Removed "${song.title}" from ${currentPlaylist.title}'),
+                                                duration: const Duration(seconds: 1),
+                                                behavior: SnackBarBehavior.floating,
+                                              ),
+                                            );
                                           },
                                         ),
                                       ],
@@ -363,7 +393,7 @@ class PlaylistDetailScreen extends StatelessWidget {
                         GlassButton(
                           onTap: () {
                             HapticFeedback.mediumImpact();
-                            audioProvider.deletePlaylist(playlist.id);
+                            audioProvider.deletePlaylist(currentPlaylist.id);
                             Navigator.pop(context);
                           },
                           tintColor: Colors.red.withOpacity(0.12),
@@ -393,12 +423,14 @@ class PlaylistDetailScreen extends StatelessWidget {
     );
   }
 
-  void _showAddSongToPlaylistDialog(BuildContext context, AudioProvider provider) {
-    final availableSongs = provider.songs.where((s) => !playlist.songIds.contains(s.id)).toList();
+  void _showAddSongToPlaylistDialog(BuildContext context, AudioProvider provider, PlaylistItem currentPlaylist) {
+    final availableSongs = provider.songs
+        .where((s) => !currentPlaylist.songIds.contains(s.id) && (s.youtubeId == null || !currentPlaylist.songIds.contains(s.youtubeId)))
+        .toList();
 
     GlassSheet.show(
       context,
-      title: 'Add to ${playlist.title}',
+      title: 'Add to ${currentPlaylist.title}',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -496,11 +528,12 @@ class PlaylistDetailScreen extends StatelessWidget {
                           IconButton(
                             icon: const Icon(Icons.add_circle_outline_rounded, color: GlassTokens.accent, size: 22),
                             onPressed: () {
-                              provider.addSongToPlaylist(playlist.id, song.id);
+                              HapticFeedback.lightImpact();
+                              provider.addSongToPlaylist(currentPlaylist.id, song.id);
                               Navigator.pop(context);
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
-                                  content: Text('Added "${song.title}" to ${playlist.title} ✦'),
+                                  content: Text('Added "${song.title}" to ${currentPlaylist.title} ✦'),
                                   duration: const Duration(seconds: 2),
                                   behavior: SnackBarBehavior.floating,
                                 ),
