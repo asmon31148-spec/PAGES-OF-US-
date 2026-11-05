@@ -564,14 +564,11 @@ warning • The '!' will have no effect because the receiver can't be null. Try 
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/profile/screens/profile_screen.dart:701:69 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/profile/screens/profile_screen.dart:707:45 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/profile/screens/profile_screen.dart:828:64 • deprecated_member_use
-warning • The value of the local variable 'bg' isn't used. Try removing the variable or using it • lib/features/profile/screens/support_bot_screen.dart:127:11 • unused_local_variable
-  error • The method 'SystemUiOverlayStyle' isn't defined for the type '_SupportBotScreenState'. Try correcting the name to the name of an existing method, or defining a method named 'SystemUiOverlayStyle' • lib/features/profile/screens/support_bot_screen.dart:132:27 • undefined_method
-  error • The name 'SystemUiOverlayStyle' isn't a type, so it can't be used as a type argument. Try correcting the name to an existing type, or defining a type named 'SystemUiOverlayStyle' • lib/features/profile/screens/support_bot_screen.dart:140:28 • non_type_as_type_argument
-  error • Undefined name 'HapticFeedback'. Try correcting the name to one that is defined, or defining the name • lib/features/profile/screens/support_bot_screen.dart:156:27 • undefined_identifier
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/profile/screens/support_bot_screen.dart:164:48 • deprecated_member_use
+warning • The value of the local variable 'bg' isn't used. Try removing the variable or using it • lib/features/profile/screens/support_bot_screen.dart:128:11 • unused_local_variable
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/profile/screens/support_bot_screen.dart:165:48 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/profile/screens/support_bot_screen.dart:168:50 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/profile/screens/support_bot_screen.dart:166:48 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/profile/screens/support_bot_screen.dart:169:50 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/profile/screens/support_bot_screen.dart:170:50 • deprecated_member_use
 warning • Unused import: '../../../core/widgets/liquid_glass/liquid_glass_theme.dart'. Try removing the import directive • lib/features/profile/screens/theme_picker_screen.dart:10:8 • unused_import
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/profile/screens/theme_picker_screen.dart:52:56 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/profile/screens/theme_picker_screen.dart:52:89 • deprecated_member_use
@@ -1381,140 +1378,36 @@ warning • Unused import: 'package:pages_of_us/core/theme/models/theme_palette.
    info • 'green' is deprecated and shouldn't be used. Use (*.g * 255.0).round().clamp(0, 255). Try replacing the use of the deprecated member with the replacement • test/theme_contrast_test.dart:19:29 • deprecated_member_use
    info • 'blue' is deprecated and shouldn't be used. Use (*.b * 255.0).round().clamp(0, 255). Try replacing the use of the deprecated member with the replacement • test/theme_contrast_test.dart:20:29 • deprecated_member_use
 
-1154 issues found. (ran in 11.1s)
+1151 issues found. (ran in 18.1s)
 === FLUTTER BUILD LOG ===
 Upgrading build.gradle
 Upgrading gradle.properties
 Upgrading gradle.properties
 Running Gradle task 'assembleRelease'...                        
-Loading package information...                                                  
-Loading local repository...                                                     
-[                                       ] 3% Loading local repository...        
-[                                       ] 3% Fetch remote repository...         
-[=                                      ] 3% Fetch remote repository...         
-[=                                      ] 4% Fetch remote repository...         
-[=                                      ] 5% Fetch remote repository...         
-[==                                     ] 5% Fetch remote repository...         
-[==                                     ] 6% Fetch remote repository...         
-[==                                     ] 7% Fetch remote repository...         
-[==                                     ] 7% Computing updates...               
-[===                                    ] 8% Computing updates...               
-[===                                    ] 10% Computing updates...              
-[===                                    ] 10% Installing NDK (Side by side) 27.0
-[===                                    ] 10% Downloading android-ndk-r27-linux.
-[====                                   ] 10% Downloading android-ndk-r27-linux.
-[====                                   ] 11% Downloading android-ndk-r27-linux.
-[====                                   ] 12% Downloading android-ndk-r27-linux.
-[=====                                  ] 13% Downloading android-ndk-r27-linux.
-[=====                                  ] 14% Downloading android-ndk-r27-linux.
-[=====                                  ] 15% Downloading android-ndk-r27-linux.
-[======                                 ] 15% Downloading android-ndk-r27-linux.
-[======                                 ] 16% Downloading android-ndk-r27-linux.
-[======                                 ] 17% Downloading android-ndk-r27-linux.
-[=======                                ] 18% Downloading android-ndk-r27-linux.
-[=======                                ] 19% Downloading android-ndk-r27-linux.
-[=======                                ] 20% Downloading android-ndk-r27-linux.
-[========                               ] 20% Downloading android-ndk-r27-linux.
-[========                               ] 21% Downloading android-ndk-r27-linux.
-[========                               ] 22% Downloading android-ndk-r27-linux.
-[=========                              ] 23% Downloading android-ndk-r27-linux.
-[=========                              ] 24% Downloading android-ndk-r27-linux.
-[=========                              ] 25% Downloading android-ndk-r27-linux.
-[==========                             ] 25% Downloading android-ndk-r27-linux.
-[==========                             ] 26% Downloading android-ndk-r27-linux.
-[==========                             ] 27% Downloading android-ndk-r27-linux.
-[===========                            ] 28% Downloading android-ndk-r27-linux.
-[===========                            ] 29% Downloading android-ndk-r27-linux.
-[===========                            ] 30% Downloading android-ndk-r27-linux.
-[============                           ] 30% Downloading android-ndk-r27-linux.
-[============                           ] 31% Downloading android-ndk-r27-linux.
-[============                           ] 32% Downloading android-ndk-r27-linux.
-[============                           ] 33% Downloading android-ndk-r27-linux.
-[============                           ] 33% Unzipping...                      
-[============                           ] 33% Unzipping... android-ndk-r27/     
-[============                           ] 33% Unzipping... android-ndk-r27/READM
-[=============                          ] 33% Unzipping... android-ndk-r27/READM
-[=============                          ] 33% Unzipping... android-ndk-r27/meta/
-[=============                          ] 33% Unzipping... android-ndk-r27/shade
-[=============                          ] 33% Unzipping... android-ndk-r27/ndk-l
-[=============                          ] 33% Unzipping... android-ndk-r27/wrap.
-[=============                          ] 33% Unzipping... android-ndk-r27/ndk-w
-[=============                          ] 33% Unzipping... android-ndk-r27/toolc
-[=============                          ] 34% Unzipping... android-ndk-r27/toolc
-[=============                          ] 35% Unzipping... android-ndk-r27/toolc
-[==============                         ] 35% Unzipping... android-ndk-r27/toolc
-[==============                         ] 36% Unzipping... android-ndk-r27/toolc
-[==============                         ] 37% Unzipping... android-ndk-r27/toolc
-[===============                        ] 38% Unzipping... android-ndk-r27/toolc
-[===============                        ] 39% Unzipping... android-ndk-r27/toolc
-[===============                        ] 40% Unzipping... android-ndk-r27/toolc
-[================                       ] 40% Unzipping... android-ndk-r27/toolc
-[================                       ] 41% Unzipping... android-ndk-r27/toolc
-[================                       ] 42% Unzipping... android-ndk-r27/toolc
-[=================                      ] 43% Unzipping... android-ndk-r27/toolc
-[=================                      ] 44% Unzipping... android-ndk-r27/toolc
-[=================                      ] 45% Unzipping... android-ndk-r27/toolc
-[==================                     ] 45% Unzipping... android-ndk-r27/toolc
-[==================                     ] 46% Unzipping... android-ndk-r27/toolc
-[==================                     ] 47% Unzipping... android-ndk-r27/toolc
-[===================                    ] 48% Unzipping... android-ndk-r27/toolc
-[===================                    ] 49% Unzipping... android-ndk-r27/toolc
-[===================                    ] 50% Unzipping... android-ndk-r27/toolc
-[====================                   ] 50% Unzipping... android-ndk-r27/toolc
-[====================                   ] 51% Unzipping... android-ndk-r27/toolc
-[====================                   ] 52% Unzipping... android-ndk-r27/toolc
-[=====================                  ] 53% Unzipping... android-ndk-r27/toolc
-[=====================                  ] 54% Unzipping... android-ndk-r27/toolc
-[=====================                  ] 54% Unzipping... android-ndk-r27/build
-[=====================                  ] 54% Unzipping... android-ndk-r27/sourc
-[=====================                  ] 54% Unzipping... android-ndk-r27/NOTIC
-[=====================                  ] 54% Unzipping... android-ndk-r27/ndk-g
-[=====================                  ] 54% Unzipping... android-ndk-r27/NOTIC
-[=====================                  ] 54% Unzipping... android-ndk-r27/pytho
-[=====================                  ] 54% Unzipping... android-ndk-r27/prebu
-[=====================                  ] 54% Unzipping... android-ndk-r27/ndk-s
-[=====================                  ] 54% Unzipping... android-ndk-r27/ndk-b
-[=====================                  ] 54% Unzipping... android-ndk-r27/sourc
-[=====================                  ] 54% Unzipping... android-ndk-r27/simpl
-[=====================                  ] 55% Unzipping... android-ndk-r27/simpl
-[=====================                  ] 55% Unzipping... android-ndk-r27/CHANG
-[=======================================] 100% Unzipping... android-ndk-r27/CHAN
-
-Checking the license for package NDK (Side by side) 28.2.13676358 in /usr/local/lib/android/sdk/licenses
-License for package NDK (Side by side) 28.2.13676358 accepted.
-Preparing "Install NDK (Side by side) 28.2.13676358 v.28.2.13676358".
-"Install NDK (Side by side) 28.2.13676358 v.28.2.13676358" ready.
-Installing NDK (Side by side) 28.2.13676358 in /usr/local/lib/android/sdk/ndk/28.2.13676358
-"Install NDK (Side by side) 28.2.13676358 v.28.2.13676358" complete.
-"Install NDK (Side by side) 28.2.13676358 v.28.2.13676358" finished.
-lib/features/profile/screens/support_bot_screen.dart:140:28: Error: 'SystemUiOverlayStyle' isn't a type.
-    return AnnotatedRegion<SystemUiOverlayStyle>(
-                           ^^^^^^^^^^^^^^^^^^^^
-lib/features/profile/screens/support_bot_screen.dart:132:27: Error: The method 'SystemUiOverlayStyle' isn't defined for the type '_SupportBotScreenState'.
- - '_SupportBotScreenState' is from 'package:pages_of_us/features/profile/screens/support_bot_screen.dart' ('lib/features/profile/screens/support_bot_screen.dart').
-Try correcting the name to the name of an existing method, or defining a method named 'SystemUiOverlayStyle'.
-    final systemOverlay = SystemUiOverlayStyle(
-                          ^^^^^^^^^^^^^^^^^^^^
-lib/features/profile/screens/support_bot_screen.dart:156:27: Error: The getter 'HapticFeedback' isn't defined for the type '_SupportBotScreenState'.
- - '_SupportBotScreenState' is from 'package:pages_of_us/features/profile/screens/support_bot_screen.dart' ('lib/features/profile/screens/support_bot_screen.dart').
-Try correcting the name to the name of an existing getter, or defining a getter or field named 'HapticFeedback'.
-                          HapticFeedback.lightImpact();
-                          ^^^^^^^^^^^^^^
-Target kernel_snapshot_program failed: Exception
-
-
-FAILURE: Build failed with an exception.
-
-* What went wrong:
-Execution failed for task ':app:compileFlutterBuildRelease'.
-> Process 'command '/opt/hostedtoolcache/flutter/stable-3.47.9-x64/flutter/bin/flutter'' finished with non-zero exit value 1
-
-* Try:
-> Run with --stacktrace option to get the stack trace.
-> Run with --info or --debug option to get more log output.
-> Run with --scan to get full insights.
-> Get more help at https://help.gradle.org.
-
-BUILD FAILED in 3m 43s
-Running Gradle task 'assembleRelease'...                          224.0s
+Exception in thread "main" java.io.IOException: Downloading from https://services.gradle.org/distributions/gradle-8.14.3-all.zip failed: timeout (10000ms)
+	at org.gradle.wrapper.Install.forceFetch(SourceFile:4)
+	at org.gradle.wrapper.Install$1.call(SourceFile:8)
+	at org.gradle.wrapper.GradleWrapperMain.main(SourceFile:67)
+Caused by: java.net.SocketTimeoutException: Read timed out
+	at java.base/sun.nio.ch.NioSocketImpl.timedRead(NioSocketImpl.java:288)
+	at java.base/sun.nio.ch.NioSocketImpl.implRead(NioSocketImpl.java:314)
+	at java.base/sun.nio.ch.NioSocketImpl.read(NioSocketImpl.java:355)
+	at java.base/sun.nio.ch.NioSocketImpl$1.read(NioSocketImpl.java:808)
+	at java.base/java.net.Socket$SocketInputStream.read(Socket.java:966)
+	at java.base/sun.security.ssl.SSLSocketInputRecord.read(SSLSocketInputRecord.java:484)
+	at java.base/sun.security.ssl.SSLSocketInputRecord.readHeader(SSLSocketInputRecord.java:478)
+	at java.base/sun.security.ssl.SSLSocketInputRecord.bytesInCompletePacket(SSLSocketInputRecord.java:70)
+	at java.base/sun.security.ssl.SSLSocketImpl.readApplicationRecord(SSLSocketImpl.java:1464)
+	at java.base/sun.security.ssl.SSLSocketImpl$AppInputStream.read(SSLSocketImpl.java:1069)
+	at java.base/java.io.BufferedInputStream.fill(BufferedInputStream.java:244)
+	at java.base/java.io.BufferedInputStream.read1(BufferedInputStream.java:284)
+	at java.base/java.io.BufferedInputStream.read(BufferedInputStream.java:343)
+	at java.base/sun.net.www.http.HttpClient.parseHTTPHeader(HttpClient.java:834)
+	at java.base/sun.net.www.http.HttpClient.parseHTTP(HttpClient.java:769)
+	at java.base/sun.net.www.protocol.http.HttpURLConnection.getInputStream0(HttpURLConnection.java:1750)
+	at java.base/sun.net.www.protocol.http.HttpURLConnection.getInputStream(HttpURLConnection.java:1644)
+	at java.base/sun.net.www.protocol.https.HttpsURLConnectionImpl.getInputStream(HttpsURLConnectionImpl.java:224)
+	at org.gradle.wrapper.Install.forceFetch(SourceFile:2)
+	... 2 more
+Running Gradle task 'assembleRelease'...                           11.0s
 Gradle task assembleRelease failed with exit code 1
