@@ -28,6 +28,7 @@ import 'features/vault/screens/vault_screen.dart';
 import 'features/splash/screens/splash_screen.dart';
 import 'features/music/screens/listen_together_screen.dart';
 import 'widgets/custom_bottom_nav.dart';
+import 'core/services/update_service.dart';
 
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -215,6 +216,15 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold> with Wi
           MaterialPageRoute(builder: (_) => const ListenTogetherScreen()),
         );
       }
+    });
+
+    // Check for updates automatically when entering main app
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Future.delayed(const Duration(milliseconds: 2000), () {
+        if (mounted) {
+          UpdateService.checkAndPrompt(context);
+        }
+      });
     });
   }
 
