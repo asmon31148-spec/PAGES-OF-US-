@@ -50,6 +50,9 @@ class DatePlaceOption {
     required this.address,
   });
 
+  /// Alias for address
+  String get vicinity => address;
+
   factory DatePlaceOption.fromJson(Map<String, dynamic> json) {
     return DatePlaceOption(
       id: json['id']?.toString() ?? UniqueKey().toString(),
