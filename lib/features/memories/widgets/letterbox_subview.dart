@@ -257,13 +257,19 @@ class _LetterboxSubviewState extends State<LetterboxSubview> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) {
-        final isDark = Theme.of(ctx).brightness == Brightness.dark;
+        final isDark = ctx.read<ThemeProvider>().isDark;
         return Container(
           height: MediaQuery.of(ctx).size.height * 0.75,
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
-            color: isDark ? AppColors.darkSurface : const Color(0xFFFCFBF9),
+            color: isDark ? const Color(0xFF141722) : const Color(0xFFFFFFFF),
             borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+            border: Border(
+              top: BorderSide(
+                color: isDark ? Colors.white.withOpacity(0.20) : Colors.black.withOpacity(0.08),
+                width: 1.2,
+              ),
+            ),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -281,7 +287,7 @@ class _LetterboxSubviewState extends State<LetterboxSubview> {
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.close, size: 20),
+                    icon: Icon(Icons.close, size: 20, color: isDark ? Colors.white70 : Colors.black54),
                     onPressed: () => Navigator.pop(ctx),
                   ),
                 ],
@@ -291,18 +297,19 @@ class _LetterboxSubviewState extends State<LetterboxSubview> {
                 style: TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
-                  color: isDark ? AppColors.darkInk : AppColors.lightInk,
+                  color: isDark ? const Color(0xFFFBFBFC) : const Color(0xFF1C1D21),
                 ),
               ),
+              const SizedBox(height: 4),
               Text(
                 'Written by ${letter.authorName} · ${letter.writtenDate.split("T").first}',
                 style: TextStyle(
                   fontSize: 11,
                   fontStyle: FontStyle.italic,
-                  color: isDark ? AppColors.darkSoft : AppColors.lightSoft,
+                  color: isDark ? const Color(0xFFA0A6B2) : const Color(0xFF6B7280),
                 ),
               ),
-              const Divider(height: 24),
+              Divider(height: 24, color: isDark ? Colors.white12 : Colors.black12),
               Expanded(
                 child: SingleChildScrollView(
                   child: Text(
@@ -310,7 +317,7 @@ class _LetterboxSubviewState extends State<LetterboxSubview> {
                     style: TextStyle(
                       fontSize: 15,
                       height: 1.6,
-                      color: isDark ? AppColors.darkInk : AppColors.lightInk,
+                      color: isDark ? const Color(0xFFE5E7EB) : const Color(0xFF2E3239),
                     ),
                   ),
                 ),
@@ -344,7 +351,7 @@ class _LetterboxSubviewState extends State<LetterboxSubview> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) {
-        final isDark = Theme.of(ctx).brightness == Brightness.dark;
+        final isDark = ctx.read<ThemeProvider>().isDark;
         return StatefulBuilder(
           builder: (context, setModalState) {
             return Padding(
@@ -353,8 +360,14 @@ class _LetterboxSubviewState extends State<LetterboxSubview> {
                 constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.85),
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+                  color: isDark ? const Color(0xFF141722) : const Color(0xFFFFFFFF),
                   borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+                  border: Border(
+                    top: BorderSide(
+                      color: isDark ? Colors.white.withOpacity(0.20) : Colors.black.withOpacity(0.08),
+                      width: 1.2,
+                    ),
+                  ),
                 ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -365,7 +378,7 @@ class _LetterboxSubviewState extends State<LetterboxSubview> {
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
-                        color: isDark ? AppColors.darkInk : AppColors.lightInk,
+                        color: isDark ? const Color(0xFFFBFBFC) : const Color(0xFF1C1D21),
                       ),
                     ),
                     const SizedBox(height: 12),

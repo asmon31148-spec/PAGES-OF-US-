@@ -1390,23 +1390,30 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: isTethered
-            ? (isDark ? const Color(0xFF221A1A) : const Color(0xFFFFF6F0))
-            : (isDark ? AppColors.darkCard : AppColors.lightCard),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: isDark
+              ? [
+                  AppColors.terra.withOpacity(0.18),
+                  const Color(0xFF141722).withOpacity(0.92),
+                ]
+              : [
+                  AppColors.terra.withOpacity(0.08),
+                  Colors.white.withOpacity(0.95),
+                ],
+        ),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: isTethered
-              ? AppColors.terra.withOpacity(0.4)
-              : (isDark ? AppColors.darkBorder : AppColors.lightBorder),
+          color: isDark ? AppColors.terra.withOpacity(0.40) : AppColors.terra.withOpacity(0.25),
           width: 1.2,
         ),
         boxShadow: [
-          if (isTethered)
-            BoxShadow(
-              color: AppColors.terra.withOpacity(0.08),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
+          BoxShadow(
+            color: isDark ? Colors.black.withOpacity(0.35) : const Color(0x1A2B2D38),
+            blurRadius: 14,
+            offset: const Offset(0, 4),
+          ),
         ],
       ),
       child: Column(

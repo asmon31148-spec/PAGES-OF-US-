@@ -28,10 +28,29 @@ class LiquidGlassBackground extends StatelessWidget {
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  // Top-Right Atmospheric Glow (Warm Terracotta / Peach)
+                  // Top-Right Atmospheric Glow (Warm Terracotta / Peach Bloom)
                   Positioned(
                     top: -60,
                     right: -60,
+                    width: 340,
+                    height: 340,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: RadialGradient(
+                          colors: [
+                            AppColors.terra.withOpacity(isDark ? 0.30 : 0.16),
+                            Colors.transparent,
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  // Mid-Left Atmospheric Glow (Ethereal Rose-Plum Bloom)
+                  Positioned(
+                    top: 260,
+                    left: -90,
                     width: 320,
                     height: 320,
                     child: Container(
@@ -39,7 +58,7 @@ class LiquidGlassBackground extends StatelessWidget {
                         shape: BoxShape.circle,
                         gradient: RadialGradient(
                           colors: [
-                            AppColors.terra.withOpacity(isDark ? 0.22 : 0.12),
+                            const Color(0xFF8B4789).withOpacity(isDark ? 0.26 : 0.12),
                             Colors.transparent,
                           ],
                         ),
@@ -47,10 +66,10 @@ class LiquidGlassBackground extends StatelessWidget {
                     ),
                   ),
 
-                  // Mid-Left Atmospheric Glow (Ethereal Rose-Plum)
+                  // Bottom-Center Atmospheric Glow (Golden Amber / Sunset Bloom)
                   Positioned(
-                    top: 280,
-                    left: -80,
+                    bottom: -40,
+                    right: 30,
                     width: 300,
                     height: 300,
                     child: Container(
@@ -58,26 +77,7 @@ class LiquidGlassBackground extends StatelessWidget {
                         shape: BoxShape.circle,
                         gradient: RadialGradient(
                           colors: [
-                            const Color(0xFF6B3A64).withOpacity(isDark ? 0.20 : 0.08),
-                            Colors.transparent,
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-
-                  // Bottom-Center Atmospheric Glow (Golden Amber)
-                  Positioned(
-                    bottom: -50,
-                    right: 40,
-                    width: 280,
-                    height: 280,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: RadialGradient(
-                          colors: [
-                            const Color(0xFFE9C46A).withOpacity(isDark ? 0.15 : 0.08),
+                            const Color(0xFFE9C46A).withOpacity(isDark ? 0.22 : 0.14),
                             Colors.transparent,
                           ],
                         ),

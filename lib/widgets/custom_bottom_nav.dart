@@ -30,20 +30,27 @@ class CustomBottomNav extends StatelessWidget {
       decoration: BoxDecoration(
         color: isVault
             ? const Color(0xFF130F1A)
-            : (isDark ? const Color(0xFF0E1210) : const Color(0xFFFCFBF9)),
+            : (isDark ? const Color(0xFF10131B) : Colors.white),
         border: Border(
           top: BorderSide(
             color: isVault
-                ? const Color(0x55E89A8A)
-                : (isDark ? Colors.white.withOpacity(0.12) : Colors.black.withOpacity(0.06)),
-            width: 1,
+                ? const Color(0x66E89A8A)
+                : (isDark ? Colors.white.withOpacity(0.24) : Colors.black.withOpacity(0.08)),
+            width: 1.2,
           ),
         ),
+        boxShadow: [
+          BoxShadow(
+            color: isDark ? Colors.black.withOpacity(0.45) : Colors.black.withOpacity(0.06),
+            blurRadius: 18,
+            offset: const Offset(0, -4),
+          ),
+        ],
       ),
       child: SafeArea(
         top: false,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: List.generate(tabs.length, (index) {
@@ -61,10 +68,10 @@ class CustomBottomNav extends StatelessWidget {
               } else {
                 iconColor = isSelected
                     ? AppColors.terra
-                    : (isDark ? AppColors.darkSoft : AppColors.lightSoft);
+                    : (isDark ? Colors.white.withOpacity(0.65) : const Color(0xFF6B7280));
                 textColor = isSelected
-                    ? (isDark ? AppColors.darkInk : AppColors.lightInk)
-                    : (isDark ? AppColors.darkSoft : AppColors.lightSoft);
+                    ? (isDark ? Colors.white : AppColors.terra)
+                    : (isDark ? Colors.white.withOpacity(0.65) : const Color(0xFF6B7280));
                 dotColor = isSelected ? AppColors.terra : Colors.transparent;
               }
 
@@ -77,22 +84,22 @@ class CustomBottomNav extends StatelessWidget {
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 240),
                   curve: Curves.easeOutCubic,
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                  padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 6),
                   decoration: BoxDecoration(
                     color: isSelected
                         ? (isVault
-                            ? const Color(0xFFD4AF37).withOpacity(0.18)
+                            ? const Color(0xFFD4AF37).withOpacity(0.20)
                             : (isDark
-                                ? AppColors.terra.withOpacity(0.20)
-                                : AppColors.terra.withOpacity(0.12)))
+                                ? AppColors.terra.withOpacity(0.24)
+                                : AppColors.terra.withOpacity(0.14)))
                         : Colors.transparent,
                     borderRadius: BorderRadius.circular(20),
                     border: isSelected
                         ? Border.all(
                             color: isVault
-                                ? const Color(0xFFD4AF37).withOpacity(0.40)
-                                : AppColors.terra.withOpacity(0.35),
-                            width: 1,
+                                ? const Color(0xFFD4AF37).withOpacity(0.50)
+                                : AppColors.terra.withOpacity(0.45),
+                            width: 1.2,
                           )
                         : null,
                   ),
@@ -101,7 +108,7 @@ class CustomBottomNav extends StatelessWidget {
                     children: [
                       Icon(
                         tab['icon'] as IconData,
-                        size: 22,
+                        size: 23,
                         color: iconColor,
                       ),
                       const SizedBox(height: 2),
@@ -109,7 +116,7 @@ class CustomBottomNav extends StatelessWidget {
                         tab['label'] as String,
                         style: TextStyle(
                           fontSize: 10,
-                          fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                          fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
                           color: textColor,
                         ),
                       ),

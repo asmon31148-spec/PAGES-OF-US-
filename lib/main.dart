@@ -336,6 +336,7 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold> with Wi
       child: AnnotatedRegion<SystemUiOverlayStyle>(
         value: systemOverlay,
         child: Scaffold(
+          backgroundColor: isDark ? AppColors.darkBg : AppColors.lightBg,
           body: IndexedStack(
             index: _currentIndex,
             children: screens,

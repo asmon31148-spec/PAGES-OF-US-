@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../providers/theme_provider.dart';
 import '../../../data/models/letter_item.dart';
 import '../../../widgets/sanctuary_voice_player.dart';
 
@@ -59,13 +61,13 @@ class _LetterBookScreenState extends State<LetterBookScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isDark = context.watch<ThemeProvider>().isDark;
     final letters = widget.letters;
 
-    final bgColor = isDark ? const Color(0xFF0F0E17) : const Color(0xFFFAF7F2);
-    final cardBg = isDark ? const Color(0xFF181622) : const Color(0xFFFFFFFF);
-    final textColor = isDark ? AppColors.darkInk : AppColors.lightInk;
-    final subtextColor = isDark ? AppColors.darkSoft : AppColors.lightSoft;
+    final bgColor = isDark ? const Color(0xFF0C0E14) : const Color(0xFFF1EDE6);
+    final cardBg = isDark ? const Color(0xFF141722) : const Color(0xFFFFFFFF);
+    final textColor = isDark ? const Color(0xFFFBFBFC) : const Color(0xFF1C1D21);
+    final subtextColor = isDark ? const Color(0xFFA5ACB8) : const Color(0xFF6B7280);
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle(
