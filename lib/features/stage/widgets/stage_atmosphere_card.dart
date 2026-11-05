@@ -102,14 +102,8 @@ class _StageAtmosphereCardState extends State<StageAtmosphereCard> {
       return Container(
         height: 64,
         margin: EdgeInsets.zero,
-        decoration: BoxDecoration(
-          color: isDark ? AppColors.darkBg : AppColors.lightBg,
-          border: Border(
-            bottom: BorderSide(
-              color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
-              width: 0.8,
-            ),
-          ),
+        decoration: const BoxDecoration(
+          color: Colors.transparent,
         ),
         alignment: Alignment.center,
         child: const SizedBox(
@@ -175,15 +169,9 @@ class _StageAtmosphereCardState extends State<StageAtmosphereCard> {
 
     return Container(
       margin: EdgeInsets.zero,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.darkBg : AppColors.lightBg,
-        border: Border(
-          bottom: BorderSide(
-            color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
-            width: 0.8,
-          ),
-        ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: const BoxDecoration(
+        color: Colors.transparent,
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,

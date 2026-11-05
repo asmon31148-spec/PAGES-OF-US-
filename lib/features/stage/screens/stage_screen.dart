@@ -87,6 +87,7 @@ class _StageScreenState extends State<StageScreen> {
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: SafeArea(
+        bottom: false,
         child: Column(
           children: [
             // Top Bar
@@ -118,7 +119,7 @@ class _StageScreenState extends State<StageScreen> {
                 color: AppColors.sage,
                 child: SingleChildScrollView(
                   physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.only(bottom: 24),
+                  padding: const EdgeInsets.only(bottom: 12),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
