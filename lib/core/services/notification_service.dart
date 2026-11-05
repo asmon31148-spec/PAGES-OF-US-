@@ -58,6 +58,11 @@ class NotificationService {
   // Keep track of recent notification triggers to avoid duplicate spam
   static final Set<String> _recentNotifiedKeys = {};
 
+  // Gentle Sanctuary Mode (Mutes intrusive alerts, non-urgent vibrations & sounds)
+  static bool _isGentleMode = false;
+  static bool get isGentleMode => _isGentleMode;
+  static void setGentleMode(bool enabled) => _isGentleMode = enabled;
+
   static void _configureLocalTimeZone() {
     try {
       tz.initializeTimeZones();

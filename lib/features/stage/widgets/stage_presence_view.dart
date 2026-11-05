@@ -131,6 +131,110 @@ class StagePresenceView extends StatelessWidget {
     }
   }
 
+  void _showGentleModeSheet(
+    BuildContext context,
+    AuthProvider authProvider,
+    StageProvider stageProvider,
+    bool isDark,
+  ) {
+    final user = authProvider.user;
+    final space = authProvider.space;
+    if (user == null || space == null) return;
+
+    final isGentle = stageProvider.isGentleMode;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return ClipRRect(
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+              decoration: BoxDecoration(
+                color: isDark
+                    ? const Color(0xFF16181F).withOpacity(0.92)
+                    : Colors.white.withOpacity(0.92),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+                border: Border.all(
+                  color: isDark ? Colors.white12 : Colors.black12,
+                  width: 1,
+                ),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 56,
+                    height: 56,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: LinearGradient(
+                        colors: isGentle
+                            ? [const Color(0xFF818CF8), const Color(0xFF6366F1)]
+                            : [const Color(0xFFFBBF24), const Color(0xFFF97316)],
+                      ),
+                    ),
+                    child: Center(
+                      child: Icon(
+                        isGentle ? Icons.nightlight_round : Icons.wb_sunny_rounded,
+                        color: Colors.white,
+                        size: 28,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    isGentle ? 'Resting in Quiet Shell 🌙' : 'Quiet Shell Sanctuary',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? Colors.white : Colors.black87,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    isGentle
+                        ? 'Your quiet shell is currently active. Push vibrations and alert sounds are muted, and your partner sees that you love them and are resting peacefully.'
+                        : 'When life feels loud, heavy, or emotionally overwhelming, step into your quiet shell. It mutes alert vibrations, softens the app, and lets your partner know you love them and are simply taking time to recharge.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 13,
+                      height: 1.45,
+                      color: isDark ? AppColors.darkSoft : AppColors.lightSoft,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      stageProvider.toggleGentleMode(space.id, user.id);
+                      HapticFeedback.mediumImpact();
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: isGentle ? const Color(0xFF6366F1) : const Color(0xFFE07A5F),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                      elevation: 4,
+                    ),
+                    child: Text(
+                      isGentle ? 'Exit Quiet Shell ✨' : 'Enter Quiet Shell 🌙',
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = context.watch<ThemeProvider>().isDark;
@@ -273,6 +377,19 @@ class StagePresenceView extends StatelessWidget {
                               ),
                             ),
                           ),
+                        if (stageProvider.isGentleMode)
+                          Positioned(
+                            top: 0,
+                            right: 0,
+                            child: Container(
+                              padding: const EdgeInsets.all(3),
+                              decoration: const BoxDecoration(
+                                color: Color(0xFF6366F1),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.nightlight_round, size: 10, color: Colors.white),
+                            ),
+                          ),
                       ],
                     ),
                     const SizedBox(height: 6),
@@ -284,11 +401,20 @@ class StagePresenceView extends StatelessWidget {
                         color: isDark ? AppColors.darkInk : AppColors.lightInk,
                       ),
                     ),
-                    Text(
-                      user?.thought ?? (myMood?.label ?? 'Set mood aura ✨'),
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: isDark ? AppColors.darkSoft : AppColors.lightSoft,
+                    GestureDetector(
+                      onTap: () => _showGentleModeSheet(context, authProvider, stageProvider, isDark),
+                      behavior: HitTestBehavior.opaque,
+                      child: Text(
+                        stageProvider.isGentleMode
+                            ? '🌙 Quiet shell active'
+                            : (user?.thought ?? (myMood?.label ?? 'Set mood aura ✨')),
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: stageProvider.isGentleMode
+                              ? const Color(0xFF818CF8)
+                              : (isDark ? AppColors.darkSoft : AppColors.lightSoft),
+                          fontWeight: stageProvider.isGentleMode ? FontWeight.bold : FontWeight.normal,
+                        ),
                       ),
                     ),
                   ],
@@ -409,6 +535,19 @@ class StagePresenceView extends StatelessWidget {
                                   ),
                                 ),
                               ),
+                            if (stageProvider.partnerGentleMode)
+                              Positioned(
+                                top: 0,
+                                right: 0,
+                                child: Container(
+                                  padding: const EdgeInsets.all(3),
+                                  decoration: const BoxDecoration(
+                                    color: Color(0xFF6366F1),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(Icons.nightlight_round, size: 10, color: Colors.white),
+                                ),
+                              ),
                           ],
                         ),
                         const SizedBox(height: 6),
@@ -431,6 +570,16 @@ class StagePresenceView extends StatelessWidget {
                                   fontSize: 10,
                                   fontWeight: FontWeight.bold,
                                   color: Color(0xFFE07A5F),
+                                ),
+                              );
+                            }
+                            if (stageProvider.partnerGentleMode) {
+                              return const Text(
+                                '🌙 Resting in quiet shell (loves you)',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF818CF8),
                                 ),
                               );
                             }

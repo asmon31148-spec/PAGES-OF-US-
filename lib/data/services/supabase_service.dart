@@ -37,6 +37,7 @@ class SupabaseService {
   static Function(Map<String, dynamic> data)? _onPinnedNote;
   static Function(Map<String, dynamic> data)? _onListenInvite;
   static Function(Map<String, dynamic> data)? _onThemeUpdate;
+  static Function(Map<String, dynamic> data)? _onGentleMode;
 
   static void setThemeUpdateListener(Function(Map<String, dynamic> data)? callback) {
     _onThemeUpdate = callback;
@@ -162,6 +163,11 @@ class SupabaseService {
       callback: (payload) => _onThemeUpdate?.call(payload),
     );
 
+    ch.onBroadcast(
+      event: 'GENTLE_MODE_UPDATE',
+      callback: (payload) => _onGentleMode?.call(payload),
+    );
+
     ch.subscribe((status, [error]) {
       if (status == RealtimeSubscribeStatus.channelError || status == RealtimeSubscribeStatus.closed) {
         Future.delayed(const Duration(milliseconds: 1500), () {
@@ -191,6 +197,7 @@ class SupabaseService {
     Function(Map<String, dynamic> data)? onDailyPrompt,
     Function(Map<String, dynamic> data)? onPinnedNote,
     Function(Map<String, dynamic> data)? onListenInvite,
+    Function(Map<String, dynamic> data)? onGentleMode,
   }) {
     if (_client == null || spaceId.isEmpty) return;
 
@@ -205,6 +212,7 @@ class SupabaseService {
     _onDailyPrompt = onDailyPrompt;
     _onPinnedNote = onPinnedNote;
     _onListenInvite = onListenInvite;
+    _onGentleMode = onGentleMode;
 
     try {
       _ensureChannel(spaceId);

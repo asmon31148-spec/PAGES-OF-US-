@@ -55,12 +55,19 @@ class StageProvider extends ChangeNotifier {
   StreamSubscription? _pulseSub;
   StreamSubscription? _heartbeatSub;
   StreamSubscription? _touchStatsSub;
+  StreamSubscription? _gentleModeSub;
   String? _activeSpaceId;
   String? _activeUserId;
   String? _activePartnerId;
   int _lastPulseTimestamp = 0;
   int _lastHeartbeatTimestamp = 0;
   Timer? _drawingSaveDebounce;
+
+  // Gentle Sanctuary Mode (Zero-pressure recharging shell)
+  bool _isGentleMode = false;
+  bool _partnerGentleMode = false;
+  bool get isGentleMode => _isGentleMode;
+  bool get partnerGentleMode => _partnerGentleMode;
 
   // Zero-Pressure Heartbeat Pulse (isolated Notifiers for buttery 60 FPS)
   final ValueNotifier<int> heartbeatPulseNotifier = ValueNotifier<int>(0);
@@ -140,6 +147,7 @@ class StageProvider extends ChangeNotifier {
     _pulseSub?.cancel();
     _heartbeatSub?.cancel();
     _touchStatsSub?.cancel();
+    _gentleModeSub?.cancel();
     _drawingSaveDebounce?.cancel();
     _partnerTouchDecayTimer?.cancel();
     _anniversarySub = null;
@@ -152,6 +160,7 @@ class StageProvider extends ChangeNotifier {
     _pulseSub = null;
     _heartbeatSub = null;
     _touchStatsSub = null;
+    _gentleModeSub = null;
 
     _anniversaryDate = null;
     _myMood = null;
@@ -471,6 +480,21 @@ class StageProvider extends ChangeNotifier {
       }
     });
 
+    // 7b. Gentle Mode Listener (Zero-pressure recharging presence)
+    _isGentleMode = LocalCacheService.prefs.getBool('gentle_mode') ?? false;
+    NotificationService.setGentleMode(_isGentleMode);
+    _gentleModeSub?.cancel();
+    _gentleModeSub = FirebaseService.streamFeatureDoc(spaceId, 'gentle_modes').listen((snap) {
+      if (snap.exists && snap.data() != null) {
+        final data = snap.data()!;
+        final modes = data['modes'] as Map<String, dynamic>? ?? {};
+        if (partnerId != null && modes.containsKey(partnerId)) {
+          _partnerGentleMode = modes[partnerId] == true;
+          notifyListeners();
+        }
+      }
+    });
+
     // 8. Fetch Cached Drawing Canvas
     SupabaseService.getAppContent('drawing_$spaceId').then((content) {
       if (content != null && content['strokes'] is List) {
@@ -625,6 +649,13 @@ class StageProvider extends ChangeNotifier {
           );
         }
       },
+      onGentleMode: (data) {
+        final sender = data['senderId'] as String?;
+        if (sender != userId && data['isGentleMode'] != null) {
+          _partnerGentleMode = data['isGentleMode'] == true;
+          notifyListeners();
+        }
+      },
     );
   }
 
@@ -680,6 +711,39 @@ class StageProvider extends ChangeNotifier {
         'senderNickname': nickname,
         'timestamp': now,
       });
+    } catch (_) {}
+  }
+
+  /// Toggles Gentle Sanctuary / Quiet Shell mode.
+  /// Mutes non-critical alerts & vibrations, lets partner know you are resting
+  /// with no pressure to talk or respond.
+  Future<void> toggleGentleMode(String spaceId, String userId) async {
+    _isGentleMode = !_isGentleMode;
+    NotificationService.setGentleMode(_isGentleMode);
+    notifyListeners();
+
+    try {
+      await LocalCacheService.prefs.setBool('gentle_mode', _isGentleMode);
+    } catch (_) {}
+
+    // 1. Instant WebSocket broadcast to partner
+    await SupabaseService.broadcastEvent(
+      spaceId: spaceId,
+      eventType: 'GENTLE_MODE_UPDATE',
+      payload: {
+        'senderId': userId,
+        'isGentleMode': _isGentleMode,
+      },
+    );
+
+    // 2. Dual Firestore sync for offline/cross-device continuity
+    try {
+      await FirebaseService.saveNestedFeatureField(
+        spaceId,
+        'gentle_modes',
+        'modes.$userId',
+        _isGentleMode,
+      );
     } catch (_) {}
   }
 
@@ -1459,6 +1523,7 @@ class StageProvider extends ChangeNotifier {
     _pulseSub?.cancel();
     _heartbeatSub?.cancel();
     _touchStatsSub?.cancel();
+    _gentleModeSub?.cancel();
     super.dispose();
   }
 }
