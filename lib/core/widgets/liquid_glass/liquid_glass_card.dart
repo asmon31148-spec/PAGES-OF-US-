@@ -31,7 +31,7 @@ class LiquidGlassCard extends StatelessWidget {
     this.height,
     this.tint,
     this.onTap,
-    this.enableBlur = true,
+    this.enableBlur = false,
     this.blurSigma = LiquidGlassTheme.blurCard,
   });
 

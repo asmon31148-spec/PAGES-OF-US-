@@ -1414,13 +1414,41 @@ class AudioProvider extends ChangeNotifier {
   // -------------------------------------------------------------
   // DUCKING FOR MEDIA & TOP BAR QUICK TOGGLE
   // -------------------------------------------------------------
-  Future<void> toggleMusic() async {
-    // Legacy top bar quick action: toggles current active audio
-    if (_isSongPlaying) {
-      await pauseSong();
+  bool _wasSongMuted = false;
+  bool _wasAtmosphereMuted = false;
+
+  /// Top Bar Master Mute / Unmute Toggle:
+  /// Instantly turns off/on any currently playing song or atmosphere soundscape.
+  Future<void> toggleMasterMute() async {
+    if (isPlaying) {
+      _wasSongMuted = _isSongPlaying;
+      _wasAtmosphereMuted = _isAtmospherePlaying;
+      if (_isSongPlaying) {
+        await pauseSong();
+      }
+      if (_isAtmospherePlaying) {
+        await pauseAtmosphere();
+      }
     } else {
-      await resumeSong();
+      if (_wasSongMuted) {
+        await resumeSong();
+      } else if (_wasAtmosphereMuted) {
+        await resumeAtmosphere();
+      } else {
+        if (_songs.isNotEmpty) {
+          await resumeSong();
+        } else {
+          await resumeAtmosphere();
+        }
+      }
+      _wasSongMuted = false;
+      _wasAtmosphereMuted = false;
     }
+    notifyListeners();
+  }
+
+  Future<void> toggleMusic() async {
+    await toggleMasterMute();
   }
 
   void duckForMedia() {

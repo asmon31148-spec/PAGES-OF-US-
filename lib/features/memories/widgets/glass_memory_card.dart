@@ -184,30 +184,28 @@ class GlassMemoryCard extends StatelessWidget {
                 borderRadius: BorderRadius.vertical(
                   bottom: Radius.circular((radius - 0.5).clamp(0.0, 999.0)),
                 ),
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Colors.black.withOpacity(0.20),
-                          Colors.black.withOpacity(0.72),
-                        ],
-                      ),
-                      border: Border(
-                        top: BorderSide(
-                          color: Colors.white.withOpacity(0.18),
-                          width: 0.5,
-                        ),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.black.withOpacity(0.20),
+                        Colors.black.withOpacity(0.72),
+                      ],
+                    ),
+                    border: Border(
+                      top: BorderSide(
+                        color: Colors.white.withOpacity(0.18),
+                        width: 0.5,
                       ),
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
                         Row(
                           children: [
                             Expanded(
@@ -260,7 +258,6 @@ class GlassMemoryCard extends StatelessWidget {
                   ),
                 ),
               ),
-            ),
           ],
         ),
       ),

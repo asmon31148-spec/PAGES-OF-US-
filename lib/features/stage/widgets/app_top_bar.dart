@@ -35,7 +35,7 @@ class AppTopBar extends StatelessWidget {
     this.showThemeToggle = true,
     this.forceDark = false,
     this.showTouch = false,
-    this.showMusic = false,
+    this.showMusic = true,
   });
 
   @override
@@ -106,85 +106,15 @@ class AppTopBar extends StatelessWidget {
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Touch & Draw Studio Isolated Full-Screen Menu Button (Stage / Home)
-              if (showTouch) ...[
-                GestureDetector(
-                  onTap: () {
-                    HapticFeedback.lightImpact();
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const TouchSanctuaryScreen(),
-                      ),
-                    );
-                  },
-                  child: Container(
-                    height: 32,
-                    padding: const EdgeInsets.symmetric(horizontal: 10),
-                    margin: const EdgeInsets.only(right: 6),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: isPartnerTouching
-                                ? [
-                                    const Color(0xFF10B981).withOpacity(0.32),
-                                    const Color(0xFF10B981).withOpacity(0.12),
-                                  ]
-                                : [
-                                    Colors.white.withOpacity(0.12),
-                                    Colors.white.withOpacity(0.04),
-                                  ],
-                          ),
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: isPartnerTouching
-                                ? const Color(0xFF10B981).withOpacity(0.7)
-                                : Colors.white.withOpacity(0.24),
-                            width: isPartnerTouching ? 1.4 : 1,
-                          ),
-                          boxShadow: isPartnerTouching
-                              ? [
-                                  BoxShadow(
-                                    color: const Color(0xFF10B981).withOpacity(0.4),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 2),
-                                  ),
-                                ]
-                              : null,
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.fingerprint_rounded,
-                              size: 15,
-                              color: isPartnerTouching ? const Color(0xFF10B981) : AppColors.terra,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              isPartnerTouching ? 'Touching!' : 'Touch',
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: isPartnerTouching ? FontWeight.bold : FontWeight.w600,
-                                color: isPartnerTouching
-                                    ? const Color(0xFF10B981)
-                                    : (forceDark
-                                        ? AppColors.romanceInk
-                                        : (isDark ? AppColors.darkInk : AppColors.lightInk)),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-
-              // Music & Atmosphere Studio Shortcut
+              // Music & Atmosphere Mute / Unmute Quick Toggle Button
               if (showMusic || audioProvider.isPlaying) ...[
                 GestureDetector(
                   onTap: () {
                     HapticFeedback.lightImpact();
+                    audioProvider.toggleMasterMute();
+                  },
+                  onLongPress: () {
+                    HapticFeedback.mediumImpact();
                     Navigator.push(
                       context,
                       MaterialPageRoute(
@@ -197,66 +127,66 @@ class AppTopBar extends StatelessWidget {
                     padding: EdgeInsets.symmetric(horizontal: audioProvider.isPlaying ? 10 : 0),
                     width: audioProvider.isPlaying ? null : 32,
                     margin: const EdgeInsets.only(right: 6),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: audioProvider.isPlaying
-                                ? [
-                                    AppColors.terra.withOpacity(0.35),
-                                    AppColors.terra.withOpacity(0.12),
-                                  ]
-                                : [
-                                    Colors.white.withOpacity(0.12),
-                                    Colors.white.withOpacity(0.04),
-                                  ],
-                          ),
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: audioProvider.isPlaying
-                                ? AppColors.terra.withOpacity(0.7)
-                                : Colors.white.withOpacity(0.24),
-                            width: 1,
-                          ),
-                          boxShadow: audioProvider.isPlaying
-                              ? [
-                                  BoxShadow(
-                                    color: AppColors.terra.withOpacity(0.35),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 2),
-                                  ),
-                                ]
-                              : null,
-                        ),
-                        alignment: Alignment.center,
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.music_note_rounded,
-                              size: 15,
-                              color: audioProvider.isPlaying
-                                  ? Colors.white
-                                  : (forceDark
-                                      ? AppColors.romanceInk
-                                      : (isDark ? AppColors.darkInk : AppColors.lightInk)),
-                            ),
-                            if (audioProvider.isPlaying) ...[
-                              const SizedBox(width: 4),
-                              const Text(
-                                'Playing',
-                                style: TextStyle(
-                                  fontSize: 10.5,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: audioProvider.isPlaying
+                            ? [
+                                AppColors.terra.withOpacity(0.35),
+                                AppColors.terra.withOpacity(0.12),
+                              ]
+                            : [
+                                Colors.white.withOpacity(isDark ? 0.08 : 0.45),
+                                Colors.white.withOpacity(isDark ? 0.03 : 0.20),
+                              ],
                       ),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: audioProvider.isPlaying
+                            ? AppColors.terra.withOpacity(0.7)
+                            : (isDark ? Colors.white.withOpacity(0.20) : Colors.black.withOpacity(0.12)),
+                        width: 1,
+                      ),
+                      boxShadow: audioProvider.isPlaying
+                          ? [
+                              BoxShadow(
+                                color: AppColors.terra.withOpacity(0.35),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ]
+                          : null,
                     ),
-                  ],
+                    alignment: Alignment.center,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          audioProvider.isPlaying ? Icons.music_note_rounded : Icons.music_off_rounded,
+                          size: 15,
+                          color: audioProvider.isPlaying
+                              ? Colors.white
+                              : (forceDark
+                                  ? AppColors.romanceInk
+                                  : (isDark ? AppColors.darkInk : AppColors.lightInk)),
+                        ),
+                        if (audioProvider.isPlaying) ...[
+                          const SizedBox(width: 4),
+                          const Text(
+                            'Playing',
+                            style: TextStyle(
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+              ],
 
               // Light / Dark Theme Switcher
               if (showThemeToggle) ...[
