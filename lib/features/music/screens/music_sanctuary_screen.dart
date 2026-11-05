@@ -937,132 +937,134 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
       future: downloader.getTotalStorageUsedMb(),
       builder: (context, snapshot) {
         final sizeMb = snapshot.data ?? 0.0;
-        return ListView(
+        return ListView.builder(
           physics: const BouncingScrollPhysics(),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          children: [
-            // Storage Header Banner
-            GlassCard(
-              enableBlur: false,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              child: Row(
-                children: [
-                  const Icon(Icons.download_done_rounded, color: GlassTokens.accent, size: 20),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      '${tracks.length} songs offline • ${sizeMb.toStringAsFixed(1)} MB',
-                      style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
-                    ),
-                  ),
-                  GlassButton(
-                    onTap: () => YoutubeMusicSearchSheet.show(context),
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    child: const Text('+ Download More', style: TextStyle(fontSize: 11.5, color: GlassTokens.accent, fontWeight: FontWeight.bold)),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            // Downloaded Songs List
-            ...tracks.map((track) {
-              final isCurrent = audio.currentSong.id == track.id;
-              return Container(
-                margin: const EdgeInsets.only(bottom: 8),
+          itemCount: tracks.length + 1,
+          itemBuilder: (context, index) {
+            if (index == 0) {
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 12),
                 child: GlassCard(
                   enableBlur: false,
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  borderColor: isCurrent ? GlassTokens.accent.withOpacity(0.7) : null,
-                  tintColor: isCurrent ? GlassTokens.accent.withOpacity(0.12) : null,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   child: Row(
                     children: [
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(10),
-                        child: track.thumbnailUrl.isNotEmpty
-                            ? CachedNetworkImage(
-                                imageUrl: track.thumbnailUrl,
-                                width: 46,
-                                height: 46,
-                                fit: BoxFit.cover,
-                                errorWidget: (_, __, ___) => Container(
-                                  width: 46,
-                                  height: 46,
-                                  color: const Color(0xFF1E2D22),
-                                  child: const Icon(Icons.music_note, color: Colors.white24),
-                                ),
-                              )
-                            : Container(
-                                width: 46,
-                                height: 46,
-                                color: const Color(0xFF1E2D22),
-                                child: const Icon(Icons.music_note, color: Colors.white24),
-                              ),
-                      ),
-                      const SizedBox(width: 12),
+                      const Icon(Icons.download_done_rounded, color: GlassTokens.accent, size: 20),
+                      const SizedBox(width: 10),
                       Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              track.title,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: isCurrent ? GlassTokens.accent : Colors.white,
-                                fontSize: 13.5,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              '${track.artist}  •  ${track.durationFormatted}  •  Offline ✓',
-                              style: const TextStyle(color: GlassTokens.textSecondary, fontSize: 11),
-                            ),
-                          ],
+                        child: Text(
+                          '${tracks.length} songs offline • ${sizeMb.toStringAsFixed(1)} MB',
+                          style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
                         ),
                       ),
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            icon: Icon(
-                              isCurrent && audio.isSongPlaying ? Icons.pause_circle_filled_rounded : Icons.play_circle_fill_rounded,
-                              color: GlassTokens.accent,
-                              size: 30,
-                            ),
-                            onPressed: () {
-                              if (isCurrent && audio.isSongPlaying) {
-                                audio.pauseSong();
-                              } else {
-                                audio.playYoutubeTrack(track);
-                              }
-                            },
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.delete_outline_rounded, color: Colors.white38, size: 20),
-                            onPressed: () async {
-                              HapticFeedback.lightImpact();
-                              await downloader.deleteTrack(track.id);
-                              if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text('Removed "${track.title}" from downloads'),
-                                    duration: const Duration(seconds: 2),
-                                    behavior: SnackBarBehavior.floating,
-                                  ),
-                                );
-                              }
-                            },
-                          ),
-                        ],
+                      GlassButton(
+                        onTap: () => YoutubeMusicSearchSheet.show(context),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        child: const Text('+ Download More', style: TextStyle(fontSize: 11.5, color: GlassTokens.accent, fontWeight: FontWeight.bold)),
                       ),
                     ],
                   ),
                 ),
               );
-            }),
-          ],
+            }
+
+            final track = tracks[index - 1];
+            final isCurrent = audio.currentSong.id == track.id;
+            return Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              child: GlassCard(
+                enableBlur: false,
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                borderColor: isCurrent ? GlassTokens.accent.withOpacity(0.7) : null,
+                tintColor: isCurrent ? GlassTokens.accent.withOpacity(0.12) : null,
+                child: Row(
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: track.thumbnailUrl.isNotEmpty
+                          ? CachedNetworkImage(
+                              imageUrl: track.thumbnailUrl,
+                              width: 46,
+                              height: 46,
+                              fit: BoxFit.cover,
+                              errorWidget: (_, __, ___) => Container(
+                                width: 46,
+                                height: 46,
+                                color: const Color(0xFF1E2D22),
+                                child: const Icon(Icons.music_note, color: Colors.white24),
+                              ),
+                            )
+                          : Container(
+                              width: 46,
+                              height: 46,
+                              color: const Color(0xFF1E2D22),
+                              child: const Icon(Icons.music_note, color: Colors.white24),
+                            ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            track.title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: isCurrent ? GlassTokens.accent : Colors.white,
+                              fontSize: 13.5,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '${track.artist}  •  ${track.durationFormatted}  •  Offline ✓',
+                            style: const TextStyle(color: GlassTokens.textSecondary, fontSize: 11),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: Icon(
+                            isCurrent && audio.isSongPlaying ? Icons.pause_circle_filled_rounded : Icons.play_circle_fill_rounded,
+                            color: GlassTokens.accent,
+                            size: 30,
+                          ),
+                          onPressed: () {
+                            if (isCurrent && audio.isSongPlaying) {
+                              audio.pauseSong();
+                            } else {
+                              audio.playYoutubeTrack(track);
+                            }
+                          },
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.delete_outline_rounded, color: Colors.white38, size: 20),
+                          onPressed: () async {
+                            HapticFeedback.lightImpact();
+                            await downloader.deleteTrack(track.id);
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Removed "${track.title}" from downloads'),
+                                  duration: const Duration(seconds: 2),
+                                  behavior: SnackBarBehavior.floating,
+                                ),
+                              );
+                            }
+                          },
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
         );
       },
     );
