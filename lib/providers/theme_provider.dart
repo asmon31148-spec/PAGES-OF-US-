@@ -92,18 +92,32 @@ class ThemeProvider extends ChangeNotifier {
 
   /// Synchronize with partner's couple theme in Supabase Realtime
   Future<void> initThemeSync(String spaceId, String currentUserId, String currentUserName) async {
-    if (_activeSpaceId == spaceId && _activeUserId == currentUserId && _realtimeChannel != null) {
-      return;
-    }
-
     _activeSpaceId = spaceId;
     _activeUserId = currentUserId;
+
+    if (spaceId.isEmpty) return;
+
+    // 1. First Priority: Fetch from open app_content (no RLS blocks)
+    try {
+      final appContent = await SupabaseService.getAppContent('couple_theme_$spaceId');
+      if (appContent != null && appContent.isNotEmpty) {
+        _applyRemotePayload(appContent, isInitialFetch: true);
+      }
+    } catch (_) {}
+
+    // 2. Realtime listener via broadcast channel
+    SupabaseService.setThemeUpdateListener((data) {
+      final senderId = data['updated_by']?.toString();
+      if (senderId != _activeUserId) {
+        _applyRemotePayload(data, isInitialFetch: false);
+      }
+    });
 
     final client = SupabaseService.client;
     if (client == null) return;
 
     try {
-      // 1. Fetch current shared theme from Supabase
+      // 3. Fallback table query in case couple_themes exists
       final response = await client
           .from('couple_themes')
           .select()
@@ -112,20 +126,9 @@ class ThemeProvider extends ChangeNotifier {
 
       if (response != null) {
         _applyRemotePayload(response, isInitialFetch: true);
-      } else {
-        // First-time pair initialization: save initial defaults
-        await client.from('couple_themes').upsert({
-          'space_id': spaceId,
-          'theme_id': _themeId,
-          'brightness_mode': _brightnessMode,
-          'performance_level': _performanceLevel.toDbString(),
-          'updated_by': currentUserId,
-          'updated_by_name': currentUserName,
-          'updated_at': DateTime.now().toUtc().toIso8601String(),
-        });
       }
 
-      // 2. Subscribe to Realtime Postgres changes
+      // 4. Postgres change listener fallback
       _realtimeChannel?.unsubscribe();
       final channel = client.channel('couple_theme_$spaceId');
       channel.onPostgresChanges(
@@ -147,7 +150,7 @@ class ThemeProvider extends ChangeNotifier {
 
       _realtimeChannel = channel;
     } catch (e) {
-      debugPrint('[ThemeProvider] initThemeSync error: $e');
+      debugPrint('[ThemeProvider] initThemeSync optional table query: $e');
     }
   }
 
@@ -220,10 +223,9 @@ class ThemeProvider extends ChangeNotifier {
   }) async {
     if (_themeId == newThemeId) return;
 
-    final oldThemeId = _themeId;
     final now = DateTime.now().toUtc();
 
-    // 1. Optimistic local update
+    // 1. Optimistic local update - ALWAYS STAYS PERSISTENT
     _themeId = newThemeId;
     _currentTheme = ThemeRegistry.getById(_themeId);
     _lastUpdatedByName = userName;
@@ -235,26 +237,35 @@ class ThemeProvider extends ChangeNotifier {
 
     notifyListeners();
 
-    // 2. Upsert to Supabase
-    final client = SupabaseService.client;
-    if (client != null && spaceId.isNotEmpty) {
-      try {
-        await client.from('couple_themes').upsert({
-          'space_id': spaceId,
-          'theme_id': _themeId,
-          'brightness_mode': _brightnessMode,
-          'performance_level': _performanceLevel.toDbString(),
-          'updated_by': userId,
-          'updated_by_name': userName,
-          'updated_at': now.toIso8601String(),
-        });
-      } catch (e) {
-        debugPrint('[ThemeProvider] Error updating theme to Supabase: $e');
-        // Rollback on failure
-        _themeId = oldThemeId;
-        _currentTheme = ThemeRegistry.getById(_themeId);
-        LocalCacheService.setCachedThemeId(_themeId);
-        notifyListeners();
+    final payload = {
+      'space_id': spaceId,
+      'theme_id': _themeId,
+      'brightness_mode': _brightnessMode,
+      'performance_level': _performanceLevel.toDbString(),
+      'updated_by': userId,
+      'updated_by_name': userName,
+      'updated_at': now.toIso8601String(),
+    };
+
+    if (spaceId.isNotEmpty) {
+      // 2. Persist to reliable app_content (no RLS issues)
+      await SupabaseService.upsertAppContent('couple_theme_$spaceId', payload);
+
+      // 3. Broadcast to partner in real-time
+      await SupabaseService.broadcastEvent(
+        spaceId: spaceId,
+        eventType: 'THEME_UPDATE',
+        payload: payload,
+      );
+
+      // 4. Also try couple_themes table, but NEVER rollback local user choice on failure
+      final client = SupabaseService.client;
+      if (client != null) {
+        try {
+          await client.from('couple_themes').upsert(payload);
+        } catch (e) {
+          debugPrint('[ThemeProvider] Table couple_themes upsert skipped: $e');
+        }
       }
     }
   }
@@ -274,21 +285,35 @@ class ThemeProvider extends ChangeNotifier {
     LocalCacheService.setCachedIsDark(_isDark);
     notifyListeners();
 
-    final client = SupabaseService.client;
     final effectiveSpaceId = spaceId ?? _activeSpaceId;
     final effectiveUserId = userId ?? _activeUserId;
-    if (client != null && effectiveSpaceId != null && effectiveUserId != null) {
-      try {
-        await client.from('couple_themes').upsert({
-          'space_id': effectiveSpaceId,
-          'theme_id': _themeId,
-          'brightness_mode': _brightnessMode,
-          'performance_level': _performanceLevel.toDbString(),
-          'updated_by': effectiveUserId,
-          'updated_by_name': userName ?? _lastUpdatedByName ?? 'Partner',
-          'updated_at': DateTime.now().toUtc().toIso8601String(),
-        });
-      } catch (_) {}
+    final effectiveUserName = userName ?? _lastUpdatedByName ?? 'Partner';
+    final nowIso = DateTime.now().toUtc().toIso8601String();
+
+    if (effectiveSpaceId != null && effectiveSpaceId.isNotEmpty) {
+      final payload = {
+        'space_id': effectiveSpaceId,
+        'theme_id': _themeId,
+        'brightness_mode': _brightnessMode,
+        'performance_level': _performanceLevel.toDbString(),
+        'updated_by': effectiveUserId ?? '',
+        'updated_by_name': effectiveUserName,
+        'updated_at': nowIso,
+      };
+
+      await SupabaseService.upsertAppContent('couple_theme_$effectiveSpaceId', payload);
+      await SupabaseService.broadcastEvent(
+        spaceId: effectiveSpaceId,
+        eventType: 'THEME_UPDATE',
+        payload: payload,
+      );
+
+      final client = SupabaseService.client;
+      if (client != null) {
+        try {
+          await client.from('couple_themes').upsert(payload);
+        } catch (_) {}
+      }
     }
   }
 
@@ -305,21 +330,35 @@ class ThemeProvider extends ChangeNotifier {
     LocalCacheService.setCachedPerformanceLevel(level.toDbString());
     notifyListeners();
 
-    final client = SupabaseService.client;
     final effectiveSpaceId = spaceId ?? _activeSpaceId;
     final effectiveUserId = userId ?? _activeUserId;
-    if (client != null && effectiveSpaceId != null && effectiveUserId != null) {
-      try {
-        await client.from('couple_themes').upsert({
-          'space_id': effectiveSpaceId,
-          'theme_id': _themeId,
-          'brightness_mode': _brightnessMode,
-          'performance_level': _performanceLevel.toDbString(),
-          'updated_by': effectiveUserId,
-          'updated_by_name': userName ?? _lastUpdatedByName ?? 'Partner',
-          'updated_at': DateTime.now().toUtc().toIso8601String(),
-        });
-      } catch (_) {}
+    final effectiveUserName = userName ?? _lastUpdatedByName ?? 'Partner';
+    final nowIso = DateTime.now().toUtc().toIso8601String();
+
+    if (effectiveSpaceId != null && effectiveSpaceId.isNotEmpty) {
+      final payload = {
+        'space_id': effectiveSpaceId,
+        'theme_id': _themeId,
+        'brightness_mode': _brightnessMode,
+        'performance_level': _performanceLevel.toDbString(),
+        'updated_by': effectiveUserId ?? '',
+        'updated_by_name': effectiveUserName,
+        'updated_at': nowIso,
+      };
+
+      await SupabaseService.upsertAppContent('couple_theme_$effectiveSpaceId', payload);
+      await SupabaseService.broadcastEvent(
+        spaceId: effectiveSpaceId,
+        eventType: 'THEME_UPDATE',
+        payload: payload,
+      );
+
+      final client = SupabaseService.client;
+      if (client != null) {
+        try {
+          await client.from('couple_themes').upsert(payload);
+        } catch (_) {}
+      }
     }
   }
 
@@ -338,6 +377,7 @@ class ThemeProvider extends ChangeNotifier {
 
   @override
   void dispose() {
+    SupabaseService.setThemeUpdateListener(null);
     _realtimeChannel?.unsubscribe();
     _partnerThemeUpdates.close();
     super.dispose();

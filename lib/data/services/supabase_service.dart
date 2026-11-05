@@ -35,6 +35,11 @@ class SupabaseService {
   static Function(Map<String, dynamic> data)? _onDailyPrompt;
   static Function(Map<String, dynamic> data)? _onPinnedNote;
   static Function(Map<String, dynamic> data)? _onListenInvite;
+  static Function(Map<String, dynamic> data)? _onThemeUpdate;
+
+  static void setThemeUpdateListener(Function(Map<String, dynamic> data)? callback) {
+    _onThemeUpdate = callback;
+  }
 
   static void addLocationListener(Function(Map<String, dynamic> data) callback) {
     if (!_locationCallbacks.contains(callback)) {
@@ -144,6 +149,11 @@ class SupabaseService {
     ch.onBroadcast(
       event: 'LISTEN_INVITE',
       callback: (payload) => _onListenInvite?.call(payload),
+    );
+
+    ch.onBroadcast(
+      event: 'THEME_UPDATE',
+      callback: (payload) => _onThemeUpdate?.call(payload),
     );
 
     ch.subscribe((status, [error]) {
