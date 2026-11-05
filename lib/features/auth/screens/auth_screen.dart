@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/liquid_glass/liquid_glass_background.dart';
 import '../../../providers/theme_provider.dart';
 import '../../../providers/auth_provider.dart';
 
@@ -101,8 +102,9 @@ class _AuthScreenState extends State<AuthScreen> {
     final isDark = context.watch<ThemeProvider>().isDark;
 
     return Scaffold(
-      backgroundColor: isDark ? AppColors.darkBg : AppColors.lightBg,
-      body: SafeArea(
+      backgroundColor: Colors.transparent,
+      body: LiquidGlassBackground(
+        child: SafeArea(
         child: Center(
           child: SingleChildScrollView(
             padding: const EdgeInsets.symmetric(horizontal: 28.0, vertical: 24.0),
@@ -484,6 +486,7 @@ class _AuthScreenState extends State<AuthScreen> {
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }

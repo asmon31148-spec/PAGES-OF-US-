@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/liquid_glass/liquid_glass_background.dart';
 import '../../../providers/theme_provider.dart';
 import '../../../providers/auth_provider.dart';
 import '../services/watch_together_service.dart';
@@ -155,9 +156,10 @@ class _WatchLobbyScreenState extends State<WatchLobbyScreen> {
     final soft = isDark ? AppColors.darkSoft : AppColors.lightSoft;
 
     return Scaffold(
-      backgroundColor: bg,
-      body: SafeArea(
-        child: Column(
+      backgroundColor: Colors.transparent,
+      body: LiquidGlassBackground(
+        child: SafeArea(
+          child: Column(
           children: [
             // Top Bar with Back Arrow
             Padding(
@@ -425,6 +427,7 @@ class _WatchLobbyScreenState extends State<WatchLobbyScreen> {
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }

@@ -6,6 +6,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:video_player/video_player.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/liquid_glass/liquid_glass_background.dart';
 import '../../../providers/theme_provider.dart';
 import '../../../providers/auth_provider.dart';
 import '../models/watch_room_model.dart';
@@ -268,9 +269,10 @@ class _WatchWaitingScreenState extends State<WatchWaitingScreen> {
     final isPartnerReady = partnerMember?.ready == true;
 
     return Scaffold(
-      backgroundColor: bg,
-      body: SafeArea(
-        child: Column(
+      backgroundColor: Colors.transparent,
+      body: LiquidGlassBackground(
+        child: SafeArea(
+          child: Column(
           children: [
             // Top Bar
             Padding(
@@ -715,6 +717,7 @@ class _WatchWaitingScreenState extends State<WatchWaitingScreen> {
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }

@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:confetti/confetti.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/liquid_glass/liquid_glass_background.dart';
 import '../../../providers/theme_provider.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../providers/stage_provider.dart';
@@ -78,9 +79,10 @@ class _DailyCareScreenState extends State<DailyCareScreen> with SingleTickerProv
     final totalCount = allItems.length;
 
     return Scaffold(
-      backgroundColor: isDark ? AppColors.darkBg : AppColors.lightBg,
-      body: SafeArea(
-        child: Stack(
+      backgroundColor: Colors.transparent,
+      body: LiquidGlassBackground(
+        child: SafeArea(
+          child: Stack(
           children: [
             Column(
               children: [
@@ -157,6 +159,7 @@ class _DailyCareScreenState extends State<DailyCareScreen> with SingleTickerProv
           ],
         ),
       ),
+    ),
       floatingActionButton: FloatingActionButton.extended(
         backgroundColor: AppColors.sage,
         foregroundColor: Colors.white,
@@ -190,13 +193,8 @@ class _DailyCareScreenState extends State<DailyCareScreen> with SingleTickerProv
   ) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
-        border: Border(
-          bottom: BorderSide(
-            color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
-          ),
-        ),
+      decoration: const BoxDecoration(
+        color: Colors.transparent,
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -364,10 +362,10 @@ class _DailyCareScreenState extends State<DailyCareScreen> with SingleTickerProv
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+        color: isDark ? Colors.white.withOpacity(0.08) : Colors.white.withOpacity(0.60),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+          color: isDark ? Colors.white.withOpacity(0.12) : Colors.black.withOpacity(0.06),
         ),
       ),
       child: TabBar(
@@ -505,12 +503,12 @@ class _DailyCareScreenState extends State<DailyCareScreen> with SingleTickerProv
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 6),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+        color: isDark ? Colors.white.withOpacity(0.08) : Colors.white.withOpacity(0.75),
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
           color: isDone
               ? AppColors.sage.withOpacity(0.4)
-              : (isDark ? AppColors.darkBorder : AppColors.lightBorder),
+              : (isDark ? Colors.white.withOpacity(0.12) : Colors.black.withOpacity(0.06)),
           width: 1.2,
         ),
         boxShadow: [

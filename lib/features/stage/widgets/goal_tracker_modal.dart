@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:confetti/confetti.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/liquid_glass/liquid_glass_background.dart';
 import '../../../providers/theme_provider.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../providers/stage_provider.dart';
@@ -69,9 +70,10 @@ class _GoalTrackerScreenState extends State<GoalTrackerScreen> {
     final totalCount = stageProvider.goals.length;
 
     return Scaffold(
-      backgroundColor: isDark ? AppColors.darkBg : AppColors.lightBg,
-      body: SafeArea(
-        child: Stack(
+      backgroundColor: Colors.transparent,
+      body: LiquidGlassBackground(
+        child: SafeArea(
+          child: Stack(
           alignment: Alignment.topCenter,
           children: [
             Column(
@@ -148,10 +150,10 @@ class _GoalTrackerScreenState extends State<GoalTrackerScreen> {
                   margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+                    color: isDark ? Colors.white.withOpacity(0.08) : Colors.white.withOpacity(0.85),
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
-                      color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                      color: isDark ? Colors.white.withOpacity(0.12) : Colors.black.withOpacity(0.06),
                     ),
                     boxShadow: [
                       BoxShadow(
@@ -226,12 +228,12 @@ class _GoalTrackerScreenState extends State<GoalTrackerScreen> {
                         margin: const EdgeInsets.only(bottom: 10),
                         padding: const EdgeInsets.all(14),
                         decoration: BoxDecoration(
-                          color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+                          color: isDark ? Colors.white.withOpacity(0.08) : Colors.white.withOpacity(0.85),
                           borderRadius: BorderRadius.circular(18),
                           border: Border.all(
                             color: goal.isCompleted
                                 ? AppColors.sage.withOpacity(0.5)
-                                : (isDark ? AppColors.darkBorder : AppColors.lightBorder),
+                                : (isDark ? Colors.white.withOpacity(0.12) : Colors.black.withOpacity(0.06)),
                             width: goal.isCompleted ? 1.5 : 1,
                           ),
                           boxShadow: [
@@ -338,10 +340,10 @@ class _GoalTrackerScreenState extends State<GoalTrackerScreen> {
                 Container(
                   padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
                   decoration: BoxDecoration(
-                    color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+                    color: isDark ? const Color(0xFF101216).withOpacity(0.92) : Colors.white.withOpacity(0.92),
                     border: Border(
                       top: BorderSide(
-                        color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                        color: isDark ? Colors.white.withOpacity(0.10) : Colors.black.withOpacity(0.06),
                       ),
                     ),
                   ),
@@ -503,8 +505,9 @@ class _GoalTrackerScreenState extends State<GoalTrackerScreen> {
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildTabButton(String tab, String label, bool isDark) {
     final isSelected = _activeTab == tab;
