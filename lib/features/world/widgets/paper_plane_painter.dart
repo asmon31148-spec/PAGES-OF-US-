@@ -86,7 +86,7 @@ class PaperPlanePainter extends CustomPainter {
     canvas.rotate(-tangent.angle);
     final tp = TextPainter(
       text: TextSpan(
-        text: '✈',
+        text: isStationary ? '🏡' : '✈',
         style: TextStyle(
           fontSize: planeSize,
           color: planeColor,

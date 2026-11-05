@@ -44,6 +44,9 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
   String? _lastFittedCoordKey;
   bool _isFullScreenMap = false;
   MapBasemapStyle _mapStyle = MapBasemapStyle.streets;
+  LatLng? _selectedDatePlacePos;
+  String? _selectedDatePlaceName;
+  String? _selectedDatePlaceCategory;
 
   String _cleanDisplayAddress(String? raw) {
     if (raw == null || raw.trim().isEmpty) return 'Locating...';
@@ -452,8 +455,15 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
                       partnerLng: worldProvider.isSharing ? (partnerLoc?.lng ?? 0.0) : 0.0,
                       partnerCity: worldProvider.isSharing ? (partnerLoc?.placeName ?? 'Partner Location') : '',
                       partnerNickname: partner?.nickname ?? 'Partner',
-                      onPlaceSelected: (pLat, pLng) {
-                        _mapController.move(LatLng(pLat, pLng), 14.5);
+                      onPlaceSelected: (pLat, pLng, [pName, pCat]) {
+                        HapticFeedback.lightImpact();
+                        setState(() {
+                          _selectedDatePlacePos = LatLng(pLat, pLng);
+                          _selectedDatePlaceName = pName;
+                          _selectedDatePlaceCategory = pCat;
+                          _isFullScreenMap = true;
+                        });
+                        _mapController.move(LatLng(pLat, pLng), 15.5);
                       },
                     ),
                   ],
@@ -649,101 +659,117 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
                         customLabel: partnerLoc.customLabel,
                       ),
                     ),
+                  // Selected Date Place Marker
+                  if (_selectedDatePlacePos != null)
+                    Marker(
+                      point: _selectedDatePlacePos!,
+                      width: 170,
+                      height: 76,
+                      alignment: Alignment.topCenter,
+                      child: _buildDatePlaceMarker(
+                        name: _selectedDatePlaceName ?? 'Date Spot',
+                        category: _selectedDatePlaceCategory ?? 'Spot',
+                        isDark: isDark,
+                      ),
+                    ),
                 ],
               ),
             ],
           ),
 
-          // Exit Full Screen button (Visible when in full screen)
-          if (isFullScreen)
-            Positioned(
-              top: 14,
-              left: 14,
-              child: Material(
-                color: (isDark ? const Color(0xFF191823) : Colors.white).withOpacity(0.92),
-                shape: const CircleBorder(),
-                elevation: 4,
-                child: InkWell(
-                  customBorder: const CircleBorder(),
-                  onTap: () {
-                    HapticFeedback.lightImpact();
-                    setState(() => _isFullScreenMap = false);
-                  },
+          // Unified Top Controls Row (No overlap between Status Pill & Basemap Switcher)
+          Positioned(
+            top: 14,
+            left: 14,
+            right: 14,
+            child: Row(
+              children: [
+                // Exit Full Screen button (Visible when in full screen)
+                if (isFullScreen) ...[
+                  Material(
+                    color: (isDark ? const Color(0xFF191823) : Colors.white).withOpacity(0.92),
+                    shape: const CircleBorder(),
+                    elevation: 4,
+                    child: InkWell(
+                      customBorder: const CircleBorder(),
+                      onTap: () {
+                        HapticFeedback.lightImpact();
+                        setState(() => _isFullScreenMap = false);
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(9),
+                        child: Icon(
+                          Icons.arrow_back_rounded,
+                          size: 19,
+                          color: isDark ? AppColors.darkInk : AppColors.lightInk,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                ],
+
+                // Top Live Status Pill (Flex-constrained to avoid touching/overlapping basemap)
+                Expanded(
                   child: Container(
-                    padding: const EdgeInsets.all(10),
-                    child: Icon(
-                      Icons.arrow_back_rounded,
-                      size: 20,
-                      color: isDark ? AppColors.darkInk : AppColors.lightInk,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-
-          // Top Live Status Pill
-          Positioned(
-            top: 14,
-            left: isFullScreen ? 62 : 12,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-              decoration: BoxDecoration(
-                color: (isDark ? const Color(0xFF191823) : Colors.white).withOpacity(0.92),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: isDark ? Colors.white12 : Colors.black12,
-                ),
-                boxShadow: const [
-                  BoxShadow(color: Colors.black12, blurRadius: 4),
-                ],
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 8,
-                    height: 8,
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: mapStatusColor,
+                      color: (isDark ? const Color(0xFF191823) : Colors.white).withOpacity(0.92),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: isDark ? Colors.white12 : Colors.black12,
+                      ),
+                      boxShadow: const [
+                        BoxShadow(color: Colors.black12, blurRadius: 4),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: mapStatusColor,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Flexible(
+                          child: Text(
+                            mapStatusText,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: isDark ? Colors.white70 : Colors.black87,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(width: 6),
-                  Text(
-                    mapStatusText,
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                      color: isDark ? Colors.white70 : Colors.black87,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          // Top-Right Basemap Style Switcher (Cycles Google Street -> Google Satellite -> Dark -> Terrain)
-          Positioned(
-            top: 14,
-            right: 12,
-            child: GestureDetector(
-              onTap: _cycleMapStyle,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  color: (isDark ? const Color(0xFF191823) : Colors.white).withOpacity(0.95),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: isDark ? Colors.white12 : Colors.black12,
-                  ),
-                  boxShadow: const [
-                    BoxShadow(color: Colors.black26, blurRadius: 4),
-                  ],
                 ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
+
+                const SizedBox(width: 8),
+
+                // Top-Right Basemap Style Switcher
+                GestureDetector(
+                  onTap: _cycleMapStyle,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: (isDark ? const Color(0xFF191823) : Colors.white).withOpacity(0.95),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: isDark ? Colors.white12 : Colors.black12,
+                      ),
+                      boxShadow: const [
+                        BoxShadow(color: Colors.black26, blurRadius: 4),
+                      ],
+                    ),
+                    child: Text(
                       _getStyleLabel(_mapStyle),
                       style: TextStyle(
                         fontSize: 10.5,
@@ -751,9 +777,9 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
                         color: isDark ? Colors.white : Colors.black87,
                       ),
                     ),
-                  ],
+                  ),
                 ),
-              ),
+              ],
             ),
           ),
 
@@ -935,6 +961,84 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
     } else if (hasPartner) {
       _animatedMapMove(LatLng(partnerLoc.lat, partnerLoc.lng), 17.5);
     }
+  }
+
+  Widget _buildDatePlaceMarker({
+    required String name,
+    required String category,
+    required bool isDark,
+  }) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Name Callout Badge
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+          decoration: BoxDecoration(
+            color: (isDark ? const Color(0xFF191823) : Colors.white).withOpacity(0.96),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: AppColors.terra, width: 1.2),
+            boxShadow: const [
+              BoxShadow(color: Colors.black26, blurRadius: 6, offset: Offset(0, 2)),
+            ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('✨', style: TextStyle(fontSize: 10)),
+              const SizedBox(width: 4),
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 120),
+                child: Text(
+                  name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.bold,
+                    color: isDark ? Colors.white : Colors.black87,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 4),
+              GestureDetector(
+                onTap: () {
+                  HapticFeedback.lightImpact();
+                  setState(() {
+                    _selectedDatePlacePos = null;
+                    _selectedDatePlaceName = null;
+                  });
+                },
+                child: const Icon(Icons.close_rounded, size: 12, color: Colors.grey),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 2),
+        // Pin Icon
+        Container(
+          width: 32,
+          height: 32,
+          decoration: BoxDecoration(
+            color: AppColors.terra,
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.terra.withOpacity(0.5),
+                blurRadius: 8,
+                offset: const Offset(0, 3),
+              ),
+            ],
+            border: Border.all(color: Colors.white, width: 2),
+          ),
+          child: const Icon(
+            Icons.place_rounded,
+            color: Colors.white,
+            size: 18,
+          ),
+        ),
+      ],
+    );
   }
 
   Widget _buildAvatarMarker({

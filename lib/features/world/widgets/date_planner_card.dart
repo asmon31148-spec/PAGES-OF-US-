@@ -25,7 +25,7 @@ class DatePlannerCard extends StatefulWidget {
   final double partnerLng;
   final String partnerCity;
   final String partnerNickname;
-  final Function(double lat, double lng)? onPlaceSelected;
+  final Function(double lat, double lng, [String? name, String? category])? onPlaceSelected;
 
   const DatePlannerCard({
     super.key,
@@ -406,16 +406,21 @@ class _DatePlannerCardState extends State<DatePlannerCard> {
   }
 
   Widget _buildPlaceCard(DatePlaceOption place, bool isDark) {
+    final userDistStr = place.distanceKmUser < 1.0
+        ? '${(place.distanceKmUser * 1000).round()}m'
+        : '${place.distanceKmUser.toStringAsFixed(1)} km';
+    final partnerDistStr = place.distanceKmPartner < 1.0
+        ? '${(place.distanceKmPartner * 1000).round()}m'
+        : '${place.distanceKmPartner.toStringAsFixed(1)} km';
+
     return GestureDetector(
       onTap: () {
-        if (widget.onPlaceSelected != null) {
-          widget.onPlaceSelected!(place.lat, place.lng);
-        }
-        _openGoogleMaps(place.googleMapsUrl);
+        HapticFeedback.lightImpact();
+        _showPlaceDetailsModal(context, place, isDark);
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(13),
         decoration: BoxDecoration(
           color: place.isRecommended
               ? (isDark ? AppColors.terra.withOpacity(0.12) : AppColors.terra.withOpacity(0.08))
@@ -431,7 +436,7 @@ class _DatePlannerCardState extends State<DatePlannerCard> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Top Row: Recommended Badge & Category
+            // Top Row: Recommended Badge & Category + Live Map Action
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -463,25 +468,43 @@ class _DatePlannerCardState extends State<DatePlannerCard> {
                     ),
                   ),
 
-                // Open in Google Maps Link
-                Row(
-                  children: [
-                    Text(
-                      'Maps',
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.terra,
-                      ),
+                // Map Pin Redirect Button
+                GestureDetector(
+                  onTap: () {
+                    HapticFeedback.lightImpact();
+                    if (widget.onPlaceSelected != null) {
+                      widget.onPlaceSelected!(place.lat, place.lng, place.name, place.category);
+                    } else {
+                      _openGoogleMaps(place.googleMapsUrl);
+                    }
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: AppColors.terra.withOpacity(0.14),
+                      borderRadius: BorderRadius.circular(8),
                     ),
-                    const SizedBox(width: 2),
-                    const Icon(Icons.arrow_outward_rounded, size: 12, color: AppColors.terra),
-                  ],
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'View on Map',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.terra,
+                          ),
+                        ),
+                        SizedBox(width: 3),
+                        Icon(Icons.map_rounded, size: 11, color: AppColors.terra),
+                      ],
+                    ),
+                  ),
                 ),
               ],
             ),
 
-            const SizedBox(height: 6),
+            const SizedBox(height: 7),
 
             // Place Title & Category Icon
             Row(
@@ -494,7 +517,7 @@ class _DatePlannerCardState extends State<DatePlannerCard> {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      fontSize: 13.5,
+                      fontSize: 14,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -503,7 +526,7 @@ class _DatePlannerCardState extends State<DatePlannerCard> {
             ),
 
             // Metrics row: Rating, Price, Status
-            const SizedBox(height: 4),
+            const SizedBox(height: 5),
             Row(
               children: [
                 Text(
@@ -551,30 +574,54 @@ class _DatePlannerCardState extends State<DatePlannerCard> {
               ],
             ),
 
-            const SizedBox(height: 6),
+            const SizedBox(height: 8),
 
-            // Distances for BOTH partners (strictly computed)
+            // Distances for BOTH partners (two clean rows so text is NEVER cut off)
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
               decoration: BoxDecoration(
                 color: (isDark ? Colors.black : Colors.white).withOpacity(0.08),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(Icons.route_rounded, size: 12, color: AppColors.terra),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      'You: ${place.distanceKmUser < 1.0 ? "${(place.distanceKmUser * 1000).round()}m" : "${place.distanceKmUser.toStringAsFixed(1)} km"} (${place.userTravelTime})   •   ${widget.partnerNickname}: ${place.distanceKmPartner < 1.0 ? "${(place.distanceKmPartner * 1000).round()}m" : "${place.distanceKmPartner.toStringAsFixed(1)} km"} (${place.partnerTravelTime})',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                        color: isDark ? AppColors.darkInk : AppColors.lightInk,
+                  Row(
+                    children: [
+                      const Icon(Icons.person_pin_circle_rounded, size: 13, color: AppColors.sage),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          'You: $userDistStr (${place.userTravelTime})',
+                          style: TextStyle(
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w600,
+                            color: isDark ? AppColors.darkInk : AppColors.lightInk,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
-                    ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      const Icon(Icons.favorite_rounded, size: 12, color: AppColors.terra),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          '${widget.partnerNickname}: $partnerDistStr (${place.partnerTravelTime})',
+                          style: TextStyle(
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w600,
+                            color: isDark ? AppColors.darkInk : AppColors.lightInk,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -582,7 +629,7 @@ class _DatePlannerCardState extends State<DatePlannerCard> {
 
             // Recommendation Reason line if recommended
             if (place.isRecommended && place.recommendationReason.isNotEmpty) ...[
-              const SizedBox(height: 6),
+              const SizedBox(height: 7),
               Text(
                 '“${place.recommendationReason}”',
                 style: TextStyle(
@@ -595,6 +642,277 @@ class _DatePlannerCardState extends State<DatePlannerCard> {
           ],
         ),
       ),
+    );
+  }
+
+  void _showPlaceDetailsModal(BuildContext context, DatePlaceOption place, bool isDark) {
+    final userDistStr = place.distanceKmUser < 1.0
+        ? '${(place.distanceKmUser * 1000).round()}m'
+        : '${place.distanceKmUser.toStringAsFixed(1)} km';
+    final partnerDistStr = place.distanceKmPartner < 1.0
+        ? '${(place.distanceKmPartner * 1000).round()}m'
+        : '${place.distanceKmPartner.toStringAsFixed(1)} km';
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return ClipRRect(
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+            child: Container(
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF13151B).withOpacity(0.94) : Colors.white.withOpacity(0.95),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+                border: Border(
+                  top: BorderSide(
+                    color: isDark ? Colors.white.withOpacity(0.25) : Colors.black.withOpacity(0.1),
+                    width: 1.2,
+                  ),
+                ),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 18),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Drag Handle
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.withOpacity(0.4),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Header with category icon, name, and close
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: AppColors.terra.withOpacity(0.14),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Text(place.categoryIcon, style: const TextStyle(fontSize: 24)),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              place.name,
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: isDark ? AppColors.darkInk : AppColors.lightInk,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              '${place.category.toUpperCase()} • ${place.vicinity.isNotEmpty ? place.vicinity : "Exact Spot"}',
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                color: isDark ? AppColors.darkSoft : AppColors.lightSoft,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        icon: Icon(Icons.close_rounded, color: isDark ? AppColors.darkSoft : AppColors.lightSoft),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Metrics Pill Row
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.amber.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.star_rounded, size: 15, color: Colors.amber),
+                            const SizedBox(width: 4),
+                            Text(
+                              '${place.rating?.toStringAsFixed(1) ?? "4.7"} (${place.userRatingsTotal ?? 100}+ reviews)',
+                              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.amber),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: (place.isOpenNow ? AppColors.sage : Colors.orangeAccent).withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          place.openStatusText,
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: place.isOpenNow ? AppColors.sage : Colors.orangeAccent,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Distance breakdown for both
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: (isDark ? Colors.black : Colors.white).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: isDark ? Colors.white.withOpacity(0.12) : Colors.black.withOpacity(0.08),
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'COUPLE TRAVEL BREAKDOWN',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.5,
+                            color: AppColors.terra,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Row(
+                          children: [
+                            const Icon(Icons.person_pin_circle_rounded, color: AppColors.sage, size: 16),
+                            const SizedBox(width: 8),
+                            Text(
+                              'You: $userDistStr away',
+                              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                            ),
+                            const Spacer(),
+                            Text(
+                              place.userTravelTime,
+                              style: TextStyle(fontSize: 12, color: isDark ? AppColors.darkSoft : AppColors.lightSoft),
+                            ),
+                          ],
+                        ),
+                        const Divider(height: 16),
+                        Row(
+                          children: [
+                            const Icon(Icons.favorite_rounded, color: AppColors.terra, size: 15),
+                            const SizedBox(width: 8),
+                            Text(
+                              '${widget.partnerNickname}: $partnerDistStr away',
+                              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                            ),
+                            const Spacer(),
+                            Text(
+                              place.partnerTravelTime,
+                              style: TextStyle(fontSize: 12, color: isDark ? AppColors.darkSoft : AppColors.lightSoft),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  if (place.recommendationReason.isNotEmpty) ...[
+                    const SizedBox(height: 14),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppColors.terra.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.auto_awesome_rounded, color: AppColors.terra, size: 16),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              place.recommendationReason,
+                              style: TextStyle(
+                                fontSize: 12,
+                                height: 1.4,
+                                fontStyle: FontStyle.italic,
+                                color: isDark ? AppColors.darkInk : AppColors.lightInk,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+
+                  const SizedBox(height: 20),
+
+                  // Actions: View on Map & Open Google Maps
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () {
+                            Navigator.pop(ctx);
+                            _openGoogleMaps(place.googleMapsUrl);
+                          },
+                          icon: const Icon(Icons.directions_rounded, size: 18),
+                          label: const Text('Google Maps ↗'),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: isDark ? AppColors.darkInk : AppColors.lightInk,
+                            minimumSize: const Size.fromHeight(46),
+                            side: BorderSide(
+                              color: isDark ? Colors.white.withOpacity(0.2) : Colors.black.withOpacity(0.15),
+                            ),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: () {
+                            Navigator.pop(ctx);
+                            if (widget.onPlaceSelected != null) {
+                              widget.onPlaceSelected!(place.lat, place.lng, place.name, place.category);
+                            }
+                          },
+                          icon: const Icon(Icons.pin_drop_rounded, size: 18),
+                          label: const Text('Show on Map 🗺️', style: TextStyle(fontWeight: FontWeight.bold)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.terra,
+                            foregroundColor: Colors.white,
+                            minimumSize: const Size.fromHeight(46),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 

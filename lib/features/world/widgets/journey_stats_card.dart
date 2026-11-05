@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../providers/world_provider.dart';
+import '../../../data/models/stay_point_model.dart';
 import 'paper_plane_painter.dart';
 
 /// Animated card showing live travel journey & activity status:
@@ -33,6 +34,7 @@ class JourneyStatsCard extends StatefulWidget {
 class _JourneyStatsCardState extends State<JourneyStatsCard>
     with SingleTickerProviderStateMixin {
   bool _showPartner = true;
+  bool _showTimeline = true;
   late AnimationController _ctrl;
   late Animation<double> _planeAnim;
 
@@ -54,16 +56,18 @@ class _JourneyStatsCardState extends State<JourneyStatsCard>
   }
 
   String _cleanPlace(String? raw) {
-    if (raw == null || raw.trim().isEmpty) return 'Starting Point';
+    if (raw == null || raw.trim().isEmpty || raw.trim().toLowerCase() == 'nearby') {
+      return 'Starting Point';
+    }
     final parts = raw.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
     if (parts.isEmpty) return 'Starting Point';
     if (parts.length >= 2 && parts[0].toLowerCase() == parts[1].toLowerCase()) {
       return parts[0];
     }
-    // Return primary neighborhood or city (max 18 chars)
+    // Return primary neighborhood or city (max 20 chars)
     final text = parts[0];
-    if (text.length > 18) {
-      return '${text.substring(0, 16)}...';
+    if (text.length > 20) {
+      return '${text.substring(0, 18)}...';
     }
     return text;
   }
@@ -98,7 +102,8 @@ class _JourneyStatsCardState extends State<JourneyStatsCard>
         ? world.effectivePartnerActiveMinutes
         : world.myActiveMinutesToday;
 
-    final bool isStationary = km < 0.08;
+    // A person is stationary if true movement today is under 150m (filters indoor GPS noise)
+    final bool isStationary = km < 0.15;
 
     // Origin and destination place names
     final String rawOrigin = effectiveShowPartner
@@ -112,6 +117,11 @@ class _JourneyStatsCardState extends State<JourneyStatsCard>
     final String originLabel = _cleanPlace(rawOrigin);
     final String destLabel = _cleanPlace(rawDest);
 
+    // Stay points / visited stops for current selected user
+    final List<StayPoint> stayPoints = effectiveShowPartner
+        ? world.partnerStayPoints
+        : world.myStayPoints;
+
     final bool isDark = widget.isDark;
     final Color surfaceColor =
         isDark ? AppColors.darkSurface : AppColors.lightSurface;
@@ -120,18 +130,20 @@ class _JourneyStatsCardState extends State<JourneyStatsCard>
     final Color inkColor = isDark ? AppColors.darkInk : AppColors.lightInk;
     final Color softColor = isDark ? AppColors.darkSoft : AppColors.lightSoft;
 
-    final distanceLabel = km < 0.05
+    final distanceLabel = isStationary
         ? '0 m'
         : km < 1.0
             ? '${(km * 1000).round()} m'
             : '${km.toStringAsFixed(2)} km';
 
-    final stepsLabel = steps > 999
-        ? '${(steps / 1000).toStringAsFixed(1)}k'
-        : '$steps';
+    final stepsLabel = (isStationary && steps < 120)
+        ? '0'
+        : steps > 999
+            ? '${(steps / 1000).toStringAsFixed(1)}k'
+            : '$steps';
 
-    final activeLabel = activeMinutes < 5
-        ? '< 5 min'
+    final activeLabel = isStationary || activeMinutes < 5
+        ? 'Resting'
         : activeMinutes < 60
             ? '$activeMinutes min'
             : '${(activeMinutes / 60).toStringAsFixed(1)}h';
@@ -244,101 +256,147 @@ class _JourneyStatsCardState extends State<JourneyStatsCard>
           // ── Departure & Destination Route Info ───────────────────────────
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                // Departure / Origin
-                Flexible(
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
+            child: isStationary
+                ? Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 8,
+                            height: 8,
+                            decoration: const BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: AppColors.sage,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 180),
+                            child: Text(
+                              'Resting at $destLabel',
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.bold,
+                                color: inkColor,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
                       Container(
-                        width: 7,
-                        height: 7,
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                         decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: AppColors.terra.withOpacity(0.6),
+                          color: AppColors.sage.withOpacity(0.16),
+                          borderRadius: BorderRadius.circular(10),
                         ),
-                      ),
-                      const SizedBox(width: 5),
-                      Flexible(
-                        child: Text(
-                          originLabel,
+                        child: const Text(
+                          '🏡 Stationary · Indoors',
                           style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            color: inkColor,
+                            fontSize: 9.5,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.sage,
                           ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ],
-                  ),
-                ),
-
-                // Live status badge
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: isStationary
-                        ? AppColors.sage.withOpacity(0.16)
-                        : AppColors.terra.withOpacity(0.16),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
+                  )
+                : Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        isStationary ? '🏡 Resting' : '✈️ Moving',
-                        style: TextStyle(
-                          fontSize: 9.5,
-                          fontWeight: FontWeight.bold,
-                          color: isStationary ? AppColors.sage : AppColors.terra,
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        '· $distanceLabel',
-                        style: TextStyle(
-                          fontSize: 9.5,
-                          fontWeight: FontWeight.bold,
-                          color: isStationary ? AppColors.sage : AppColors.terra,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                // Destination
-                Flexible(
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
+                      // Departure / Origin
                       Flexible(
-                        child: Text(
-                          destLabel,
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            color: inkColor,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 7,
+                              height: 7,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: AppColors.terra.withOpacity(0.6),
+                              ),
+                            ),
+                            const SizedBox(width: 5),
+                            Flexible(
+                              child: Text(
+                                originLabel,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: inkColor,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      const SizedBox(width: 5),
-                      const Icon(
-                        Icons.location_on_rounded,
-                        size: 13,
-                        color: AppColors.terra,
+
+                      // Live status badge
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: AppColors.terra.withOpacity(0.16),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Text(
+                              '✈️ Moving',
+                              style: TextStyle(
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.terra,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              '· $distanceLabel',
+                              style: const TextStyle(
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.terra,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      // Destination
+                      Flexible(
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            Flexible(
+                              child: Text(
+                                destLabel,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: inkColor,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            const SizedBox(width: 5),
+                            const Icon(
+                              Icons.location_on_rounded,
+                              size: 13,
+                              color: AppColors.terra,
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
-                ),
-              ],
-            ),
           ),
 
           // ── Animated Paper Plane Bezier Arc ──────────────────────────────
@@ -362,7 +420,7 @@ class _JourneyStatsCardState extends State<JourneyStatsCard>
 
           // ── 3 Core Stats Row: Footsteps, Distance, Active Time & Status ──
           Padding(
-            padding: const EdgeInsets.fromLTRB(14, 2, 14, 16),
+            padding: const EdgeInsets.fromLTRB(14, 2, 14, 12),
             child: Row(
               children: [
                 _statChip('👟', stepsLabel, 'footsteps', inkColor, softColor),
@@ -376,6 +434,175 @@ class _JourneyStatsCardState extends State<JourneyStatsCard>
                   softColor,
                 ),
               ],
+            ),
+          ),
+
+          // ── Today's Places Visited (Stops Timeline) ────────────────────────
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: (isDark ? Colors.black : Colors.white).withOpacity(0.06),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.06),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.timeline_rounded, size: 14, color: AppColors.terra),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Places Visited Today (${stayPoints.isNotEmpty ? stayPoints.length : 1})',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 0.2,
+                              color: inkColor,
+                            ),
+                          ),
+                        ],
+                      ),
+                      GestureDetector(
+                        onTap: () {
+                          HapticFeedback.lightImpact();
+                          setState(() => _showTimeline = !_showTimeline);
+                        },
+                        child: Text(
+                          _showTimeline ? 'Hide' : 'Show',
+                          style: const TextStyle(
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.terra,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (_showTimeline) ...[
+                    const SizedBox(height: 10),
+                    if (stayPoints.isEmpty)
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: AppColors.sage.withOpacity(0.15),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Text('🏡', style: TextStyle(fontSize: 13)),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  destLabel,
+                                  style: TextStyle(
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.bold,
+                                    color: inkColor,
+                                  ),
+                                ),
+                                Text(
+                                  'Primary stay point today · Resting indoors',
+                                  style: TextStyle(fontSize: 10, color: softColor),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      )
+                    else
+                      Column(
+                        children: List.generate(stayPoints.length, (index) {
+                          final stop = stayPoints[index];
+                          final isLast = index == stayPoints.length - 1;
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 6),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Column(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(5),
+                                      decoration: BoxDecoration(
+                                        color: (stop.isCurrent ? AppColors.terra : AppColors.sage)
+                                            .withOpacity(0.18),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: Text(stop.icon, style: const TextStyle(fontSize: 11)),
+                                    ),
+                                    if (!isLast)
+                                      Container(
+                                        width: 1.5,
+                                        height: 16,
+                                        color: isDark ? Colors.white12 : Colors.black12,
+                                      ),
+                                  ],
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Expanded(
+                                            child: Text(
+                                              stop.placeName,
+                                              style: TextStyle(
+                                                fontSize: 11.5,
+                                                fontWeight: FontWeight.bold,
+                                                color: inkColor,
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                          if (stop.isCurrent)
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                                              decoration: BoxDecoration(
+                                                color: AppColors.terra.withOpacity(0.18),
+                                                borderRadius: BorderRadius.circular(6),
+                                              ),
+                                              child: const Text(
+                                                'Current Spot',
+                                                style: TextStyle(
+                                                  fontSize: 8.5,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: AppColors.terra,
+                                                ),
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                      Text(
+                                        '${stop.timeRangeText}  •  ${stop.durationText}',
+                                        style: TextStyle(fontSize: 9.5, color: softColor),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }),
+                      ),
+                  ],
+                ],
+              ),
             ),
           ),
         ],

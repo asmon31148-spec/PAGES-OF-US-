@@ -8,6 +8,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../data/models/user_location_model.dart';
 import '../data/models/pinned_place.dart';
+import '../data/models/stay_point_model.dart';
 import '../data/services/firebase_service.dart';
 import '../data/services/supabase_service.dart';
 import '../core/services/weather_service.dart';
@@ -227,7 +228,186 @@ class WorldProvider extends ChangeNotifier {
 
   // ── Journey tracking ────────────────────────────────────────────────────────
 
-  /// Accumulates a GPS position into the personal journey log.
+  // ── Stay Points (Timeline of stops throughout the day) ──────────────────────
+  final List<StayPoint> _myStayPoints = [];
+  final List<StayPoint> _partnerStayPoints = [];
+  List<StayPoint> get myStayPoints => List.unmodifiable(_myStayPoints);
+  List<StayPoint> get partnerStayPoints => List.unmodifiable(_partnerStayPoints);
+
+  String get _stayPointsPrefKey => 'pages_stay_points_${_currentUserId ?? "me"}';
+
+  Future<void> _persistStayPoints() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final json = jsonEncode(_myStayPoints.map((p) => p.toJson()).toList());
+      await prefs.setString(_stayPointsPrefKey, json);
+    } catch (_) {}
+  }
+
+  Future<void> _loadStayPoints() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_stayPointsPrefKey);
+      if (raw != null && raw.isNotEmpty) {
+        final list = jsonDecode(raw) as List<dynamic>;
+        _myStayPoints.clear();
+        _myStayPoints.addAll(list.map((e) => StayPoint.fromJson(Map<String, dynamic>.from(e as Map))));
+        final cutoff = DateTime.now().subtract(const Duration(days: 3));
+        _myStayPoints.removeWhere((p) => p.arrivalTime.isBefore(cutoff));
+      }
+    } catch (_) {}
+  }
+
+  void _recordMyStayPoint(double lat, double lng, String placeName) {
+    if (lat == 0.0 && lng == 0.0) return;
+    final now = DateTime.now();
+    final cleanName = placeName.trim().isEmpty || placeName == 'Nearby'
+        ? (_cachedNeighborhood.isNotEmpty ? _cachedNeighborhood : 'Current Spot')
+        : placeName;
+
+    if (_myStayPoints.isEmpty) {
+      final newPoint = StayPoint(
+        id: 'stay_${now.millisecondsSinceEpoch}',
+        userId: _currentUserId ?? 'me',
+        placeName: cleanName,
+        lat: lat,
+        lng: lng,
+        arrivalTime: now.subtract(const Duration(minutes: 20)),
+        isCurrent: true,
+        icon: '🏡',
+      );
+      _myStayPoints.add(newPoint);
+      _persistStayPoints();
+      notifyListeners();
+      return;
+    }
+
+    final current = _myStayPoints.lastWhere((p) => p.isCurrent, orElse: () => _myStayPoints.last);
+    final distM = calculateDistanceKm(current.lat, current.lng, lat, lng) * 1000;
+
+    if (distM < 60) {
+      if (cleanName != 'Current Spot' && cleanName != 'Nearby' && current.placeName != cleanName) {
+        final idx = _myStayPoints.indexOf(current);
+        _myStayPoints[idx] = StayPoint(
+          id: current.id,
+          userId: current.userId,
+          placeName: cleanName,
+          lat: current.lat,
+          lng: current.lng,
+          arrivalTime: current.arrivalTime,
+          departureTime: current.departureTime,
+          isCurrent: current.isCurrent,
+          icon: current.icon,
+        );
+        _persistStayPoints();
+        notifyListeners();
+      }
+    } else if (distM >= 120) {
+      if (current.isCurrent) {
+        current.departureTime = now;
+        current.isCurrent = false;
+      }
+      String icon = '📍';
+      final lower = cleanName.toLowerCase();
+      if (lower.contains('cafe') || lower.contains('coffee')) {
+        icon = '☕';
+      } else if (lower.contains('home') || lower.contains('house')) {
+        icon = '🏡';
+      } else if (lower.contains('park') || lower.contains('garden')) {
+        icon = '🌿';
+      } else if (lower.contains('market') || lower.contains('mall') || lower.contains('shop')) {
+        icon = '🛍️';
+      }
+
+      final newPoint = StayPoint(
+        id: 'stay_${now.millisecondsSinceEpoch}',
+        userId: _currentUserId ?? 'me',
+        placeName: cleanName,
+        lat: lat,
+        lng: lng,
+        arrivalTime: now,
+        isCurrent: true,
+        icon: icon,
+      );
+      _myStayPoints.add(newPoint);
+      _persistStayPoints();
+      notifyListeners();
+    }
+  }
+
+  void _recordPartnerStayPoint(double lat, double lng, String placeName) {
+    if (lat == 0.0 && lng == 0.0 || _partnerId == null) return;
+    final now = DateTime.now();
+    final cleanName = placeName.trim().isEmpty || placeName == 'Nearby' ? 'Current Spot' : placeName;
+
+    if (_partnerStayPoints.isEmpty) {
+      _partnerStayPoints.add(
+        StayPoint(
+          id: 'pstay_${now.millisecondsSinceEpoch}',
+          userId: _partnerId!,
+          placeName: cleanName,
+          lat: lat,
+          lng: lng,
+          arrivalTime: now.subtract(const Duration(minutes: 25)),
+          isCurrent: true,
+          icon: '🏡',
+        ),
+      );
+      notifyListeners();
+      return;
+    }
+
+    final current = _partnerStayPoints.lastWhere((p) => p.isCurrent, orElse: () => _partnerStayPoints.last);
+    final distM = calculateDistanceKm(current.lat, current.lng, lat, lng) * 1000;
+
+    if (distM < 60) {
+      if (cleanName != 'Current Spot' && cleanName != 'Nearby' && current.placeName != cleanName) {
+        final idx = _partnerStayPoints.indexOf(current);
+        _partnerStayPoints[idx] = StayPoint(
+          id: current.id,
+          userId: current.userId,
+          placeName: cleanName,
+          lat: current.lat,
+          lng: current.lng,
+          arrivalTime: current.arrivalTime,
+          departureTime: current.departureTime,
+          isCurrent: current.isCurrent,
+          icon: current.icon,
+        );
+        notifyListeners();
+      }
+    } else if (distM >= 120) {
+      if (current.isCurrent) {
+        current.departureTime = now;
+        current.isCurrent = false;
+      }
+      String icon = '📍';
+      final lower = cleanName.toLowerCase();
+      if (lower.contains('cafe') || lower.contains('coffee')) {
+        icon = '☕';
+      } else if (lower.contains('home') || lower.contains('house')) {
+        icon = '🏡';
+      } else if (lower.contains('park')) {
+        icon = '🌿';
+      }
+
+      _partnerStayPoints.add(
+        StayPoint(
+          id: 'pstay_${now.millisecondsSinceEpoch}',
+          userId: _partnerId!,
+          placeName: cleanName,
+          lat: lat,
+          lng: lng,
+          arrivalTime: now,
+          isCurrent: true,
+          icon: icon,
+        ),
+      );
+      notifyListeners();
+    }
+  }
+
+  /// Accumulates a GPS position into the personal journey log with indoor noise filtering.
   void _appendMyPoint(Position position) {
     final point = JourneyPoint(
       lat: position.latitude,
@@ -236,11 +416,11 @@ class WorldProvider extends ChangeNotifier {
       city: _cachedCity,
     );
 
-    // Only append if moved at least 5 m from last logged point (de-duplicate stationary pings)
+    // Filter out indoor GPS drift (< 35m displacement when stationary / speed < 0.6 m/s)
     if (_myJourneyLog.isNotEmpty) {
       final last = _myJourneyLog.last;
       final distM = calculateDistanceKm(last.lat, last.lng, point.lat, point.lng) * 1000;
-      if (distM < 5) return;
+      if (distM < 35 && position.speed < 0.6) return;
     }
 
     _myJourneyLog.add(point);
@@ -262,7 +442,7 @@ class WorldProvider extends ChangeNotifier {
     if (_partnerJourneyLog.isNotEmpty) {
       final last = _partnerJourneyLog.last;
       final distM = calculateDistanceKm(last.lat, last.lng, point.lat, point.lng) * 1000;
-      if (distM < 5) return;
+      if (distM < 35) return;
     }
     _partnerJourneyLog.add(point);
 
@@ -277,10 +457,14 @@ class WorldProvider extends ChangeNotifier {
     if (filtered.length < 2) return 0.0;
     double total = 0.0;
     for (int i = 1; i < filtered.length; i++) {
-      total += calculateDistanceKm(
+      final d = calculateDistanceKm(
         filtered[i - 1].lat, filtered[i - 1].lng,
         filtered[i].lat, filtered[i].lng,
       );
+      // Filter out small jitter (< 0.035 km = 35m)
+      if (d > 0.035) {
+        total += d;
+      }
     }
     return total;
   }
@@ -333,14 +517,18 @@ class WorldProvider extends ChangeNotifier {
 
   String get effectivePartnerDeparturePlace {
     final fromModel = _locations[_partnerId]?.departurePlace;
-    if (fromModel != null && fromModel.isNotEmpty) return fromModel;
-    if (_partnerFirstPlaceToday != null && _partnerFirstPlaceToday!.isNotEmpty) {
+    if (fromModel != null && fromModel.isNotEmpty && fromModel != 'Nearby' && fromModel != 'Starting Point') {
+      return fromModel;
+    }
+    if (_partnerFirstPlaceToday != null && _partnerFirstPlaceToday!.isNotEmpty && _partnerFirstPlaceToday != 'Nearby') {
       return _partnerFirstPlaceToday!;
     }
     return _locations[_partnerId]?.neighborhood ?? _locations[_partnerId]?.city ?? 'Starting Point';
   }
 
-  String get myDeparturePlace => _firstPlaceNameToday ?? (_cachedNeighborhood.isNotEmpty ? _cachedNeighborhood : 'Starting Point');
+  String get myDeparturePlace => (_firstPlaceNameToday != null && _firstPlaceNameToday != 'Nearby')
+      ? _firstPlaceNameToday!
+      : (_cachedNeighborhood.isNotEmpty ? _cachedNeighborhood : 'Starting Point');
 
   // ── Convenience methods called by journey_stats_card ───────────────────────
   double myJourneyKm(dynamic period) {
@@ -374,6 +562,7 @@ class WorldProvider extends ChangeNotifier {
   }
 
   Future<void> _loadJourneyLog() async {
+    _loadStayPoints();
     try {
       final prefs = await SharedPreferences.getInstance();
       final raw = prefs.getString(_journeyPrefKey);
@@ -504,6 +693,7 @@ class WorldProvider extends ChangeNotifier {
         }
         // Accumulate partner's position into their journey log
         _appendPartnerPoint(loc.lat, loc.lng);
+        _recordPartnerStayPoint(loc.lat, loc.lng, loc.placeName ?? '');
         _syncSameRoofAddresses();
         _checkPartnerGeofence(loc);
         if (_partnerWeather == null) {
@@ -758,6 +948,7 @@ class WorldProvider extends ChangeNotifier {
     );
 
     _locations[_currentUserId!] = myLocation;
+    _recordMyStayPoint(position.latitude, position.longitude, _cachedPlaceName);
     _syncSameRoofAddresses();
     notifyListeners();
 
