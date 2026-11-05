@@ -129,60 +129,94 @@ class _SupportBotScreenState extends State<SupportBotScreen> {
     final soft = isDark ? AppColors.darkSoft : AppColors.lightSoft;
     final cardBg = isDark ? AppColors.darkCard : AppColors.lightCard;
 
-    return LiquidGlassBackground(
+    final systemOverlay = SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+      statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
+      systemNavigationBarColor: isDark ? AppColors.darkBg : AppColors.lightBg,
+      systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+    );
+
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: systemOverlay,
       child: Scaffold(
         backgroundColor: Colors.transparent,
-        appBar: AppBar(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          leading: IconButton(
-            icon: Icon(Icons.arrow_back_ios_new, size: 18, color: ink),
-            onPressed: () => Navigator.pop(context),
-          ),
-          title: Row(
-            children: [
-              Container(
-                width: 32,
-                height: 32,
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: LinearGradient(
-                    colors: [AppColors.sage, AppColors.forest],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
+        body: LiquidGlassBackground(
+          child: SafeArea(
+            bottom: false,
+            child: Column(
+              children: [
+                // Top Custom Seamless Header
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  child: Row(
+                    children: [
+                      GestureDetector(
+                        onTap: () {
+                          HapticFeedback.lightImpact();
+                          Navigator.pop(context);
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.all(9),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: isDark
+                                ? Colors.white.withOpacity(0.10)
+                                : Colors.black.withOpacity(0.05),
+                            border: Border.all(
+                              color: isDark
+                                  ? Colors.white.withOpacity(0.12)
+                                  : Colors.black.withOpacity(0.08),
+                              width: 0.8,
+                            ),
+                          ),
+                          child: Icon(
+                            Icons.arrow_back_ios_new_rounded,
+                            size: 16,
+                            color: ink,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Container(
+                        width: 34,
+                        height: 34,
+                        decoration: const BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: LinearGradient(
+                            colors: [AppColors.sage, AppColors.forest],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                        ),
+                        child: const Center(
+                          child: Text('🌿', style: TextStyle(fontSize: 16)),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Sanctuary Concierge',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                              color: ink,
+                            ),
+                          ),
+                          Text(
+                            'Always here to listen & help',
+                            style: TextStyle(fontSize: 10.5, color: soft),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
-                child: const Center(
-                  child: Text('🌿', style: TextStyle(fontSize: 16)),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Sanctuary Concierge',
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.bold,
-                      color: ink,
-                    ),
-                  ),
-                  Text(
-                    'Always here to listen & help',
-                    style: TextStyle(fontSize: 10, color: soft),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-        body: SafeArea(
-          child: Column(
-          children: [
-            // Chat message list
-            Expanded(
-              child: ListView.builder(
+                // Chat message list
+                Expanded(
+                  child: ListView.builder(
                 controller: _scrollController,
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 itemCount: _messages.length,
@@ -285,7 +319,8 @@ class _SupportBotScreenState extends State<SupportBotScreen> {
         ),
       ),
     ),
-  );
+  ),
+);
 }
 
   Widget _buildMessageBubble(ChatMessage msg, bool isDark) {
