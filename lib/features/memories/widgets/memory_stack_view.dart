@@ -315,14 +315,14 @@ class _MemoryStackViewState extends State<MemoryStackView> {
     bool isDark,
   ) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 40),
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 40),
       child: GridView.builder(
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: 2,
-          crossAxisSpacing: 10,
-          mainAxisSpacing: 10,
+          crossAxisSpacing: 14,
+          mainAxisSpacing: 14,
           childAspectRatio: 0.82,
         ),
         itemCount: memories.length,
@@ -350,25 +350,27 @@ class _MemoryStackViewState extends State<MemoryStackView> {
             },
             child: Container(
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(22),
                 gradient: LiquidGlassTheme.specularBorder(isDark),
                 boxShadow: LiquidGlassTheme.cardShadow(isDark),
               ),
               padding: const EdgeInsets.all(1.0),
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(19),
+                borderRadius: BorderRadius.circular(21),
                 child: Container(
                   decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF131714) : AppColors.lightSurface,
-                    borderRadius: BorderRadius.circular(19),
+                    gradient: LiquidGlassTheme.cardGloss(isDark),
+                    borderRadius: BorderRadius.circular(21),
                   ),
-                  clipBehavior: Clip.antiAlias,
-                  child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  // 1. Media Preview
-                  if (memory.mediaType == 'photo' && memory.mediaUrl.isNotEmpty)
-                    CachedNetworkImage(
+                  padding: const EdgeInsets.all(4.5), // Apple Glass floating bezel
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(16.5),
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        // 1. Media Preview
+                        if (memory.mediaType == 'photo' && memory.mediaUrl.isNotEmpty)
+                          CachedNetworkImage(
                       imageUrl: memory.mediaUrl,
                       memCacheWidth: 600,
                       fit: BoxFit.cover,
@@ -508,7 +510,8 @@ class _MemoryStackViewState extends State<MemoryStackView> {
             ),
           ),
         ),
-      );
+      ),
+    );
         },
       ),
     );
@@ -537,7 +540,7 @@ class _MemoryStackViewState extends State<MemoryStackView> {
         borderRadius: BorderRadius.circular(25),
         child: Container(
           decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF131714) : AppColors.lightSurface,
+            gradient: LiquidGlassTheme.cardGloss(isDark),
             borderRadius: BorderRadius.circular(25),
           ),
           clipBehavior: Clip.antiAlias,

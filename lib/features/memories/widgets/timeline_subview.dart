@@ -891,7 +891,7 @@ class _AddMilestoneModalSheetState extends State<_AddMilestoneModalSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isDark = context.watch<ThemeProvider>().isDark;
     final formattedDateStr = DateFormat('dd/MM/yyyy').format(_selectedDate);
 
     return Padding(
