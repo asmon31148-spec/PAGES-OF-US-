@@ -104,24 +104,18 @@ class _TimelineSubviewState extends State<TimelineSubview> {
             gradient: LiquidGlassTheme.specularBorder(isDark),
             boxShadow: LiquidGlassTheme.cardShadow(isDark),
           ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(17),
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-              child: Container(
-                padding: const EdgeInsets.all(3.5),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(17),
-                  gradient: LiquidGlassTheme.cardGloss(isDark),
-                ),
-                child: Row(
-                  children: [
-                    _buildBranchPill(0, '🌿 Both', isDark),
-                    _buildBranchPill(1, 'You 👤', isDark),
-                    _buildBranchPill(2, '$partnerNickname 🤍', isDark),
-                  ],
-                ),
-              ),
+          child: Container(
+            padding: const EdgeInsets.all(3.5),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(17),
+              gradient: LiquidGlassTheme.cardGloss(isDark),
+            ),
+            child: Row(
+              children: [
+                _buildBranchPill(0, '🌿 Both', isDark),
+                _buildBranchPill(1, 'You 👤', isDark),
+                _buildBranchPill(2, '$partnerNickname 🤍', isDark),
+              ],
             ),
           ),
         ),

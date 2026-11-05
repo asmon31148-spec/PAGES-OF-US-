@@ -1,10 +1,10 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../theme/app_colors.dart';
 import 'liquid_glass_theme.dart';
 
 /// Luminous Apple Liquid Glass Button / Pill with specular rim light & glowing elevation
+/// Optimized for 120 FPS performance (zero GPU BackdropFilter lag)
 class LiquidGlassButton extends StatelessWidget {
   final VoidCallback onPressed;
   final Widget child;
@@ -43,53 +43,47 @@ class LiquidGlassButton extends StatelessWidget {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              Colors.white.withOpacity(0.65),
-              Colors.white.withOpacity(0.20),
-              primaryColor.withOpacity(0.30),
+              Colors.white.withOpacity(0.70),
+              Colors.white.withOpacity(0.25),
+              primaryColor.withOpacity(0.40),
             ],
           ),
           boxShadow: LiquidGlassTheme.glowShadow(primaryColor),
         ),
         padding: const EdgeInsets.all(1.2), // Specular rim reflection
-        child: ClipRRect(
-          borderRadius: innerRadius,
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-            child: Container(
-              padding: padding,
-              decoration: BoxDecoration(
-                borderRadius: innerRadius,
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    primaryColor.withOpacity(0.92),
-                    primaryColor.withOpacity(0.82),
-                  ],
-                ),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  if (icon != null) ...[
-                    Icon(icon, size: 19, color: Colors.white),
-                    if (label != null) const SizedBox(width: 8),
-                  ],
-                  if (label != null)
-                    Text(
-                      label!,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: -0.2,
-                        color: Colors.white,
-                      ),
-                    ),
-                  if (label == null && icon == null) child,
-                ],
-              ),
+        child: Container(
+          padding: padding,
+          decoration: BoxDecoration(
+            borderRadius: innerRadius,
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                primaryColor.withOpacity(0.95),
+                primaryColor.withOpacity(0.85),
+              ],
             ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (icon != null) ...[
+                Icon(icon, size: 19, color: Colors.white),
+                if (label != null) const SizedBox(width: 8),
+              ],
+              if (label != null)
+                Text(
+                  label!,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.2,
+                    color: Colors.white,
+                  ),
+                ),
+              if (label == null && icon == null) child,
+            ],
           ),
         ),
       ),
