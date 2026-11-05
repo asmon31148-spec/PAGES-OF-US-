@@ -1126,7 +1126,7 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
               separatorBuilder: (_, __) => const SizedBox(height: 10),
               itemBuilder: (ctx, i) {
                 final pl = playlists[i];
-                final songCount = audioProvider.songs.where((s) => pl.songIds.contains(s.id)).length;
+                final songCount = pl.songIds.length;
 
                 return GestureDetector(
                   onTap: () {
