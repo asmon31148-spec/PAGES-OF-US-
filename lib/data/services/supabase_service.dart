@@ -26,6 +26,7 @@ class SupabaseService {
 
   // Persistent Event Handlers
   static Function(Map<String, dynamic> data)? _onPulse;
+  static Function(Map<String, dynamic> data)? _onHeartbeatPulse;
   static Function(Map<String, dynamic> data)? _onMood;
   static Function(Map<String, dynamic> data)? _onTouchPad;
   static Function(Map<String, dynamic> data)? _onDrawStroke;
@@ -82,6 +83,11 @@ class SupabaseService {
     ch.onBroadcast(
       event: 'PULSE',
       callback: (payload) => _onPulse?.call(payload),
+    );
+
+    ch.onBroadcast(
+      event: 'HEARTBEAT_PULSE',
+      callback: (payload) => _onHeartbeatPulse?.call(payload),
     );
 
     ch.onBroadcast(
@@ -175,6 +181,7 @@ class SupabaseService {
   static void subscribeToSpaceEvents(
     String spaceId, {
     required Function(Map<String, dynamic> data) onPulse,
+    Function(Map<String, dynamic> data)? onHeartbeatPulse,
     required Function(Map<String, dynamic> data) onMood,
     required Function(Map<String, dynamic> data) onTouchPad,
     Function(Map<String, dynamic> data)? onDrawStroke,
@@ -188,6 +195,7 @@ class SupabaseService {
     if (_client == null || spaceId.isEmpty) return;
 
     _onPulse = onPulse;
+    _onHeartbeatPulse = onHeartbeatPulse;
     _onMood = onMood;
     _onTouchPad = onTouchPad;
     _onDrawStroke = onDrawStroke;

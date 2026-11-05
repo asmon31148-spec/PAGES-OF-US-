@@ -39,6 +39,7 @@ class AudioProvider extends ChangeNotifier {
 
   List<SongItem> _songs = [];
   final Set<String> _deletedSongIds = {};
+  final Set<String> _favoriteSongIds = {};
   StreamSubscription? _musicCloudSub;
   StreamSubscription? _playlistFirebaseSub;
 
@@ -147,6 +148,10 @@ class AudioProvider extends ChangeNotifier {
   // GETTERS
   // -------------------------------------------------------------
   List<SongItem> get songs => List.unmodifiable(_songs);
+  Set<String> get favoriteSongIds => Set.unmodifiable(_favoriteSongIds);
+  bool isFavorite(String songId) => _favoriteSongIds.contains(songId);
+  List<SongItem> get favoriteSongs => _songs.where((s) => _favoriteSongIds.contains(s.id)).toList();
+  int get favoriteCount => favoriteSongs.length;
   List<SongItem> get upcomingSongs {
     if (_songs.isEmpty || _currentSongIndex >= _songs.length - 1) return [];
     return List.unmodifiable(_songs.sublist(_currentSongIndex + 1));
@@ -211,6 +216,7 @@ class AudioProvider extends ChangeNotifier {
 
     _songs = [];
     _deletedSongIds.clear();
+    _favoriteSongIds.clear();
     _playlists.clear();
     _playlists.addAll([
       PlaylistItem(id: 'pl_1', title: 'Calm evenings', coverColor: const Color(0xFF2DD4BF), songIds: []),
@@ -276,8 +282,39 @@ class AudioProvider extends ChangeNotifier {
         _playlists.clear();
         _playlists.addAll(_sanitizePlaylists(cachedPlaylists.map((e) => PlaylistItem.fromJson(e)).toList()));
       }
+
+      final cachedFavs = LocalCacheService.prefs.getStringList('favorite_song_ids');
+      if (cachedFavs != null) {
+        _favoriteSongIds.clear();
+        _favoriteSongIds.addAll(cachedFavs);
+      }
     } catch (_) {
       _songs = [];
+    }
+  }
+
+  /// Toggles favorite/starred status for a song and persists locally
+  Future<void> toggleFavorite(String songId) async {
+    if (songId.isEmpty || songId == 'empty') return;
+    if (_favoriteSongIds.contains(songId)) {
+      _favoriteSongIds.remove(songId);
+    } else {
+      _favoriteSongIds.add(songId);
+    }
+    notifyListeners();
+    try {
+      await LocalCacheService.prefs.setStringList('favorite_song_ids', _favoriteSongIds.toList());
+    } catch (_) {}
+  }
+
+  /// Plays all starred favorite songs from the sanctuary library
+  void playFavoriteSongs({int initialIndex = 0}) {
+    final favs = favoriteSongs;
+    if (favs.isEmpty) return;
+    final target = favs[initialIndex.clamp(0, favs.length - 1)];
+    final songIndex = _songs.indexOf(target);
+    if (songIndex != -1) {
+      selectSong(songIndex);
     }
   }
 

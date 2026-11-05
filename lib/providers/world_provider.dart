@@ -76,6 +76,12 @@ class WorldProvider extends ChangeNotifier {
   String? _firstPlaceNameToday;
   String? _partnerFirstPlaceToday;
 
+  // ── Stationary GPS Sleep (Battery saving & zero jitter) ─────────────────────
+  double? _stationaryAnchorLat;
+  double? _stationaryAnchorLng;
+  DateTime? _stationaryAnchorTime;
+  DateTime? _lastStationaryBroadcastTime;
+
   // ── Journey log — accumulated GPS points for travel stats ───────────────────
   List<JourneyPoint> _myJourneyLog = [];
   List<JourneyPoint> _partnerJourneyLog = [];
@@ -163,6 +169,10 @@ class WorldProvider extends ChangeNotifier {
     _cachedPlaceName = 'Nearby';
     _cachedNeighborhood = '';
     _cachedCity = '';
+    _stationaryAnchorLat = null;
+    _stationaryAnchorLng = null;
+    _stationaryAnchorTime = null;
+    _lastStationaryBroadcastTime = null;
     _isSharing = true;
     _isTrackingInitializing = false;
 
@@ -1062,13 +1072,51 @@ class WorldProvider extends ChangeNotifier {
   Future<void> _handleNewPosition(Position position) async {
     if (_currentUserId == null || _spaceId == null) return;
 
+    final now = DateTime.now();
+
+    // Smart stationary GPS sleep: suppress micro-jitter & save battery when stationary
+    if (_stationaryAnchorLat == null || _stationaryAnchorLng == null) {
+      _stationaryAnchorLat = position.latitude;
+      _stationaryAnchorLng = position.longitude;
+      _stationaryAnchorTime = now;
+    } else {
+      final driftMeters = calculateDistanceKm(
+        _stationaryAnchorLat!,
+        _stationaryAnchorLng!,
+        position.latitude,
+        position.longitude,
+      ) * 1000.0;
+
+      if (driftMeters < 18.0) {
+        // User is stationary (within 18m drift zone)
+        final stationaryMin = _stationaryAnchorTime != null
+            ? now.difference(_stationaryAnchorTime!).inMinutes
+            : 0;
+
+        // After 2 minutes of staying stationary, throttle broadcasts to once every 4 minutes
+        if (stationaryMin >= 2) {
+          if (_lastStationaryBroadcastTime != null &&
+              now.difference(_lastStationaryBroadcastTime!).inMinutes < 4) {
+            // Sleep mode: do not churn CPU or flood WebSocket
+            return;
+          }
+          _lastStationaryBroadcastTime = now;
+        }
+      } else {
+        // User has moved > 18 meters: wake up live tracking
+        _stationaryAnchorLat = position.latitude;
+        _stationaryAnchorLng = position.longitude;
+        _stationaryAnchorTime = now;
+        _lastStationaryBroadcastTime = null;
+      }
+    }
+
     // Accumulate position into journey log
     _appendMyPoint(position);
 
     _gpsStatus = (_partnerId != null && _partnerId!.isNotEmpty) ? 'Live Tethered' : 'Live Presence';
 
     // Reverse geocoding only when moved > 20m or > 1 minute
-    final now = DateTime.now();
     bool shouldGeocode = false;
     if (_lastGeocodedLat == null || _lastGeocodedLng == null || _lastGeocodedTime == null) {
       shouldGeocode = true;

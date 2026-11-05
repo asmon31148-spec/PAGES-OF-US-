@@ -265,7 +265,9 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
     final playlists = audioProvider.playlists;
 
     var displaySongs = List<SongItem>.from(songs);
-    if (_sortMode == 'title') {
+    if (_sortMode == 'favorites') {
+      displaySongs = displaySongs.where((s) => audioProvider.isFavorite(s.id)).toList();
+    } else if (_sortMode == 'title') {
       displaySongs.sort((a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
     } else if (_sortMode == 'artist') {
       displaySongs.sort((a, b) => a.artist.toLowerCase().compareTo(b.artist.toLowerCase()));
@@ -733,13 +735,15 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        _sortMode == 'title'
-                            ? 'Title (A-Z)'
-                            : _sortMode == 'artist'
-                                ? 'Artist'
-                                : _sortMode == 'offline'
-                                    ? 'Offline Only'
-                                    : 'Recent',
+                        _sortMode == 'favorites'
+                            ? 'Favorites ♥'
+                            : _sortMode == 'title'
+                                ? 'Title (A-Z)'
+                                : _sortMode == 'artist'
+                                    ? 'Artist'
+                                    : _sortMode == 'offline'
+                                        ? 'Offline Only'
+                                        : 'Recent',
                         style: const TextStyle(fontSize: 11, color: GlassTokens.accent, fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(width: 4),
@@ -759,17 +763,27 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
               child: Center(
                 child: Column(
                   children: [
-                    Icon(Icons.music_off_outlined, color: Colors.white.withOpacity(0.25), size: 40),
+                    Icon(
+                      _sortMode == 'favorites' ? Icons.favorite_border_rounded : Icons.music_off_outlined,
+                      color: Colors.white.withOpacity(0.25),
+                      size: 40,
+                    ),
                     const SizedBox(height: 12),
                     Text(
-                      _sortMode == 'offline' ? 'No offline songs downloaded yet' : 'No songs in library',
+                      _sortMode == 'favorites'
+                          ? 'No starred favorite songs yet'
+                          : _sortMode == 'offline'
+                              ? 'No offline songs downloaded yet'
+                              : 'No songs in library',
                       style: const TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.w600),
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      _sortMode == 'offline'
-                          ? 'Tap search above to find songs and download them'
-                          : 'Search songs or upload audio files to start listening',
+                      _sortMode == 'favorites'
+                          ? 'Tap the heart icon on any song or in Now Playing to star it ♥'
+                          : _sortMode == 'offline'
+                              ? 'Tap search above to find songs and download them'
+                              : 'Search songs or upload audio files to start listening',
                       style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 12),
                       textAlign: TextAlign.center,
                     ),
@@ -868,6 +882,17 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
                               ),
                             ],
                           ),
+                        ),
+                        IconButton(
+                          icon: Icon(
+                            audioProvider.isFavorite(song.id) ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                            color: audioProvider.isFavorite(song.id) ? const Color(0xFFE07A5F) : Colors.white38,
+                            size: 18,
+                          ),
+                          onPressed: () {
+                            HapticFeedback.lightImpact();
+                            audioProvider.toggleFavorite(song.id);
+                          },
                         ),
                         IconButton(
                           icon: const Icon(Icons.more_horiz_rounded, color: Colors.white70, size: 20),
@@ -1103,6 +1128,76 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
             ],
           ),
           const SizedBox(height: 16),
+          // Pinned Favorites & Starred Smart Playlist Card
+          GestureDetector(
+            onTap: () {
+              setState(() {
+                _sortMode = 'favorites';
+                _activeTabIndex = 0;
+              });
+            },
+            child: GlassCard(
+              enableBlur: false,
+              padding: const EdgeInsets.all(14),
+              borderColor: const Color(0xFFE07A5F).withOpacity(0.4),
+              tintColor: const Color(0xFFE07A5F).withOpacity(0.08),
+              child: Row(
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(14),
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFFE07A5F), Color(0xFFF97316)],
+                      ),
+                    ),
+                    child: const Center(
+                      child: Icon(Icons.favorite_rounded, color: Colors.white, size: 24),
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Favorites & Starred',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '${audioProvider.favoriteCount} beloved tracks',
+                          style: const TextStyle(fontSize: 11.5, color: GlassTokens.textSecondary),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (audioProvider.favoriteCount > 0)
+                    GlassButton(
+                      onTap: () {
+                        HapticFeedback.lightImpact();
+                        audioProvider.playFavoriteSongs();
+                      },
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.play_arrow_rounded, size: 16, color: Colors.white),
+                          SizedBox(width: 4),
+                          Text('Play', style: TextStyle(fontSize: 12, color: Colors.white, fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 14),
           if (playlists.isEmpty)
             const GlassCard(
               padding: EdgeInsets.symmetric(vertical: 36, horizontal: 20),
@@ -1745,6 +1840,7 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
         mainAxisSize: MainAxisSize.min,
         children: [
           _buildSortOption(context, 'Recently Added', 'recent', Icons.history_rounded),
+          _buildSortOption(context, 'Favorites & Starred ♥', 'favorites', Icons.favorite_rounded),
           _buildSortOption(context, 'Title (A-Z)', 'title', Icons.sort_by_alpha_rounded),
           _buildSortOption(context, 'Artist (A-Z)', 'artist', Icons.person_outline_rounded),
           _buildSortOption(context, 'Offline Downloaded Only', 'offline', Icons.offline_pin_outlined),
@@ -1857,6 +1953,33 @@ class _MusicSanctuaryScreenState extends State<MusicSanctuaryScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          ListTile(
+            leading: Icon(
+              audio.isFavorite(song.id) ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+              color: audio.isFavorite(song.id) ? const Color(0xFFE07A5F) : Colors.white70,
+            ),
+            title: Text(
+              audio.isFavorite(song.id) ? 'Remove from Favorites' : 'Add to Favorites ♥',
+              style: const TextStyle(color: Colors.white, fontSize: 14),
+            ),
+            subtitle: Text(
+              audio.isFavorite(song.id) ? 'Unstar track from your favorites shelf' : 'Keep this song close to your heart',
+              style: const TextStyle(color: GlassTokens.textSecondary, fontSize: 11),
+            ),
+            onTap: () {
+              audio.toggleFavorite(song.id);
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(audio.isFavorite(song.id)
+                      ? 'Saved "${song.title}" to Favorites ♥'
+                      : 'Removed from Favorites'),
+                  duration: const Duration(seconds: 2),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            },
+          ),
           ListTile(
             leading: const Icon(Icons.play_circle_outline_rounded, color: GlassTokens.accent),
             title: const Text('Play Next', style: TextStyle(color: Colors.white, fontSize: 14)),

@@ -53,12 +53,18 @@ class StageProvider extends ChangeNotifier {
   StreamSubscription? _goalsSub;
   StreamSubscription? _dailyCareSub;
   StreamSubscription? _pulseSub;
+  StreamSubscription? _heartbeatSub;
   StreamSubscription? _touchStatsSub;
   String? _activeSpaceId;
   String? _activeUserId;
   String? _activePartnerId;
   int _lastPulseTimestamp = 0;
+  int _lastHeartbeatTimestamp = 0;
   Timer? _drawingSaveDebounce;
+
+  // Zero-Pressure Heartbeat Pulse (isolated Notifiers for buttery 60 FPS)
+  final ValueNotifier<int> heartbeatPulseNotifier = ValueNotifier<int>(0);
+  final ValueNotifier<bool> isHeartbeatActiveNotifier = ValueNotifier<bool>(false);
 
   String? get activeSpaceId => _activeSpaceId;
   String? get activePartnerId => _activePartnerId;
@@ -132,6 +138,7 @@ class StageProvider extends ChangeNotifier {
     _goalsSub?.cancel();
     _dailyCareSub?.cancel();
     _pulseSub?.cancel();
+    _heartbeatSub?.cancel();
     _touchStatsSub?.cancel();
     _drawingSaveDebounce?.cancel();
     _partnerTouchDecayTimer?.cancel();
@@ -143,6 +150,7 @@ class StageProvider extends ChangeNotifier {
     _goalsSub = null;
     _dailyCareSub = null;
     _pulseSub = null;
+    _heartbeatSub = null;
     _touchStatsSub = null;
 
     _anniversaryDate = null;
@@ -426,6 +434,21 @@ class StageProvider extends ChangeNotifier {
       }
     });
 
+    // 6b. Dual Heartbeat Live Listener (Zero-Pressure Silent Handhold Fallback)
+    _heartbeatSub?.cancel();
+    _heartbeatSub = FirebaseService.streamFeatureDoc(spaceId, 'live_heartbeat').listen((snap) {
+      if (snap.exists && snap.data() != null) {
+        final data = snap.data()!;
+        final sender = data['senderId'] as String?;
+        final ts = (data['timestamp'] as num?)?.toInt() ?? 0;
+        final now = DateTime.now().millisecondsSinceEpoch;
+        if (sender != userId && (now - ts).abs() < 5000 && ts != _lastHeartbeatTimestamp) {
+          _lastHeartbeatTimestamp = ts;
+          _triggerHeartbeatEffect(isRemote: true);
+        }
+      }
+    });
+
     // 7. Touch Stats Listener (Daily counts)
     _touchStatsSub?.cancel();
     _touchStatsSub = FirebaseService.streamFeatureDoc(spaceId, 'touch_stats').listen((snap) {
@@ -474,6 +497,14 @@ class StageProvider extends ChangeNotifier {
         if (sender != userId && ts != _lastPulseTimestamp) {
           _lastPulseTimestamp = ts;
           _triggerPulseEffect();
+        }
+      },
+      onHeartbeatPulse: (data) {
+        final sender = data['senderId'] as String?;
+        final ts = (data['timestamp'] as num?)?.toInt() ?? 0;
+        if (sender != userId && ts != _lastHeartbeatTimestamp) {
+          _lastHeartbeatTimestamp = ts;
+          _triggerHeartbeatEffect(isRemote: true);
         }
       },
       onMood: (data) {
@@ -605,6 +636,51 @@ class StageProvider extends ChangeNotifier {
       _isPulsing = false;
       notifyListeners();
     });
+  }
+
+  /// Zero-Pressure Heartbeat Pulse: Plays rhythmic tactile lub-dub haptics
+  /// and increments isolated ValueNotifier without forcing a full screen rebuild.
+  void _triggerHeartbeatEffect({bool isRemote = false}) {
+    HapticFeedback.mediumImpact();
+    Future.delayed(const Duration(milliseconds: 140), () {
+      try {
+        HapticFeedback.lightImpact();
+      } catch (_) {}
+    });
+
+    heartbeatPulseNotifier.value++;
+    isHeartbeatActiveNotifier.value = true;
+    Future.delayed(const Duration(milliseconds: 1400), () {
+      isHeartbeatActiveNotifier.value = false;
+    });
+  }
+
+  /// Sends a gentle "Thinking of You" Heartbeat Pulse over Supabase Realtime broadcast.
+  /// Zero-pressure presence: provides silent tactile connection without requiring words.
+  Future<void> sendHeartbeatPulse(String spaceId, String userId, String nickname) async {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    _lastHeartbeatTimestamp = now;
+    _triggerHeartbeatEffect(isRemote: false);
+
+    // 1. Instant WebSocket broadcast (0-50ms)
+    await SupabaseService.broadcastEvent(
+      spaceId: spaceId,
+      eventType: 'HEARTBEAT_PULSE',
+      payload: {
+        'senderId': userId,
+        'senderNickname': nickname,
+        'timestamp': now,
+      },
+    );
+
+    // 2. Dual Firestore live pulse (Guaranteed delivery if socket drops)
+    try {
+      await FirebaseService.saveFeatureDoc(spaceId, 'live_heartbeat', {
+        'senderId': userId,
+        'senderNickname': nickname,
+        'timestamp': now,
+      });
+    } catch (_) {}
   }
 
   void _syncWidget(String? partnerId) {
@@ -1381,6 +1457,7 @@ class StageProvider extends ChangeNotifier {
     _goalsSub?.cancel();
     _dailyCareSub?.cancel();
     _pulseSub?.cancel();
+    _heartbeatSub?.cancel();
     _touchStatsSub?.cancel();
     super.dispose();
   }

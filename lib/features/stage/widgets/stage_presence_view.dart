@@ -76,6 +76,61 @@ class StagePresenceView extends StatelessWidget {
     }
   }
 
+  void _sendHeartbeat(
+    BuildContext context,
+    AuthProvider authProvider,
+    StageProvider stageProvider,
+    bool isDark,
+  ) {
+    final user = authProvider.user;
+    final partner = authProvider.partner;
+    final space = authProvider.space;
+
+    if (space != null && user != null) {
+      stageProvider.sendHeartbeatPulse(space.id, user.id, user.nickname);
+
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(
+                Icons.favorite_rounded,
+                size: 16,
+                color: Color(0xFFE07A5F),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                partner != null
+                    ? 'Thinking of you pulse sent to ${partner.nickname} ♥'
+                    : 'A gentle heartbeat pulse sent ♥',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: isDark ? AppColors.darkInk : AppColors.lightInk,
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: isDark ? AppColors.darkCard : AppColors.lightCard,
+          duration: const Duration(milliseconds: 1600),
+          behavior: SnackBarBehavior.floating,
+          elevation: 6,
+          margin: const EdgeInsets.only(bottom: 24, left: 40, right: 40),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+            side: BorderSide(
+              color: const Color(0xFFE07A5F).withOpacity(0.5),
+              width: 1,
+            ),
+          ),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = context.watch<ThemeProvider>().isDark;
@@ -240,26 +295,52 @@ class StagePresenceView extends StatelessWidget {
                 ),
               ),
 
-              // 2. Central Live Celestial Pulse Beacon
-              StagePulseBeacon(
-                isPulsing: isPulsing,
-                isDark: isDark,
-                onTap: () => _sendHello(
-                  context,
-                  authProvider,
-                  stageProvider,
-                  isDark,
-                ),
+              // 2. Central Live Celestial Pulse Beacon (Tap for Hello, Long Press for Heartbeat)
+              ValueListenableBuilder<bool>(
+                valueListenable: stageProvider.isHeartbeatActiveNotifier,
+                builder: (context, isHeartbeat, _) {
+                  return StagePulseBeacon(
+                    isPulsing: isPulsing,
+                    isHeartbeatActive: isHeartbeat,
+                    isDark: isDark,
+                    onTap: () => _sendHello(
+                      context,
+                      authProvider,
+                      stageProvider,
+                      isDark,
+                    ),
+                    onLongPress: () => _sendHeartbeat(
+                      context,
+                      authProvider,
+                      stageProvider,
+                      isDark,
+                    ),
+                  );
+                },
               ),
 
-              // 3. Partner Avatar or Connect Button
+              // 3. Partner Avatar or Connect Button (Tap for Hello, Long-press for Heartbeat)
               isPaired && partner != null
-                  ? Column(
-                      children: [
-                        Stack(
-                          alignment: Alignment.center,
-                          children: [
-                            // Mood Aura Ring (Crisp, clean, high-definition border ring)
+                  ? GestureDetector(
+                      onTap: () => _sendHello(
+                        context,
+                        authProvider,
+                        stageProvider,
+                        isDark,
+                      ),
+                      onLongPress: () => _sendHeartbeat(
+                        context,
+                        authProvider,
+                        stageProvider,
+                        isDark,
+                      ),
+                      behavior: HitTestBehavior.opaque,
+                      child: Column(
+                        children: [
+                          Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              // Mood Aura Ring (Crisp, clean, high-definition border ring)
                             AnimatedContainer(
                               duration: const Duration(milliseconds: 300),
                               width: 66,
@@ -340,16 +421,33 @@ class StagePresenceView extends StatelessWidget {
                                 isDark ? AppColors.darkInk : AppColors.lightInk,
                           ),
                         ),
-                        Text(
-                          partner.thought ?? (partnerMood?.label ?? 'Together'),
-                          style: TextStyle(
-                            fontSize: 10,
-                            color:
-                                isDark ? AppColors.darkSoft : AppColors.lightSoft,
-                          ),
+                        ValueListenableBuilder<bool>(
+                          valueListenable: stageProvider.isHeartbeatActiveNotifier,
+                          builder: (context, isHeartbeat, _) {
+                            if (isHeartbeat) {
+                              return const Text(
+                                '♥ Feeling heartbeat...',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFFE07A5F),
+                                ),
+                              );
+                            }
+                            return Text(
+                              partner.thought ?? (partnerMood?.label ?? 'Together'),
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: isDark
+                                    ? AppColors.darkSoft
+                                    : AppColors.lightSoft,
+                              ),
+                            );
+                          },
                         ),
                       ],
-                    )
+                    ),
+                  )
                   : GestureDetector(
                       onTap: onOpenPairModal,
                       child: Column(
@@ -407,14 +505,18 @@ class StagePresenceView extends StatelessWidget {
 /// and a luminous starlight sign instead of generic emojis.
 class StagePulseBeacon extends StatefulWidget {
   final bool isPulsing;
+  final bool isHeartbeatActive;
   final bool isDark;
   final VoidCallback onTap;
+  final VoidCallback? onLongPress;
 
   const StagePulseBeacon({
     super.key,
     required this.isPulsing,
+    this.isHeartbeatActive = false,
     required this.isDark,
     required this.onTap,
+    this.onLongPress,
   });
 
   @override
@@ -460,7 +562,7 @@ class _StagePulseBeaconState extends State<StagePulseBeacon>
       ),
     );
 
-    if (widget.isPulsing) {
+    if (widget.isPulsing || widget.isHeartbeatActive) {
       _animController.forward(from: 0.0);
     }
   }
@@ -468,7 +570,8 @@ class _StagePulseBeaconState extends State<StagePulseBeacon>
   @override
   void didUpdateWidget(covariant StagePulseBeacon oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.isPulsing && !oldWidget.isPulsing) {
+    if ((widget.isPulsing && !oldWidget.isPulsing) ||
+        (widget.isHeartbeatActive && !oldWidget.isHeartbeatActive)) {
       _animController.forward(from: 0.0);
     }
   }
@@ -490,12 +593,13 @@ class _StagePulseBeaconState extends State<StagePulseBeacon>
 
     return GestureDetector(
       onTap: _handleTap,
+      onLongPress: widget.onLongPress,
       behavior: HitTestBehavior.opaque,
       child: AnimatedBuilder(
         animation: _animController,
         builder: (context, child) {
           final progress = _animController.value;
-          final isPulsing = widget.isPulsing || _animController.isAnimating;
+          final isPulsing = widget.isPulsing || widget.isHeartbeatActive || _animController.isAnimating;
 
           return SizedBox(
             width: 72,
@@ -510,7 +614,7 @@ class _StagePulseBeaconState extends State<StagePulseBeacon>
                     child: CustomPaint(
                       painter: _PulseRipplePainter(
                         progress: progress,
-                        color: AppColors.terra,
+                        color: widget.isHeartbeatActive ? const Color(0xFFE07A5F) : AppColors.terra,
                       ),
                     ),
                   ),
@@ -524,7 +628,7 @@ class _StagePulseBeaconState extends State<StagePulseBeacon>
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: AppColors.terra.withOpacity(
+                          color: (widget.isHeartbeatActive ? const Color(0xFFE07A5F) : AppColors.terra).withOpacity(
                               (0.55 * (1.0 - (progress * 0.5))).clamp(0.0, 1.0)),
                           blurRadius: 22,
                           spreadRadius: 4,
@@ -554,7 +658,7 @@ class _StagePulseBeaconState extends State<StagePulseBeacon>
                           end: Alignment.bottomRight,
                           colors: isPulsing
                               ? [
-                                  AppColors.terra.withOpacity(0.35),
+                                  (widget.isHeartbeatActive ? const Color(0xFFE07A5F) : AppColors.terra).withOpacity(0.35),
                                   const Color(0xFFE89A8A).withOpacity(0.25),
                                 ]
                               : [
@@ -568,7 +672,7 @@ class _StagePulseBeaconState extends State<StagePulseBeacon>
                         ),
                         border: Border.all(
                           color: isPulsing
-                              ? AppColors.terra
+                              ? (widget.isHeartbeatActive ? const Color(0xFFE07A5F) : AppColors.terra)
                               : (isDark
                                   ? Colors.white.withOpacity(0.20)
                                   : Colors.white.withOpacity(0.80)),
@@ -585,26 +689,32 @@ class _StagePulseBeaconState extends State<StagePulseBeacon>
                         ],
                       ),
                       alignment: Alignment.center,
-                      child: isPulsing
-                          ? ShaderMask(
-                              shaderCallback: (bounds) => const LinearGradient(
-                                colors: [Color(0xFFFFB4A2), Color(0xFFE07A5F)],
-                                begin: Alignment.topCenter,
-                                end: Alignment.bottomCenter,
-                              ).createShader(bounds),
-                              child: const Icon(
-                                Icons.auto_awesome_rounded,
-                                size: 24,
-                                color: Colors.white,
-                              ),
+                      child: widget.isHeartbeatActive
+                          ? const Icon(
+                              Icons.favorite_rounded,
+                              size: 24,
+                              color: Color(0xFFE07A5F),
                             )
-                          : Icon(
-                              Icons.auto_awesome_rounded,
-                              size: 19,
-                              color: isDark
-                                  ? AppColors.darkSoft
-                                  : AppColors.lightSoft,
-                            ),
+                          : (isPulsing
+                              ? ShaderMask(
+                                  shaderCallback: (bounds) => const LinearGradient(
+                                    colors: [Color(0xFFFFB4A2), Color(0xFFE07A5F)],
+                                    begin: Alignment.topCenter,
+                                    end: Alignment.bottomCenter,
+                                  ).createShader(bounds),
+                                  child: const Icon(
+                                    Icons.auto_awesome_rounded,
+                                    size: 24,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : Icon(
+                                  Icons.auto_awesome_rounded,
+                                  size: 19,
+                                  color: isDark
+                                      ? AppColors.darkSoft
+                                      : AppColors.lightSoft,
+                                )),
                     ),
                   ),
                 ),

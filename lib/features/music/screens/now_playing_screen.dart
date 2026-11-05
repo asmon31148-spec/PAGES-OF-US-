@@ -316,6 +316,39 @@ class NowPlayingScreen extends StatelessWidget {
                           ),
                         ),
                       ),
+                      const SizedBox(width: 8),
+
+                      // Star / Favorite Button
+                      GestureDetector(
+                        onTap: () {
+                          HapticFeedback.lightImpact();
+                          audioProvider.toggleFavorite(currentSong.id);
+                        },
+                        child: Container(
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF261E1B),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: audioProvider.isFavorite(currentSong.id)
+                                  ? const Color(0xFFE07A5F)
+                                  : const Color(0xFF4A342E),
+                            ),
+                          ),
+                          child: Center(
+                            child: Icon(
+                              audioProvider.isFavorite(currentSong.id)
+                                  ? Icons.favorite_rounded
+                                  : Icons.favorite_border_rounded,
+                              color: audioProvider.isFavorite(currentSong.id)
+                                  ? const Color(0xFFE07A5F)
+                                  : Colors.white70,
+                              size: 19,
+                            ),
+                          ),
+                        ),
+                      ),
                     ],
                   ),
 
