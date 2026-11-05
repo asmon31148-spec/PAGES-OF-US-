@@ -174,9 +174,26 @@ class _LivingAtmospherePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    // Fill base canvas
-    final basePaint = Paint()..color = palette.canvasBackground;
-    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), basePaint);
+    if (!isDark) {
+      // Light-mode: Soft Apple iOS liquid pastel gradient canvas (warm peach -> soft lavender -> sky blue)
+      final bgGradient = LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: const [
+          Color(0xFFFFF5EE), // Warm peach cream
+          Color(0xFFF7F2FA), // Soft lavender tint
+          Color(0xFFF0F6FA), // Light sky blue
+        ],
+        stops: const [0.0, 0.52, 1.0],
+      );
+      final bgPaint = Paint()
+        ..shader = bgGradient.createShader(Rect.fromLTWH(0, 0, size.width, size.height));
+      canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), bgPaint);
+    } else {
+      // Dark-mode: Obsidian canvas
+      final basePaint = Paint()..color = palette.canvasBackground;
+      canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), basePaint);
+    }
 
     final colors = palette.gradientColors;
     if (colors.isEmpty) return;
@@ -190,14 +207,14 @@ class _LivingAtmospherePainter extends CustomPainter {
         size.height * (0.22 + 0.08 * math.sin(t)),
       );
       final r1 = size.width * (0.75 + 0.08 * math.sin(t * 1.5));
-      _drawGlow(canvas, p1, r1, colors[0], isDark ? 0.38 : 0.24);
+      _drawGlow(canvas, p1, r1, colors[0], isDark ? 0.38 : 0.34);
 
       final p2 = Offset(
         size.width * (0.65 - 0.10 * math.sin(t)),
         size.height * (0.78 - 0.08 * math.cos(t)),
       );
       final r2 = size.width * (0.80 + 0.06 * math.cos(t * 1.2));
-      _drawGlow(canvas, p2, r2, colors.length > 1 ? colors[1] : colors[0], isDark ? 0.32 : 0.20);
+      _drawGlow(canvas, p2, r2, colors.length > 1 ? colors[1] : colors[0], isDark ? 0.32 : 0.30);
       return;
     }
 
@@ -208,7 +225,7 @@ class _LivingAtmospherePainter extends CustomPainter {
       size.height * (0.15 + 0.10 * math.cos(t * 0.8)),
     );
     final r1 = size.width * 0.85;
-    _drawGlow(canvas, p1, r1, colors[0], isDark ? 0.42 : 0.28);
+    _drawGlow(canvas, p1, r1, colors[0], isDark ? 0.42 : 0.38);
 
     // Node 2: Mid-left drifting aura
     final c2 = colors.length > 1 ? colors[1] : colors[0];
@@ -217,7 +234,7 @@ class _LivingAtmospherePainter extends CustomPainter {
       size.height * (0.45 + 0.12 * math.sin(t * 0.9)),
     );
     final r2 = size.width * 0.80;
-    _drawGlow(canvas, p2, r2, c2, isDark ? 0.36 : 0.22);
+    _drawGlow(canvas, p2, r2, c2, isDark ? 0.36 : 0.32);
 
     // Node 3: Bottom-center drifting aura
     final c3 = colors.length > 2 ? colors[2] : colors[0];
@@ -226,7 +243,7 @@ class _LivingAtmospherePainter extends CustomPainter {
       size.height * (0.85 + 0.08 * math.cos(t * 1.1)),
     );
     final r3 = size.width * 0.90;
-    _drawGlow(canvas, p3, r3, c3, isDark ? 0.34 : 0.22);
+    _drawGlow(canvas, p3, r3, c3, isDark ? 0.34 : 0.30);
 
     // Optional Node 4: Accent bloom
     if (colors.length > 3) {
@@ -235,7 +252,7 @@ class _LivingAtmospherePainter extends CustomPainter {
         size.height * (0.70 + 0.09 * math.sin(t * 1.3)),
       );
       final r4 = size.width * 0.65;
-      _drawGlow(canvas, p4, r4, colors[3], isDark ? 0.28 : 0.18);
+      _drawGlow(canvas, p4, r4, colors[3], isDark ? 0.28 : 0.24);
     }
   }
 
@@ -274,8 +291,24 @@ class _StaticAtmospherePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final basePaint = Paint()..color = palette.canvasBackground;
-    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), basePaint);
+    if (!isDark) {
+      final bgGradient = LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: const [
+          Color(0xFFFFF5EE),
+          Color(0xFFF7F2FA),
+          Color(0xFFF0F6FA),
+        ],
+        stops: const [0.0, 0.52, 1.0],
+      );
+      final bgPaint = Paint()
+        ..shader = bgGradient.createShader(Rect.fromLTWH(0, 0, size.width, size.height));
+      canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), bgPaint);
+    } else {
+      final basePaint = Paint()..color = palette.canvasBackground;
+      canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), basePaint);
+    }
 
     final colors = palette.gradientColors;
     if (colors.isEmpty) return;
@@ -286,7 +319,7 @@ class _StaticAtmospherePainter extends CustomPainter {
       Offset(size.width * 0.85, size.height * 0.15),
       size.width * 0.85,
       colors[0],
-      isDark ? 0.40 : 0.25,
+      isDark ? 0.40 : 0.35,
     );
 
     // Node 2: Mid-Left
@@ -296,7 +329,7 @@ class _StaticAtmospherePainter extends CustomPainter {
         Offset(size.width * 0.15, size.height * 0.45),
         size.width * 0.80,
         colors[1],
-        isDark ? 0.35 : 0.20,
+        isDark ? 0.35 : 0.30,
       );
     }
 
@@ -307,7 +340,7 @@ class _StaticAtmospherePainter extends CustomPainter {
         Offset(size.width * 0.65, size.height * 0.85),
         size.width * 0.88,
         colors[2],
-        isDark ? 0.32 : 0.20,
+        isDark ? 0.32 : 0.28,
       );
     }
   }

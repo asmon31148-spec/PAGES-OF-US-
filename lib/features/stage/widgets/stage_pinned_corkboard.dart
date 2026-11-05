@@ -164,17 +164,17 @@ class _StagePinnedCorkboardState extends State<StagePinnedCorkboard> {
                     constraints: const BoxConstraints(minHeight: 96),
                     padding: const EdgeInsets.all(15),
                     decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF1B2620) : const Color(0xFFF3F7F4),
+                      color: isDark ? const Color(0xFF1B2620) : AppColors.sage.withOpacity(0.12),
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
-                        color: AppColors.sage.withOpacity(0.35),
+                        color: isDark ? AppColors.sage.withOpacity(0.35) : Colors.white.withOpacity(0.80),
                         width: 1.0,
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: AppColors.sage.withOpacity(0.06),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
+                          color: AppColors.sage.withOpacity(isDark ? 0.06 : 0.10),
+                          blurRadius: 10,
+                          offset: const Offset(0, 3),
                         ),
                       ],
                     ),
@@ -250,17 +250,17 @@ class _StagePinnedCorkboardState extends State<StagePinnedCorkboard> {
                     constraints: const BoxConstraints(minHeight: 96),
                     padding: const EdgeInsets.all(15),
                     decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF261D1A) : const Color(0xFFFFF7F2),
+                      color: isDark ? const Color(0xFF261D1A) : AppColors.terra.withOpacity(0.12),
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
-                        color: AppColors.terra.withOpacity(0.35),
+                        color: isDark ? AppColors.terra.withOpacity(0.35) : Colors.white.withOpacity(0.80),
                         width: 1.0,
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: AppColors.terra.withOpacity(0.06),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
+                          color: AppColors.terra.withOpacity(isDark ? 0.06 : 0.10),
+                          blurRadius: 10,
+                          offset: const Offset(0, 3),
                         ),
                       ],
                     ),

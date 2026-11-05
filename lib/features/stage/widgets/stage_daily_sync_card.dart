@@ -276,12 +276,12 @@ class _StageDailySyncCardState extends State<StageDailySyncCard> {
                   color: isDark ? AppColors.darkSoft : AppColors.lightSoft,
                 ),
                 filled: true,
-                fillColor: isDark ? AppColors.darkCard : AppColors.lightCard,
+                fillColor: isDark ? Colors.white.withOpacity(0.06) : Colors.white.withOpacity(0.62),
                 contentPadding: const EdgeInsets.all(16),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(16),
                   borderSide: BorderSide(
-                    color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                    color: isDark ? Colors.white.withOpacity(0.12) : Colors.white.withOpacity(0.70),
                     width: 0.8,
                   ),
                 ),
@@ -363,8 +363,12 @@ class _StageDailySyncCardState extends State<StageDailySyncCard> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: isDark ? AppColors.darkCard : AppColors.lightCard,
+                color: isDark ? Colors.white.withOpacity(0.06) : Colors.white.withOpacity(0.62),
                 borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: isDark ? Colors.white.withOpacity(0.12) : Colors.white.withOpacity(0.70),
+                  width: 0.8,
+                ),
               ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -404,8 +408,12 @@ class _StageDailySyncCardState extends State<StageDailySyncCard> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: isDark ? AppColors.darkCard : AppColors.lightCard,
+                color: isDark ? Colors.white.withOpacity(0.06) : Colors.white.withOpacity(0.62),
                 borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: isDark ? Colors.white.withOpacity(0.12) : Colors.white.withOpacity(0.70),
+                  width: 0.8,
+                ),
               ),
               child: Row(
                 children: [

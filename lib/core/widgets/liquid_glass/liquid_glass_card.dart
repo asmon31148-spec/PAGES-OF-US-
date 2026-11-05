@@ -5,10 +5,10 @@ import 'package:provider/provider.dart';
 import '../../../providers/theme_provider.dart';
 import 'liquid_glass_theme.dart';
 
-/// Authentic Apple iOS / visionOS Liquid Glass Card
+/// Authentic Apple iOS 26 Liquid Glass Card
 /// High-performance GPU-optimized implementation:
-/// Uses 1px specular rim gradient, top-down gloss refraction, and ambient drop shadow.
-/// Translucent inner glass lets the living atmospheric background shine through.
+/// Uses 1px specular rim gradient, top-down gloss refraction, and warm ambient drop shadow.
+/// Translucent inner glass (55-70% in light mode) lets the living background shine through.
 class LiquidGlassCard extends StatelessWidget {
   final Widget child;
   final double radius;
@@ -31,7 +31,7 @@ class LiquidGlassCard extends StatelessWidget {
     this.height,
     this.tint,
     this.onTap,
-    this.enableBlur = false,
+    this.enableBlur = true,
     this.blurSigma = LiquidGlassTheme.blurCard,
   });
 
@@ -65,7 +65,7 @@ class LiquidGlassCard extends StatelessWidget {
       padding: const EdgeInsets.all(1.0), // 1px specular rim light reflection
       child: ClipRRect(
         borderRadius: innerRadius,
-        child: enableBlur
+        child: enableBlur && blurSigma > 0
             ? BackdropFilter(
                 filter: ImageFilter.blur(sigmaX: blurSigma, sigmaY: blurSigma),
                 child: innerContent,

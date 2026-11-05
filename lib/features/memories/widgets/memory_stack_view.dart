@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'glass_memory_card.dart';
 import 'voice_whisper_player_card.dart';
 import '../../../widgets/sanctuary_voice_player.dart';
 import '../../../core/theme/app_colors.dart';
@@ -64,18 +65,27 @@ class _MemoryStackViewState extends State<MemoryStackView> {
                   ),
                   prefixIcon: const Icon(Icons.search, size: 18),
                   filled: true,
-                  fillColor: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+                  fillColor: isDark ? Colors.white.withOpacity(0.08) : Colors.white.withOpacity(0.64),
                   contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(18),
                     borderSide: BorderSide(
-                      color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                      color: isDark ? Colors.white.withOpacity(0.14) : Colors.white.withOpacity(0.75),
+                      width: 0.8,
                     ),
                   ),
                   enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(18),
                     borderSide: BorderSide(
-                      color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                      color: isDark ? Colors.white.withOpacity(0.14) : Colors.white.withOpacity(0.75),
+                      width: 0.8,
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(18),
+                    borderSide: const BorderSide(
+                      color: AppColors.terra,
+                      width: 1.2,
                     ),
                   ),
                 ),
@@ -282,13 +292,13 @@ class _MemoryStackViewState extends State<MemoryStackView> {
         decoration: BoxDecoration(
           color: isSelected
               ? AppColors.terra
-              : (isDark ? Colors.white.withOpacity(0.08) : Colors.white),
+              : (isDark ? Colors.white.withOpacity(0.08) : Colors.white.withOpacity(0.64)),
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
             color: isSelected
                 ? AppColors.terra
-                : (isDark ? Colors.white.withOpacity(0.20) : Colors.black.withOpacity(0.06)),
-            width: 1,
+                : (isDark ? Colors.white.withOpacity(0.18) : Colors.white.withOpacity(0.75)),
+            width: 0.8,
           ),
           boxShadow: isSelected
               ? [
@@ -300,8 +310,9 @@ class _MemoryStackViewState extends State<MemoryStackView> {
                 ]
               : [
                   BoxShadow(
-                    color: isDark ? Colors.black.withOpacity(0.2) : Colors.black.withOpacity(0.04),
-                    blurRadius: 4,
+                    color: isDark ? Colors.black.withOpacity(0.2) : const Color(0xFFB89578).withOpacity(0.10),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
                   ),
                 ],
         ),
@@ -341,190 +352,10 @@ class _MemoryStackViewState extends State<MemoryStackView> {
         itemCount: memories.length,
         itemBuilder: (context, index) {
           final memory = memories[index];
-          final videoThumb = _getVideoThumbnail(memory.mediaUrl);
-
-          return GestureDetector(
-            onTap: () {
-              HapticFeedback.lightImpact();
-              if (memory.mediaType == 'photo' && memory.mediaUrl.isNotEmpty) {
-                _openLightbox(context, memory.mediaUrl, memory.title);
-              } else if (memory.mediaType == 'video' && memory.mediaUrl.isNotEmpty) {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => FullScreenVideoPlayer(
-                      videoUrl: memory.mediaUrl,
-                      title: memory.title.isNotEmpty ? memory.title : 'Our Memory',
-                      subtitle: memory.caption.isNotEmpty ? memory.caption : 'Preserved Moment',
-                    ),
-                  ),
-                );
-              }
-            },
-            child: Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(22),
-                gradient: LiquidGlassTheme.specularBorder(isDark),
-                boxShadow: LiquidGlassTheme.cardShadow(isDark),
-              ),
-              padding: const EdgeInsets.all(1.2),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(21),
-                child: Container(
-                  decoration: BoxDecoration(
-                    gradient: LiquidGlassTheme.cardGloss(isDark),
-                    borderRadius: BorderRadius.circular(21),
-                  ),
-                  padding: const EdgeInsets.all(5.5), // Apple Glass floating bezel
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(16.5),
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        // 1. Media Preview
-                        if (memory.mediaType == 'photo' && memory.mediaUrl.isNotEmpty)
-                          CachedNetworkImage(
-                      imageUrl: memory.mediaUrl,
-                      memCacheWidth: 600,
-                      fit: BoxFit.cover,
-                      placeholder: (_, __) => Container(
-                        color: isDark ? AppColors.darkCard : AppColors.lightCard,
-                        child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
-                      ),
-                      errorWidget: (_, __, ___) => Container(
-                        color: isDark ? AppColors.darkCard : AppColors.lightCard,
-                        child: const Icon(Icons.broken_image, size: 28),
-                      ),
-                    )
-                  else if (memory.mediaType == 'video' && memory.mediaUrl.isNotEmpty)
-                    Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        if (videoThumb.isNotEmpty)
-                          CachedNetworkImage(
-                            imageUrl: videoThumb,
-                            memCacheWidth: 600,
-                            fit: BoxFit.cover,
-                            placeholder: (_, __) => _buildFilmFallback(memory, isDark),
-                            errorWidget: (_, __, ___) => _buildFilmFallback(memory, isDark),
-                          )
-                        else
-                          _buildFilmFallback(memory, isDark),
-                        // Dark tint
-                        Container(color: Colors.black.withOpacity(0.25)),
-                        // Centered Play Pip (GPU-optimized zero BackdropFilter)
-                        Center(
-                          child: Container(
-                            width: 44,
-                            height: 44,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: Colors.black.withOpacity(0.50),
-                              border: Border.all(color: Colors.white.withOpacity(0.45), width: 1.2),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.35),
-                                  blurRadius: 10,
-                                ),
-                              ],
-                            ),
-                            child: const Center(
-                              child: Icon(Icons.play_arrow_rounded, color: Colors.white, size: 26),
-                            ),
-                          ),
-                        ),
-                      ],
-                    )
-                  else
-                    // Audio Tile Graphic (Warm Romantic Acoustic Card with waveform)
-                    _buildAudioGridTile(memory, isDark, memoriesProvider, audioProvider),
-
-                  // 2. Type Badge in Top-Right
-                  Positioned(
-                    top: 8,
-                    right: 8,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3.5),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.55),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: Colors.white.withOpacity(0.3), width: 0.8),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            memory.mediaType == 'video'
-                                ? Icons.videocam_rounded
-                                : (memory.mediaType == 'audio' ? Icons.graphic_eq_rounded : Icons.photo_camera_rounded),
-                            size: 11,
-                            color: Colors.white,
-                          ),
-                          const SizedBox(width: 3.5),
-                          Text(
-                            memory.mediaType.toUpperCase(),
-                            style: const TextStyle(
-                              fontSize: 8.5,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                              letterSpacing: 0.4,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  // 3. Bottom Gradient Info Strip (Title & Date)
-                  Positioned(
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                    child: Container(
-                      padding: const EdgeInsets.fromLTRB(10, 14, 10, 8),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.transparent,
-                            Colors.black.withOpacity(0.85),
-                          ],
-                        ),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            memory.title.isNotEmpty ? memory.title : 'Memory',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                          ),
-                          const SizedBox(height: 1),
-                          Text(
-                            memory.createdAt.split('T').first,
-                            style: TextStyle(
-                              fontSize: 9.5,
-                              color: Colors.white.withOpacity(0.75),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
+          return GlassMemoryCard(
+            memory: memory,
+            isDark: isDark,
+          );
         },
       ),
     );
