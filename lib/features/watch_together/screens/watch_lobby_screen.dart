@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import '../../../../core/theme/app_colors.dart';
-import '../../../../providers/theme_provider.dart';
-import '../../../../providers/auth_provider.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../providers/theme_provider.dart';
+import '../../../providers/auth_provider.dart';
 import '../services/watch_together_service.dart';
 import 'watch_waiting_screen.dart';
 
