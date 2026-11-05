@@ -539,6 +539,32 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
     final mapStatusColor = partnerLoc != null
         ? (isPartnerLive ? AppColors.sage : Colors.orangeAccent)
         : (worldProvider.gpsStatus.contains('Live') ? AppColors.sage : (worldProvider.isLoading ? Colors.orangeAccent : Colors.grey));
+
+    // Smart initial zoom calculation so FlutterMap immediately requests the correct tiles on boot
+    final dist = distanceKm ?? (myLoc != null && partnerLoc != null && (myLoc.lat != 0.0 || myLoc.lng != 0.0) && (partnerLoc.lat != 0.0 || partnerLoc.lng != 0.0)
+        ? _calculateDistanceKm(myLoc.lat, myLoc.lng, partnerLoc.lat, partnerLoc.lng)
+        : null);
+    double smartInitialZoom = 15.0;
+    if (dist != null) {
+      if (dist > 800) {
+        smartInitialZoom = 4.8;
+      } else if (dist > 300) {
+        smartInitialZoom = 5.8;
+      } else if (dist > 100) {
+        smartInitialZoom = 7.2;
+      } else if (dist > 20) {
+        smartInitialZoom = 10.5;
+      } else if (dist > 2) {
+        smartInitialZoom = 13.5;
+      } else if (dist > 0.2) {
+        smartInitialZoom = 16.0;
+      } else {
+        smartInitialZoom = 18.0;
+      }
+    } else if (myLoc != null || partnerLoc != null) {
+      smartInitialZoom = 16.5;
+    }
+
     return Container(
       margin: isFullScreen
           ? EdgeInsets.zero
