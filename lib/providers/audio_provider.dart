@@ -58,6 +58,7 @@ class AudioProvider extends ChangeNotifier {
   ];
 
   int _currentSongIndex = 0;
+  int _playSessionId = 0;
   bool _isSongPlaying = false;
   bool _isSongBuffering = false;
   String? _bufferingSongTitle;
@@ -387,18 +388,16 @@ class AudioProvider extends ChangeNotifier {
       if (_songPosition == Duration.zero ||
           _songPlayer.state == PlayerState.stopped ||
           _songPlayer.state == PlayerState.completed) {
-        final src = _resolveSource(currentSong.audioUrl, isLocal: currentSong.isLocal);
-        await _songPlayer.play(src);
+        await _playCurrentSongWithCrossfade();
       } else {
         await _songPlayer.resume();
+        _syncNotificationState();
+        _broadcastSync('PLAY', _songPosition.inSeconds);
+        notifyListeners();
       }
-      _syncNotificationState();
-      _broadcastSync('PLAY', _songPosition.inSeconds);
-      notifyListeners();
     } catch (e) {
-      debugPrint('resumeSong error: $e');
-      _isSongPlaying = false;
-      notifyListeners();
+      debugPrint('resumeSong error: $e, recovering with fresh play');
+      await _playCurrentSongWithCrossfade();
     }
   }
 
@@ -412,75 +411,84 @@ class AudioProvider extends ChangeNotifier {
     } catch (_) {}
   }
 
+  /// Prefetches the next upcoming track's audio stream in the background
+  /// Ensures 0ms instant transition when advancing to the next track!
+  void _prefetchUpcomingTrack() {
+    if (_songs.isEmpty) return;
+    final nextIdx = (_currentSongIndex + 1) % _songs.length;
+    final nextTrack = _songs[nextIdx];
+
+    // If already stored locally on device, no network prefetch needed
+    if (nextTrack.isLocal) return;
+    final localPath = MusicDownloadService.instance.getLocalFilePath(nextTrack.id);
+    if (localPath != null && File(localPath).existsSync()) return;
+
+    // If stream URL is already verified fresh, skip
+    if (YoutubeMusicService.isStreamFresh(nextTrack.audioUrl)) return;
+
+    // Asynchronously resolve fresh audio stream without blocking UI thread
+    final trackId = nextTrack.youtubeId ?? nextTrack.id;
+    YoutubeMusicService.instance.getAudioStreamUrl(trackId).then((freshUrl) {
+      if (freshUrl != null && freshUrl.isNotEmpty) {
+        final currentNextIdx = (_currentSongIndex + 1) % _songs.length;
+        if (currentNextIdx < _songs.length && _songs[currentNextIdx].id == nextTrack.id) {
+          _songs[currentNextIdx] = nextTrack.copyWith(audioUrl: freshUrl);
+        }
+      }
+    }).catchError((e) {
+      debugPrint('[AudioProvider] Prefetch error for ${nextTrack.title}: $e');
+    });
+  }
+
   /// Plays a track from YouTube Music or local offline cache
   Future<void> playYoutubeTrack(YoutubeTrack track) async {
-    _isSongBuffering = true;
-    _bufferingSongTitle = track.title;
-    _lastPlayError = null;
-    notifyListeners();
+    final localPath = MusicDownloadService.instance.getLocalFilePath(track.id);
+    String audioUrl = '';
+    bool isLocal = false;
 
-    try {
-      final localPath = MusicDownloadService.instance.getLocalFilePath(track.id);
-      String audioUrl;
-      bool isLocal = false;
-
-      if (localPath != null && File(localPath).existsSync()) {
-        audioUrl = localPath;
-        isLocal = true;
-      } else {
-        final streamUrl = (track.audioStreamUrl != null && track.audioStreamUrl!.isNotEmpty)
-            ? track.audioStreamUrl
-            : await YoutubeMusicService.instance.getAudioStreamUrl(track.id);
-        if (streamUrl == null || streamUrl.isEmpty) {
-          debugPrint('[AudioProvider] Could not resolve audio stream for ${track.id}');
-          _isSongBuffering = false;
-          _bufferingSongTitle = null;
-          _lastPlayError = 'Could not stream "${track.title}". Please try another track.';
-          notifyListeners();
-          return;
-        }
-        audioUrl = streamUrl;
-        isLocal = false;
-      }
-
-      final newSong = SongItem(
-        id: track.id,
-        youtubeId: track.id,
-        title: track.title,
-        artist: track.artist,
-        durationSeconds: track.durationSeconds,
-        audioUrl: audioUrl,
-        coverColor: const Color(0xFFD97706),
-        isLocal: isLocal,
-        addedBy: 'YouTube Music',
-        thumbnailUrl: track.thumbnailUrl,
-      );
-
-      final existingIdx = _songs.indexWhere((s) => s.id == newSong.id || s.youtubeId == newSong.id);
-      if (existingIdx != -1) {
-        _songs[existingIdx] = newSong;
-        _currentSongIndex = existingIdx;
-      } else {
-        _songs.insert(0, newSong);
-        _currentSongIndex = 0;
-      }
-
-      _songPosition = Duration.zero;
-      songPositionNotifier.value = Duration.zero;
-      _songDuration = Duration(seconds: newSong.durationSeconds);
-
-      await _playCurrentSongWithCrossfade();
-      _isSongBuffering = false;
-      _bufferingSongTitle = null;
-      notifyListeners();
-      _broadcastSync('SELECT', 0);
-    } catch (e) {
-      debugPrint('[AudioProvider] Exception playing YouTube track: $e');
-      _isSongBuffering = false;
-      _bufferingSongTitle = null;
-      _lastPlayError = 'Unable to play "${track.title}": $e';
-      notifyListeners();
+    if (localPath != null && File(localPath).existsSync()) {
+      audioUrl = localPath;
+      isLocal = true;
+    } else if (track.audioStreamUrl != null &&
+        track.audioStreamUrl!.isNotEmpty &&
+        YoutubeMusicService.isStreamFresh(track.audioStreamUrl!)) {
+      audioUrl = track.audioStreamUrl!;
+      isLocal = false;
     }
+
+    final newSong = SongItem(
+      id: track.id,
+      youtubeId: track.id,
+      title: track.title,
+      artist: track.artist,
+      durationSeconds: track.durationSeconds,
+      audioUrl: audioUrl,
+      coverColor: const Color(0xFFD97706),
+      isLocal: isLocal,
+      addedBy: 'YouTube Music',
+      thumbnailUrl: track.thumbnailUrl,
+    );
+
+    final existingIdx = _songs.indexWhere((s) => s.id == newSong.id || s.youtubeId == newSong.id);
+    if (existingIdx != -1) {
+      _songs[existingIdx] = newSong;
+      _currentSongIndex = existingIdx;
+    } else {
+      _songs.insert(0, newSong);
+      _currentSongIndex = 0;
+    }
+
+    _songPosition = Duration.zero;
+    songPositionNotifier.value = Duration.zero;
+    _songDuration = Duration(seconds: newSong.durationSeconds);
+    _isSongPlaying = true;
+    _lastPlayError = null;
+    _persistSongs();
+    _syncNotificationState();
+    notifyListeners(); // 0ms instant UI reaction
+
+    _broadcastSync('SELECT', 0);
+    await _playCurrentSongWithCrossfade();
   }
 
   Future<void> selectSong(int index) async {
@@ -490,34 +498,22 @@ class AudioProvider extends ChangeNotifier {
     songPositionNotifier.value = Duration.zero;
     _songDuration = Duration(seconds: _songs[index].durationSeconds);
     _isSongPlaying = true;
+    _lastPlayError = null;
     _syncNotificationState();
     notifyListeners(); // 0ms instant optimistic UI response: track highlights & mini-player updates immediately!
 
     _broadcastSync('SELECT', 0);
     await _playCurrentSongWithCrossfade();
-    notifyListeners();
   }
 
+  /// Flawless non-stop continuous auto-play:
+  /// Never stops at end of playlist; loops continuously through the sanctuary tracks!
   Future<void> nextSong({bool isAutoAdvance = false}) async {
     if (_songs.isEmpty) return;
     if (_isShuffle) {
       _currentSongIndex = Random().nextInt(_songs.length);
     } else {
-      if (_currentSongIndex >= _songs.length - 1) {
-        if (isAutoAdvance) {
-          // Reached end of the playlist during continuous playback -> stop cleanly!
-          _isSongPlaying = false;
-          _songPosition = Duration.zero;
-          songPositionNotifier.value = Duration.zero;
-          _syncNotificationState();
-          notifyListeners();
-          return;
-        } else {
-          _currentSongIndex = 0;
-        }
-      } else {
-        _currentSongIndex = _currentSongIndex + 1;
-      }
+      _currentSongIndex = (_currentSongIndex + 1) % _songs.length;
     }
     await selectSong(_currentSongIndex);
   }
@@ -563,42 +559,136 @@ class AudioProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Robust song player start (clean state reset and immediate full volume)
+  /// High-speed robust song player start:
+  /// - 0ms local file playback
+  /// - Automatic validation of stream freshness BEFORE calling native player (eliminates 15s hang)
+  /// - Asynchronous prefetch of upcoming track
+  /// - Non-stop auto-skip on irrecoverable stream failure so music never stops
   Future<void> _playCurrentSongWithCrossfade() async {
-    try {
-      String playUrl = currentSong.audioUrl;
+    final sessionId = ++_playSessionId;
 
-      // Auto-refresh expired or missing remote stream URLs
-      if (!currentSong.isLocal && (playUrl.isEmpty || !playUrl.startsWith('http'))) {
-        final freshUrl = await YoutubeMusicService.instance.getAudioStreamUrl(currentSong.youtubeId ?? currentSong.id);
+    try {
+      final song = currentSong;
+      if (song.id == 'empty') return;
+
+      // 1. Check local download cache first (0ms latency, zero data)
+      String? localPath = song.isLocal ? song.audioUrl : MusicDownloadService.instance.getLocalFilePath(song.id);
+      if (localPath != null && File(localPath).existsSync()) {
+        if (sessionId != _playSessionId) return;
+        _isSongBuffering = false;
+        _bufferingSongTitle = null;
+        await _songPlayer.setVolume(1.0);
+        await _songPlayer.play(DeviceFileSource(localPath));
+        if (sessionId != _playSessionId) return;
+        _isSongPlaying = true;
+        _syncNotificationState();
+        notifyListeners();
+        _prefetchUpcomingTrack();
+        return;
+      }
+
+      // 2. Validate remote audioUrl freshness (prevents 15s native MediaPlayer timeout freeze!)
+      String playUrl = song.audioUrl;
+      final bool needsFreshUrl = !YoutubeMusicService.isStreamFresh(playUrl);
+
+      if (needsFreshUrl) {
+        _isSongBuffering = true;
+        _bufferingSongTitle = song.title;
+        notifyListeners();
+
+        final trackId = song.youtubeId ?? song.id;
+        final freshUrl = await YoutubeMusicService.instance.getAudioStreamUrl(trackId);
+
+        if (sessionId != _playSessionId) return;
+
         if (freshUrl != null && freshUrl.isNotEmpty) {
           playUrl = freshUrl;
-          _songs[_currentSongIndex] = currentSong.copyWith(audioUrl: playUrl);
+          final currentIdx = _currentSongIndex.clamp(0, _songs.length - 1);
+          if (_songs.isNotEmpty && _songs[currentIdx].id == song.id) {
+            _songs[currentIdx] = song.copyWith(audioUrl: playUrl);
+          }
+        } else {
+          // Could not resolve stream URL for this track!
+          _isSongBuffering = false;
+          _bufferingSongTitle = null;
+          _lastPlayError = 'Unable to stream "${song.title}". Auto-skipping to next...';
+          notifyListeners();
+
+          // Non-stop auto-play: skip to next track so music never stalls
+          if (_songs.length > 1) {
+            Future.delayed(const Duration(milliseconds: 600), () {
+              if (sessionId == _playSessionId) {
+                nextSong(isAutoAdvance: true);
+              }
+            });
+          }
+          return;
         }
       }
 
-      final targetSource = _resolveSource(playUrl, isLocal: currentSong.isLocal);
+      if (sessionId != _playSessionId) return;
 
+      final targetSource = _resolveSource(playUrl, isLocal: false);
       await _songPlayer.setVolume(1.0);
       await _songPlayer.play(targetSource);
+
+      if (sessionId != _playSessionId) return;
+
       _isSongPlaying = true;
+      _isSongBuffering = false;
+      _bufferingSongTitle = null;
+      _lastPlayError = null;
       _syncNotificationState();
+      notifyListeners();
+
+      // Trigger background prefetch of next track for zero-delay auto-advance
+      _prefetchUpcomingTrack();
     } catch (e) {
-      debugPrint('Play error: $e, attempting stream URL refresh fallback');
+      debugPrint('[AudioProvider] Play error: $e, attempting stream URL recovery');
+      if (sessionId != _playSessionId) return;
+
       try {
-        if (!currentSong.isLocal) {
-          final freshUrl = await YoutubeMusicService.instance.getAudioStreamUrl(currentSong.youtubeId ?? currentSong.id);
-          if (freshUrl != null && freshUrl.isNotEmpty) {
-            _songs[_currentSongIndex] = currentSong.copyWith(audioUrl: freshUrl);
-            await _songPlayer.setVolume(1.0);
-            await _songPlayer.play(UrlSource(freshUrl));
-            _isSongPlaying = true;
-            _syncNotificationState();
-            return;
+        final song = currentSong;
+        final trackId = song.youtubeId ?? song.id;
+        final freshUrl = await YoutubeMusicService.instance.getAudioStreamUrl(trackId);
+
+        if (sessionId != _playSessionId) return;
+
+        if (freshUrl != null && freshUrl.isNotEmpty) {
+          final currentIdx = _currentSongIndex.clamp(0, _songs.length - 1);
+          if (_songs.isNotEmpty && _songs[currentIdx].id == song.id) {
+            _songs[currentIdx] = song.copyWith(audioUrl: freshUrl);
           }
+          await _songPlayer.setVolume(1.0);
+          await _songPlayer.play(UrlSource(freshUrl));
+
+          if (sessionId != _playSessionId) return;
+
+          _isSongPlaying = true;
+          _isSongBuffering = false;
+          _bufferingSongTitle = null;
+          _lastPlayError = null;
+          _syncNotificationState();
+          notifyListeners();
+          _prefetchUpcomingTrack();
+          return;
         }
       } catch (err) {
-        debugPrint('Direct play fallback error: $err');
+        debugPrint('[AudioProvider] Direct play fallback error: $err');
+      }
+
+      _isSongBuffering = false;
+      _bufferingSongTitle = null;
+      _lastPlayError = 'Stream interrupted. Moving to next track...';
+      notifyListeners();
+
+      // Seamless non-stop auto-advance on error
+      if (_songs.length > 1) {
+        Future.delayed(const Duration(milliseconds: 600), () {
+          if (sessionId == _playSessionId) {
+            nextSong(isAutoAdvance: true);
+          }
+        });
       }
     }
   }
@@ -1332,17 +1422,7 @@ class AudioProvider extends ChangeNotifier {
         }
 
         if (type == 'PLAY') {
-          final targetSong = currentSong;
-          if (targetSong.audioUrl.isEmpty && targetSong.youtubeId != null) {
-            final resolvedStream = await YoutubeMusicService.instance.getAudioStreamUrl(targetSong.youtubeId!);
-            if (resolvedStream != null) {
-              _songs[_currentSongIndex] = targetSong.copyWith(audioUrl: resolvedStream, isLocal: false);
-            }
-          }
-          if (currentSong.audioUrl.isNotEmpty) {
-            _isSongPlaying = true;
-            await _songPlayer.play(_resolveSource(currentSong.audioUrl, isLocal: currentSong.isLocal));
-          }
+          await _playCurrentSongWithCrossfade();
         } else if (type == 'PAUSE') {
           _isSongPlaying = false;
           await _songPlayer.pause();

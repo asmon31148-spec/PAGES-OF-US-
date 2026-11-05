@@ -327,6 +327,34 @@ class YoutubeMusicService {
   final Map<String, String> _streamCache = {};
   final Map<String, DateTime> _streamCacheTime = {};
 
+  /// Checks whether an audio stream URL is active and unexpired
+  static bool isStreamFresh(String url) {
+    if (url.isEmpty || !url.startsWith('http')) return false;
+    try {
+      final uri = Uri.parse(url);
+      final expireParam = uri.queryParameters['expire'];
+      if (expireParam != null) {
+        final expireSec = int.tryParse(expireParam);
+        if (expireSec != null) {
+          final nowSec = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+          // Valid only if expiration is more than 3 minutes into the future
+          return nowSec < (expireSec - 180);
+        }
+      }
+      // JioSaavn MP4 CDN URLs remain active
+      if (url.contains('saavncdn.com') || url.contains('jiosaavn.com')) {
+        return true;
+      }
+      // Unknown Google Video URLs without expire parameter are considered stale
+      if (url.contains('googlevideo.com')) {
+        return false;
+      }
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   static String _unescapeHtml(String text) {
     return text
         .replaceAll('&quot;', '"')
@@ -591,9 +619,13 @@ class YoutubeMusicService {
   Future<String?> getAudioStreamUrl(String trackId) async {
     // 1. Check in-memory cache
     if (_streamCache.containsKey(trackId)) {
+      final cachedUrl = _streamCache[trackId];
       final cacheTime = _streamCacheTime[trackId];
-      if (cacheTime != null && DateTime.now().difference(cacheTime).inHours < 8) {
-        return _streamCache[trackId];
+      if (cachedUrl != null &&
+          cacheTime != null &&
+          DateTime.now().difference(cacheTime).inHours < 8 &&
+          isStreamFresh(cachedUrl)) {
+        return cachedUrl;
       }
     }
 
@@ -639,7 +671,7 @@ class YoutubeMusicService {
           YoutubeApiClient.androidVr,
           YoutubeApiClient.safari,
         ],
-      );
+      ).timeout(const Duration(seconds: 8));
 
       final mp4Streams = manifest.audioOnly.where(
         (s) =>
@@ -659,6 +691,10 @@ class YoutubeMusicService {
       return streamUrl;
     } catch (e) {
       debugPrint('[YoutubeMusicService] Failed to extract YouTube stream for $trackId: $e');
+      try {
+        _yt?.close();
+      } catch (_) {}
+      _yt = null;
       return null;
     }
   }
