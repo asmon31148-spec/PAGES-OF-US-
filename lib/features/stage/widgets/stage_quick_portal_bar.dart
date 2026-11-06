@@ -11,6 +11,7 @@ import '../../watch_together/screens/watch_lobby_screen.dart';
 import '../screens/touch_sanctuary_screen.dart';
 import '../screens/daily_care_screen.dart';
 import 'goal_tracker_modal.dart';
+import 'stage_presence_view.dart';
 import '../../music/screens/music_sanctuary_screen.dart';
 
 class StageQuickPortalBar extends StatelessWidget {
@@ -25,6 +26,7 @@ class StageQuickPortalBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = context.watch<ThemeProvider>().isDark;
     final audioProvider = context.watch<AudioProvider>();
+    final stageProvider = context.watch<StageProvider>();
     final isMusicPlaying = audioProvider.isPlaying;
 
     final inkColor = isDark ? AppColors.darkInk : AppColors.lightInk;
@@ -135,6 +137,21 @@ class StageQuickPortalBar extends StatelessWidget {
               } else {
                 _showQuickNoteSheet(context, isDark);
               }
+            },
+          ),
+
+          const SizedBox(width: 15),
+
+          // 7. Quiet Shell (Stress Relief / Gentle Sanctuary)
+          _buildPortalItem(
+            icon: Icons.nightlight_round,
+            label: 'Quiet Shell',
+            inkColor: inkColor,
+            isDark: isDark,
+            isActive: stageProvider.isGentleMode,
+            onTap: () {
+              HapticFeedback.lightImpact();
+              StagePresenceView.showGentleModeSheet(context);
             },
           ),
         ],

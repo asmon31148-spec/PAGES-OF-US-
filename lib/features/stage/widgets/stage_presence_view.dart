@@ -132,12 +132,10 @@ class StagePresenceView extends StatelessWidget {
     }
   }
 
-  void _showGentleModeSheet(
-    BuildContext context,
-    AuthProvider authProvider,
-    StageProvider stageProvider,
-    bool isDark,
-  ) {
+  static void showGentleModeSheet(BuildContext context) {
+    final authProvider = context.read<AuthProvider>();
+    final stageProvider = context.read<StageProvider>();
+    final isDark = context.read<ThemeProvider>().isDark;
     final user = authProvider.user;
     final space = authProvider.space;
     if (user == null || space == null) return;
@@ -403,7 +401,7 @@ class StagePresenceView extends StatelessWidget {
                       ),
                     ),
                     GestureDetector(
-                      onTap: () => _showGentleModeSheet(context, authProvider, stageProvider, isDark),
+                      onTap: () => showGentleModeSheet(context),
                       behavior: HitTestBehavior.opaque,
                       child: Text(
                         stageProvider.isGentleMode

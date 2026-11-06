@@ -1,7 +1,9 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/liquid_glass/shared_living_theme_background.dart';
 import '../../../providers/theme_provider.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../providers/stage_provider.dart';
@@ -17,12 +19,23 @@ class BlindPromptStudioModal extends StatefulWidget {
   });
 
   static void show(BuildContext context, {int initialTab = 0}) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => BlindPromptStudioModal(initialTab: initialTab),
+    Navigator.of(context).push(
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            BlindPromptStudioModal(initialTab: initialTab),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          const begin = Offset(0.0, 1.0);
+          const end = Offset.zero;
+          const curve = Curves.easeOutCubic;
+          final tween =
+              Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+          return SlideTransition(
+            position: animation.drive(tween),
+            child: child,
+          );
+        },
+        transitionDuration: const Duration(milliseconds: 300),
+      ),
     );
   }
 
@@ -43,7 +56,8 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
   bool _isGenerating = false;
 
   // Tab 2: Custom Question State
-  final TextEditingController _customQuestionController = TextEditingController();
+  final TextEditingController _customQuestionController =
+      TextEditingController();
   String _customVibeTag = 'Gentle Whisper';
 
   // Tab 3: Curated Deck State
@@ -76,8 +90,12 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
         stage: _selectedStage,
         mood: _selectedMood,
         boldness: _selectedBoldness,
-        customTopic: _topicController.text.trim().isNotEmpty ? _topicController.text.trim() : null,
-        customRequest: _topicController.text.trim().isNotEmpty ? _topicController.text.trim() : null,
+        customTopic: _topicController.text.trim().isNotEmpty
+            ? _topicController.text.trim()
+            : null,
+        customRequest: _topicController.text.trim().isNotEmpty
+            ? _topicController.text.trim()
+            : null,
         partnerNickname: partnerNickname,
       );
 
@@ -108,12 +126,11 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
     HapticFeedback.mediumImpact();
     final auth = context.read<AuthProvider>();
     final stage = context.read<StageProvider>();
-    final spaceId = auth.space?.id ?? auth.user?.spaceId ?? stage.activeSpaceId ?? '';
+    final spaceId =
+        auth.space?.id ?? auth.user?.spaceId ?? stage.activeSpaceId ?? '';
 
-    // Capture the messenger BEFORE popping to avoid using a deactivated context
     final messenger = ScaffoldMessenger.of(context);
 
-    // Safely dismiss the bottom sheet modal first
     if (mounted && Navigator.of(context).canPop()) {
       Navigator.of(context).pop();
     }
@@ -154,148 +171,163 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
 
   @override
   Widget build(BuildContext context) {
-    final isDark = context.watch<ThemeProvider>().isDark;
+    final themeProvider = context.watch<ThemeProvider>();
+    final isDark = themeProvider.isDark;
+    final palette = themeProvider.currentPalette;
     final auth = context.watch<AuthProvider>();
     final stage = context.watch<StageProvider>();
     final partner = auth.partner;
     final partnerNickname = partner?.nickname ?? 'Partner';
 
-    final safeTop = MediaQuery.of(context).viewPadding.top > 0
-        ? MediaQuery.of(context).viewPadding.top
-        : MediaQuery.of(context).padding.top;
-    final topInset = (safeTop > 0 ? safeTop : 44.0) + 14.0;
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      resizeToAvoidBottomInset: true,
+      body: SharedLivingThemeBackground(
+        child: SafeArea(
+          bottom: false,
+          child: Column(
+            children: [
+              const SizedBox(height: 10),
 
-    return Container(
-      height: MediaQuery.of(context).size.height,
-      padding: EdgeInsets.only(top: topInset),
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF16151E) : Colors.white,
-      ),
-      child: Column(
-        children: [
-
-          // Header
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
+              // Header
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
-                            'BLIND PROMPT STUDIO',
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 1,
-                              color: AppColors.terra,
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: AppColors.terra.withOpacity(0.12),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: const Text(
-                              'Live Groq AI ✦',
-                              style: TextStyle(
-                                fontSize: 9,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.terra,
+                          Row(
+                            children: [
+                              Text(
+                                'BLIND PROMPT STUDIO',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 1,
+                                  color: palette.accentColor,
+                                ),
                               ),
+                              const SizedBox(width: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: palette.accentColor.withOpacity(0.14),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  'Live Groq AI ✦',
+                                  style: TextStyle(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.bold,
+                                    color: palette.accentColor,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Intimate Inquiry & Questions for Two',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: isDark ? Colors.white : AppColors.lightInk,
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 2),
-                      Text(
-                        'Intimate Inquiry & Questions for Two',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: isDark ? Colors.white : AppColors.lightInk,
+                    ),
+                    GestureDetector(
+                      onTap: () => Navigator.pop(context),
+                      child: Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: isDark
+                              ? Colors.white.withOpacity(0.12)
+                              : Colors.black.withOpacity(0.06),
+                          border: Border.all(
+                            color: isDark ? Colors.white12 : Colors.black12,
+                          ),
                         ),
+                        child: Icon(
+                          Icons.close_rounded,
+                          size: 19,
+                          color: isDark ? Colors.white70 : Colors.black54,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 14),
+
+              // Tab Bar
+              Container(
+                margin: const EdgeInsets.symmetric(horizontal: 16),
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? Colors.white.withOpacity(0.08)
+                      : Colors.white.withOpacity(0.55),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: isDark ? Colors.white12 : Colors.black12,
+                  ),
+                ),
+                child: TabBar(
+                  controller: _tabController,
+                  isScrollable: true,
+                  tabAlignment: TabAlignment.start,
+                  indicatorSize: TabBarIndicatorSize.tab,
+                  indicator: BoxDecoration(
+                    color: palette.accentColor,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: palette.accentColor.withOpacity(0.35),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
                       ),
                     ],
                   ),
+                  labelColor: Colors.white,
+                  unselectedLabelColor:
+                      isDark ? Colors.white60 : Colors.black54,
+                  labelStyle: const TextStyle(
+                      fontSize: 11, fontWeight: FontWeight.bold),
+                  unselectedLabelStyle: const TextStyle(
+                      fontSize: 11, fontWeight: FontWeight.w500),
+                  tabs: const [
+                    Tab(text: '✨ AI Studio'),
+                    Tab(text: '✏️ Custom'),
+                    Tab(text: '🗂️ Deck'),
+                    Tab(text: '📜 History'),
+                  ],
                 ),
-                GestureDetector(
-                  onTap: () => Navigator.pop(context),
-                  child: Container(
-                    width: 34,
-                    height: 34,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: isDark ? Colors.white12 : Colors.black.withOpacity(0.06),
-                    ),
-                    child: Icon(
-                      Icons.close_rounded,
-                      size: 18,
-                      color: isDark ? Colors.white70 : Colors.black54,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 14),
-
-          // Tab Bar
-          Container(
-            margin: const EdgeInsets.symmetric(horizontal: 16),
-            padding: const EdgeInsets.all(4),
-            decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF211F2D) : const Color(0xFFF3F2F7),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: TabBar(
-              controller: _tabController,
-              isScrollable: true,
-              tabAlignment: TabAlignment.start,
-              indicatorSize: TabBarIndicatorSize.tab,
-              indicator: BoxDecoration(
-                color: AppColors.terra,
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.terra.withOpacity(0.3),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
               ),
-              labelColor: Colors.white,
-              unselectedLabelColor: isDark ? Colors.white60 : Colors.black54,
-              labelStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
-              unselectedLabelStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500),
-              tabs: const [
-                Tab(text: '✨ AI Studio'),
-                Tab(text: '✏️ Custom'),
-                Tab(text: '🗂️ Deck'),
-                Tab(text: '📜 History'),
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
+              const SizedBox(height: 10),
 
-          // Tab Views
-          Expanded(
-            child: TabBarView(
-              controller: _tabController,
-              children: [
-                _buildAiGeneratorTab(isDark, partnerNickname),
-                _buildCustomQuestionTab(isDark),
-                _buildCuratedDeckTab(isDark),
-                _buildHistoryTab(isDark, stage.promptHistory, partnerNickname),
-              ],
-            ),
+              // Tab Views
+              Expanded(
+                child: TabBarView(
+                  controller: _tabController,
+                  children: [
+                    _buildAiGeneratorTab(isDark, palette, partnerNickname),
+                    _buildCustomQuestionTab(isDark, palette),
+                    _buildCuratedDeckTab(isDark, palette),
+                    _buildHistoryTab(
+                        isDark, palette, stage.promptHistory, partnerNickname),
+                  ],
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -303,20 +335,22 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
   // -------------------------------------------------------------
   // TAB 1: AI GENERATOR
   // -------------------------------------------------------------
-  Widget _buildAiGeneratorTab(bool isDark, String partnerNickname) {
+  Widget _buildAiGeneratorTab(
+      bool isDark, PaletteTokens palette, String partnerNickname) {
     return SingleChildScrollView(
+      physics: const BouncingScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Stage Selector
-          const Text(
+          // 1. Stage Selector
+          Text(
             '1. RELATIONSHIP CHAPTER',
             style: TextStyle(
               fontSize: 10,
               fontWeight: FontWeight.bold,
               letterSpacing: 0.8,
-              color: AppColors.terra,
+              color: palette.accentColor,
             ),
           ),
           const SizedBox(height: 8),
@@ -332,14 +366,17 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
                 },
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 180),
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   decoration: BoxDecoration(
                     color: isSelected
-                        ? AppColors.terra.withOpacity(0.18)
-                        : (isDark ? const Color(0xFF22202E) : const Color(0xFFF5F4F9)),
+                        ? palette.accentColor.withOpacity(0.20)
+                        : (isDark
+                            ? Colors.white.withOpacity(0.06)
+                            : Colors.white.withOpacity(0.60)),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: isSelected ? AppColors.terra : Colors.transparent,
+                      color: isSelected ? palette.accentColor : (isDark ? Colors.white12 : Colors.black12),
                       width: 1.5,
                     ),
                   ),
@@ -352,9 +389,10 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
                         st.label,
                         style: TextStyle(
                           fontSize: 11,
-                          fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                          fontWeight:
+                              isSelected ? FontWeight.bold : FontWeight.w500,
                           color: isSelected
-                              ? AppColors.terra
+                              ? palette.accentColor
                               : (isDark ? Colors.white70 : Colors.black87),
                         ),
                       ),
@@ -369,13 +407,13 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
           // 2. Boldness / Romance Intensity Spectrum Selector
           Row(
             children: [
-              const Text(
+              Text(
                 '2. ROMANCE INTENSITY / BOLDNESS',
                 style: TextStyle(
                   fontSize: 10,
                   fontWeight: FontWeight.bold,
                   letterSpacing: 0.8,
-                  color: AppColors.terra,
+                  color: palette.accentColor,
                 ),
               ),
               const Spacer(),
@@ -403,14 +441,17 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 180),
                     margin: const EdgeInsets.symmetric(horizontal: 2.5),
-                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 2),
+                    padding:
+                        const EdgeInsets.symmetric(vertical: 8, horizontal: 2),
                     decoration: BoxDecoration(
                       color: isSelected
-                          ? AppColors.terra.withOpacity(0.18)
-                          : (isDark ? const Color(0xFF22202E) : const Color(0xFFF5F4F9)),
+                          ? palette.accentColor.withOpacity(0.20)
+                          : (isDark
+                              ? Colors.white.withOpacity(0.06)
+                              : Colors.white.withOpacity(0.60)),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: isSelected ? AppColors.terra : Colors.transparent,
+                        color: isSelected ? palette.accentColor : (isDark ? Colors.white12 : Colors.black12),
                         width: 1.5,
                       ),
                     ),
@@ -424,9 +465,10 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             fontSize: 10,
-                            fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                            fontWeight:
+                                isSelected ? FontWeight.bold : FontWeight.w600,
                             color: isSelected
-                                ? AppColors.terra
+                                ? palette.accentColor
                                 : (isDark ? Colors.white70 : Colors.black87),
                           ),
                         ),
@@ -454,13 +496,13 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
           const SizedBox(height: 18),
 
           // 3. Desired Vibe Selector
-          const Text(
+          Text(
             '3. DESIRED VIBE',
             style: TextStyle(
               fontSize: 10,
               fontWeight: FontWeight.bold,
               letterSpacing: 0.8,
-              color: AppColors.terra,
+              color: palette.accentColor,
             ),
           ),
           const SizedBox(height: 8),
@@ -476,14 +518,17 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
                 },
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 180),
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   decoration: BoxDecoration(
                     color: isSelected
-                        ? AppColors.sage.withOpacity(0.18)
-                        : (isDark ? const Color(0xFF22202E) : const Color(0xFFF5F4F9)),
+                        ? palette.accentColor.withOpacity(0.20)
+                        : (isDark
+                            ? Colors.white.withOpacity(0.06)
+                            : Colors.white.withOpacity(0.60)),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: isSelected ? AppColors.sage : Colors.transparent,
+                      color: isSelected ? palette.accentColor : (isDark ? Colors.white12 : Colors.black12),
                       width: 1.5,
                     ),
                   ),
@@ -496,9 +541,10 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
                         md.label,
                         style: TextStyle(
                           fontSize: 11,
-                          fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                          fontWeight:
+                              isSelected ? FontWeight.bold : FontWeight.w500,
                           color: isSelected
-                              ? AppColors.sage
+                              ? palette.accentColor
                               : (isDark ? Colors.white70 : Colors.black87),
                         ),
                       ),
@@ -513,13 +559,13 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
           // 4. Custom Request / Exact Vibe
           Row(
             children: [
-              const Text(
+              Text(
                 '4. CUSTOM REQUEST / EXACT VIBE',
                 style: TextStyle(
                   fontSize: 10,
                   fontWeight: FontWeight.bold,
                   letterSpacing: 0.8,
-                  color: AppColors.terra,
+                  color: palette.accentColor,
                 ),
               ),
               const SizedBox(width: 4),
@@ -542,81 +588,103 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
             ),
           ),
           const SizedBox(height: 6),
-          TextField(
-            controller: _topicController,
-            minLines: 1,
-            maxLines: 2,
-            style: TextStyle(
-              fontSize: 12.5,
-              color: isDark ? Colors.white : AppColors.lightInk,
-            ),
-            decoration: InputDecoration(
-              hintText: 'e.g. Ask bold physical chemistry questions, midnight bedroom fantasies...',
-              hintStyle: TextStyle(
-                fontSize: 11.5,
-                color: isDark ? Colors.white38 : Colors.black38,
-              ),
-              filled: true,
-              fillColor: isDark ? const Color(0xFF22202E) : const Color(0xFFF5F4F9),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              suffixIcon: _topicController.text.isNotEmpty
-                  ? IconButton(
-                      icon: const Icon(Icons.clear, size: 16),
-                      onPressed: () {
-                        setState(() => _topicController.clear());
-                      },
-                    )
-                  : null,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
-                borderSide: BorderSide.none,
-              ),
-            ),
-            onChanged: (_) => setState(() {}),
+          ValueListenableBuilder<TextEditingValue>(
+            valueListenable: _topicController,
+            builder: (context, val, _) {
+              return TextField(
+                controller: _topicController,
+                minLines: 1,
+                maxLines: 2,
+                style: TextStyle(
+                  fontSize: 12.5,
+                  color: isDark ? Colors.white : AppColors.lightInk,
+                ),
+                decoration: InputDecoration(
+                  hintText:
+                      'e.g. Ask bold physical chemistry questions, midnight bedroom fantasies...',
+                  hintStyle: TextStyle(
+                    fontSize: 11.5,
+                    color: isDark ? Colors.white38 : Colors.black38,
+                  ),
+                  filled: true,
+                  fillColor: isDark
+                      ? Colors.white.withOpacity(0.08)
+                      : Colors.white.withOpacity(0.70),
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  suffixIcon: val.text.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear, size: 16),
+                          onPressed: () => _topicController.clear(),
+                        )
+                      : null,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide(
+                      color: isDark ? Colors.white12 : Colors.black12,
+                    ),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide(
+                      color: isDark ? Colors.white12 : Colors.black12,
+                    ),
+                  ),
+                ),
+              );
+            },
           ),
           const SizedBox(height: 8),
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(),
             child: Row(
               children: [
-                _buildPromptIdeaChip('🍯 Sweet confessions', isDark),
+                _buildPromptIdeaChip('🍯 Sweet confessions', isDark, palette),
                 const SizedBox(width: 6),
-                _buildPromptIdeaChip('💋 Flirty tension', isDark),
+                _buildPromptIdeaChip('💋 Flirty tension', isDark, palette),
                 const SizedBox(width: 6),
-                _buildPromptIdeaChip('🔥 Physical chemistry', isDark),
+                _buildPromptIdeaChip('🔥 Physical chemistry', isDark, palette),
                 const SizedBox(width: 6),
-                _buildPromptIdeaChip('😈 Wild midnight fantasies', isDark),
+                _buildPromptIdeaChip('😈 Wild midnight fantasies', isDark, palette),
                 const SizedBox(width: 6),
-                _buildPromptIdeaChip('🗝️ Deepest secrets', isDark),
+                _buildPromptIdeaChip('🗝️ Deepest secrets', isDark, palette),
                 const SizedBox(width: 6),
-                _buildPromptIdeaChip('✈️ Future adventures', isDark),
+                _buildPromptIdeaChip('✈️ Future adventures', isDark, palette),
               ],
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 18),
 
           // Generate Button
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
-              onPressed: _isGenerating ? null : () => _generateAiPrompts(partnerNickname),
+              onPressed: _isGenerating
+                  ? null
+                  : () => _generateAiPrompts(partnerNickname),
               icon: _isGenerating
                   ? const SizedBox(
                       width: 14,
                       height: 14,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: Colors.white),
                     )
                   : const Icon(Icons.auto_awesome, size: 16),
               label: Text(
-                _isGenerating ? 'Groq AI is crafting questions...' : 'Generate 3 Live AI Questions ✦',
-                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                _isGenerating
+                    ? 'Groq AI is crafting questions...'
+                    : 'Generate 3 Live AI Questions ✦',
+                style:
+                    const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
               ),
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.terra,
+                backgroundColor: palette.accentColor,
                 foregroundColor: Colors.white,
                 elevation: 0,
                 padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14)),
               ),
             ),
           ),
@@ -624,13 +692,13 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
 
           // Generated Cards
           if (_generatedPrompts.isNotEmpty) ...[
-            const Text(
+            Text(
               'TAP A QUESTION TO PIN AS TODAY\'S PROMPT 💌',
               style: TextStyle(
                 fontSize: 10,
                 fontWeight: FontWeight.bold,
                 letterSpacing: 0.8,
-                color: AppColors.sage,
+                color: palette.accentColor,
               ),
             ),
             const SizedBox(height: 10),
@@ -639,7 +707,9 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
                 margin: const EdgeInsets.only(bottom: 10),
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF22202E) : const Color(0xFFF5F4F9),
+                  color: isDark
+                      ? Colors.white.withOpacity(0.08)
+                      : Colors.white.withOpacity(0.70),
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
                     color: isDark ? Colors.white12 : Colors.black12,
@@ -653,31 +723,35 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
                       children: [
                         Text(
                           gen.vibeTag,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 9,
                             fontWeight: FontWeight.bold,
-                            color: AppColors.terra,
+                            color: palette.accentColor,
                           ),
                         ),
                         ElevatedButton(
                           onPressed: _isPinning
                               ? null
                               : () => _pinPromptToBoard(
-                                  context: context,
-                                  question: gen.question,
-                                  vibeTag: gen.vibeTag,
-                                  category: gen.category,
-                                ),
+                                    context: context,
+                                    question: gen.question,
+                                    vibeTag: gen.vibeTag,
+                                    category: gen.category,
+                                  ),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.sage,
+                            backgroundColor: palette.accentColor,
                             foregroundColor: Colors.white,
                             elevation: 0,
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 4),
                             minimumSize: Size.zero,
                             tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8)),
                           ),
-                          child: const Text('Use ✦', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                          child: const Text('Use ✦',
+                              style: TextStyle(
+                                  fontSize: 11, fontWeight: FontWeight.bold)),
                         ),
                       ],
                     ),
@@ -704,55 +778,66 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
   // -------------------------------------------------------------
   // TAB 2: CUSTOM QUESTION
   // -------------------------------------------------------------
-  Widget _buildCustomQuestionTab(bool isDark) {
+  Widget _buildCustomQuestionTab(bool isDark, PaletteTokens palette) {
     return SingleChildScrollView(
+      physics: const BouncingScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'WRITE YOUR OWN INQUIRY QUESTION',
             style: TextStyle(
               fontSize: 10,
               fontWeight: FontWeight.bold,
               letterSpacing: 0.8,
-              color: AppColors.terra,
+              color: palette.accentColor,
             ),
           ),
           const SizedBox(height: 8),
           TextField(
             controller: _customQuestionController,
             maxLines: 3,
-            onChanged: (_) => setState(() {}),
             style: TextStyle(
               fontSize: 14,
               color: isDark ? Colors.white : AppColors.lightInk,
             ),
             decoration: InputDecoration(
-              hintText: 'Type an intimate or curious question for both of you to answer blindly...',
+              hintText:
+                  'Type an intimate or curious question for both of you to answer blindly...',
               hintStyle: TextStyle(
                 fontSize: 12,
                 color: isDark ? Colors.white38 : Colors.black38,
               ),
               filled: true,
-              fillColor: isDark ? const Color(0xFF22202E) : const Color(0xFFF5F4F9),
+              fillColor: isDark
+                  ? Colors.white.withOpacity(0.08)
+                  : Colors.white.withOpacity(0.70),
               contentPadding: const EdgeInsets.all(14),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(16),
-                borderSide: BorderSide.none,
+                borderSide: BorderSide(
+                  color: isDark ? Colors.white12 : Colors.black12,
+                ),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide(
+                  color: isDark ? Colors.white12 : Colors.black12,
+                ),
               ),
             ),
           ),
           const SizedBox(height: 14),
 
           // Vibe Tag Chooser
-          const Text(
+          Text(
             'CHOOSE VIBE TAG',
             style: TextStyle(
               fontSize: 10,
               fontWeight: FontWeight.bold,
               letterSpacing: 0.8,
-              color: AppColors.terra,
+              color: palette.accentColor,
             ),
           ),
           const SizedBox(height: 6),
@@ -773,23 +858,29 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
                   setState(() => _customVibeTag = tag);
                 },
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                   decoration: BoxDecoration(
                     color: isSelected
-                        ? AppColors.terra.withOpacity(0.18)
-                        : (isDark ? const Color(0xFF22202E) : const Color(0xFFF5F4F9)),
+                        ? palette.accentColor.withOpacity(0.20)
+                        : (isDark
+                            ? Colors.white.withOpacity(0.06)
+                            : Colors.white.withOpacity(0.60)),
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(
-                      color: isSelected ? AppColors.terra : Colors.transparent,
+                      color: isSelected
+                          ? palette.accentColor
+                          : (isDark ? Colors.white12 : Colors.black12),
                     ),
                   ),
                   child: Text(
                     tag,
                     style: TextStyle(
                       fontSize: 11,
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                      fontWeight:
+                          isSelected ? FontWeight.bold : FontWeight.w500,
                       color: isSelected
-                          ? AppColors.terra
+                          ? palette.accentColor
                           : (isDark ? Colors.white70 : Colors.black87),
                     ),
                   ),
@@ -799,41 +890,50 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
           ),
           const SizedBox(height: 16),
 
-          // Pin Button
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: (_isPinning || _customQuestionController.text.trim().isEmpty)
-                  ? null
-                  : () => _pinPromptToBoard(
-                        context: context,
-                        question: _customQuestionController.text.trim(),
-                        vibeTag: _customVibeTag,
-                        category: 'custom',
-                      ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.terra,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-              ),
-              child: const Text(
-                'Pin Custom Question to Board ✦',
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
-              ),
-            ),
+          // Pin Button with ValueListenableBuilder for 0ms lag
+          ValueListenableBuilder<TextEditingValue>(
+            valueListenable: _customQuestionController,
+            builder: (context, val, _) {
+              final canPin = !_isPinning && val.text.trim().isNotEmpty;
+              return SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: canPin
+                      ? () => _pinPromptToBoard(
+                            context: context,
+                            question: _customQuestionController.text.trim(),
+                            vibeTag: _customVibeTag,
+                            category: 'custom',
+                          )
+                      : null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: palette.accentColor,
+                    foregroundColor: Colors.white,
+                    disabledBackgroundColor: isDark ? Colors.white12 : Colors.black12,
+                    disabledForegroundColor: isDark ? Colors.white38 : Colors.black38,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14)),
+                  ),
+                  child: const Text(
+                    'Pin Custom Question to Board ✦',
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              );
+            },
           ),
           const SizedBox(height: 22),
 
           // Quick Inspiration Starters
-          const Text(
+          Text(
             'INSPIRATION STARTERS (TAP TO INSERT)',
             style: TextStyle(
               fontSize: 10,
               fontWeight: FontWeight.bold,
               letterSpacing: 0.8,
-              color: AppColors.sage,
+              color: palette.accentColor,
             ),
           ),
           const SizedBox(height: 8),
@@ -841,15 +941,19 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
             return GestureDetector(
               onTap: () {
                 HapticFeedback.selectionClick();
-                setState(() => _customQuestionController.text = st);
+                _customQuestionController.text = st;
               },
               child: Container(
                 margin: const EdgeInsets.only(bottom: 6),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF22202E) : const Color(0xFFF5F4F9),
+                  color: isDark
+                      ? Colors.white.withOpacity(0.06)
+                      : Colors.white.withOpacity(0.60),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: isDark ? Colors.white10 : Colors.black12),
+                  border: Border.all(
+                      color: isDark ? Colors.white10 : Colors.black12),
                 ),
                 child: Row(
                   children: [
@@ -863,7 +967,8 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
                         ),
                       ),
                     ),
-                    const Icon(Icons.arrow_forward_ios_rounded, size: 12, color: AppColors.terra),
+                    Icon(Icons.arrow_forward_ios_rounded,
+                        size: 12, color: palette.accentColor),
                   ],
                 ),
               ),
@@ -877,7 +982,7 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
   // -------------------------------------------------------------
   // TAB 3: CURATED DECK
   // -------------------------------------------------------------
-  Widget _buildCuratedDeckTab(bool isDark) {
+  Widget _buildCuratedDeckTab(bool isDark, PaletteTokens palette) {
     final filtered = _deckCategoryFilter == 'all'
         ? RelationshipAiService.curatedDeck
         : RelationshipAiService.curatedDeck
@@ -891,14 +996,16 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
           padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
           child: SingleChildScrollView(
             scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(),
             child: Row(
               children: [
-                _buildDeckFilterChip('all', 'All Prompts', isDark),
+                _buildDeckFilterChip('all', 'All Prompts', isDark, palette),
                 const SizedBox(width: 6),
                 ...RelationshipAiService.moods.map((m) {
                   return Padding(
                     padding: const EdgeInsets.only(right: 6),
-                    child: _buildDeckFilterChip(m.id, '${m.icon} ${m.label}', isDark),
+                    child: _buildDeckFilterChip(
+                        m.id, '${m.icon} ${m.label}', isDark, palette),
                   );
                 }),
               ],
@@ -909,6 +1016,7 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
         // Prompts List
         Expanded(
           child: ListView.separated(
+            physics: const BouncingScrollPhysics(),
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
             itemCount: filtered.length,
             separatorBuilder: (_, __) => const SizedBox(height: 8),
@@ -917,9 +1025,12 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
               return Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF22202E) : const Color(0xFFF5F4F9),
+                  color: isDark
+                      ? Colors.white.withOpacity(0.07)
+                      : Colors.white.withOpacity(0.65),
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: isDark ? Colors.white10 : Colors.black12),
+                  border: Border.all(
+                      color: isDark ? Colors.white10 : Colors.black12),
                 ),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
@@ -930,10 +1041,10 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
                         children: [
                           Text(
                             item['vibeTag'] ?? '',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 9,
                               fontWeight: FontWeight.bold,
-                              color: AppColors.terra,
+                              color: palette.accentColor,
                             ),
                           ),
                           const SizedBox(height: 4),
@@ -954,21 +1065,25 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
                       onPressed: _isPinning
                           ? null
                           : () => _pinPromptToBoard(
-                              context: context,
-                              question: item['question']!,
-                              vibeTag: item['vibeTag']!,
-                              category: item['category']!,
-                            ),
+                                context: context,
+                                question: item['question']!,
+                                vibeTag: item['vibeTag']!,
+                                category: item['category']!,
+                              ),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.sage,
+                        backgroundColor: palette.accentColor,
                         foregroundColor: Colors.white,
                         elevation: 0,
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 6),
                         minimumSize: Size.zero,
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8)),
                       ),
-                      child: const Text('Use ✦', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                      child: const Text('Use ✦',
+                          style: TextStyle(
+                              fontSize: 11, fontWeight: FontWeight.bold)),
                     ),
                   ],
                 ),
@@ -980,18 +1095,19 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
     );
   }
 
-  Widget _buildPromptIdeaChip(String idea, bool isDark) {
+  Widget _buildPromptIdeaChip(
+      String idea, bool isDark, PaletteTokens palette) {
     return GestureDetector(
       onTap: () {
         HapticFeedback.selectionClick();
-        setState(() {
-          _topicController.text = idea;
-        });
+        _topicController.text = idea;
       },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(
-          color: isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.04),
+          color: isDark
+              ? Colors.white.withOpacity(0.06)
+              : Colors.white.withOpacity(0.55),
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
             color: isDark ? Colors.white12 : Colors.black12,
@@ -1009,7 +1125,8 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
     );
   }
 
-  Widget _buildDeckFilterChip(String id, String label, bool isDark) {
+  Widget _buildDeckFilterChip(
+      String id, String label, bool isDark, PaletteTokens palette) {
     final isSelected = _deckCategoryFilter == id;
     return GestureDetector(
       onTap: () {
@@ -1020,11 +1137,13 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(
           color: isSelected
-              ? AppColors.terra
-              : (isDark ? const Color(0xFF22202E) : const Color(0xFFF5F4F9)),
+              ? palette.accentColor
+              : (isDark
+                  ? Colors.white.withOpacity(0.07)
+                  : Colors.white.withOpacity(0.60)),
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
-            color: isSelected ? AppColors.terra : Colors.transparent,
+            color: isSelected ? palette.accentColor : Colors.transparent,
           ),
         ),
         child: Text(
@@ -1032,7 +1151,9 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
           style: TextStyle(
             fontSize: 11,
             fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-            color: isSelected ? Colors.white : (isDark ? Colors.white70 : Colors.black87),
+            color: isSelected
+                ? Colors.white
+                : (isDark ? Colors.white70 : Colors.black87),
           ),
         ),
       ),
@@ -1044,6 +1165,7 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
   // -------------------------------------------------------------
   Widget _buildHistoryTab(
     bool isDark,
+    PaletteTokens palette,
     List<PromptHistoryItem> history,
     String partnerNickname,
   ) {
@@ -1059,7 +1181,7 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
                 height: 64,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: AppColors.terra.withOpacity(0.12),
+                  color: palette.accentColor.withOpacity(0.14),
                 ),
                 alignment: Alignment.center,
                 child: const Text('📜', style: TextStyle(fontSize: 28)),
@@ -1090,6 +1212,7 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
     }
 
     return ListView.separated(
+      physics: const BouncingScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
       itemCount: history.length,
       separatorBuilder: (_, __) => const SizedBox(height: 12),
@@ -1098,7 +1221,9 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
         return Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF22202E) : const Color(0xFFF5F4F9),
+            color: isDark
+                ? Colors.white.withOpacity(0.08)
+                : Colors.white.withOpacity(0.65),
             borderRadius: BorderRadius.circular(18),
             border: Border.all(color: isDark ? Colors.white10 : Colors.black12),
           ),
@@ -1110,10 +1235,10 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
                 children: [
                   Text(
                     item.vibeTag.isNotEmpty ? item.vibeTag : 'BLIND INQUIRY',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 9,
                       fontWeight: FontWeight.bold,
-                      color: AppColors.terra,
+                      color: palette.accentColor,
                       letterSpacing: 0.5,
                     ),
                   ),
@@ -1144,7 +1269,9 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
                   margin: const EdgeInsets.only(top: 6),
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF191823) : Colors.white,
+                    color: isDark
+                        ? Colors.white.withOpacity(0.06)
+                        : Colors.white.withOpacity(0.85),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Row(

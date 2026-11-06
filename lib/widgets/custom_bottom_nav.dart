@@ -43,56 +43,36 @@ class CustomBottomNav extends StatelessWidget {
       },
     ];
 
-    return SafeArea(
-      top: false,
-      child: Padding(
-        padding: const EdgeInsets.only(left: 20, right: 20, bottom: 12),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(32),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-            child: Container(
-              height: 64,
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(32),
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: isDark
-                      ? [
-                          Colors.white.withOpacity(0.12),
-                          Colors.white.withOpacity(0.04),
-                        ]
-                      : [
-                          Colors.white.withOpacity(0.80),
-                          Colors.white.withOpacity(0.50),
-                        ],
-                ),
+    return ClipRect(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+        child: Container(
+          decoration: BoxDecoration(
+            color: isDark
+                ? const Color(0xFF101216).withOpacity(0.82)
+                : Colors.white.withOpacity(0.80),
+            border: Border(
+              top: BorderSide(
                 color: isDark
-                    ? const Color(0xFF14171E).withOpacity(0.65)
-                    : Colors.white.withOpacity(0.65),
-                border: Border.all(
-                  color: isDark
-                      ? Colors.white.withOpacity(0.18)
-                      : Colors.white.withOpacity(0.85),
-                  width: 1.2,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: isDark
-                        ? Colors.black.withOpacity(0.35)
-                        : const Color(0xFF8C7355).withOpacity(0.12),
-                    blurRadius: 24,
-                    offset: const Offset(0, 8),
-                  ),
-                  BoxShadow(
-                    color: palette.accentColor.withOpacity(isDark ? 0.08 : 0.04),
-                    blurRadius: 16,
-                    spreadRadius: 1,
-                  ),
-                ],
+                    ? Colors.white.withOpacity(0.16)
+                    : Colors.white.withOpacity(0.85),
+                width: 1.0,
               ),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: isDark
+                    ? Colors.black.withOpacity(0.35)
+                    : const Color(0xFF8C7355).withOpacity(0.10),
+                blurRadius: 18,
+                offset: const Offset(0, -4),
+              ),
+            ],
+          ),
+          child: SafeArea(
+            top: false,
+            child: SizedBox(
+              height: 58,
               child: Row(
                 children: List.generate(tabs.length, (index) {
                   final isSelected = currentIndex == index;
@@ -101,13 +81,13 @@ class CustomBottomNav extends StatelessWidget {
                   final iconColor = isSelected
                       ? palette.accentColor
                       : (isDark
-                          ? Colors.white.withOpacity(0.45)
+                          ? Colors.white.withOpacity(0.48)
                           : const Color(0xFF71717A));
 
                   final textColor = isSelected
                       ? (isDark ? Colors.white : palette.accentColor)
                       : (isDark
-                          ? Colors.white.withOpacity(0.45)
+                          ? Colors.white.withOpacity(0.48)
                           : const Color(0xFF71717A));
 
                   return Expanded(
@@ -117,40 +97,64 @@ class CustomBottomNav extends StatelessWidget {
                         onTabSelected(index);
                       },
                       behavior: HitTestBehavior.opaque,
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 220),
-                        curve: Curves.easeOutCubic,
-                        padding: const EdgeInsets.symmetric(vertical: 4),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(24),
-                          color: isSelected
-                              ? palette.accentColor.withOpacity(isDark ? 0.16 : 0.12)
-                              : Colors.transparent,
-                        ),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            AnimatedScale(
-                              scale: isSelected ? 1.08 : 1.0,
-                              duration: const Duration(milliseconds: 200),
-                              curve: Curves.easeOutBack,
-                              child: Icon(
-                                (isSelected ? tab['icon'] : tab['unselectedIcon']) as IconData,
-                                size: 22,
-                                color: iconColor,
+                      child: Center(
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 220),
+                          curve: Curves.easeOutCubic,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 4),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(16),
+                            color: isSelected
+                                ? palette.accentColor.withOpacity(isDark ? 0.20 : 0.14)
+                                : Colors.transparent,
+                            border: isSelected
+                                ? Border.all(
+                                    color: isDark
+                                        ? palette.accentColor.withOpacity(0.45)
+                                        : palette.accentColor.withOpacity(0.35),
+                                    width: 1,
+                                  )
+                                : null,
+                            boxShadow: isSelected
+                                ? [
+                                    BoxShadow(
+                                      color: palette.accentColor.withOpacity(0.20),
+                                      blurRadius: 10,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ]
+                                : null,
+                          ),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              AnimatedScale(
+                                scale: isSelected ? 1.08 : 1.0,
+                                duration: const Duration(milliseconds: 200),
+                                curve: Curves.easeOutBack,
+                                child: Icon(
+                                  (isSelected ? tab['icon'] : tab['unselectedIcon'])
+                                      as IconData,
+                                  size: 21,
+                                  color: iconColor,
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 3),
-                            Text(
-                              tab['label'] as String,
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                                color: textColor,
-                                letterSpacing: 0.1,
+                              const SizedBox(height: 2),
+                              Text(
+                                tab['label'] as String,
+                                style: TextStyle(
+                                  fontSize: 10.5,
+                                  fontWeight: isSelected
+                                      ? FontWeight.w700
+                                      : FontWeight.w500,
+                                  color: textColor,
+                                  letterSpacing: 0.15,
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
                     ),
