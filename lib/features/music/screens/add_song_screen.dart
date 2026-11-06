@@ -53,16 +53,10 @@ class _AddSongScreenState extends State<AddSongScreen> {
 
     return Scaffold(
       backgroundColor: Colors.black,
-      body: Stack(
-        children: [
-          // Dynamic Music Sanctuary Ambient Background
-          GlassAmbientBackground(
-            activeColor: currentSong?.coverColor ?? GlassTokens.accent,
-            isDark: true,
-          ),
-
-          SafeArea(
-            child: Column(
+      body: GlassAmbientBackground(
+        fallbackColor: currentSong?.coverColor ?? GlassTokens.accent,
+        child: SafeArea(
+          child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Top App Bar
@@ -345,8 +339,7 @@ class _AddSongScreenState extends State<AddSongScreen> {
               ],
             ),
           ),
-        ],
-      ),
+        ),
     );
   }
 }

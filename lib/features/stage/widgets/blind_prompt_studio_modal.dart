@@ -221,7 +221,7 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
                 border: Border(
                   top: BorderSide(
-                    color: isDark ? Colors.white18 : Colors.black12,
+                    color: isDark ? Colors.white.withOpacity(0.18) : Colors.black12,
                     width: 1.2,
                   ),
                 ),
