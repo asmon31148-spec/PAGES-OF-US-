@@ -14,7 +14,13 @@ android/build/
 *.aab
 
 # Environment secrets
+.env
+.env.*
 .env.local
+
+# Keystores & sensitive credentials
+*.jks
+*.keystore
 
 # Editor directories and files
 .idea/

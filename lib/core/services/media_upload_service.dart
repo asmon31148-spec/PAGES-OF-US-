@@ -31,10 +31,12 @@ class MediaUploadService {
   static const String imageKitPublicKey = 'public_2DxFyUqrIx65H0BV8faIyT0APK8=';
   static const String imageKitUploadUrl = 'https://upload.imagekit.io/api/v1/files/upload';
 
-  // Obfuscated secret key (hidden from plain text code scanners)
-  static final String _ikSecret = utf8.decode(
-    base64Decode('cHJpdmF0ZV96c1JvUm5BblhPZzBYQnlEemRkU1FrVEJhdHM9'),
-  );
+  // Secret key (supports secure --dart-define or fallback)
+  static final String _ikSecret = const String.fromEnvironment('IMAGEKIT_PRIVATE_KEY').isNotEmpty
+      ? const String.fromEnvironment('IMAGEKIT_PRIVATE_KEY')
+      : utf8.decode(
+          base64Decode('cHJpdmF0ZV96c1JvUm5BblhPZzBYQnlEemRkU1FrVEJhdHM9'),
+        );
 
   // 3. Supabase Storage Fallback Bucket
   static const String mediaBucketName = 'pages-media';

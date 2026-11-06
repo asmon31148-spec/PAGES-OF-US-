@@ -1,8 +1,10 @@
 {
   "rules": {
     "watchRooms": {
-      ".read": true,
-      ".write": true
+      "$roomId": {
+        ".read": "auth != null",
+        ".write": "auth != null"
+      }
     }
   }
 }

@@ -15,8 +15,10 @@ class AppConstants {
   static const String firebaseMessagingSenderId = '483748859484';
   static const String firebaseAppId = '1:483748859484:android:4188795c797d4c4e262099';
 
-  // Groq High-Speed Generative AI
+  // Groq High-Speed Generative AI (Supports secure --dart-define or local fallback)
   static String get groqApiKey {
+    const fromEnv = String.fromEnvironment('GROQ_API_KEY');
+    if (fromEnv.isNotEmpty) return fromEnv;
     const codes = <int>[
       103, 115, 107, 95, 101, 71, 120, 119, 49, 113, 115, 49, 89, 112, 101, 88,
       105, 99, 75, 51, 48, 117, 52, 52, 87, 71, 100, 121, 98, 51, 70, 89,

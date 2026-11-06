@@ -1041,11 +1041,11 @@ class WorldProvider extends ChangeNotifier {
         } catch (_) {}
       }
 
-      // 2. High-precision continuous position stream (fires on 5m movement for walking-level accuracy)
+      // 2. High-precision continuous position stream (15m filter prevents jitter & optimizes battery)
       _positionStreamSub?.cancel();
       const settings = LocationSettings(
         accuracy: LocationAccuracy.high,
-        distanceFilter: 5,
+        distanceFilter: 15,
       );
 
       _positionStreamSub = Geolocator.getPositionStream(locationSettings: settings).listen(

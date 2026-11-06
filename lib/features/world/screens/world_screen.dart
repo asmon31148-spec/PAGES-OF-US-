@@ -6,6 +6,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/liquid_glass/liquid_glass_background.dart';
 import '../../../core/widgets/liquid_glass/liquid_glass_theme.dart';
@@ -1142,12 +1143,14 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
               alignment: Alignment.center,
               child: avatarUrl != null && avatarUrl.isNotEmpty
                   ? ClipOval(
-                      child: Image.network(
-                        avatarUrl,
+                      child: CachedNetworkImage(
+                        imageUrl: avatarUrl,
                         width: 30,
                         height: 30,
+                        memCacheWidth: 60,
+                        memCacheHeight: 60,
                         fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => Text(
+                        errorWidget: (_, __, ___) => Text(
                           name.isNotEmpty ? name.substring(0, 1).toUpperCase() : '♥',
                           style: const TextStyle(
                             color: Colors.white,

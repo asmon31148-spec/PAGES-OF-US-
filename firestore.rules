@@ -1,41 +1,233 @@
 rules_version = '2';
+
+// ===============================================================
+// Assumed Data Model & Architecture: 'Pages of Us'
+// ===============================================================
+//
+// 1. /users/{userId}
+//    - User profile documents identified by Firebase Auth UID.
+//    - Fields:
+//      * id: string (Auth UID, immutable)
+//      * email: string (user email)
+//      * nickname: string (display name, max 100 chars)
+//      * avatarUrl / avatar_url: string (URL or asset path)
+//      * spaceId / space_id: string (connected space ID)
+//      * partnerId / partner_id: string (paired partner UID)
+//      * fcmToken: string (device push notification token)
+//      * fcmUpdatedAt: timestamp (token sync timestamp)
+//      * createdAt: string / timestamp
+//
+// 2. /spaces/{spaceId}
+//    - Private couple sanctuary space shared between exactly two partners.
+//    - Fields:
+//      * id: string (space ID)
+//      * name: string (space name)
+//      * pairCode / pair_code: string (6-digit pairing code)
+//      * members: list of strings (UIDs of space members, max size 2)
+//      * partnerId / partner_id: string (partner UID)
+//      * createdAt: string / timestamp
+//      * lastPairedAt: timestamp
+//
+// 3. /spaces/{spaceId}/couple_ai_taste/{comboKey}
+//    - Adaptive AI romance tuning profiles for filter combinations.
+//    - Fields:
+//      * comboKey: string (e.g., 'dating_flirty_bold')
+//      * stage, mood, boldness: string
+//      * summary: string (2-sentence taste summary)
+//      * updatedAt: timestamp
+//
+// 4. /spaces/{spaceId}/{subcollection}/{docId}
+//    - Private couple features & subcollections:
+//      * features: locations, prompt_history, vaults, daily_prompt, moods, etc.
+//      * milestones: shared relationship milestone logs
+//      * notes, checkins, memories, couple_ai_taste, prompts, mood, etc.
+//    - Access is strictly guarded by the Couple Privacy Lock: only UIDs in
+//      the parent space's members list are permitted to read or write.
+//
+// 5. /app_content/{contentId}
+//    - Application content documents (pinned notes, thoughts, mood aura, fallback data).
+//    - Readable and writable by authenticated users.
+//
+// 6. /memories/{memoryId}
+//    - Shared memories collection documents.
+//    - Readable and writable by authenticated users.
+//
+// 7. /pair_codes/{pairCode}
+//    - Temporary pairing lookup registry mapping 6-digit codes to space IDs.
+//    - Fields: spaceId, creatorId, createdAt, etc.
+//
+// 8. /support_tickets/{ticketId}
+//    - User feedback and complaint submissions.
+//    - Creatable by authenticated users (userId == request.auth.uid).
+//
+// 9. /app_config/{configId}
+//    - Application update and remote configuration.
+//    - Read-only for authenticated app clients.
+//
+// ===============================================================
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Helper function to check if the user is authenticated
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
+    // Check if the request is from an authenticated user
     function isAuthenticated() {
-      return request.auth != null;
+      return request.auth != null && request.auth.uid != null;
     }
-    
-    // User profile documents: only the owner can read/write their private profile
+
+    // Check if user owns the document by matching Auth UID to document ID
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Retrieve the parent space data for membership verification
+    function getSpaceData(spaceId) {
+      return get(/databases/$(database)/documents/spaces/$(spaceId)).data;
+    }
+
+    // Check if user is an authorized member of a space document in memory
+    function isMemberOfSpaceData(data) {
+      return isAuthenticated() && (
+        ('members' in data && data.members is list && request.auth.uid in data.members) ||
+        ('partnerIds' in data && data.partnerIds is list && request.auth.uid in data.partnerIds) ||
+        ('partnerId' in data && data.partnerId == request.auth.uid) ||
+        ('partner_id' in data && data.partner_id == request.auth.uid)
+      );
+    }
+
+    // Check if user is a verified member of a space by looking up the space document
+    function isSpaceMember(spaceId) {
+      return isAuthenticated() &&
+        exists(/databases/$(database)/documents/spaces/$(spaceId)) &&
+        isMemberOfSpaceData(getSpaceData(spaceId));
+    }
+
+    // Validate string length within bounds
+    function validStringLength(str, minLen, maxLen) {
+      return str is string && str.size() >= minLen && str.size() <= maxLen;
+    }
+
+    // ===============================================================
+    // Collection Rules
+    // ===============================================================
+
+    // 1. User Profiles (/users/{userId})
+    // Readable by authenticated partners to discover nicknames and avatars;
+    // Writable ONLY by the document owner (request.auth.uid == userId).
     match /users/{userId} {
       allow read: if isAuthenticated();
-      allow write: if isAuthenticated() && request.auth.uid == userId;
+
+      allow create: if isOwner(userId) &&
+        (!('id' in request.resource.data) || request.resource.data.id == userId);
+
+      allow update: if isOwner(userId) &&
+        (!('id' in request.resource.data) || request.resource.data.id == resource.data.id);
+
+      allow delete: if isOwner(userId);
     }
-    
-    // Shared space: readable and writable by registered space members
+
+    // 2. Spaces (/spaces/{spaceId})
+    // Private couple space root document.
     match /spaces/{spaceId} {
-      allow read, write: if isAuthenticated();
-      
-      // All child subcollections in a space (notes, checkins, memories)
-      match /{allChildren=**} {
-        allow read, write: if isAuthenticated();
+      // Creation: Authenticated user creating their space; must include their own UID in members (max 2)
+      allow create: if isAuthenticated() &&
+        'members' in request.resource.data &&
+        request.resource.data.members is list &&
+        request.auth.uid in request.resource.data.members &&
+        request.resource.data.members.size() <= 2;
+
+      // Single document get: Allowed if user is already a member, OR if joining an open space (< 2 members)
+      allow get: if isAuthenticated() && (
+        isMemberOfSpaceData(resource.data) ||
+        (resource.data.members is list && resource.data.members.size() < 2)
+      );
+
+      // List queries: Only return spaces where the user is an active member
+      allow list: if isAuthenticated() && isMemberOfSpaceData(resource.data);
+
+      // Updates: Allowed if user is an existing member, OR if joining an open space (< 2 members)
+      allow update: if isAuthenticated() && (
+        isMemberOfSpaceData(resource.data) ||
+        (
+          resource.data.members is list &&
+          resource.data.members.size() < 2 &&
+          request.resource.data.members is list &&
+          request.auth.uid in request.resource.data.members
+        )
+      ) &&
+      (!('members' in request.resource.data) || request.resource.data.members.size() <= 2);
+
+      // Deletion: Only members can delete their own space
+      allow delete: if isAuthenticated() && isMemberOfSpaceData(resource.data);
+
+      // -------------------------------------------------------------
+      // Couple Privacy Lock: Subcollections of /spaces/{spaceId}
+      // ONLY the two partner members can read or write ANY child data.
+      // -------------------------------------------------------------
+
+      // Adaptive AI Couple Taste
+      match /couple_ai_taste/{comboKey} {
+        allow read, write: if isSpaceMember(spaceId);
+      }
+
+      // Feature partition (locations, prompt_history, vaults, etc.) and milestones
+      match /{subcollection}/{docId} {
+        allow read, write: if isSpaceMember(spaceId);
+
+        // Deeply nested subcollections (notes, checkins, memories, prompt threads, etc.)
+        match /{allChildren=**} {
+          allow read, write: if isSpaceMember(spaceId);
+        }
       }
     }
 
-    // App content (pinned notes, thoughts, mood aura, blind thoughts)
+    // 3. Application Content (/app_content/{contentId})
+    // Pinned notes, mood aura, blind thoughts, and shared feature fallbacks
     match /app_content/{contentId} {
       allow read, write: if isAuthenticated();
     }
 
-    // Shared memories collection
+    // 4. Shared Memories Collection (/memories/{memoryId})
     match /memories/{memoryId} {
       allow read, write: if isAuthenticated();
     }
-    
-    // Default fallback
-    match /{document=**} {
-      allow read, write: if isAuthenticated();
+
+    // 5. Pair Codes Registry (/pair_codes/{pairCode})
+    // Maps 6-digit codes to space IDs during partner connection
+    match /pair_codes/{pairCode} {
+      allow read: if isAuthenticated();
+
+      allow create: if isAuthenticated() &&
+        (!('creatorId' in request.resource.data) || request.resource.data.creatorId == request.auth.uid);
+
+      allow update: if isAuthenticated();
+
+      allow delete: if isAuthenticated() &&
+        ('creatorId' in resource.data && resource.data.creatorId == request.auth.uid);
     }
+
+    // 6. Support Tickets (/support_tickets/{ticketId})
+    // In-app complaint / feedback submissions
+    match /support_tickets/{ticketId} {
+      allow create: if isAuthenticated() &&
+        request.resource.data.userId == request.auth.uid;
+      allow read, update, delete: if false;
+    }
+
+    // 7. App Configuration (/app_config/{configId})
+    // Remote update config; client read-only
+    match /app_config/{configId} {
+      allow read: if isAuthenticated();
+      allow write: if false;
+    }
+
+    // ---------------------------------------------------------------
+    // Notice: The permissive fallback `match /{document=**}` has been
+    // completely removed. All collections not explicitly granted above
+    // are denied by default under Cloud Firestore's Default-Deny model.
+    // ---------------------------------------------------------------
   }
 }
