@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../constants/app_constants.dart';
 
-/// Data model for real places returned by Date Planner AI
+/// Data model for real, authentic places returned by Date Planner
 class DatePlaceOption {
   final String id;
   final String name;
@@ -26,6 +26,7 @@ class DatePlaceOption {
   final String recommendationReason;
   final String googleMapsUrl;
   final String address;
+  final bool isGoogleVerified;
 
   const DatePlaceOption({
     required this.id,
@@ -48,6 +49,7 @@ class DatePlaceOption {
     required this.recommendationReason,
     required this.googleMapsUrl,
     required this.address,
+    this.isGoogleVerified = false,
   });
 
   String get vicinity => address;
@@ -60,6 +62,8 @@ class DatePlannerResult {
   final List<DatePlaceOption> places;
   final String? fairTravelNote;
   final String? error;
+  final String? googleMapsSearchUrl;
+  final bool isGooglePlacesVerified;
 
   const DatePlannerResult({
     required this.userQuery,
@@ -68,14 +72,16 @@ class DatePlannerResult {
     required this.places,
     this.fairTravelNote,
     this.error,
+    this.googleMapsSearchUrl,
+    this.isGooglePlacesVerified = false,
   });
 }
 
-/// Date Planner Live AI Service:
-/// 1. Uses live Groq AI to understand location intent ("near me", "near her", "between us", custom radius, or specific place).
-/// 2. Fetches REAL, verified places from OpenStreetMap Nominatim/Overpass & live venue knowledge.
+/// Date Planner Live Authentic Service:
+/// 1. Understands location intent ("near me", "near her", "between us").
+/// 2. Fetches 100% REAL, verified places from Google Places API (New) or OpenStreetMap.
 /// 3. Computes accurate Haversine travel distances & times for BOTH partners.
-/// 4. Generates authentic romantic reasons tailored to the couple.
+/// 4. ZERO fake, hallucinated, or synthesized places — ever.
 class DatePlannerService {
   DatePlannerService._();
   static final instance = DatePlannerService._();
@@ -148,9 +154,15 @@ class DatePlannerService {
         modeDescription = 'Searching near $partnerNickname in $anchorCity 📍';
       } else {
         // Default: Midpoint between both partners
-        anchorLat = (userLat != 0.0 && partnerLat != 0.0) ? (userLat + partnerLat) / 2 : (userLat != 0.0 ? userLat : partnerLat);
-        anchorLng = (userLng != 0.0 && partnerLng != 0.0) ? (userLng + partnerLng) / 2 : (userLng != 0.0 ? userLng : partnerLng);
-        anchorCity = userCity.isNotEmpty && partnerCity.isNotEmpty ? '$userCity & $partnerCity' : 'Between you both';
+        anchorLat = (userLat != 0.0 && partnerLat != 0.0)
+            ? (userLat + partnerLat) / 2
+            : (userLat != 0.0 ? userLat : partnerLat);
+        anchorLng = (userLng != 0.0 && partnerLng != 0.0)
+            ? (userLng + partnerLng) / 2
+            : (userLng != 0.0 ? userLng : partnerLng);
+        anchorCity = userCity.isNotEmpty && partnerCity.isNotEmpty
+            ? '$userCity & $partnerCity'
+            : 'Between you both';
         mode = 'meeting_halfway';
         modeDescription = 'Meeting halfway between $userCity and $partnerCity ✦';
         if (straightDistance > 5) {
@@ -158,45 +170,68 @@ class DatePlannerService {
         }
       }
 
-      // Step 2: Fetch REAL verified places from OpenStreetMap
-      List<Map<String, dynamic>> rawPlaces = await _fetchRealPlacesOSM(
+      final gMapsSearchUrl =
+          'https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent('$searchTerm near $anchorCity')}';
+
+      // Step 2: Try Google Places API (New) for 100% verified Google Maps places
+      bool isGoogleVerified = false;
+      List<Map<String, dynamic>> rawPlaces = await _fetchPlacesGooglePlaces(
         lat: anchorLat,
         lng: anchorLng,
         category: category,
         searchTerm: searchTerm,
-        cityName: anchorCity,
         radiusMeters: radiusMeters,
       );
 
-      // Step 3: If OSM is sparse, use Groq AI to fetch authentic verified venues in that city
-      if (rawPlaces.length < 3) {
-        final aiPlaces = await _fetchAuthenticPlacesWithAi(
-          searchTerm: searchTerm,
+      if (rawPlaces.isNotEmpty) {
+        isGoogleVerified = true;
+      } else {
+        // Step 3: Fallback to real OpenStreetMap Overpass (with expanding radius up to 35km)
+        rawPlaces = await _fetchRealPlacesOSM(
+          lat: anchorLat,
+          lng: anchorLng,
           category: category,
+          searchTerm: searchTerm,
           cityName: anchorCity,
-          anchorLat: anchorLat,
-          anchorLng: anchorLng,
+          radiusMeters: radiusMeters,
         );
-        for (final p in aiPlaces) {
-          if (!rawPlaces.any((existing) => existing['name'] == p['name'])) {
-            rawPlaces.add(p);
-          }
-        }
       }
 
-      // Step 4: Map to DatePlaceOption with Haversine distances for BOTH partners
+      // CRITICAL: Under NO circumstance do we synthesize or invent places with AI.
+      // If no verified places exist in local radius, return empty with live Google Maps search link.
+      if (rawPlaces.isEmpty) {
+        final emptyResult = DatePlannerResult(
+          userQuery: cleanQuery,
+          mode: mode,
+          modeDescription: modeDescription,
+          places: [],
+          fairTravelNote: fairTravelNote,
+          googleMapsSearchUrl: gMapsSearchUrl,
+          isGooglePlacesVerified: false,
+          error: 'No registered spots found nearby in local registry.',
+        );
+        _cache[cacheKey] = emptyResult;
+        return emptyResult;
+      }
+
+      // Step 4: Map to DatePlaceOption with genuine Haversine distances for BOTH partners
       final placeOptions = <DatePlaceOption>[];
       for (final p in rawPlaces) {
-        final pLat = (p['lat'] as num?)?.toDouble() ?? anchorLat;
-        final pLng = (p['lng'] as num?)?.toDouble() ?? anchorLng;
-        final name = p['name']?.toString() ?? 'Charming Date Venue';
+        final pLat = (p['lat'] as num?)?.toDouble() ?? 0.0;
+        final pLng = (p['lng'] as num?)?.toDouble() ?? 0.0;
+        if (pLat == 0.0 || pLng == 0.0) continue;
+
+        final name = p['name']?.toString() ?? 'Venue';
         final address = p['address']?.toString() ?? anchorCity;
 
         final distUser = _calculateHaversineKm(userLat, userLng, pLat, pLng);
         final distPartner = _calculateHaversineKm(partnerLat, partnerLng, pLat, pLng);
 
-        final mapsUrl =
+        final mapsUrl = p['google_maps_url']?.toString() ??
             'https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent('$name $address')}';
+
+        final isOpen = p['is_open'] as bool? ?? true;
+        final placeIsGoogle = p['is_google_verified'] as bool? ?? false;
 
         placeOptions.add(DatePlaceOption(
           id: p['id']?.toString() ?? 'place_${pLat}_$pLng',
@@ -206,23 +241,39 @@ class DatePlannerService {
           lat: pLat,
           lng: pLng,
           photoUrl: p['photo_url']?.toString(),
-          rating: (p['rating'] as num?)?.toDouble() ?? (4.6 + (math.Random().nextInt(4) / 10)),
-          userRatingsTotal: (p['reviews'] as num?)?.toInt() ?? (120 + math.Random().nextInt(250)),
+          rating: (p['rating'] as num?)?.toDouble(), // Genuine rating or null (NO fake random ratings!)
+          userRatingsTotal: (p['reviews'] as num?)?.toInt(), // Genuine reviews or null
           priceLevel: p['price_level']?.toString() ?? 'Moderate',
-          isOpenNow: true,
-          openStatusText: 'Open now · Verified venue',
+          isOpenNow: isOpen,
+          openStatusText: isOpen ? 'Open now' : 'Closed',
           distanceKmUser: distUser,
           distanceKmPartner: distPartner,
           userTravelTime: _formatTravelTime(distUser),
           partnerTravelTime: _formatTravelTime(distPartner),
           isRecommended: false,
-          recommendationReason: p['reason']?.toString() ?? 'Perfect atmosphere for spending quality time together.',
+          recommendationReason: p['reason']?.toString() ?? 'Real venue for quality time together.',
           googleMapsUrl: mapsUrl,
           address: address,
+          isGoogleVerified: placeIsGoogle,
         ));
       }
 
-      // Step 5: Rank places with AI
+      if (placeOptions.isEmpty) {
+        final emptyResult = DatePlannerResult(
+          userQuery: cleanQuery,
+          mode: mode,
+          modeDescription: modeDescription,
+          places: [],
+          fairTravelNote: fairTravelNote,
+          googleMapsSearchUrl: gMapsSearchUrl,
+          isGooglePlacesVerified: false,
+          error: 'No registered spots found nearby.',
+        );
+        _cache[cacheKey] = emptyResult;
+        return emptyResult;
+      }
+
+      // Step 5: Rank genuine places with AI (only selects best pick among REAL spots)
       final rankedPlaces = await _rankPlacesWithAi(
         places: placeOptions,
         query: cleanQuery,
@@ -236,6 +287,8 @@ class DatePlannerService {
         modeDescription: modeDescription,
         places: rankedPlaces,
         fairTravelNote: fairTravelNote,
+        googleMapsSearchUrl: gMapsSearchUrl,
+        isGooglePlacesVerified: isGoogleVerified,
       );
 
       _cache[cacheKey] = result;
@@ -248,11 +301,13 @@ class DatePlannerService {
         modeDescription: 'Date search',
         places: [],
         error: 'Unable to reach places service. Please check connection and try again.',
+        googleMapsSearchUrl:
+            'https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent('$cleanQuery near me')}',
       );
     }
   }
 
-  /// AI Intent & Target Parsing via Groq
+  /// AI Intent & Target Parsing via Groq (Categorization only, NEVER generates places)
   Future<Map<String, String>> _understandIntentWithAi({
     required String query,
     required String userCity,
@@ -297,7 +352,7 @@ Output JSON only.
           ],
           'response_format': {'type': 'json_object'},
         }),
-      ).timeout(const Duration(seconds: 6));
+      ).timeout(const Duration(seconds: 5));
 
       if (res.statusCode == 200) {
         final data = jsonDecode(utf8.decode(res.bodyBytes));
@@ -321,9 +376,17 @@ Output JSON only.
   Map<String, String> _ruleBasedParse(String query) {
     final q = query.toLowerCase();
     String target = 'midpoint';
-    if (q.contains('near me') || q.contains('around me') || q.contains('from me') || q.contains('my city') || q.contains('close to me')) {
+    if (q.contains('near me') ||
+        q.contains('around me') ||
+        q.contains('from me') ||
+        q.contains('my city') ||
+        q.contains('close to me')) {
       target = 'user';
-    } else if (q.contains('near her') || q.contains('around her') || q.contains('near him') || q.contains('her city') || q.contains('near partner')) {
+    } else if (q.contains('near her') ||
+        q.contains('around her') ||
+        q.contains('near him') ||
+        q.contains('her city') ||
+        q.contains('near partner')) {
       target = 'partner';
     }
 
@@ -347,9 +410,13 @@ Output JSON only.
     }
 
     String radius = '5000';
-    if (q.contains('100m') || q.contains('100 meters')) radius = '200';
-    else if (q.contains('500m') || q.contains('500 meters')) radius = '500';
-    else if (q.contains('1km') || q.contains('1 km')) radius = '1200';
+    if (q.contains('100m') || q.contains('100 meters')) {
+      radius = '200';
+    } else if (q.contains('500m') || q.contains('500 meters')) {
+      radius = '500';
+    } else if (q.contains('1km') || q.contains('1 km')) {
+      radius = '1200';
+    }
 
     return {
       'target': target,
@@ -360,7 +427,110 @@ Output JSON only.
     };
   }
 
-  /// Real place lookup using OpenStreetMap Nominatim and Overpass
+  /// 1. Google Places API (New) verified places
+  Future<List<Map<String, dynamic>>> _fetchPlacesGooglePlaces({
+    required double lat,
+    required double lng,
+    required String category,
+    required String searchTerm,
+    required int radiusMeters,
+  }) async {
+    final apiKey = AppConstants.firebaseApiKey;
+    if (apiKey.isEmpty || lat == 0.0 || lng == 0.0) return [];
+
+    try {
+      List<String> includedTypes = ['cafe', 'coffee_shop'];
+      final catLower = category.toLowerCase();
+      if (catLower.contains('park') || catLower.contains('garden')) {
+        includedTypes = ['park', 'garden', 'national_park'];
+      } else if (catLower.contains('restaurant') ||
+          catLower.contains('dinner') ||
+          catLower.contains('food')) {
+        includedTypes = ['restaurant', 'fine_dining_restaurant', 'indian_restaurant'];
+      } else if (catLower.contains('library') || catLower.contains('book')) {
+        includedTypes = ['library', 'book_store'];
+      } else if (catLower.contains('movie') || catLower.contains('cinema')) {
+        includedTypes = ['movie_theater'];
+      }
+
+      final url = Uri.parse('https://places.googleapis.com/v1/places:searchNearby');
+      final res = await http.post(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Goog-Api-Key': apiKey,
+          'X-Goog-FieldMask':
+              'places.id,places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.priceLevel,places.currentOpeningHours,places.googleMapsUri',
+        },
+        body: jsonEncode({
+          'includedTypes': includedTypes,
+          'maxResultCount': 8,
+          'locationRestriction': {
+            'circle': {
+              'center': {
+                'latitude': lat,
+                'longitude': lng,
+              },
+              'radius': math.min(50000.0, radiusMeters.toDouble().clamp(3000.0, 50000.0)),
+            },
+          },
+        }),
+      ).timeout(const Duration(seconds: 5));
+
+      if (res.statusCode == 200) {
+        final data = jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
+        final rawPlaces = data['places'] as List?;
+        if (rawPlaces != null && rawPlaces.isNotEmpty) {
+          final results = <Map<String, dynamic>>[];
+          for (final item in rawPlaces) {
+            final m = item as Map<String, dynamic>;
+            final loc = m['location'] as Map<String, dynamic>?;
+            final pLat = (loc?['latitude'] as num?)?.toDouble();
+            final pLng = (loc?['longitude'] as num?)?.toDouble();
+            final name = m['displayName']?['text']?.toString();
+            if (pLat == null || pLng == null || name == null || name.isEmpty) continue;
+
+            final address = m['formattedAddress']?.toString() ?? '';
+            final rating = (m['rating'] as num?)?.toDouble();
+            final userRatingCount = (m['userRatingCount'] as num?)?.toInt();
+            final priceLevelRaw = m['priceLevel']?.toString() ?? '';
+            String priceLevel = 'Moderate';
+            if (priceLevelRaw.contains('FREE') || priceLevelRaw.contains('INEXPENSIVE')) {
+              priceLevel = 'Budget-friendly';
+            } else if (priceLevelRaw.contains('EXPENSIVE') || priceLevelRaw.contains('VERY_EXPENSIVE')) {
+              priceLevel = 'Fine Dining';
+            }
+
+            final isOpen = m['currentOpeningHours']?['openNow'] as bool? ?? true;
+            final googleUri = m['googleMapsUri']?.toString() ??
+                'https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent('$name $address')}';
+
+            results.add({
+              'id': m['id']?.toString() ?? 'g_${pLat}_$pLng',
+              'name': name,
+              'type': category.toUpperCase(),
+              'lat': pLat,
+              'lng': pLng,
+              'rating': rating,
+              'reviews': userRatingCount,
+              'price_level': priceLevel,
+              'address': address,
+              'is_open': isOpen,
+              'google_maps_url': googleUri,
+              'is_google_verified': true,
+            });
+          }
+          if (results.isNotEmpty) return results;
+        }
+      }
+    } catch (e) {
+      debugPrint('[DatePlannerService] Google Places API note: $e');
+    }
+
+    return [];
+  }
+
+  /// 2. Real place lookup using OpenStreetMap Overpass (with expanding radius up to 35km)
   Future<List<Map<String, dynamic>>> _fetchRealPlacesOSM({
     required double lat,
     required double lng,
@@ -370,178 +540,82 @@ Output JSON only.
     required int radiusMeters,
   }) async {
     final places = <Map<String, dynamic>>[];
+    if (lat == 0.0 || lng == 0.0) return places;
 
-    // 1. First priority: Nominatim Real POI Geocoding
-    try {
-      final cleanCity = cityName.split('&').first.trim();
-      final url =
-          'https://nominatim.openstreetmap.org/search?q=${Uri.encodeComponent('$searchTerm in $cleanCity')}&format=json&limit=6&addressdetails=1';
-      final res = await http.get(
-        Uri.parse(url),
-        headers: {'User-Agent': 'PagesOfUsCouplesApp/1.0'},
-      ).timeout(const Duration(seconds: 5));
+    // Search radii: try local radius first, then widen to 35km if in rural/suburban area
+    final searchRadii = [
+      radiusMeters.clamp(5000, 15000),
+      35000,
+    ];
 
-      if (res.statusCode == 200) {
-        final list = jsonDecode(utf8.decode(res.bodyBytes)) as List?;
-        if (list != null) {
-          for (final item in list) {
-            final pLat = double.tryParse(item['lat']?.toString() ?? '');
-            final pLng = double.tryParse(item['lon']?.toString() ?? '');
-            final rawName = item['display_name']?.toString() ?? '';
-            if (pLat != null && pLng != null && rawName.isNotEmpty) {
-              final parts = rawName.split(',');
-              final title = parts.first.trim();
-              final addr = parts.length > 2 ? parts.sublist(1, math.min(4, parts.length)).join(',').trim() : rawName;
-
-              places.add({
-                'id': item['place_id']?.toString() ?? '${pLat}_$pLng',
-                'name': title,
-                'type': category.toUpperCase(),
-                'lat': pLat,
-                'lng': pLng,
-                'rating': 4.6 + (math.Random().nextInt(4) / 10),
-                'reviews': 80 + math.Random().nextInt(200),
-                'price_level': 'Moderate',
-                'address': addr,
-              });
-            }
-          }
-        }
-      }
-    } catch (_) {}
-
-    // 2. Second priority: Overpass API around coordinates if needed
-    if (places.length < 3) {
+    for (final radius in searchRadii) {
       try {
         final query = '''
-[out:json][timeout:6];
+[out:json][timeout:8];
 (
-  node["amenity"~"$category|cafe|restaurant|library|fast_food"](around:$radiusMeters,$lat,$lng);
-  node["leisure"~"park|garden"](around:$radiusMeters,$lat,$lng);
+  node["amenity"~"cafe|restaurant|fast_food|tea|ice_cream|library"](around:$radius,$lat,$lng);
+  node["leisure"~"park|garden"](around:$radius,$lat,$lng);
 );
-out center 6;
+out center 12;
 ''';
         final res = await http.post(
           Uri.parse('https://overpass-api.de/api/interpreter'),
+          headers: {
+            'User-Agent': 'PagesOfUs/1.0 (https://pagesofus.app; support@pagesofus.app)',
+            'Accept': 'application/json',
+          },
           body: {'data': query},
-        ).timeout(const Duration(seconds: 6));
+        ).timeout(const Duration(seconds: 8));
 
         if (res.statusCode == 200) {
           final data = jsonDecode(utf8.decode(res.bodyBytes));
           final elements = (data['elements'] as List? ?? []);
           for (final el in elements) {
             final tags = el['tags'] as Map<String, dynamic>? ?? {};
-            final name = tags['name']?.toString();
+            final name = tags['name']?.toString()?.trim();
             if (name == null || name.isEmpty) continue;
 
             final pLat = (el['lat'] ?? el['center']?['lat'] as num?)?.toDouble();
             final pLng = (el['lon'] ?? el['center']?['lon'] as num?)?.toDouble();
             if (pLat == null || pLng == null) continue;
 
+            // Avoid duplicates
             if (!places.any((p) => p['name'] == name)) {
+              final street = tags['addr:street']?.toString();
+              final city = tags['addr:city']?.toString() ?? tags['addr:suburb']?.toString();
+              final addr = (street != null && city != null)
+                  ? '$street, $city'
+                  : (city ?? street ?? cityName);
+
               places.add({
-                'id': el['id']?.toString(),
+                'id': 'osm_${el['id']}',
                 'name': name,
-                'type': tags['cuisine'] ?? tags['leisure'] ?? category,
+                'type': tags['amenity'] ?? tags['leisure'] ?? category,
                 'lat': pLat,
                 'lng': pLng,
-                'rating': 4.6 + (math.Random().nextInt(4) / 10),
-                'reviews': 75 + math.Random().nextInt(180),
+                'rating': null, // NO FAKE RATINGS
+                'reviews': null, // NO FAKE REVIEWS
                 'price_level': tags['cuisine'] != null ? 'Moderate' : 'Budget-friendly',
-                'address': tags['addr:street'] ?? tags['addr:city'] ?? cityName,
+                'address': addr,
+                'is_open': true,
+                'google_maps_url':
+                    'https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent('$name $addr')}',
+                'is_google_verified': false,
               });
             }
           }
         }
-      } catch (_) {}
+      } catch (e) {
+        debugPrint('[DatePlannerService] Overpass query error: $e');
+      }
+
+      if (places.length >= 3) break;
     }
 
     return places;
   }
 
-  /// Groq Live Authentic Place Discovery (Real venues from AI geographic knowledge)
-  Future<List<Map<String, dynamic>>> _fetchAuthenticPlacesWithAi({
-    required String searchTerm,
-    required String category,
-    required String cityName,
-    required double anchorLat,
-    required double anchorLng,
-  }) async {
-    final apiKey = AppConstants.groqApiKey;
-    if (apiKey.isEmpty) return [];
-
-    try {
-      final prompt = '''
-List 4 REAL, AUTHENTIC, VERIFIED places for "$searchTerm" ($category) located in or near "$cityName".
-Must be real physical venues that exist in this city with authentic street/neighborhood names and approximate coordinates near lat: $anchorLat, lng: $anchorLng.
-Return JSON:
-{
-  "places": [
-    {
-      "name": "Actual Real Venue Name",
-      "address": "Actual Street or Area in $cityName",
-      "lat": number,
-      "lng": number,
-      "rating": 4.7,
-      "price_level": "Moderate" | "Budget-friendly" | "Fine Dining",
-      "reason": "Why lovers will enjoy this place"
-    }
-  ]
-}
-Output valid JSON only.
-''';
-
-      final res = await http.post(
-        Uri.parse('https://api.groq.com/openai/v1/chat/completions'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $apiKey',
-        },
-        body: jsonEncode({
-          'model': 'qwen/qwen3.8-27b',
-          'temperature': 0.3,
-          'max_tokens': 450,
-          'messages': [
-            {'role': 'system', 'content': prompt},
-            {'role': 'user', 'content': 'List 4 real verified places now.'},
-          ],
-          'response_format': {'type': 'json_object'},
-        }),
-      ).timeout(const Duration(seconds: 8));
-
-      if (res.statusCode == 200) {
-        final data = jsonDecode(utf8.decode(res.bodyBytes));
-        final content = data['choices'][0]['message']['content']?.toString() ?? '';
-        final decoded = jsonDecode(content) as Map<String, dynamic>;
-        final list = decoded['places'] as List?;
-        if (list != null) {
-          return list.map((item) {
-            final m = item as Map<String, dynamic>;
-            final pLat = (m['lat'] as num?)?.toDouble() ?? anchorLat;
-            final pLng = (m['lng'] as num?)?.toDouble() ?? anchorLng;
-            return {
-              'id': 'ai_real_${pLat}_$pLng',
-              'name': m['name']?.toString() ?? 'Local Favorite',
-              'type': category.toUpperCase(),
-              'lat': pLat,
-              'lng': pLng,
-              'rating': (m['rating'] as num?)?.toDouble() ?? 4.7,
-              'reviews': 180 + math.Random().nextInt(150),
-              'price_level': m['price_level']?.toString() ?? 'Moderate',
-              'address': m['address']?.toString() ?? cityName,
-              'reason': m['reason']?.toString(),
-            };
-          }).toList();
-        }
-      }
-    } catch (e) {
-      debugPrint('[DatePlannerService] _fetchAuthenticPlacesWithAi error: $e');
-    }
-
-    return [];
-  }
-
-  /// AI Ranking & Romantic Selection
+  /// AI Ranking & Romantic Reason (purely analyzes the REAL candidates, never invents places)
   Future<List<DatePlaceOption>> _rankPlacesWithAi({
     required List<DatePlaceOption> places,
     required String query,
@@ -570,7 +644,7 @@ Output valid JSON only.
       }).toList();
 
       final prompt = '''
-For a lovers couple using "Pages of Us", choose the single best recommendation from this list:
+For a loving couple using "Pages of Us", pick the single best recommendation from this list of real places:
 Query: "$query", Mode: "$mode", Partner: "$partnerNickname"
 Options: ${jsonEncode(summaryList)}
 
@@ -589,7 +663,7 @@ Output JSON:
         },
         body: jsonEncode({
           'model': 'qwen/qwen3.8-27b',
-          'temperature': 0.3,
+          'temperature': 0.2,
           'max_tokens': 120,
           'messages': [
             {'role': 'system', 'content': prompt},
@@ -597,14 +671,14 @@ Output JSON:
           ],
           'response_format': {'type': 'json_object'},
         }),
-      ).timeout(const Duration(seconds: 6));
+      ).timeout(const Duration(seconds: 5));
 
       if (res.statusCode == 200) {
         final data = jsonDecode(utf8.decode(res.bodyBytes));
         final content = data['choices'][0]['message']['content']?.toString() ?? '';
         final decoded = jsonDecode(content) as Map<String, dynamic>;
         final bestName = decoded['best_name']?.toString() ?? '';
-        final reason = decoded['reason']?.toString() ?? 'Most intimate and comfortable pick for you two.';
+        final reason = decoded['reason']?.toString() ?? 'Most intimate pick for you two.';
 
         final updated = <DatePlaceOption>[];
         for (int i = 0; i < places.length; i++) {
@@ -651,6 +725,7 @@ Output JSON:
       recommendationReason: reason,
       googleMapsUrl: p.googleMapsUrl,
       address: p.address,
+      isGoogleVerified: p.isGoogleVerified,
     );
   }
 

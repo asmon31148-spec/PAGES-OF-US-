@@ -377,19 +377,62 @@ class _DatePlannerCardState extends State<DatePlannerCard> {
 
             // 5. Place Results List
             if (_result!.places.isEmpty)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 18),
-                child: Center(
-                  child: Text(
-                    _result!.error ?? 'No matching spots found nearby. Try widening your idea.',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: isDark ? AppColors.darkSoft : AppColors.lightSoft,
-                    ),
+              Container(
+                margin: const EdgeInsets.symmetric(vertical: 8),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: isDark ? Colors.white.withOpacity(0.04) : Colors.white.withOpacity(0.60),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: isDark ? Colors.white.withOpacity(0.10) : Colors.white.withOpacity(0.65),
                   ),
                 ),
+                child: Column(
+                  children: [
+                    Icon(Icons.location_searching_rounded, size: 28, color: isDark ? AppColors.darkSoft : AppColors.lightSoft),
+                    const SizedBox(height: 8),
+                    Text(
+                      _result!.error ?? 'No registered spots found nearby in local registry.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: isDark ? AppColors.darkSoft : AppColors.lightSoft,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    GestureDetector(
+                      onTap: () {
+                        final searchUrl = _result!.googleMapsSearchUrl ??
+                            'https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent('${_queryController.text} near me')}';
+                        _openGoogleMaps(searchUrl);
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: AppColors.terra,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.map_rounded, size: 14, color: Colors.white),
+                            SizedBox(width: 6),
+                            Text(
+                              'Search Live on Google Maps ↗',
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               )
-            else
+            else ...[
               ListView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
@@ -399,6 +442,35 @@ class _DatePlannerCardState extends State<DatePlannerCard> {
                   return _buildPlaceCard(place, isDark);
                 },
               ),
+              const SizedBox(height: 4),
+              GestureDetector(
+                onTap: () {
+                  final searchUrl = _result!.googleMapsSearchUrl ??
+                      'https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent('${_queryController.text} near me')}';
+                  _openGoogleMaps(searchUrl);
+                },
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  child: Center(
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.explore_outlined, size: 13, color: isDark ? AppColors.darkSoft : AppColors.lightSoft),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Search more live spots on Google Maps ↗',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: isDark ? AppColors.darkSoft : AppColors.lightSoft,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ],
         ],
       ),
@@ -486,6 +558,31 @@ class _DatePlannerCardState extends State<DatePlannerCard> {
                       ),
                     ),
                   )
+                else if (place.isGoogleVerified)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1E8E3E).withOpacity(0.18),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: const Color(0xFF1E8E3E).withOpacity(0.50)),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.check_circle_rounded, size: 10, color: Color(0xFF34A853)),
+                        SizedBox(width: 3),
+                        Text(
+                          'GOOGLE MAPS',
+                          style: TextStyle(
+                            fontSize: 8.5,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF34A853),
+                            letterSpacing: 0.3,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
                 else
                   Text(
                     '${place.categoryIcon} ${place.category.toUpperCase()}',
@@ -563,27 +660,41 @@ class _DatePlannerCardState extends State<DatePlannerCard> {
             const SizedBox(height: 5),
             Row(
               children: [
-                Text(
-                  '★ ${place.rating?.toStringAsFixed(1) ?? "4.7"}',
-                  style: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.amber,
-                  ),
-                ),
-                if (place.userRatingsTotal != null) ...[
-                  const SizedBox(width: 3),
+                if (place.rating != null) ...[
                   Text(
-                    '(${place.userRatingsTotal})',
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: isDark ? AppColors.darkSoft : AppColors.lightSoft,
+                    '★ ${place.rating!.toStringAsFixed(1)}',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.amber,
                     ),
                   ),
+                  if (place.userRatingsTotal != null) ...[
+                    const SizedBox(width: 3),
+                    Text(
+                      '(${place.userRatingsTotal})',
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: isDark ? AppColors.darkSoft : AppColors.lightSoft,
+                      ),
+                    ),
+                  ],
+                  const SizedBox(width: 8),
+                  Text('•', style: TextStyle(color: isDark ? AppColors.darkSoft : AppColors.lightSoft)),
+                  const SizedBox(width: 8),
+                ] else ...[
+                  Text(
+                    place.isGoogleVerified ? 'Google Verified' : 'Mapped Location',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      color: place.isGoogleVerified ? const Color(0xFF34A853) : (isDark ? AppColors.darkSoft : AppColors.lightSoft),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text('•', style: TextStyle(color: isDark ? AppColors.darkSoft : AppColors.lightSoft)),
+                  const SizedBox(width: 8),
                 ],
-                const SizedBox(width: 8),
-                Text('•', style: TextStyle(color: isDark ? AppColors.darkSoft : AppColors.lightSoft)),
-                const SizedBox(width: 8),
                 Text(
                   place.priceLevel,
                   style: TextStyle(
@@ -772,23 +883,47 @@ class _DatePlannerCardState extends State<DatePlannerCard> {
                   // Metrics Pill Row
                   Row(
                     children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: Colors.amber.withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(10),
+                      if (place.rating != null)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.amber.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.star_rounded, size: 15, color: Colors.amber),
+                              const SizedBox(width: 4),
+                              Text(
+                                '${place.rating!.toStringAsFixed(1)}${place.userRatingsTotal != null ? " (${place.userRatingsTotal})" : ""}',
+                                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.amber),
+                              ),
+                            ],
+                          ),
+                        )
+                      else
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: (place.isGoogleVerified ? const Color(0xFF1E8E3E) : AppColors.sage).withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(place.isGoogleVerified ? Icons.check_circle_rounded : Icons.location_on_rounded,
+                                  size: 14, color: place.isGoogleVerified ? const Color(0xFF34A853) : AppColors.sage),
+                              const SizedBox(width: 4),
+                              Text(
+                                place.isGoogleVerified ? 'Google Maps Verified' : 'Mapped Location',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  color: place.isGoogleVerified ? const Color(0xFF34A853) : AppColors.sage,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.star_rounded, size: 15, color: Colors.amber),
-                            const SizedBox(width: 4),
-                            Text(
-                              '${place.rating?.toStringAsFixed(1) ?? "4.7"} (${place.userRatingsTotal ?? 100}+ reviews)',
-                              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.amber),
-                            ),
-                          ],
-                        ),
-                      ),
                       const SizedBox(width: 8),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
