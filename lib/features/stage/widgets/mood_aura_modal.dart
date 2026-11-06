@@ -39,15 +39,18 @@ class MoodAuraModal extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
           decoration: BoxDecoration(
-            color: isDark
-                ? const Color(0xFF14171E).withOpacity(0.92)
-                : Colors.white.withOpacity(0.92),
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                palette.gradientColors.first.withOpacity(isDark ? 0.38 : 0.35),
+                (isDark ? const Color(0xFF14171E) : Colors.white).withOpacity(isDark ? 0.90 : 0.94),
+              ],
+            ),
             borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
             border: Border(
               top: BorderSide(
-                color: isDark
-                    ? Colors.white.withOpacity(0.18)
-                    : Colors.white.withOpacity(0.85),
+                color: palette.specularBorderColor.withOpacity(isDark ? 0.35 : 0.55),
                 width: 1.2,
               ),
             ),
@@ -55,7 +58,7 @@ class MoodAuraModal extends StatelessWidget {
               BoxShadow(
                 color: isDark
                     ? Colors.black.withOpacity(0.40)
-                    : const Color(0xFF8C7355).withOpacity(0.12),
+                    : palette.accentColor.withOpacity(0.12),
                 blurRadius: 24,
                 offset: const Offset(0, -6),
               ),

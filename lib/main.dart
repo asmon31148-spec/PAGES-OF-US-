@@ -374,7 +374,7 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold> with Wi
         value: systemOverlay,
         child: Scaffold(
           backgroundColor: Colors.transparent,
-          extendBody: true,
+          extendBody: false,
           body: SharedLivingThemeBackground(
             child: IndexedStack(
               index: _currentIndex,

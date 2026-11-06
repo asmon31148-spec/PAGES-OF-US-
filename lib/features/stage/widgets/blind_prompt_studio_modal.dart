@@ -8,6 +8,7 @@ import '../../../providers/theme_provider.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../providers/stage_provider.dart';
 import '../../../core/services/relationship_ai_service.dart';
+import '../../../core/services/couple_taste_service.dart';
 import '../../../data/models/daily_prompt.dart';
 
 class BlindPromptStudioModal extends StatefulWidget {
@@ -85,6 +86,10 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
     HapticFeedback.mediumImpact();
     setState(() => _isGenerating = true);
 
+    final auth = context.read<AuthProvider>();
+    final stage = context.read<StageProvider>();
+    final spaceId = auth.space?.id ?? auth.user?.spaceId ?? stage.activeSpaceId ?? '';
+
     try {
       final results = await RelationshipAiService.generatePromptsLive(
         stage: _selectedStage,
@@ -97,6 +102,7 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
             ? _topicController.text.trim()
             : null,
         partnerNickname: partnerNickname,
+        spaceId: spaceId,
       );
 
       if (mounted) {
@@ -128,6 +134,19 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
     final stage = context.read<StageProvider>();
     final spaceId =
         auth.space?.id ?? auth.user?.spaceId ?? stage.activeSpaceId ?? '';
+
+    // Record feedback and adapt couple's taste memory
+    if (_topicController.text.trim().isNotEmpty || _generatedPrompts.isNotEmpty) {
+      CoupleTasteService.instance.recordFeedbackAndAdapt(
+        stage: _selectedStage,
+        mood: _selectedMood,
+        boldness: _selectedBoldness,
+        earlierQuestion: _generatedPrompts.isNotEmpty ? _generatedPrompts.first.question : null,
+        userCorrection: _topicController.text.trim().isNotEmpty ? _topicController.text.trim() : 'Preferred this romantic framing',
+        finalQuestion: question,
+        spaceId: spaceId,
+      );
+    }
 
     final messenger = ScaffoldMessenger.of(context);
 
@@ -169,6 +188,185 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
     _isPinning = false;
   }
 
+  void _showTasteMemorySheet(
+    BuildContext context,
+    bool isDark,
+    Color accentColor,
+    String spaceId,
+  ) async {
+    HapticFeedback.lightImpact();
+    final learned = await CoupleTasteService.instance.getTasteSummary(
+      stage: _selectedStage,
+      mood: _selectedMood,
+      boldness: _selectedBoldness,
+      spaceId: spaceId,
+    );
+
+    if (!context.mounted) return;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return ClipRRect(
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+            child: Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: isDark
+                    ? const Color(0xFF14171E).withOpacity(0.92)
+                    : Colors.white.withOpacity(0.92),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+                border: Border(
+                  top: BorderSide(
+                    color: isDark ? Colors.white18 : Colors.black12,
+                    width: 1.2,
+                  ),
+                ),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 36,
+                      height: 4,
+                      margin: const EdgeInsets.only(bottom: 16),
+                      decoration: BoxDecoration(
+                        color: isDark ? Colors.white24 : Colors.black12,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: accentColor.withOpacity(0.15),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(Icons.psychology_rounded, size: 22, color: accentColor),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Couple\'s AI Taste Profile',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: isDark ? Colors.white : AppColors.lightInk,
+                              ),
+                            ),
+                            Text(
+                              'Private memory tuned to your unique dynamic ✦',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: isDark ? AppColors.darkSoft : AppColors.lightSoft,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.04),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: isDark ? Colors.white12 : Colors.black12,
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'ACTIVE VIBE MEMORY ($_selectedStage · $_selectedMood · $_selectedBoldness)',
+                          style: TextStyle(
+                            fontSize: 9,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.8,
+                            color: accentColor,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          learned != null && learned.isNotEmpty
+                              ? learned
+                              : 'No specific refinements saved yet for this combination. As you type instructions or pick favorite questions, the AI will adapt directly to your preferred tone.',
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            height: 1.4,
+                            fontStyle: learned != null ? FontStyle.italic : FontStyle.normal,
+                            color: isDark ? Colors.white : AppColors.lightInk,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () async {
+                            Navigator.pop(ctx);
+                            await CoupleTasteService.instance.resetAllProfiles(spaceId: spaceId);
+                            HapticFeedback.mediumImpact();
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('AI memory reset for this couple ✦'),
+                                  duration: Duration(seconds: 2),
+                                  behavior: SnackBarBehavior.floating,
+                                ),
+                              );
+                            }
+                          },
+                          icon: const Icon(Icons.refresh_rounded, size: 16),
+                          label: const Text('Reset AI Memory', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppColors.terra,
+                            side: const BorderSide(color: AppColors.terra),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () => Navigator.pop(ctx),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: accentColor,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          ),
+                          child: const Text('Got it ✦', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final themeProvider = context.watch<ThemeProvider>();
@@ -178,6 +376,7 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
     final stage = context.watch<StageProvider>();
     final partner = auth.partner;
     final partnerNickname = partner?.nickname ?? 'Partner';
+    final spaceId = auth.space?.id ?? auth.user?.spaceId ?? stage.activeSpaceId ?? '';
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -238,6 +437,28 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
                             ),
                           ),
                         ],
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () => _showTasteMemorySheet(context, isDark, accentColor, spaceId),
+                      child: Container(
+                        width: 36,
+                        height: 36,
+                        margin: const EdgeInsets.only(right: 8),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: isDark
+                              ? Colors.white.withOpacity(0.12)
+                              : Colors.black.withOpacity(0.06),
+                          border: Border.all(
+                            color: isDark ? Colors.white12 : Colors.black12,
+                          ),
+                        ),
+                        child: Icon(
+                          Icons.psychology_rounded,
+                          size: 20,
+                          color: accentColor,
+                        ),
                       ),
                     ),
                     GestureDetector(
@@ -588,51 +809,49 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
             ),
           ),
           const SizedBox(height: 6),
-          ValueListenableBuilder<TextEditingValue>(
-            valueListenable: _topicController,
-            builder: (context, val, _) {
-              return TextField(
-                controller: _topicController,
-                minLines: 1,
-                maxLines: 2,
-                style: TextStyle(
-                  fontSize: 12.5,
-                  color: isDark ? Colors.white : AppColors.lightInk,
+          TextField(
+            controller: _topicController,
+            minLines: 1,
+            maxLines: 2,
+            style: TextStyle(
+              fontSize: 12.5,
+              color: isDark ? Colors.white : AppColors.lightInk,
+            ),
+            decoration: InputDecoration(
+              hintText:
+                  'e.g. Ask bold physical chemistry questions, midnight bedroom fantasies...',
+              hintStyle: TextStyle(
+                fontSize: 11.5,
+                color: isDark ? Colors.white38 : Colors.black38,
+              ),
+              filled: true,
+              fillColor: isDark
+                  ? Colors.white.withOpacity(0.08)
+                  : Colors.white.withOpacity(0.70),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              suffixIcon: ValueListenableBuilder<TextEditingValue>(
+                valueListenable: _topicController,
+                builder: (context, val, _) => val.text.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear, size: 16),
+                        onPressed: () => _topicController.clear(),
+                      )
+                    : const SizedBox.shrink(),
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide(
+                  color: isDark ? Colors.white12 : Colors.black12,
                 ),
-                decoration: InputDecoration(
-                  hintText:
-                      'e.g. Ask bold physical chemistry questions, midnight bedroom fantasies...',
-                  hintStyle: TextStyle(
-                    fontSize: 11.5,
-                    color: isDark ? Colors.white38 : Colors.black38,
-                  ),
-                  filled: true,
-                  fillColor: isDark
-                      ? Colors.white.withOpacity(0.08)
-                      : Colors.white.withOpacity(0.70),
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                  suffixIcon: val.text.isNotEmpty
-                      ? IconButton(
-                          icon: const Icon(Icons.clear, size: 16),
-                          onPressed: () => _topicController.clear(),
-                        )
-                      : null,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: BorderSide(
-                      color: isDark ? Colors.white12 : Colors.black12,
-                    ),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: BorderSide(
-                      color: isDark ? Colors.white12 : Colors.black12,
-                    ),
-                  ),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide(
+                  color: isDark ? Colors.white12 : Colors.black12,
                 ),
-              );
-            },
+              ),
+            ),
           ),
           const SizedBox(height: 8),
           SingleChildScrollView(

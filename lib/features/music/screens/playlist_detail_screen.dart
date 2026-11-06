@@ -11,6 +11,7 @@ import '../widgets/glass/glass_card.dart';
 import '../widgets/glass/glass_button.dart';
 import '../widgets/glass/glass_mini_player.dart';
 import '../widgets/glass/glass_sheet.dart';
+import 'add_song_screen.dart';
 
 /// Apple iOS 26 Liquid Glass Playlist Detail View
 class PlaylistDetailScreen extends StatelessWidget {
@@ -88,7 +89,7 @@ class PlaylistDetailScreen extends StatelessWidget {
                       ),
                       const SizedBox(width: 8),
                       GlassButton(
-                        onTap: () => _showAddSongToPlaylistDialog(context, audioProvider, currentPlaylist),
+                        onTap: () => _openAddSongScreen(context, currentPlaylist),
                         width: 40,
                         height: 40,
                         isCircle: true,
@@ -258,7 +259,7 @@ class PlaylistDetailScreen extends StatelessWidget {
                                   ),
                                   const SizedBox(height: 14),
                                   GlassButton(
-                                    onTap: () => _showAddSongToPlaylistDialog(context, audioProvider, currentPlaylist),
+                                    onTap: () => _openAddSongScreen(context, currentPlaylist),
                                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                                     child: const Row(
                                       mainAxisSize: MainAxisSize.min,
@@ -419,6 +420,26 @@ class PlaylistDetailScreen extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  void _openAddSongScreen(BuildContext context, PlaylistItem currentPlaylist) {
+    HapticFeedback.lightImpact();
+    Navigator.of(context).push(
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            AddSongScreen(playlist: currentPlaylist),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return SlideTransition(
+            position: animation.drive(
+              Tween(begin: const Offset(0.0, 1.0), end: Offset.zero)
+                  .chain(CurveTween(curve: Curves.easeOutCubic)),
+            ),
+            child: child,
+          );
+        },
+        transitionDuration: const Duration(milliseconds: 280),
       ),
     );
   }

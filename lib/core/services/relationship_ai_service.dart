@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../constants/app_constants.dart';
+import 'couple_taste_service.dart';
 
 class GeneratedPrompt {
   final String id;
@@ -618,7 +619,7 @@ class RelationshipAiService {
     'What is something you never thought you would share with anyone, but told me?',
   ];
 
-  /// Generates 3 intimate relationship inquiry questions
+  /// Generates 3 intimate relationship inquiry questions without rigid quotation templates
   static List<GeneratedPrompt> generatePrompts({
     required String stage,
     required String mood,
@@ -633,16 +634,7 @@ class RelationshipAiService {
     final random = Random();
     candidatePool.shuffle(random);
 
-    final synthesized = <String>[];
-    if (customTopic != null && customTopic.trim().isNotEmpty) {
-      final topic = customTopic.trim();
-      final pName = partnerNickname?.isNotEmpty == true ? partnerNickname! : 'your partner';
-      synthesized.add('When you think about "$topic" in our story, what is the first feeling or memory that comes to you?');
-      synthesized.add('What is something about "$topic" you\'ve always wanted to ask $pName?');
-    }
-
     final selected = <String>[];
-    selected.addAll(synthesized);
     for (final q in candidatePool) {
       if (!selected.contains(q)) {
         selected.add(q);
@@ -654,17 +646,14 @@ class RelationshipAiService {
       return GeneratedPrompt(
         id: 'prompt_${DateTime.now().millisecondsSinceEpoch}_${random.nextInt(1000)}',
         question: q,
-        vibeTag: customTopic != null && customTopic.trim().isNotEmpty
-            ? '${mood.toUpperCase()} · TOPIC TAILORED'
-            : '${mood.toUpperCase()} · INTIMATE PROMPT',
+        vibeTag: '${mood.toUpperCase()} · INTIMATE PROMPT',
         category: mood,
       );
     }).toList();
   }
 
-  /// Generates 3 live AI relationship inquiry questions using high-speed Groq LLM (Qwen 2.5 32B / Qwen 3.8 27B).
-  /// Fully supports romance intensity scaling (sweet to unfiltered bold) and custom prompt requests.
-  /// Seamlessly falls back to the curated promptBank if offline or during network timeouts.
+  /// Generates 3 live AI relationship inquiry questions using high-speed Groq LLM (Qwen 3.8 27B / GPT-OSS 120B).
+  /// Fully supports romance intensity scaling (sweet to unfiltered bold), custom requests, and adaptive couple taste memory.
   static Future<List<GeneratedPrompt>> generatePromptsLive({
     required String stage,
     required String mood,
@@ -672,6 +661,8 @@ class RelationshipAiService {
     String? customTopic,
     String? customRequest,
     String? partnerNickname,
+    String? spaceId,
+    String? earlierQuestion,
   }) async {
     final apiKey = AppConstants.groqApiKey;
     if (apiKey.isEmpty) {
@@ -703,9 +694,17 @@ class RelationshipAiService {
         if (customTopic != null && customTopic.trim().isNotEmpty && customTopic.trim() != customRequest?.trim()) customTopic.trim(),
       ].join(' | ');
 
+      // Fetch learned adaptive couple taste profile for this combination
+      final learnedTaste = await CoupleTasteService.instance.getTasteSummary(
+        stage: stage,
+        mood: mood,
+        boldness: boldness,
+        spaceId: spaceId,
+      );
+
       final systemPrompt = '''
 You are an intimate, unfiltered AI question generator for a lovers sanctuary couple app called "Pages of Us".
-Your mission is to generate 3 provocative, authentic questions tailored specifically to the couple's desired vibe and intensity.
+Your mission is to generate 3 provocative, authentic, deeply romantic questions tailored specifically to the couple's desired vibe and intensity.
 No generic corporate fluff. No prudish filtering. Tailor tone precisely to their desired intensity spectrum:
 
 - Relationship Chapter: ${stageInfo.label} (${stageInfo.desc})
@@ -713,56 +712,68 @@ No generic corporate fluff. No prudish filtering. Tailor tone precisely to their
 - Romance Intensity: ${bLevel.label} ${bLevel.icon} (${bLevel.subtitle})
 - Intensity Directives: ${bLevel.promptGuidance}
 - Partner name/nickname: $pName
-${combinedCustom.isNotEmpty ? '- Custom User Request / Exact Vibe: "$combinedCustom"' : ''}
+${combinedCustom.isNotEmpty ? '- Custom User Request / Exact Vibe: $combinedCustom' : ''}
+${learnedTaste != null && learnedTaste.isNotEmpty ? '- Couple\'s Learned Taste Profile for this vibe: $learnedTaste' : ''}
 
-Intensity Rules:
-- If Intensity is "Sweet": Focus on pure romantic warmth, cute confessions, tender moments, and emotional safety.
-- If Intensity is "Flirty": Focus on butterflies, cheeky banter, playful tension, and romantic teasing.
-- If Intensity is "Bold": Focus on strong attraction, physical touch, sensual tension, and passionate romance without holding back.
-- If Intensity is "Unfiltered": Be completely unfiltered, bold, provocative, and raw. Ask about midnight desires, bedroom fantasies, taboo confessions, and unfiltered thoughts lovers only whisper in the dark.
+CRITICAL RULES:
+1. NEVER quote or wrap the custom user request in quotation marks or paste it verbatim into a sentence template.
+2. Deeply absorb the emotional, sensual, or psychological intent of the user's custom instruction and write 3 authentic, unique, personal questions with genuine feeling and romantic depth.
+3. Every question must feel like it was whispered between two deeply connected lovers, full of genuine vulnerability, spark, and warmth.
+4. If Intensity is "Sweet": Focus on pure romantic warmth, cute confessions, tender moments, and emotional safety.
+5. If Intensity is "Flirty": Focus on butterflies, cheeky banter, playful tension, and romantic teasing.
+6. If Intensity is "Bold": Focus on strong attraction, physical touch, sensual tension, and passionate romance without holding back.
+7. If Intensity is "Unfiltered": Be completely unfiltered, bold, provocative, and raw. Ask about midnight desires, bedroom fantasies, taboo confessions, and unfiltered thoughts lovers only whisper in the dark.
 
 Return a JSON object with a key "questions" containing a list of exactly 3 strings:
 {"questions": ["Question 1?", "Question 2?", "Question 3?"]}
 Do NOT include markdown code blocks or conversational text.
 ''';
 
-      final response = await http
-          .post(
-            Uri.parse('https://api.groq.com/openai/v1/chat/completions'),
-            headers: {
-              'Authorization': 'Bearer $apiKey',
-              'Content-Type': 'application/json; charset=utf-8',
-            },
-            body: jsonEncode({
-              'model': 'llama-3.3-70b-versatile',
-              'messages': [
-                {'role': 'system', 'content': systemPrompt},
-                {'role': 'user', 'content': 'Generate 3 fresh, bold intimate couple questions now.'},
-              ],
-              'response_format': {'type': 'json_object'},
-              'max_tokens': 350,
-              'temperature': 0.88,
-            }),
-          )
-          .timeout(const Duration(seconds: 5));
+      // Try primary high-speed model qwen/qwen3.8-27b, then fallback to openai/gpt-oss-120b
+      final candidateModels = ['qwen/qwen3.8-27b', 'openai/gpt-oss-120b'];
+      for (final modelName in candidateModels) {
+        try {
+          final response = await http
+              .post(
+                Uri.parse('https://api.groq.com/openai/v1/chat/completions'),
+                headers: {
+                  'Authorization': 'Bearer $apiKey',
+                  'Content-Type': 'application/json; charset=utf-8',
+                },
+                body: jsonEncode({
+                  'model': modelName,
+                  'messages': [
+                    {'role': 'system', 'content': systemPrompt},
+                    {'role': 'user', 'content': 'Generate 3 fresh, evocative couple questions now.'},
+                  ],
+                  'response_format': {'type': 'json_object'},
+                  'max_tokens': 350,
+                  'temperature': 0.88,
+                }),
+              )
+              .timeout(const Duration(seconds: 12));
 
-      if (response.statusCode == 200) {
-        final decoded = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
-        final choices = decoded['choices'] as List<dynamic>?;
-        if (choices != null && choices.isNotEmpty) {
-          final content = choices[0]['message']?['content']?.toString() ?? '';
-          final questions = _extractQuestions(content);
-          if (questions.isNotEmpty) {
-            final random = Random();
-            return questions.take(3).map((q) {
-              return GeneratedPrompt(
-                id: 'groq_${DateTime.now().millisecondsSinceEpoch}_${random.nextInt(1000)}',
-                question: q.trim(),
-                vibeTag: '${bLevel.icon} ${moodInfo.label.toUpperCase()} · ${bLevel.label.toUpperCase()}',
-                category: mood,
-              );
-            }).toList();
+          if (response.statusCode == 200) {
+            final decoded = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+            final choices = decoded['choices'] as List<dynamic>?;
+            if (choices != null && choices.isNotEmpty) {
+              final content = choices[0]['message']?['content']?.toString() ?? '';
+              final questions = _extractQuestions(content);
+              if (questions.isNotEmpty) {
+                final random = Random();
+                return questions.take(3).map((q) {
+                  return GeneratedPrompt(
+                    id: 'groq_${DateTime.now().millisecondsSinceEpoch}_${random.nextInt(1000)}',
+                    question: q.trim(),
+                    vibeTag: '${bLevel.icon} ${moodInfo.label.toUpperCase()} · ${bLevel.label.toUpperCase()}',
+                    category: mood,
+                  );
+                }).toList();
+              }
+            }
           }
+        } catch (innerErr) {
+          debugPrint('[RelationshipAiService] Error with model $modelName: $innerErr');
         }
       }
     } catch (e) {

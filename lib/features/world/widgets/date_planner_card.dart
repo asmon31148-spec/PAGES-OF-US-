@@ -317,11 +317,13 @@ class _DatePlannerCardState extends State<DatePlannerCard> {
             scrollDirection: Axis.horizontal,
             child: Row(
               children: [
-                _buildQuickChip('Coffee this evening ☕', isDark),
+                _buildQuickChip('Cafe around me ☕', isDark),
                 const SizedBox(width: 6),
-                _buildQuickChip('A quiet park 🌿', isDark),
+                _buildQuickChip('Cozy library 📚', isDark),
                 const SizedBox(width: 6),
-                _buildQuickChip('A beach trip 🏖️', isDark),
+                _buildQuickChip('Quiet park near her 🌿', isDark),
+                const SizedBox(width: 6),
+                _buildQuickChip('Halfway date 📍', isDark),
                 const SizedBox(width: 6),
                 _buildQuickChip('Romantic dinner 🍷', isDark),
               ],

@@ -146,8 +146,8 @@ class _SharedLivingThemeBackgroundState extends State<SharedLivingThemeBackgroun
           ),
         ),
 
-        // 2. Foreground Liquid Glass application content
-        widget.child,
+        // 2. Foreground Liquid Glass application content (isolated boundary for 60/120fps performance)
+        RepaintBoundary(child: widget.child),
       ],
     );
   }

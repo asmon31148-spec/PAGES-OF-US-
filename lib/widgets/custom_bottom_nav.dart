@@ -48,14 +48,17 @@ class CustomBottomNav extends StatelessWidget {
         filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
         child: Container(
           decoration: BoxDecoration(
-            color: isDark
-                ? const Color(0xFF101216).withOpacity(0.82)
-                : Colors.white.withOpacity(0.80),
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                palette.gradientColors.first.withOpacity(isDark ? 0.32 : 0.40),
+                (isDark ? const Color(0xFF101216) : Colors.white).withOpacity(isDark ? 0.85 : 0.88),
+              ],
+            ),
             border: Border(
               top: BorderSide(
-                color: isDark
-                    ? Colors.white.withOpacity(0.16)
-                    : Colors.white.withOpacity(0.85),
+                color: palette.specularBorderColor.withOpacity(isDark ? 0.28 : 0.45),
                 width: 1.0,
               ),
             ),
@@ -63,7 +66,7 @@ class CustomBottomNav extends StatelessWidget {
               BoxShadow(
                 color: isDark
                     ? Colors.black.withOpacity(0.35)
-                    : const Color(0xFF8C7355).withOpacity(0.10),
+                    : palette.accentColor.withOpacity(0.08),
                 blurRadius: 18,
                 offset: const Offset(0, -4),
               ),

@@ -44,4 +44,5 @@ const List<MoodAura> moodAuraOptions = [
   MoodAura(id: 'thoughtful', emoji: '💭', label: 'Thoughtful', glowColor: Color(0xFF93C5FD)),
   MoodAura(id: 'playful', emoji: '✨', label: 'Playful', glowColor: Color(0xFFFBBF24)),
   MoodAura(id: 'longing', emoji: '🕊️', label: 'Longing', glowColor: Color(0xFFA78BFA)),
+  MoodAura(id: 'stressed', emoji: '🌧️', label: 'Stressed', glowColor: Color(0xFF818CF8)),
 ];
