@@ -274,7 +274,7 @@ class DatePlannerService {
         places: rankedPlaces,
         fairTravelNote: fairTravelNote,
         googleMapsSearchUrl: gMapsSearchUrl,
-        isGooglePlacesVerified: isGoogleVerified,
+        isGooglePlacesVerified: false,
       );
 
       _cache[cacheKey] = result;
