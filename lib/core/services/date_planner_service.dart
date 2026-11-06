@@ -173,29 +173,15 @@ class DatePlannerService {
       final gMapsSearchUrl =
           'https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent('$searchTerm near $anchorCity')}';
 
-      // Step 2: Try Google Places API (New) for 100% verified Google Maps places
-      bool isGoogleVerified = false;
-      List<Map<String, dynamic>> rawPlaces = await _fetchPlacesGooglePlaces(
+      // Step 2: Fetch 100% REAL verified places from OpenStreetMap (No billing/credit card required)
+      final rawPlaces = await _fetchRealPlacesOSM(
         lat: anchorLat,
         lng: anchorLng,
         category: category,
         searchTerm: searchTerm,
+        cityName: anchorCity,
         radiusMeters: radiusMeters,
       );
-
-      if (rawPlaces.isNotEmpty) {
-        isGoogleVerified = true;
-      } else {
-        // Step 3: Fallback to real OpenStreetMap Overpass (with expanding radius up to 35km)
-        rawPlaces = await _fetchRealPlacesOSM(
-          lat: anchorLat,
-          lng: anchorLng,
-          category: category,
-          searchTerm: searchTerm,
-          cityName: anchorCity,
-          radiusMeters: radiusMeters,
-        );
-      }
 
       // CRITICAL: Under NO circumstance do we synthesize or invent places with AI.
       // If no verified places exist in local radius, return empty with live Google Maps search link.
@@ -427,108 +413,7 @@ Output JSON only.
     };
   }
 
-  /// 1. Google Places API (New) verified places
-  Future<List<Map<String, dynamic>>> _fetchPlacesGooglePlaces({
-    required double lat,
-    required double lng,
-    required String category,
-    required String searchTerm,
-    required int radiusMeters,
-  }) async {
-    final apiKey = AppConstants.firebaseApiKey;
-    if (apiKey.isEmpty || lat == 0.0 || lng == 0.0) return [];
 
-    try {
-      List<String> includedTypes = ['cafe', 'coffee_shop'];
-      final catLower = category.toLowerCase();
-      if (catLower.contains('park') || catLower.contains('garden')) {
-        includedTypes = ['park', 'garden', 'national_park'];
-      } else if (catLower.contains('restaurant') ||
-          catLower.contains('dinner') ||
-          catLower.contains('food')) {
-        includedTypes = ['restaurant', 'fine_dining_restaurant', 'indian_restaurant'];
-      } else if (catLower.contains('library') || catLower.contains('book')) {
-        includedTypes = ['library', 'book_store'];
-      } else if (catLower.contains('movie') || catLower.contains('cinema')) {
-        includedTypes = ['movie_theater'];
-      }
-
-      final url = Uri.parse('https://places.googleapis.com/v1/places:searchNearby');
-      final res = await http.post(
-        url,
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Goog-Api-Key': apiKey,
-          'X-Goog-FieldMask':
-              'places.id,places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.priceLevel,places.currentOpeningHours,places.googleMapsUri',
-        },
-        body: jsonEncode({
-          'includedTypes': includedTypes,
-          'maxResultCount': 8,
-          'locationRestriction': {
-            'circle': {
-              'center': {
-                'latitude': lat,
-                'longitude': lng,
-              },
-              'radius': math.min(50000.0, radiusMeters.toDouble().clamp(3000.0, 50000.0)),
-            },
-          },
-        }),
-      ).timeout(const Duration(seconds: 5));
-
-      if (res.statusCode == 200) {
-        final data = jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
-        final rawPlaces = data['places'] as List?;
-        if (rawPlaces != null && rawPlaces.isNotEmpty) {
-          final results = <Map<String, dynamic>>[];
-          for (final item in rawPlaces) {
-            final m = item as Map<String, dynamic>;
-            final loc = m['location'] as Map<String, dynamic>?;
-            final pLat = (loc?['latitude'] as num?)?.toDouble();
-            final pLng = (loc?['longitude'] as num?)?.toDouble();
-            final name = m['displayName']?['text']?.toString();
-            if (pLat == null || pLng == null || name == null || name.isEmpty) continue;
-
-            final address = m['formattedAddress']?.toString() ?? '';
-            final rating = (m['rating'] as num?)?.toDouble();
-            final userRatingCount = (m['userRatingCount'] as num?)?.toInt();
-            final priceLevelRaw = m['priceLevel']?.toString() ?? '';
-            String priceLevel = 'Moderate';
-            if (priceLevelRaw.contains('FREE') || priceLevelRaw.contains('INEXPENSIVE')) {
-              priceLevel = 'Budget-friendly';
-            } else if (priceLevelRaw.contains('EXPENSIVE') || priceLevelRaw.contains('VERY_EXPENSIVE')) {
-              priceLevel = 'Fine Dining';
-            }
-
-            final isOpen = m['currentOpeningHours']?['openNow'] as bool? ?? true;
-            final googleUri = m['googleMapsUri']?.toString() ??
-                'https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent('$name $address')}';
-
-            results.add({
-              'id': m['id']?.toString() ?? 'g_${pLat}_$pLng',
-              'name': name,
-              'type': category.toUpperCase(),
-              'lat': pLat,
-              'lng': pLng,
-              'rating': rating,
-              'reviews': userRatingCount,
-              'price_level': priceLevel,
-              'address': address,
-              'is_open': isOpen,
-              'google_maps_url': googleUri,
-              'is_google_verified': true,
-            });
-          }
-          if (results.isNotEmpty) return results;
-        }
-      }
-    } catch (e) {
-      debugPrint('[DatePlannerService] Google Places API note: $e');
-    }
-
-    return [];
-  }
 
   /// 2. Real place lookup using OpenStreetMap Overpass (with expanding radius up to 35km)
   Future<List<Map<String, dynamic>>> _fetchRealPlacesOSM({
