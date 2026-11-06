@@ -173,7 +173,7 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
   Widget build(BuildContext context) {
     final themeProvider = context.watch<ThemeProvider>();
     final isDark = themeProvider.isDark;
-    final palette = themeProvider.currentPalette;
+    final accentColor = themeProvider.currentPalette.accentColor;
     final auth = context.watch<AuthProvider>();
     final stage = context.watch<StageProvider>();
     final partner = auth.partner;
@@ -206,7 +206,7 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
                                   fontSize: 10,
                                   fontWeight: FontWeight.bold,
                                   letterSpacing: 1,
-                                  color: palette.accentColor,
+                                  color: accentColor,
                                 ),
                               ),
                               const SizedBox(width: 6),
@@ -214,7 +214,7 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 6, vertical: 2),
                                 decoration: BoxDecoration(
-                                  color: palette.accentColor.withOpacity(0.14),
+                                  color: accentColor.withOpacity(0.14),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: Text(
@@ -222,7 +222,7 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
                                   style: TextStyle(
                                     fontSize: 9,
                                     fontWeight: FontWeight.bold,
-                                    color: palette.accentColor,
+                                    color: accentColor,
                                   ),
                                 ),
                               ),
@@ -285,11 +285,11 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
                   tabAlignment: TabAlignment.start,
                   indicatorSize: TabBarIndicatorSize.tab,
                   indicator: BoxDecoration(
-                    color: palette.accentColor,
+                    color: accentColor,
                     borderRadius: BorderRadius.circular(12),
                     boxShadow: [
                       BoxShadow(
-                        color: palette.accentColor.withOpacity(0.35),
+                        color: accentColor.withOpacity(0.35),
                         blurRadius: 8,
                         offset: const Offset(0, 2),
                       ),
@@ -317,11 +317,11 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
                 child: TabBarView(
                   controller: _tabController,
                   children: [
-                    _buildAiGeneratorTab(isDark, palette, partnerNickname),
-                    _buildCustomQuestionTab(isDark, palette),
-                    _buildCuratedDeckTab(isDark, palette),
+                    _buildAiGeneratorTab(isDark, accentColor, partnerNickname),
+                    _buildCustomQuestionTab(isDark, accentColor),
+                    _buildCuratedDeckTab(isDark, accentColor),
                     _buildHistoryTab(
-                        isDark, palette, stage.promptHistory, partnerNickname),
+                        isDark, accentColor, stage.promptHistory, partnerNickname),
                   ],
                 ),
               ),
@@ -336,7 +336,7 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
   // TAB 1: AI GENERATOR
   // -------------------------------------------------------------
   Widget _buildAiGeneratorTab(
-      bool isDark, PaletteTokens palette, String partnerNickname) {
+      bool isDark, Color accentColor, String partnerNickname) {
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
@@ -350,7 +350,7 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
               fontSize: 10,
               fontWeight: FontWeight.bold,
               letterSpacing: 0.8,
-              color: palette.accentColor,
+              color: accentColor,
             ),
           ),
           const SizedBox(height: 8),
@@ -370,13 +370,13 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
                       const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   decoration: BoxDecoration(
                     color: isSelected
-                        ? palette.accentColor.withOpacity(0.20)
+                        ? accentColor.withOpacity(0.20)
                         : (isDark
                             ? Colors.white.withOpacity(0.06)
                             : Colors.white.withOpacity(0.60)),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: isSelected ? palette.accentColor : (isDark ? Colors.white12 : Colors.black12),
+                      color: isSelected ? accentColor : (isDark ? Colors.white12 : Colors.black12),
                       width: 1.5,
                     ),
                   ),
@@ -392,7 +392,7 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
                           fontWeight:
                               isSelected ? FontWeight.bold : FontWeight.w500,
                           color: isSelected
-                              ? palette.accentColor
+                              ? accentColor
                               : (isDark ? Colors.white70 : Colors.black87),
                         ),
                       ),
@@ -413,7 +413,7 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
                   fontSize: 10,
                   fontWeight: FontWeight.bold,
                   letterSpacing: 0.8,
-                  color: palette.accentColor,
+                  color: accentColor,
                 ),
               ),
               const Spacer(),
@@ -445,13 +445,13 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
                         const EdgeInsets.symmetric(vertical: 8, horizontal: 2),
                     decoration: BoxDecoration(
                       color: isSelected
-                          ? palette.accentColor.withOpacity(0.20)
+                          ? accentColor.withOpacity(0.20)
                           : (isDark
                               ? Colors.white.withOpacity(0.06)
                               : Colors.white.withOpacity(0.60)),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: isSelected ? palette.accentColor : (isDark ? Colors.white12 : Colors.black12),
+                        color: isSelected ? accentColor : (isDark ? Colors.white12 : Colors.black12),
                         width: 1.5,
                       ),
                     ),
@@ -468,7 +468,7 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
                             fontWeight:
                                 isSelected ? FontWeight.bold : FontWeight.w600,
                             color: isSelected
-                                ? palette.accentColor
+                                ? accentColor
                                 : (isDark ? Colors.white70 : Colors.black87),
                           ),
                         ),
@@ -502,7 +502,7 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
               fontSize: 10,
               fontWeight: FontWeight.bold,
               letterSpacing: 0.8,
-              color: palette.accentColor,
+              color: accentColor,
             ),
           ),
           const SizedBox(height: 8),
@@ -522,13 +522,13 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
                       const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   decoration: BoxDecoration(
                     color: isSelected
-                        ? palette.accentColor.withOpacity(0.20)
+                        ? accentColor.withOpacity(0.20)
                         : (isDark
                             ? Colors.white.withOpacity(0.06)
                             : Colors.white.withOpacity(0.60)),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: isSelected ? palette.accentColor : (isDark ? Colors.white12 : Colors.black12),
+                      color: isSelected ? accentColor : (isDark ? Colors.white12 : Colors.black12),
                       width: 1.5,
                     ),
                   ),
@@ -544,7 +544,7 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
                           fontWeight:
                               isSelected ? FontWeight.bold : FontWeight.w500,
                           color: isSelected
-                              ? palette.accentColor
+                              ? accentColor
                               : (isDark ? Colors.white70 : Colors.black87),
                         ),
                       ),
@@ -565,7 +565,7 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
                   fontSize: 10,
                   fontWeight: FontWeight.bold,
                   letterSpacing: 0.8,
-                  color: palette.accentColor,
+                  color: accentColor,
                 ),
               ),
               const SizedBox(width: 4),
@@ -640,17 +640,17 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
             physics: const BouncingScrollPhysics(),
             child: Row(
               children: [
-                _buildPromptIdeaChip('🍯 Sweet confessions', isDark, palette),
+                _buildPromptIdeaChip('🍯 Sweet confessions', isDark, accentColor),
                 const SizedBox(width: 6),
-                _buildPromptIdeaChip('💋 Flirty tension', isDark, palette),
+                _buildPromptIdeaChip('💋 Flirty tension', isDark, accentColor),
                 const SizedBox(width: 6),
-                _buildPromptIdeaChip('🔥 Physical chemistry', isDark, palette),
+                _buildPromptIdeaChip('🔥 Physical chemistry', isDark, accentColor),
                 const SizedBox(width: 6),
-                _buildPromptIdeaChip('😈 Wild midnight fantasies', isDark, palette),
+                _buildPromptIdeaChip('😈 Wild midnight fantasies', isDark, accentColor),
                 const SizedBox(width: 6),
-                _buildPromptIdeaChip('🗝️ Deepest secrets', isDark, palette),
+                _buildPromptIdeaChip('🗝️ Deepest secrets', isDark, accentColor),
                 const SizedBox(width: 6),
-                _buildPromptIdeaChip('✈️ Future adventures', isDark, palette),
+                _buildPromptIdeaChip('✈️ Future adventures', isDark, accentColor),
               ],
             ),
           ),
@@ -679,7 +679,7 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
                     const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
               ),
               style: ElevatedButton.styleFrom(
-                backgroundColor: palette.accentColor,
+                backgroundColor: accentColor,
                 foregroundColor: Colors.white,
                 elevation: 0,
                 padding: const EdgeInsets.symmetric(vertical: 12),
@@ -698,7 +698,7 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
                 fontSize: 10,
                 fontWeight: FontWeight.bold,
                 letterSpacing: 0.8,
-                color: palette.accentColor,
+                color: accentColor,
               ),
             ),
             const SizedBox(height: 10),
@@ -726,7 +726,7 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
                           style: TextStyle(
                             fontSize: 9,
                             fontWeight: FontWeight.bold,
-                            color: palette.accentColor,
+                            color: accentColor,
                           ),
                         ),
                         ElevatedButton(
@@ -739,7 +739,7 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
                                     category: gen.category,
                                   ),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: palette.accentColor,
+                            backgroundColor: accentColor,
                             foregroundColor: Colors.white,
                             elevation: 0,
                             padding: const EdgeInsets.symmetric(
@@ -778,7 +778,7 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
   // -------------------------------------------------------------
   // TAB 2: CUSTOM QUESTION
   // -------------------------------------------------------------
-  Widget _buildCustomQuestionTab(bool isDark, PaletteTokens palette) {
+  Widget _buildCustomQuestionTab(bool isDark, Color accentColor) {
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
@@ -791,7 +791,7 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
               fontSize: 10,
               fontWeight: FontWeight.bold,
               letterSpacing: 0.8,
-              color: palette.accentColor,
+              color: accentColor,
             ),
           ),
           const SizedBox(height: 8),
@@ -837,7 +837,7 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
               fontSize: 10,
               fontWeight: FontWeight.bold,
               letterSpacing: 0.8,
-              color: palette.accentColor,
+              color: accentColor,
             ),
           ),
           const SizedBox(height: 6),
@@ -862,14 +862,14 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
                       const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                   decoration: BoxDecoration(
                     color: isSelected
-                        ? palette.accentColor.withOpacity(0.20)
+                        ? accentColor.withOpacity(0.20)
                         : (isDark
                             ? Colors.white.withOpacity(0.06)
                             : Colors.white.withOpacity(0.60)),
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(
                       color: isSelected
-                          ? palette.accentColor
+                          ? accentColor
                           : (isDark ? Colors.white12 : Colors.black12),
                     ),
                   ),
@@ -880,7 +880,7 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
                       fontWeight:
                           isSelected ? FontWeight.bold : FontWeight.w500,
                       color: isSelected
-                          ? palette.accentColor
+                          ? accentColor
                           : (isDark ? Colors.white70 : Colors.black87),
                     ),
                   ),
@@ -907,7 +907,7 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
                           )
                       : null,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: palette.accentColor,
+                    backgroundColor: accentColor,
                     foregroundColor: Colors.white,
                     disabledBackgroundColor: isDark ? Colors.white12 : Colors.black12,
                     disabledForegroundColor: isDark ? Colors.white38 : Colors.black38,
@@ -933,7 +933,7 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
               fontSize: 10,
               fontWeight: FontWeight.bold,
               letterSpacing: 0.8,
-              color: palette.accentColor,
+              color: accentColor,
             ),
           ),
           const SizedBox(height: 8),
@@ -968,7 +968,7 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
                       ),
                     ),
                     Icon(Icons.arrow_forward_ios_rounded,
-                        size: 12, color: palette.accentColor),
+                        size: 12, color: accentColor),
                   ],
                 ),
               ),
@@ -982,7 +982,7 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
   // -------------------------------------------------------------
   // TAB 3: CURATED DECK
   // -------------------------------------------------------------
-  Widget _buildCuratedDeckTab(bool isDark, PaletteTokens palette) {
+  Widget _buildCuratedDeckTab(bool isDark, Color accentColor) {
     final filtered = _deckCategoryFilter == 'all'
         ? RelationshipAiService.curatedDeck
         : RelationshipAiService.curatedDeck
@@ -999,13 +999,13 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
             physics: const BouncingScrollPhysics(),
             child: Row(
               children: [
-                _buildDeckFilterChip('all', 'All Prompts', isDark, palette),
+                _buildDeckFilterChip('all', 'All Prompts', isDark, accentColor),
                 const SizedBox(width: 6),
                 ...RelationshipAiService.moods.map((m) {
                   return Padding(
                     padding: const EdgeInsets.only(right: 6),
                     child: _buildDeckFilterChip(
-                        m.id, '${m.icon} ${m.label}', isDark, palette),
+                        m.id, '${m.icon} ${m.label}', isDark, accentColor),
                   );
                 }),
               ],
@@ -1044,7 +1044,7 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
                             style: TextStyle(
                               fontSize: 9,
                               fontWeight: FontWeight.bold,
-                              color: palette.accentColor,
+                              color: accentColor,
                             ),
                           ),
                           const SizedBox(height: 4),
@@ -1071,7 +1071,7 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
                                 category: item['category']!,
                               ),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: palette.accentColor,
+                        backgroundColor: accentColor,
                         foregroundColor: Colors.white,
                         elevation: 0,
                         padding: const EdgeInsets.symmetric(
@@ -1096,7 +1096,7 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
   }
 
   Widget _buildPromptIdeaChip(
-      String idea, bool isDark, PaletteTokens palette) {
+      String idea, bool isDark, Color accentColor) {
     return GestureDetector(
       onTap: () {
         HapticFeedback.selectionClick();
@@ -1126,7 +1126,7 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
   }
 
   Widget _buildDeckFilterChip(
-      String id, String label, bool isDark, PaletteTokens palette) {
+      String id, String label, bool isDark, Color accentColor) {
     final isSelected = _deckCategoryFilter == id;
     return GestureDetector(
       onTap: () {
@@ -1137,13 +1137,13 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(
           color: isSelected
-              ? palette.accentColor
+              ? accentColor
               : (isDark
                   ? Colors.white.withOpacity(0.07)
                   : Colors.white.withOpacity(0.60)),
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
-            color: isSelected ? palette.accentColor : Colors.transparent,
+            color: isSelected ? accentColor : Colors.transparent,
           ),
         ),
         child: Text(
@@ -1165,7 +1165,7 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
   // -------------------------------------------------------------
   Widget _buildHistoryTab(
     bool isDark,
-    PaletteTokens palette,
+    Color accentColor,
     List<PromptHistoryItem> history,
     String partnerNickname,
   ) {
@@ -1181,7 +1181,7 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
                 height: 64,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: palette.accentColor.withOpacity(0.14),
+                  color: accentColor.withOpacity(0.14),
                 ),
                 alignment: Alignment.center,
                 child: const Text('📜', style: TextStyle(fontSize: 28)),
@@ -1238,7 +1238,7 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
                     style: TextStyle(
                       fontSize: 9,
                       fontWeight: FontWeight.bold,
-                      color: palette.accentColor,
+                      color: accentColor,
                       letterSpacing: 0.5,
                     ),
                   ),
