@@ -4,6 +4,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/liquid_glass/liquid_glass_background.dart';
 import '../../../providers/theme_provider.dart';
 import '../../../providers/auth_provider.dart';
+import '../../../core/services/update_service.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
@@ -21,6 +22,18 @@ class _AuthScreenState extends State<AuthScreen> {
   bool _isGoogleLoading = false;
   bool _obscurePassword = true;
   String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Future.delayed(const Duration(milliseconds: 1500), () {
+        if (mounted) {
+          UpdateService.checkAndPrompt(context);
+        }
+      });
+    });
+  }
 
   @override
   void dispose() {
