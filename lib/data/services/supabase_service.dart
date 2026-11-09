@@ -1,4 +1,6 @@
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import '../../core/constants/app_constants.dart';
 
 class SupabaseService {
@@ -17,6 +19,74 @@ class SupabaseService {
   }
 
   static SupabaseClient? get client => _client;
+
+  // --- Supabase Authentication API ---
+
+  static Stream<AuthState> get authStateChanges =>
+      Supabase.instance.client.auth.onAuthStateChange;
+
+  static User? get currentAuthUser =>
+      Supabase.instance.client.auth.currentUser;
+
+  static Future<AuthResponse> signInWithEmail(String email, String password) async {
+    return await Supabase.instance.client.auth.signInWithPassword(
+      email: email.trim(),
+      password: password,
+    );
+  }
+
+  static Future<AuthResponse> registerWithEmail(
+    String email,
+    String password,
+    String nickname,
+  ) async {
+    return await Supabase.instance.client.auth.signUp(
+      email: email.trim(),
+      password: password,
+      data: {'nickname': nickname.trim()},
+    );
+  }
+
+  static Future<void> sendPasswordReset(String email) async {
+    await Supabase.instance.client.auth.resetPasswordForEmail(email.trim());
+  }
+
+  static Future<void> signOut() async {
+    await Supabase.instance.client.auth.signOut();
+  }
+
+  static final GoogleSignIn _googleSignIn = GoogleSignIn(
+    scopes: ['email', 'profile'],
+  );
+
+  static Future<AuthResponse?> signInWithGoogle() async {
+    try {
+      try {
+        await _googleSignIn.signOut();
+      } catch (_) {}
+
+      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+      if (googleUser == null) return null;
+
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      final idToken = googleAuth.idToken;
+      final accessToken = googleAuth.accessToken;
+
+      if (idToken == null) {
+        throw const AuthException('No Google ID token returned from Google Play Services.');
+      }
+
+      final res = await Supabase.instance.client.auth.signInWithIdToken(
+        provider: OAuthProvider.google,
+        idToken: idToken,
+        accessToken: accessToken,
+      );
+      return res;
+    } catch (e) {
+      debugPrint('[SupabaseService] signInWithGoogle error: $e');
+      rethrow;
+    }
+  }
 
   // Realtime Broadcast Channel
   static RealtimeChannel? _channel;

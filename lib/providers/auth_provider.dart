@@ -1,9 +1,11 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../data/models/user_profile.dart';
 import '../data/models/space_model.dart';
 import '../data/services/firebase_service.dart';
+import '../data/services/supabase_service.dart';
 import '../core/services/local_cache_service.dart';
 import '../core/services/notification_service.dart';
 
@@ -29,7 +31,7 @@ class AuthProvider extends ChangeNotifier {
   bool _isCreatingSpace = false;
   String? _errorMessage;
 
-  StreamSubscription<User?>? _authSub;
+  StreamSubscription? _authSub;
   StreamSubscription? _spaceSub;
   StreamSubscription? _partnerSub;
   StreamSubscription? _userSub;
@@ -85,8 +87,9 @@ class AuthProvider extends ChangeNotifier {
   }
 
   void _initAuthListener() {
-    _authSub = FirebaseService.authStateChanges.listen((firebaseUser) async {
-      if (firebaseUser == null) {
+    _authSub = SupabaseService.authStateChanges.listen((data) async {
+      final supaUser = data.session?.user ?? SupabaseService.currentAuthUser;
+      if (supaUser == null) {
         _spaceSub?.cancel();
         _partnerSub?.cancel();
         _userSub?.cancel();
@@ -100,7 +103,16 @@ class AuthProvider extends ChangeNotifier {
         await LocalCacheService.clearAll();
         notifyListeners();
       } else {
-        await refreshUserData(firebaseUser.uid);
+        // Ensure background Firebase anonymous session for Firestore & RTDB synchronization
+        try {
+          if (FirebaseAuth.instance.currentUser == null) {
+            await FirebaseAuth.instance.signInAnonymously();
+          }
+        } catch (e) {
+          debugPrint('Firebase background bridge note: $e');
+        }
+
+        await refreshUserData(supaUser.id);
       }
     });
   }
@@ -191,6 +203,26 @@ class AuthProvider extends ChangeNotifier {
     try {
       NotificationService.syncDeviceToken(uid);
       var profile = await FirebaseService.getUserProfile(uid);
+
+      // Auto-provision profile from Supabase user session if not created yet
+      if (profile == null) {
+        final supaUser = SupabaseService.currentAuthUser;
+        final email = supaUser?.email ?? '';
+        final metadata = supaUser?.userMetadata ?? {};
+        final nickname = metadata['nickname']?.toString() ??
+            (email.isNotEmpty ? email.split('@').first : 'Partner');
+        final newProfile = UserProfile(
+          id: uid,
+          email: email,
+          nickname: nickname,
+          createdAt: DateTime.now().toIso8601String(),
+        );
+        try {
+          await FirebaseService.saveUserProfile(newProfile);
+        } catch (_) {}
+        profile = newProfile;
+      }
+
       if (profile != null) {
         // Automatically ensure the user has a permanent sanctuary space & invite code
         SpaceModel? spaceData;
@@ -233,23 +265,28 @@ class AuthProvider extends ChangeNotifier {
     _errorMessage = null;
     notifyListeners();
     try {
-      final cred = await FirebaseService.signInWithEmail(email, password);
-      if (cred.user != null) {
-        await refreshUserData(cred.user!.uid);
+      final res = await SupabaseService.signInWithEmail(email, password);
+      final user = res.user;
+      if (user != null) {
+        try {
+          if (FirebaseAuth.instance.currentUser == null) {
+            await FirebaseAuth.instance.signInAnonymously();
+          }
+        } catch (_) {}
+        await refreshUserData(user.id);
       }
       _isLoading = false;
       notifyListeners();
       return true;
     } catch (e) {
-      if (e is FirebaseAuthException) {
-        if (e.code == 'invalid-credential' || e.code == 'user-not-found' || e.code == 'wrong-password') {
-          _errorMessage = 'Incorrect email or password.\n• If you signed up with Google, tap "Continue with Google" below.\n• Or tap "Forgot Password?" below to reset.';
-        } else if (e.code == 'too-many-requests') {
-          _errorMessage = 'Too many failed attempts. Please wait a minute or reset your password.';
-        } else if (e.code == 'network-request-failed') {
-          _errorMessage = 'Network error. Please check your internet connection.';
+      if (e is AuthException) {
+        final msg = e.message.toLowerCase();
+        if (msg.contains('invalid login credentials') || msg.contains('invalid credential')) {
+          _errorMessage = 'Incorrect email or password.\n• Note: If your email is asmon31148@gmail.com, please check spelling.\n• Or tap "Forgot Password?" below to reset.';
+        } else if (msg.contains('email not confirmed')) {
+          _errorMessage = 'Email address not confirmed yet. Please check your inbox for the confirmation email.';
         } else {
-          _errorMessage = e.message ?? e.toString();
+          _errorMessage = e.message;
         }
       } else {
         _errorMessage = e.toString().replaceFirst('Exception: ', '');
@@ -262,15 +299,11 @@ class AuthProvider extends ChangeNotifier {
 
   Future<bool> sendPasswordReset(String email) async {
     try {
-      await FirebaseService.sendPasswordResetEmail(email);
+      await SupabaseService.sendPasswordReset(email);
       return true;
     } catch (e) {
-      if (e is FirebaseAuthException) {
-        if (e.code == 'user-not-found') {
-          _errorMessage = 'No account found with this email. Please verify or tap "Create Space".';
-        } else {
-          _errorMessage = e.message ?? e.toString();
-        }
+      if (e is AuthException) {
+        _errorMessage = e.message;
       } else {
         _errorMessage = e.toString().replaceFirst('Exception: ', '');
       }
@@ -284,15 +317,30 @@ class AuthProvider extends ChangeNotifier {
     _errorMessage = null;
     notifyListeners();
     try {
-      final cred = await FirebaseService.registerWithEmail(email, password, nickname);
-      if (cred.user != null) {
-        await refreshUserData(cred.user!.uid);
+      final res = await SupabaseService.registerWithEmail(email, password, nickname);
+      final user = res.user;
+      if (user != null) {
+        try {
+          if (FirebaseAuth.instance.currentUser == null) {
+            await FirebaseAuth.instance.signInAnonymously();
+          }
+        } catch (_) {}
+        await refreshUserData(user.id);
       }
       _isLoading = false;
       notifyListeners();
       return true;
     } catch (e) {
-      _errorMessage = e.toString();
+      if (e is AuthException) {
+        final msg = e.message.toLowerCase();
+        if (msg.contains('user already registered')) {
+          _errorMessage = 'An account with this email already exists. Please tap "Sign In" instead.';
+        } else {
+          _errorMessage = e.message;
+        }
+      } else {
+        _errorMessage = e.toString().replaceFirst('Exception: ', '');
+      }
       _isLoading = false;
       notifyListeners();
       return false;
@@ -304,21 +352,30 @@ class AuthProvider extends ChangeNotifier {
     _errorMessage = null;
     notifyListeners();
     try {
-      final cred = await FirebaseService.signInWithGoogle();
-      if (cred == null) {
+      final res = await SupabaseService.signInWithGoogle();
+      if (res == null) {
         // User cancelled account picker
         _isLoading = false;
         notifyListeners();
         return false;
       }
-      if (cred.user != null) {
-        await refreshUserData(cred.user!.uid);
+      if (res.user != null) {
+        try {
+          if (FirebaseAuth.instance.currentUser == null) {
+            await FirebaseAuth.instance.signInAnonymously();
+          }
+        } catch (_) {}
+        await refreshUserData(res.user!.id);
       }
       _isLoading = false;
       notifyListeners();
       return true;
     } catch (e) {
-      _errorMessage = e.toString().replaceFirst('Exception: ', '');
+      if (e is AuthException) {
+        _errorMessage = e.message;
+      } else {
+        _errorMessage = e.toString().replaceFirst('Exception: ', '');
+      }
       _isLoading = false;
       notifyListeners();
       return false;
@@ -464,7 +521,12 @@ class AuthProvider extends ChangeNotifier {
     _partner = null;
     await runSignOutHooks();
     await LocalCacheService.clearAll();
-    await FirebaseService.signOut();
+    try {
+      await SupabaseService.signOut();
+    } catch (_) {}
+    try {
+      await FirebaseService.signOut();
+    } catch (_) {}
     notifyListeners();
   }
 
