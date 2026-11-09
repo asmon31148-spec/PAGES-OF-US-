@@ -141,6 +141,56 @@ class WatchMessage {
       };
 }
 
+class WatchVideoSource {
+  final String type; // 'local', 'youtube', 'web_url'
+  final String title;
+  final String? youtubeId;
+  final String? webUrl;
+  final String? thumbnailUrl;
+  final int durationMs;
+  final String selectedBy;
+
+  const WatchVideoSource({
+    required this.type,
+    required this.title,
+    this.youtubeId,
+    this.webUrl,
+    this.thumbnailUrl,
+    this.durationMs = 0,
+    this.selectedBy = '',
+  });
+
+  factory WatchVideoSource.fromMap(Map<dynamic, dynamic>? map) {
+    if (map == null) {
+      return const WatchVideoSource(type: 'local', title: '');
+    }
+    return WatchVideoSource(
+      type: map['type']?.toString() ?? 'local',
+      title: map['title']?.toString() ?? '',
+      youtubeId: map['youtubeId']?.toString(),
+      webUrl: map['webUrl']?.toString(),
+      thumbnailUrl: map['thumbnailUrl']?.toString(),
+      durationMs: (map['durationMs'] as num?)?.toInt() ?? 0,
+      selectedBy: map['selectedBy']?.toString() ?? '',
+    );
+  }
+
+  Map<String, dynamic> toMap() => {
+        'type': type,
+        'title': title,
+        if (youtubeId != null) 'youtubeId': youtubeId,
+        if (webUrl != null) 'webUrl': webUrl,
+        if (thumbnailUrl != null) 'thumbnailUrl': thumbnailUrl,
+        'durationMs': durationMs,
+        'selectedBy': selectedBy,
+      };
+
+  bool get isOnline => type == 'youtube' || type == 'web_url';
+  bool get isYouTube => type == 'youtube';
+  bool get isWebUrl => type == 'web_url';
+  bool get isLocal => type == 'local';
+}
+
 class WatchRoom {
   final String roomCode;
   final String hostUid;
@@ -149,6 +199,7 @@ class WatchRoom {
   final Map<String, WatchMember> members;
   final WatchPlayback playback;
   final List<WatchMessage> chat;
+  final WatchVideoSource? videoSource;
 
   WatchRoom({
     required this.roomCode,
@@ -158,6 +209,7 @@ class WatchRoom {
     this.members = const {},
     this.playback = const WatchPlayback(),
     this.chat = const [],
+    this.videoSource,
   });
 
   factory WatchRoom.fromMap(String roomCode, Map<dynamic, dynamic> map) {
@@ -181,6 +233,8 @@ class WatchRoom {
       chatList.sort((a, b) => a.sentAt.compareTo(b.sentAt));
     }
 
+    final videoSourceData = map['videoSource'] is Map ? map['videoSource'] as Map : null;
+
     return WatchRoom(
       roomCode: roomCode,
       hostUid: map['hostUid']?.toString() ?? '',
@@ -189,6 +243,7 @@ class WatchRoom {
       members: membersMap,
       playback: WatchPlayback.fromMap(map['playback'] is Map ? map['playback'] : null),
       chat: chatList,
+      videoSource: videoSourceData != null ? WatchVideoSource.fromMap(videoSourceData) : null,
     );
   }
 }

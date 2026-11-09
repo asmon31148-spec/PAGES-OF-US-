@@ -209,6 +209,14 @@ class WatchTogetherService {
     });
   }
 
+  /// Screen 2: Update room's shared video source (YouTube or Web URL or Local)
+  Future<void> updateRoomVideoSource({
+    required String roomCode,
+    required WatchVideoSource videoSource,
+  }) async {
+    await _rtdb.ref('watchRooms/$roomCode/videoSource').set(videoSource.toMap());
+  }
+
   /// Screen 2: Update member's local movie file details
   Future<void> updateMemberFile({
     required String roomCode,
@@ -247,6 +255,9 @@ class WatchTogetherService {
       'updatedAt': ServerValue.timestamp,
       'updatedBy': uid,
     });
+    try {
+      await _rtdb.ref('watchRooms/$roomCode/videoSource').remove();
+    } catch (_) {}
   }
 
   /// Update online state

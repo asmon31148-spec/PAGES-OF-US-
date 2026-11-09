@@ -18,18 +18,25 @@ import '../widgets/watch_floating_reactions.dart';
 import '../widgets/watch_call_overlay.dart';
 import '../services/watch_call_service.dart';
 import 'watch_waiting_screen.dart';
+import '../services/watch_video_service.dart';
 
 class WatchPlayerScreen extends StatefulWidget {
   final String roomCode;
   final bool isHost;
-  final String localVideoPath;
+  final String? localVideoPath;
+  final String? networkVideoUrl;
+  final String? youtubeId;
+  final String videoType; // 'local', 'youtube', 'web_url'
   final String movieTitle;
 
   const WatchPlayerScreen({
     super.key,
     required this.roomCode,
     required this.isHost,
-    required this.localVideoPath,
+    this.localVideoPath,
+    this.networkVideoUrl,
+    this.youtubeId,
+    this.videoType = 'local',
     required this.movieTitle,
   });
 
@@ -179,9 +186,22 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
     };
     WatchCallService.instance.callStatus.addListener(_callStatusListener!);
 
-    // 2. Initialize video controller directly from local storage
+    // 2. Initialize video controller (Supports YouTube Stream, Web URL, and Local File)
     try {
-      _controller = VideoPlayerController.file(File(widget.localVideoPath));
+      if (widget.videoType == 'youtube' && widget.youtubeId != null && widget.youtubeId!.isNotEmpty) {
+        final streamUrl = await WatchVideoService.instance.getYouTubeVideoStreamUrl(widget.youtubeId!);
+        if (streamUrl == null || streamUrl.isEmpty) {
+          throw Exception('Unable to extract playable stream for this YouTube video. Please try another video or paste a link.');
+        }
+        _controller = VideoPlayerController.networkUrl(Uri.parse(streamUrl));
+      } else if (widget.videoType == 'web_url' && widget.networkVideoUrl != null && widget.networkVideoUrl!.isNotEmpty) {
+        _controller = VideoPlayerController.networkUrl(Uri.parse(widget.networkVideoUrl!));
+      } else if (widget.localVideoPath != null && widget.localVideoPath!.isNotEmpty) {
+        _controller = VideoPlayerController.file(File(widget.localVideoPath!));
+      } else {
+        throw Exception('No video stream URL or local file provided.');
+      }
+
       await _controller.initialize();
       try {
         await _controller.setVolume(1.0);
@@ -959,10 +979,49 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
     }
 
     if (!_isInitialized) {
-      return const Scaffold(
+      return Scaffold(
         backgroundColor: Colors.black,
         body: Center(
-          child: CircularProgressIndicator(color: AppColors.terra),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const CircularProgressIndicator(color: AppColors.terra),
+              const SizedBox(height: 18),
+              Text(
+                widget.videoType == 'youtube'
+                    ? 'Connecting to YouTube Cinema stream...'
+                    : (widget.videoType == 'web_url' ? 'Connecting to Web Stream...' : 'Preparing video player...'),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 32),
+                child: Text(
+                  widget.movieTitle,
+                  maxLines: 1,
+                  textAlign: TextAlign.center,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: Colors.white60, fontSize: 12),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Text(
+                  'No download needed • Live sync for two 🍿',
+                  style: TextStyle(fontSize: 10.5, color: Colors.white70),
+                ),
+              ),
+            ],
+          ),
         ),
       );
     }
