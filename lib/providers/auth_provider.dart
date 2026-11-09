@@ -87,22 +87,10 @@ class AuthProvider extends ChangeNotifier {
   }
 
   void _initAuthListener() {
+    // 1. Supabase Auth state listener
     _authSub = SupabaseService.authStateChanges.listen((data) async {
       final supaUser = data.session?.user ?? SupabaseService.currentAuthUser;
-      if (supaUser == null) {
-        _spaceSub?.cancel();
-        _partnerSub?.cancel();
-        _userSub?.cancel();
-        _spaceSub = null;
-        _partnerSub = null;
-        _userSub = null;
-        _user = null;
-        _space = null;
-        _partner = null;
-        await runSignOutHooks();
-        await LocalCacheService.clearAll();
-        notifyListeners();
-      } else {
+      if (supaUser != null) {
         // Ensure background Firebase anonymous session for Firestore & RTDB synchronization
         try {
           if (FirebaseAuth.instance.currentUser == null) {
@@ -113,6 +101,28 @@ class AuthProvider extends ChangeNotifier {
         }
 
         await refreshUserData(supaUser.id);
+      } else if (FirebaseService.currentUser == null || FirebaseService.currentUser!.isAnonymous) {
+        if (_user != null) {
+          _spaceSub?.cancel();
+          _partnerSub?.cancel();
+          _userSub?.cancel();
+          _spaceSub = null;
+          _partnerSub = null;
+          _userSub = null;
+          _user = null;
+          _space = null;
+          _partner = null;
+          await runSignOutHooks();
+          await LocalCacheService.clearAll();
+          notifyListeners();
+        }
+      }
+    });
+
+    // 2. Firebase Auth state listener (supports Google Sign-In & legacy Firebase users)
+    FirebaseService.authStateChanges.listen((fbUser) async {
+      if (fbUser != null && !fbUser.isAnonymous && _user == null) {
+        await refreshUserData(fbUser.uid);
       }
     });
   }
@@ -264,6 +274,8 @@ class AuthProvider extends ChangeNotifier {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
+
+    // 1. First attempt: Supabase Authentication
     try {
       final res = await SupabaseService.signInWithEmail(email, password);
       final user = res.user;
@@ -274,77 +286,99 @@ class AuthProvider extends ChangeNotifier {
           }
         } catch (_) {}
         await refreshUserData(user.id);
+        _isLoading = false;
+        notifyListeners();
+        return true;
       }
-      _isLoading = false;
-      notifyListeners();
-      return true;
     } catch (e) {
-      if (e is AuthException) {
-        final msg = e.message.toLowerCase();
-        if (msg.contains('invalid login credentials') || msg.contains('invalid credential')) {
-          _errorMessage = 'Incorrect email or password.\n• Note: If your email is asmon31148@gmail.com, please check spelling.\n• Or tap "Forgot Password?" below to reset.';
-        } else if (msg.contains('email not confirmed')) {
-          _errorMessage = 'Email address not confirmed yet. Please check your inbox for the confirmation email.';
+      debugPrint('[AuthProvider] Supabase signIn note: $e');
+    }
+
+    // 2. Second attempt: Firebase Authentication (supports accounts created under Firebase)
+    try {
+      final cred = await FirebaseService.signInWithEmail(email, password);
+      final user = cred.user;
+      if (user != null) {
+        await refreshUserData(user.uid);
+        _isLoading = false;
+        notifyListeners();
+        return true;
+      }
+    } catch (e) {
+      debugPrint('[AuthProvider] Firebase signIn note: $e');
+      if (e is FirebaseAuthException) {
+        if (e.code == 'invalid-credential' ||
+            e.code == 'user-not-found' ||
+            e.code == 'wrong-password') {
+          _errorMessage =
+              'Incorrect email or password.\n• Try "Continue with Google" if you signed up with Google.\n• Or tap "Forgot password?" below to reset.';
         } else {
-          _errorMessage = e.message;
+          _errorMessage = e.message ?? e.toString();
         }
       } else {
         _errorMessage = e.toString().replaceFirst('Exception: ', '');
       }
-      _isLoading = false;
-      notifyListeners();
-      return false;
     }
+
+    _isLoading = false;
+    notifyListeners();
+    return false;
   }
 
   Future<bool> sendPasswordReset(String email) async {
+    bool success = false;
     try {
       await SupabaseService.sendPasswordReset(email);
-      return true;
-    } catch (e) {
-      if (e is AuthException) {
-        _errorMessage = e.message;
-      } else {
-        _errorMessage = e.toString().replaceFirst('Exception: ', '');
-      }
-      notifyListeners();
-      return false;
-    }
+      success = true;
+    } catch (_) {}
+    try {
+      await FirebaseService.sendPasswordResetEmail(email);
+      success = true;
+    } catch (_) {}
+    return success;
   }
 
   Future<bool> register(String email, String password, String nickname) async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
+
+    String? createdUid;
+
+    // 1. Create account in Supabase
     try {
       final res = await SupabaseService.registerWithEmail(email, password, nickname);
-      final user = res.user;
-      if (user != null) {
-        try {
-          if (FirebaseAuth.instance.currentUser == null) {
-            await FirebaseAuth.instance.signInAnonymously();
-          }
-        } catch (_) {}
-        await refreshUserData(user.id);
+      if (res.user != null) {
+        createdUid = res.user!.id;
       }
+    } catch (e) {
+      debugPrint('[AuthProvider] Supabase register note: $e');
+    }
+
+    // 2. Also create account in Firebase so both platforms recognize user
+    try {
+      final cred = await FirebaseService.registerWithEmail(email, password, nickname);
+      createdUid ??= cred.user?.uid;
+    } catch (e) {
+      debugPrint('[AuthProvider] Firebase register note: $e');
+    }
+
+    if (createdUid != null) {
+      try {
+        if (FirebaseAuth.instance.currentUser == null) {
+          await FirebaseAuth.instance.signInAnonymously();
+        }
+      } catch (_) {}
+      await refreshUserData(createdUid);
       _isLoading = false;
       notifyListeners();
       return true;
-    } catch (e) {
-      if (e is AuthException) {
-        final msg = e.message.toLowerCase();
-        if (msg.contains('user already registered')) {
-          _errorMessage = 'An account with this email already exists. Please tap "Sign In" instead.';
-        } else {
-          _errorMessage = e.message;
-        }
-      } else {
-        _errorMessage = e.toString().replaceFirst('Exception: ', '');
-      }
-      _isLoading = false;
-      notifyListeners();
-      return false;
     }
+
+    _errorMessage = 'Could not create account. Please check your email or try "Continue with Google".';
+    _isLoading = false;
+    notifyListeners();
+    return false;
   }
 
   Future<bool> signInWithGoogle() async {
@@ -352,30 +386,26 @@ class AuthProvider extends ChangeNotifier {
     _errorMessage = null;
     notifyListeners();
     try {
-      final res = await SupabaseService.signInWithGoogle();
-      if (res == null) {
-        // User cancelled account picker
+      // Natively sign in via Google Play Services and Firebase Auth credential
+      final cred = await FirebaseService.signInWithGoogle();
+      if (cred == null) {
+        // User dismissed the Google account picker
         _isLoading = false;
         notifyListeners();
         return false;
       }
-      if (res.user != null) {
-        try {
-          if (FirebaseAuth.instance.currentUser == null) {
-            await FirebaseAuth.instance.signInAnonymously();
-          }
-        } catch (_) {}
-        await refreshUserData(res.user!.id);
+      if (cred.user != null) {
+        await refreshUserData(cred.user!.uid);
+        _isLoading = false;
+        notifyListeners();
+        return true;
       }
       _isLoading = false;
       notifyListeners();
-      return true;
+      return false;
     } catch (e) {
-      if (e is AuthException) {
-        _errorMessage = e.message;
-      } else {
-        _errorMessage = e.toString().replaceFirst('Exception: ', '');
-      }
+      debugPrint('[AuthProvider] Google Sign-In error: $e');
+      _errorMessage = e.toString().replaceFirst('Exception: ', '');
       _isLoading = false;
       notifyListeners();
       return false;
