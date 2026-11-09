@@ -296,6 +296,90 @@ class StageProvider extends ChangeNotifier {
       }
     });
 
+    // Supabase app_content fast-fetch for pinned notes (survives re-logins)
+    try {
+      final client = SupabaseService.client;
+      if (client != null) {
+        // Fetch shared space pinned notes
+        client
+            .from('app_content')
+            .select('content')
+            .eq('id', 'pinned_notes_$spaceId')
+            .maybeSingle()
+            .then((res) async {
+          if (res != null && res['content'] != null && res['content'] is Map) {
+            final data = Map<String, dynamic>.from(res['content'] as Map);
+            final rawNotes = data['notes'] is Map ? Map<String, dynamic>.from(data['notes'] as Map) : data;
+            bool changed = false;
+            rawNotes.forEach((k, v) {
+              if (k != 'updatedAt' && k != 'updated_at' && v is Map) {
+                if (k == userId || (partnerId != null && partnerId.isNotEmpty && k == partnerId)) {
+                  try {
+                    final note = PinnedNote.fromJson(Map<String, dynamic>.from(v));
+                    _pinnedNotes[k] = note;
+                    changed = true;
+                  } catch (_) {}
+                }
+              }
+            });
+            if (changed) {
+              await LocalCacheService.setCachedPinnedNotes(
+                _pinnedNotes.map((k, v) => MapEntry(k, v.toJson())),
+              );
+              _syncWidget(partnerId);
+              notifyListeners();
+            }
+          }
+        });
+
+        // Also check individual user note backup
+        client
+            .from('app_content')
+            .select('content')
+            .eq('id', 'pinned_note_${spaceId}_$userId')
+            .maybeSingle()
+            .then((res) async {
+          if (res != null && res['content'] != null && res['content'] is Map) {
+            try {
+              final note = PinnedNote.fromJson(Map<String, dynamic>.from(res['content'] as Map));
+              if (note.text.isNotEmpty && (!_pinnedNotes.containsKey(userId) || _pinnedNotes[userId]!.text.isEmpty)) {
+                _pinnedNotes[userId] = note;
+                await LocalCacheService.setCachedPinnedNotes(
+                  _pinnedNotes.map((k, v) => MapEntry(k, v.toJson())),
+                );
+                _syncWidget(partnerId);
+                notifyListeners();
+              }
+            } catch (_) {}
+          }
+        });
+
+        // Also check partner individual note backup if paired
+        if (partnerId != null && partnerId.isNotEmpty) {
+          client
+              .from('app_content')
+              .select('content')
+              .eq('id', 'pinned_note_${spaceId}_$partnerId')
+              .maybeSingle()
+              .then((res) async {
+            if (res != null && res['content'] != null && res['content'] is Map) {
+              try {
+                final note = PinnedNote.fromJson(Map<String, dynamic>.from(res['content'] as Map));
+                if (note.text.isNotEmpty && (!_pinnedNotes.containsKey(partnerId) || _pinnedNotes[partnerId]!.text.isEmpty)) {
+                  _pinnedNotes[partnerId] = note;
+                  await LocalCacheService.setCachedPinnedNotes(
+                    _pinnedNotes.map((k, v) => MapEntry(k, v.toJson())),
+                  );
+                  _syncWidget(partnerId);
+                  notifyListeners();
+                }
+              } catch (_) {}
+            }
+          });
+        }
+      }
+    } catch (_) {}
+
     // 4. Listen to Daily Blind Prompt
     _dailyPromptSub?.cancel();
     _dailyPromptSub = FirebaseService.streamFeatureDoc(spaceId, 'daily_prompt').listen((snap) {
@@ -630,11 +714,14 @@ class StageProvider extends ChangeNotifier {
           notifyListeners();
         }
       },
-      onPinnedNote: (data) {
+      onPinnedNote: (data) async {
         final sender = data['senderId'] as String?;
         if (sender != userId && data['note'] != null) {
           final note = PinnedNote.fromJson(Map<String, dynamic>.from(data['note'] as Map));
           _pinnedNotes[note.userId] = note;
+          await LocalCacheService.setCachedPinnedNotes(
+            _pinnedNotes.map((k, v) => MapEntry(k, v.toJson())),
+          );
           _syncWidget(partnerId);
           notifyListeners();
         }
@@ -1189,11 +1276,18 @@ class StageProvider extends ChangeNotifier {
       updatedAt: DateTime.now().toIso8601String(),
     );
     _pinnedNotes[userId] = note;
+    await LocalCacheService.setCachedPinnedNotes(
+      _pinnedNotes.map((k, v) => MapEntry(k, v.toJson())),
+    );
     _syncWidget(null);
     notifyListeners();
 
     await FirebaseService.saveUserFeatureField(spaceId, 'pinned_note', userId, note.toJson());
     await SupabaseService.upsertAppContent('pinned_note_${spaceId}_$userId', note.toJson());
+    await SupabaseService.upsertAppContent('pinned_notes_$spaceId', {
+      'notes': _pinnedNotes.map((k, v) => MapEntry(k, v.toJson())),
+      'updated_at': DateTime.now().toIso8601String(),
+    });
     await SupabaseService.broadcastEvent(
       spaceId: spaceId,
       eventType: 'PINNED_NOTE_CHANGED',

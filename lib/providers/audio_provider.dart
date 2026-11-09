@@ -293,7 +293,7 @@ class AudioProvider extends ChangeNotifier {
     }
   }
 
-  /// Toggles favorite/starred status for a song and persists locally
+  /// Toggles favorite/starred status for a song and persists locally & cloud
   Future<void> toggleFavorite(String songId) async {
     if (songId.isEmpty || songId == 'empty') return;
     if (_favoriteSongIds.contains(songId)) {
@@ -304,6 +304,12 @@ class AudioProvider extends ChangeNotifier {
     notifyListeners();
     try {
       await LocalCacheService.prefs.setStringList('favorite_song_ids', _favoriteSongIds.toList());
+      if (_syncSpaceId.isNotEmpty) {
+        await SupabaseService.upsertAppContent('favorite_songs_$_syncSpaceId', {
+          'favorites': _favoriteSongIds.toList(),
+          'updated_at': DateTime.now().toIso8601String(),
+        });
+      }
     } catch (_) {}
   }
 
@@ -811,6 +817,7 @@ class AudioProvider extends ChangeNotifier {
       await LocalCacheService.setCachedSongs(list);
 
       if (_syncSpaceId.isNotEmpty) {
+        // 1. Firebase Firestore sync
         await FirebaseService.saveNestedFeatureField(
           _syncSpaceId,
           'music',
@@ -824,14 +831,150 @@ class AudioProvider extends ChangeNotifier {
           'deleted_ids',
           _deletedSongIds.toList(),
         );
+
+        // 2. Supabase app_content sync (guarantees survival across re-logins)
+        await SupabaseService.upsertAppContent('music_$_syncSpaceId', {
+          'songs': list,
+          'deleted_ids': _deletedSongIds.toList(),
+          'updated_at': DateTime.now().toIso8601String(),
+        });
+
+        // 3. Supabase Realtime broadcast to partner
+        await SupabaseService.broadcastEvent(
+          spaceId: _syncSpaceId,
+          eventType: 'MUSIC_UPDATE',
+          payload: {
+            'songs': list,
+            'deleted_ids': _deletedSongIds.toList(),
+          },
+        );
       }
     } catch (_) {}
   }
 
   void initMusicSync(String spaceId) {
-    if (spaceId.isEmpty || _syncSpaceId == spaceId) return;
+    if (spaceId.isEmpty) return;
     _syncSpaceId = spaceId;
 
+    // 1. Fast fetch from Supabase app_content for playlists, songs, and favorites
+    try {
+      final client = SupabaseService.client;
+      if (client != null) {
+        // Fetch playlists from Supabase
+        client
+            .from('app_content')
+            .select('content')
+            .eq('id', 'playlists_$spaceId')
+            .maybeSingle()
+            .then((res) {
+          if (res != null && res['content'] != null && res['content'] is Map) {
+            final data = Map<String, dynamic>.from(res['content'] as Map);
+            final list = data['playlists'] as List<dynamic>?;
+            if (list != null && list.isNotEmpty) {
+              final incoming = list.map((e) => PlaylistItem.fromJson(Map<String, dynamic>.from(e as Map))).toList();
+              _playlists.clear();
+              _playlists.addAll(_sanitizePlaylists(incoming));
+              LocalCacheService.setCachedPlaylists(_playlists.map((p) => p.toJson()).toList());
+              notifyListeners();
+            }
+          }
+        });
+
+        // Fetch music tracks from Supabase
+        client
+            .from('app_content')
+            .select('content')
+            .eq('id', 'music_$spaceId')
+            .maybeSingle()
+            .then((res) {
+          if (res != null && res['content'] != null && res['content'] is Map) {
+            final data = Map<String, dynamic>.from(res['content'] as Map);
+            bool hasChanges = false;
+            if (data['deleted_ids'] is List) {
+              final del = List<String>.from(data['deleted_ids'] as List);
+              _deletedSongIds.addAll(del);
+              LocalCacheService.setCachedDeletedSongIds(_deletedSongIds.toList());
+              final beforeCount = _songs.length;
+              _songs.removeWhere((s) => _deletedSongIds.contains(s.id));
+              if (_songs.length != beforeCount) hasChanges = true;
+            }
+            if (data['songs'] is List) {
+              final list = (data['songs'] as List)
+                  .map((e) => SongItem.fromJson(Map<String, dynamic>.from(e as Map)))
+                  .where((s) => !_deletedSongIds.contains(s.id))
+                  .toList();
+              if (list.isNotEmpty || _songs.isNotEmpty) {
+                _songs = _deduplicateSongs(list);
+                LocalCacheService.setCachedSongs(_songs.map((s) => s.toJson()).toList());
+                hasChanges = true;
+              }
+            }
+            if (hasChanges) {
+              notifyListeners();
+            }
+          }
+        });
+
+        // Fetch favorite song IDs from Supabase
+        client
+            .from('app_content')
+            .select('content')
+            .eq('id', 'favorite_songs_$spaceId')
+            .maybeSingle()
+            .then((res) {
+          if (res != null && res['content'] != null && res['content'] is Map) {
+            final data = Map<String, dynamic>.from(res['content'] as Map);
+            if (data['favorites'] is List) {
+              final favs = List<String>.from(data['favorites'] as List);
+              _favoriteSongIds.addAll(favs);
+              LocalCacheService.prefs.setStringList('favorite_song_ids', _favoriteSongIds.toList());
+              notifyListeners();
+            }
+          }
+        });
+      }
+    } catch (_) {}
+
+    // 2. Realtime listener for cross-device updates
+    SupabaseService.setMusicSyncListener(
+      onPlaylistsUpdate: (data) {
+        final list = data['playlists'] as List<dynamic>?;
+        if (list != null && list.isNotEmpty) {
+          final incoming = list.map((e) => PlaylistItem.fromJson(Map<String, dynamic>.from(e as Map))).toList();
+          _playlists.clear();
+          _playlists.addAll(_sanitizePlaylists(incoming));
+          LocalCacheService.setCachedPlaylists(_playlists.map((p) => p.toJson()).toList());
+          notifyListeners();
+        }
+      },
+      onMusicUpdate: (data) {
+        bool hasChanges = false;
+        if (data['deleted_ids'] is List) {
+          final del = List<String>.from(data['deleted_ids'] as List);
+          _deletedSongIds.addAll(del);
+          LocalCacheService.setCachedDeletedSongIds(_deletedSongIds.toList());
+          final beforeCount = _songs.length;
+          _songs.removeWhere((s) => _deletedSongIds.contains(s.id));
+          if (_songs.length != beforeCount) hasChanges = true;
+        }
+        if (data['songs'] is List) {
+          final list = (data['songs'] as List)
+              .map((e) => SongItem.fromJson(Map<String, dynamic>.from(e as Map)))
+              .where((s) => !_deletedSongIds.contains(s.id))
+              .toList();
+          if (list.isNotEmpty || _songs.isNotEmpty) {
+            _songs = _deduplicateSongs(list);
+            LocalCacheService.setCachedSongs(_songs.map((s) => s.toJson()).toList());
+            hasChanges = true;
+          }
+        }
+        if (hasChanges) {
+          notifyListeners();
+        }
+      },
+    );
+
+    // 3. Fallback Firestore streams
     _musicCloudSub?.cancel();
     _musicCloudSub = FirebaseService.streamFeatureDoc(spaceId, 'music').listen((snap) {
       if (snap.exists && snap.data() != null) {
@@ -868,7 +1011,7 @@ class AudioProvider extends ChangeNotifier {
       }
     });
 
-    // Realtime stream for playlists from Firebase (Single source of truth)
+    // Realtime stream for playlists from Firebase
     _playlistFirebaseSub?.cancel();
     _playlistFirebaseSub = FirebaseService.streamFeatureDoc(spaceId, 'playlists').listen((snap) {
       if (snap.exists && snap.data() != null) {
@@ -891,10 +1034,24 @@ class AudioProvider extends ChangeNotifier {
     try {
       LocalCacheService.setCachedPlaylists(_playlists.map((p) => p.toJson()).toList());
       if (_syncSpaceId.isNotEmpty) {
+        // 1. Firebase Firestore sync
         FirebaseService.saveFeatureDoc(_syncSpaceId, 'playlists', {
           'playlists': _playlists.map((p) => p.toJson()).toList(),
           'updated_at': DateTime.now().toIso8601String(),
         });
+        // 2. Supabase app_content sync (survives re-logins)
+        SupabaseService.upsertAppContent('playlists_$_syncSpaceId', {
+          'playlists': _playlists.map((p) => p.toJson()).toList(),
+          'updated_at': DateTime.now().toIso8601String(),
+        });
+        // 3. Supabase Realtime broadcast to partner
+        SupabaseService.broadcastEvent(
+          spaceId: _syncSpaceId,
+          eventType: 'PLAYLISTS_UPDATE',
+          payload: {
+            'playlists': _playlists.map((p) => p.toJson()).toList(),
+          },
+        );
       }
     } catch (_) {}
   }

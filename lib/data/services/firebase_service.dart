@@ -100,47 +100,76 @@ class FirebaseService {
       final cred = await auth.signInWithCredential(credential);
       final user = cred.user;
       if (user != null) {
+        final existingEmail = user.email ?? '';
+        UserProfile? emailProfile;
+        if (existingEmail.isNotEmpty) {
+          emailProfile = await getUserProfileByEmail(existingEmail);
+        }
+
         final doc = await firestore.collection('users').doc(user.uid).get();
         UserProfile profile;
         if (!doc.exists) {
+          final chosenNick = (emailProfile != null && emailProfile.nickname.isNotEmpty && emailProfile.nickname != 'Partner')
+              ? emailProfile.nickname
+              : ((user.displayName != null && user.displayName!.trim().isNotEmpty)
+                  ? user.displayName!.trim()
+                  : (existingEmail.contains('@') ? existingEmail.split('@')[0] : 'Partner'));
+
+          final chosenAvatar = (emailProfile != null && emailProfile.avatarUrl != null && emailProfile.avatarUrl!.isNotEmpty)
+              ? emailProfile.avatarUrl
+              : user.photoURL;
+
+          final chosenThought = emailProfile?.thought;
+          final chosenSpaceId = emailProfile?.spaceId;
+
           profile = UserProfile(
             id: user.uid,
-            email: user.email ?? '',
-            nickname: (user.displayName != null && user.displayName!.trim().isNotEmpty)
-                ? user.displayName!.trim()
-                : (user.email != null && user.email!.contains('@')
-                    ? user.email!.split('@')[0]
-                    : 'Partner'),
-            avatarUrl: user.photoURL,
-            createdAt: DateTime.now().toIso8601String(),
+            email: existingEmail,
+            nickname: chosenNick,
+            avatarUrl: chosenAvatar,
+            thought: chosenThought,
+            spaceId: chosenSpaceId,
+            createdAt: emailProfile?.createdAt ?? DateTime.now().toIso8601String(),
           );
           await saveUserProfile(profile);
         } else {
           final data = doc.data()!;
           final existingNick = data['nickname'] as String?;
           final existingAvatar = data['avatarUrl'] as String? ?? data['avatar_url'] as String?;
-          final existingEmail = data['email'] as String?;
+          final existingThought = data['thought'] as String?;
+          final existingSpaceId = data['spaceId'] as String? ?? data['space_id'] as String?;
 
-          final cleanNick = (existingNick != null && existingNick.trim().isNotEmpty)
+          final cleanNick = (existingNick != null && existingNick.trim().isNotEmpty && existingNick.trim() != 'Partner')
               ? existingNick.trim()
-              : ((user.displayName != null && user.displayName!.trim().isNotEmpty)
-                  ? user.displayName!.trim()
-                  : (user.email != null && user.email!.contains('@') ? user.email!.split('@')[0] : 'Partner'));
+              : ((emailProfile != null && emailProfile.nickname.isNotEmpty && emailProfile.nickname != 'Partner')
+                  ? emailProfile.nickname
+                  : ((user.displayName != null && user.displayName!.trim().isNotEmpty)
+                      ? user.displayName!.trim()
+                      : (existingEmail.contains('@') ? existingEmail.split('@')[0] : 'Partner')));
+
           final cleanAvatar = (existingAvatar != null && existingAvatar.trim().isNotEmpty)
               ? existingAvatar
-              : user.photoURL;
-          final cleanEmail = (existingEmail != null && existingEmail.trim().isNotEmpty)
-              ? existingEmail
-              : (user.email ?? '');
+              : ((emailProfile != null && emailProfile.avatarUrl != null && emailProfile.avatarUrl!.isNotEmpty)
+                  ? emailProfile.avatarUrl
+                  : user.photoURL);
+
+          final cleanThought = (existingThought != null && existingThought.trim().isNotEmpty)
+              ? existingThought
+              : emailProfile?.thought;
+
+          final cleanSpaceId = (existingSpaceId != null && existingSpaceId.isNotEmpty)
+              ? existingSpaceId
+              : emailProfile?.spaceId;
 
           profile = UserProfile.fromJson({
             ...data,
             'id': user.uid,
             'nickname': cleanNick,
             'avatarUrl': cleanAvatar,
-            'email': cleanEmail,
+            'thought': cleanThought,
+            'spaceId': cleanSpaceId,
+            'email': existingEmail.isNotEmpty ? existingEmail : (data['email'] ?? ''),
           });
-          // Ensure healed profile is persisted so partner sees real name & avatar immediately
           await saveUserProfile(profile);
         }
         // Automatically ensure permanent Sanctuary space & pair code
@@ -175,9 +204,53 @@ class FirebaseService {
 
   // User Profile
   static Future<UserProfile?> getUserProfile(String uid) async {
-    final doc = await firestore.collection('users').doc(uid).get();
-    if (!doc.exists || doc.data() == null) return null;
-    return UserProfile.fromJson(doc.data()!);
+    Map<String, dynamic>? data;
+    try {
+      final doc = await firestore.collection('users').doc(uid).get();
+      if (doc.exists && doc.data() != null) {
+        data = Map<String, dynamic>.from(doc.data()!);
+      }
+    } catch (e) {
+      debugPrint('[FirebaseService] getUserProfile firestore note: $e');
+    }
+
+    // Fallback or augment with Supabase app_content
+    try {
+      final supaContent = await SupabaseService.getAppContent('user_profile_$uid');
+      if (supaContent != null) {
+        data = data == null ? supaContent : {...supaContent, ...data};
+      }
+    } catch (_) {}
+
+    if (data == null) return null;
+    return UserProfile.fromJson(data);
+  }
+
+  static Future<UserProfile?> getUserProfileByEmail(String email) async {
+    if (email.trim().isEmpty) return null;
+    final cleanEmail = email.trim().toLowerCase();
+
+    // 1. Check Supabase app_content by email
+    try {
+      final supaContent = await SupabaseService.getAppContent('user_profile_$cleanEmail');
+      if (supaContent != null) {
+        return UserProfile.fromJson(supaContent);
+      }
+    } catch (_) {}
+
+    // 2. Check Firestore by email
+    try {
+      final q = await firestore
+          .collection('users')
+          .where('email', '==', email.trim())
+          .limit(1)
+          .get();
+      if (q.docs.isNotEmpty) {
+        return UserProfile.fromJson(q.docs.first.data());
+      }
+    } catch (_) {}
+
+    return null;
   }
 
   static Stream<UserProfile?> streamUserProfile(String uid) {
@@ -189,10 +262,24 @@ class FirebaseService {
   }
 
   static Future<void> saveUserProfile(UserProfile profile) async {
-    await firestore
-        .collection('users')
-        .doc(profile.id)
-        .set(profile.toJson(), SetOptions(merge: true));
+    try {
+      await firestore
+          .collection('users')
+          .doc(profile.id)
+          .set(profile.toJson(), SetOptions(merge: true));
+    } catch (e) {
+      debugPrint('[FirebaseService] saveUserProfile firestore note: $e');
+    }
+
+    // Dual-persist to Supabase app_content for resilient re-login recovery
+    try {
+      await SupabaseService.upsertAppContent('user_profile_${profile.id}', profile.toJson());
+      if (profile.email.isNotEmpty) {
+        await SupabaseService.upsertAppContent('user_profile_${profile.email.trim().toLowerCase()}', profile.toJson());
+      }
+    } catch (e) {
+      debugPrint('[FirebaseService] saveUserProfile supabase note: $e');
+    }
   }
 
   // Space

@@ -125,6 +125,22 @@ class AuthProvider extends ChangeNotifier {
         await refreshUserData(fbUser.uid);
       }
     });
+
+    // 3. Realtime listener for cross-device profile changes
+    SupabaseService.setProfileUpdateListener((data) {
+      try {
+        final updatedProfile = UserProfile.fromJson(data);
+        if (_user != null && updatedProfile.id == _user!.id) {
+          _user = updatedProfile;
+          LocalCacheService.setCachedUser(updatedProfile.toJson());
+          notifyListeners();
+        } else if (_partner == null || updatedProfile.id == _partner?.id || (_user != null && updatedProfile.id != _user!.id)) {
+          _partner = updatedProfile;
+          LocalCacheService.setCachedPartner(updatedProfile.toJson());
+          notifyListeners();
+        }
+      } catch (_) {}
+    });
   }
 
   void _listenToSpace(String spaceId, String currentUid) {
@@ -214,23 +230,83 @@ class AuthProvider extends ChangeNotifier {
       NotificationService.syncDeviceToken(uid);
       var profile = await FirebaseService.getUserProfile(uid);
 
-      // Auto-provision profile from Supabase user session if not created yet
+      final supaUser = SupabaseService.currentAuthUser;
+      final fbUser = FirebaseService.currentUser;
+      final effectiveEmail = supaUser?.email ?? fbUser?.email ?? profile?.email ?? '';
+
+      // If profile not found by UID, search by email to recover past profile
+      if (profile == null && effectiveEmail.isNotEmpty) {
+        profile = await FirebaseService.getUserProfileByEmail(effectiveEmail);
+        if (profile != null) {
+          // Re-key profile to current session uid
+          profile = profile.copyWith(id: uid);
+          await FirebaseService.saveUserProfile(profile);
+        }
+      }
+
+      // Auto-provision or recover profile from Supabase user session / metadata
       if (profile == null) {
-        final supaUser = SupabaseService.currentAuthUser;
-        final email = supaUser?.email ?? '';
         final metadata = supaUser?.userMetadata ?? {};
         final nickname = metadata['nickname']?.toString() ??
-            (email.isNotEmpty ? email.split('@').first : 'Partner');
+            (effectiveEmail.isNotEmpty ? effectiveEmail.split('@').first : 'Partner');
+        final avatarUrl = metadata['avatarUrl']?.toString() ??
+            metadata['avatar_url']?.toString() ??
+            fbUser?.photoURL;
+        final thought = metadata['thought']?.toString();
+
         final newProfile = UserProfile(
           id: uid,
-          email: email,
+          email: effectiveEmail,
           nickname: nickname,
+          avatarUrl: avatarUrl,
+          thought: thought,
           createdAt: DateTime.now().toIso8601String(),
         );
         try {
           await FirebaseService.saveUserProfile(newProfile);
         } catch (_) {}
         profile = newProfile;
+      } else {
+        // Heal missing fields from metadata / email backup if needed
+        bool needsSave = false;
+        String? healedNick = profile.nickname;
+        String? healedAvatar = profile.avatarUrl;
+        String? healedThought = profile.thought;
+
+        if (healedNick.isEmpty || healedNick == 'Partner') {
+          final metaNick = supaUser?.userMetadata?['nickname']?.toString();
+          if (metaNick != null && metaNick.trim().isNotEmpty) {
+            healedNick = metaNick.trim();
+            needsSave = true;
+          }
+        }
+
+        if (healedAvatar == null || healedAvatar.trim().isEmpty) {
+          final metaAvatar = supaUser?.userMetadata?['avatarUrl']?.toString() ??
+              supaUser?.userMetadata?['avatar_url']?.toString() ??
+              fbUser?.photoURL;
+          if (metaAvatar != null && metaAvatar.trim().isNotEmpty) {
+            healedAvatar = metaAvatar.trim();
+            needsSave = true;
+          }
+        }
+
+        if (healedThought == null || healedThought.trim().isEmpty) {
+          final metaThought = supaUser?.userMetadata?['thought']?.toString();
+          if (metaThought != null && metaThought.trim().isNotEmpty) {
+            healedThought = metaThought.trim();
+            needsSave = true;
+          }
+        }
+
+        if (needsSave) {
+          profile = profile.copyWith(
+            nickname: healedNick,
+            avatarUrl: healedAvatar,
+            thought: healedThought,
+          );
+          await FirebaseService.saveUserProfile(profile);
+        }
       }
 
       if (profile != null) {
@@ -536,6 +612,32 @@ class AuthProvider extends ChangeNotifier {
     _user = updated;
     await LocalCacheService.setCachedUser(updated.toJson());
     await FirebaseService.saveUserProfile(updated);
+
+    // Update Supabase Auth metadata for seamless recovery across re-logins
+    try {
+      await SupabaseService.client?.auth.updateUser(
+        UserAttributes(
+          data: {
+            'nickname': updated.nickname,
+            'avatarUrl': updated.avatarUrl,
+            'avatar_url': updated.avatarUrl,
+            'thought': updated.thought,
+          },
+        ),
+      );
+    } catch (_) {}
+
+    // Broadcast profile update across space channel so partner sees it immediately
+    if (_space != null && _space!.id.isNotEmpty) {
+      try {
+        await SupabaseService.broadcastEvent(
+          spaceId: _space!.id,
+          eventType: 'PROFILE_UPDATE',
+          payload: updated.toJson(),
+        );
+      } catch (_) {}
+    }
+
     notifyListeners();
   }
 
