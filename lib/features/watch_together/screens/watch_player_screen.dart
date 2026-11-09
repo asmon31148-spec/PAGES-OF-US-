@@ -967,9 +967,29 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
                 ),
                 const SizedBox(height: 24),
                 ElevatedButton(
-                  onPressed: () => Navigator.pop(context),
+                  onPressed: () async {
+                    final myUid = context.read<AuthProvider>().user?.id;
+                    if (myUid != null) {
+                      await WatchTogetherService.instance.updateMemberReady(
+                        roomCode: widget.roomCode,
+                        uid: myUid,
+                        ready: false,
+                      );
+                    }
+                    if (mounted) {
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => WatchWaitingScreen(
+                            roomCode: widget.roomCode,
+                            isHost: widget.isHost,
+                          ),
+                        ),
+                      );
+                    }
+                  },
                   style: ElevatedButton.styleFrom(backgroundColor: AppColors.terra),
-                  child: const Text('Back to Waiting Room', style: TextStyle(color: Colors.white)),
+                  child: const Text('Change Movie / Waiting Room', style: TextStyle(color: Colors.white)),
                 ),
               ],
             ),
