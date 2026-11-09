@@ -129,9 +129,10 @@ class WatchVideoService {
       // 1. First priority: Muxed MP4 (Video + Audio combined, best hardware decoding on Android)
       final mp4Muxed = manifest.muxed.where(
         (s) => s.container.name.toLowerCase() == 'mp4' || s.codec.mimeType.contains('mp4'),
-      );
+      ).toList();
       if (mp4Muxed.isNotEmpty) {
-        final bestStream = mp4Muxed.withHighestVideoQuality();
+        mp4Muxed.sort((a, b) => b.bitrate.bitsPerSecond.compareTo(a.bitrate.bitsPerSecond));
+        final bestStream = mp4Muxed.first;
         final url = bestStream.url.toString();
         _streamCache[videoId] = url;
         _streamCacheTime[videoId] = DateTime.now();
@@ -139,8 +140,10 @@ class WatchVideoService {
       }
 
       // 2. Secondary priority: Any muxed container (WebM/MP4)
-      if (manifest.muxed.isNotEmpty) {
-        final bestStream = manifest.muxed.withHighestVideoQuality();
+      final allMuxed = manifest.muxed.toList();
+      if (allMuxed.isNotEmpty) {
+        allMuxed.sort((a, b) => b.bitrate.bitsPerSecond.compareTo(a.bitrate.bitsPerSecond));
+        final bestStream = allMuxed.first;
         final url = bestStream.url.toString();
         _streamCache[videoId] = url;
         _streamCacheTime[videoId] = DateTime.now();

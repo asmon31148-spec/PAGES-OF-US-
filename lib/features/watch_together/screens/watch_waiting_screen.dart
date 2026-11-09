@@ -271,8 +271,15 @@ class _WatchWaitingScreenState extends State<WatchWaitingScreen> {
 
   Future<void> _leaveRoom() async {
     HapticFeedback.selectionClick();
+    final myUid = context.read<AuthProvider>().user?.id;
     if (widget.isHost) {
       await WatchTogetherService.instance.deleteRoom(widget.roomCode);
+    } else if (myUid != null) {
+      await WatchTogetherService.instance.leaveRoom(
+        roomCode: widget.roomCode,
+        uid: myUid,
+        isHost: false,
+      );
     }
     if (mounted) {
       Navigator.pop(context);

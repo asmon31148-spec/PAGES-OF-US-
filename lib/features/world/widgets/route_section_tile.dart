@@ -118,6 +118,19 @@ class RouteSectionTile extends StatelessWidget {
   }
 }
 
+/// Model for a nearby hotel along the route or near midpoint.
+class NearbyHotel {
+  final String name;
+  final int? stars;
+  final double distanceKm;
+
+  const NearbyHotel({
+    required this.name,
+    this.stars,
+    this.distanceKm = 0.0,
+  });
+}
+
 /// Compact hotel card row for the hotels section.
 class HotelTile extends StatelessWidget {
   final NearbyHotel hotel;
