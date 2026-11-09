@@ -108,9 +108,24 @@ class SupabaseService {
   static Function(Map<String, dynamic> data)? _onListenInvite;
   static Function(Map<String, dynamic> data)? _onThemeUpdate;
   static Function(Map<String, dynamic> data)? _onGentleMode;
+  static Function(Map<String, dynamic> data)? _onPlaylistsUpdate;
+  static Function(Map<String, dynamic> data)? _onMusicUpdate;
+  static Function(Map<String, dynamic> data)? _onProfileUpdate;
 
   static void setThemeUpdateListener(Function(Map<String, dynamic> data)? callback) {
     _onThemeUpdate = callback;
+  }
+
+  static void setMusicSyncListener({
+    Function(Map<String, dynamic> data)? onPlaylistsUpdate,
+    Function(Map<String, dynamic> data)? onMusicUpdate,
+  }) {
+    _onPlaylistsUpdate = onPlaylistsUpdate;
+    _onMusicUpdate = onMusicUpdate;
+  }
+
+  static void setProfileUpdateListener(Function(Map<String, dynamic> data)? callback) {
+    _onProfileUpdate = callback;
   }
 
   static void addLocationListener(Function(Map<String, dynamic> data) callback) {
@@ -236,6 +251,21 @@ class SupabaseService {
     ch.onBroadcast(
       event: 'GENTLE_MODE_UPDATE',
       callback: (payload) => _onGentleMode?.call(payload),
+    );
+
+    ch.onBroadcast(
+      event: 'PLAYLISTS_UPDATE',
+      callback: (payload) => _onPlaylistsUpdate?.call(payload),
+    );
+
+    ch.onBroadcast(
+      event: 'MUSIC_UPDATE',
+      callback: (payload) => _onMusicUpdate?.call(payload),
+    );
+
+    ch.onBroadcast(
+      event: 'PROFILE_UPDATE',
+      callback: (payload) => _onProfileUpdate?.call(payload),
     );
 
     ch.subscribe((status, [error]) {
