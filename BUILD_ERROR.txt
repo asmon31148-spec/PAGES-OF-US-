@@ -1525,7 +1525,7 @@ warning • Unused import: 'package:pages_of_us/core/theme/models/theme_palette.
    info • 'green' is deprecated and shouldn't be used. Use (*.g * 255.0).round().clamp(0, 255). Try replacing the use of the deprecated member with the replacement • test/theme_contrast_test.dart:19:29 • deprecated_member_use
    info • 'blue' is deprecated and shouldn't be used. Use (*.b * 255.0).round().clamp(0, 255). Try replacing the use of the deprecated member with the replacement • test/theme_contrast_test.dart:20:29 • deprecated_member_use
 
-1298 issues found. (ran in 15.2s)
+1298 issues found. (ran in 16.2s)
 === FLUTTER BUILD LOG ===
 Upgrading build.gradle
 Upgrading gradle.properties
@@ -1538,5 +1538,5 @@ Exception in thread "main" java.io.IOException: Server returned HTTP response co
 	at org.gradle.wrapper.Install.forceFetch(SourceFile:2)
 	at org.gradle.wrapper.Install$1.call(SourceFile:8)
 	at org.gradle.wrapper.GradleWrapperMain.main(SourceFile:67)
-Running Gradle task 'assembleRelease'...                         1,498ms
+Running Gradle task 'assembleRelease'...                         1,267ms
 Gradle task assembleRelease failed with exit code 1

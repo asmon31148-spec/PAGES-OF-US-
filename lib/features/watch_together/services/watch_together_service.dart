@@ -339,6 +339,16 @@ class WatchTogetherService {
     });
   }
 
+  /// Screen 2: Delete room explicitly (e.g. host leaves waiting room)
+  Future<void> deleteRoom(String roomCode) async {
+    try {
+      final cleanCode = roomCode.trim().toUpperCase();
+      await _rtdb.ref('watchRooms/$cleanCode').remove();
+    } catch (e) {
+      debugPrint('[WatchTogetherService] deleteRoom error: $e');
+    }
+  }
+
   /// Cleanup: Leave room and dismantle when both have exited
   Future<void> leaveRoom({
     required String roomCode,
