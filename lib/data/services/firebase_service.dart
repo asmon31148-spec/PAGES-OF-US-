@@ -33,6 +33,11 @@ class FirebaseService {
     );
   }
 
+  // Send Password Reset Email
+  static Future<void> sendPasswordResetEmail(String email) async {
+    await auth.sendPasswordResetEmail(email: email.trim());
+  }
+
   // Register with Email & Password
   static Future<UserCredential> registerWithEmail(
     String email,

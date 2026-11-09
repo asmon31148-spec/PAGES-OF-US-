@@ -241,8 +241,39 @@ class AuthProvider extends ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      _errorMessage = e.toString();
+      if (e is FirebaseAuthException) {
+        if (e.code == 'invalid-credential' || e.code == 'user-not-found' || e.code == 'wrong-password') {
+          _errorMessage = 'Incorrect email or password.\n• If you signed up with Google, tap "Continue with Google" below.\n• Or tap "Forgot Password?" below to reset.';
+        } else if (e.code == 'too-many-requests') {
+          _errorMessage = 'Too many failed attempts. Please wait a minute or reset your password.';
+        } else if (e.code == 'network-request-failed') {
+          _errorMessage = 'Network error. Please check your internet connection.';
+        } else {
+          _errorMessage = e.message ?? e.toString();
+        }
+      } else {
+        _errorMessage = e.toString().replaceFirst('Exception: ', '');
+      }
       _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> sendPasswordReset(String email) async {
+    try {
+      await FirebaseService.sendPasswordResetEmail(email);
+      return true;
+    } catch (e) {
+      if (e is FirebaseAuthException) {
+        if (e.code == 'user-not-found') {
+          _errorMessage = 'No account found with this email. Please verify or tap "Create Space".';
+        } else {
+          _errorMessage = e.message ?? e.toString();
+        }
+      } else {
+        _errorMessage = e.toString().replaceFirst('Exception: ', '');
+      }
       notifyListeners();
       return false;
     }

@@ -61,6 +61,60 @@ class _AuthScreenState extends State<AuthScreen> {
     }
   }
 
+  Future<void> _handleForgotPassword() async {
+    final email = _emailController.text.trim();
+    if (email.isEmpty) {
+      setState(() {
+        _error = 'Please enter your email address first, then tap "Forgot password?".';
+      });
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    final authProvider = context.read<AuthProvider>();
+    final success = await authProvider.sendPasswordReset(email);
+
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+      });
+
+      if (success) {
+        showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            backgroundColor: context.read<ThemeProvider>().isDark ? AppColors.darkSurface : AppColors.lightSurface,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: const Row(
+              children: [
+                Text('💌 ', style: TextStyle(fontSize: 20)),
+                Text('Reset Link Sent', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              ],
+            ),
+            content: Text(
+              'A password reset link has been sent to $email.\n\nPlease check your inbox (and spam folder) to set your password, then return here to sign in.',
+              style: const TextStyle(fontSize: 13, height: 1.4),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('OK', style: TextStyle(color: AppColors.sage, fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
+        );
+      } else {
+        setState(() {
+          _error = authProvider.errorMessage ?? 'Could not send reset email. Please try again.';
+        });
+      }
+    }
+  }
+
   Future<void> _submit() async {
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
@@ -329,6 +383,29 @@ class _AuthScreenState extends State<AuthScreen> {
                           ),
                         ),
                       ),
+
+                      if (!_isRegister) ...[
+                        const SizedBox(height: 6),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton(
+                            onPressed: _handleForgotPassword,
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                              minimumSize: Size.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
+                            child: Text(
+                              'Forgot password?',
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                color: isDark ? AppColors.darkSoft : AppColors.lightSoft,
+                                decoration: TextDecoration.underline,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
 
                       if (_error != null) ...[
                         const SizedBox(height: 12),
