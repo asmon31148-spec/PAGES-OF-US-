@@ -36,7 +36,6 @@ class _WatchWaitingScreenState extends State<WatchWaitingScreen> {
   String? _pickedFilePath;
   String? _pickedFileName;
   int _pickedDurationMs = 0;
-  bool _isPickingFile = false;
   bool _hasNavigatedToPlayer = false;
 
   @override
@@ -172,74 +171,6 @@ class _WatchWaitingScreenState extends State<WatchWaitingScreen> {
         },
       ),
     );
-  }
-
-  Future<void> _pickMovieFile() async {
-    setState(() {
-      _isPickingFile = true;
-    });
-
-    try {
-      final result = await FilePicker.platform.pickFiles(
-        type: FileType.video,
-        allowMultiple: false,
-      );
-
-      if (result != null && result.files.single.path != null) {
-        final path = result.files.single.path!;
-        final name = result.files.single.name;
-
-        // Directly read duration from local file with temporary VideoPlayerController
-        final controller = VideoPlayerController.file(File(path));
-        await controller.initialize();
-        final duration = controller.value.duration;
-        final durationMs = duration.inMilliseconds;
-        await controller.dispose();
-
-        setState(() {
-          _pickedFilePath = path;
-          _pickedFileName = name;
-          _pickedDurationMs = durationMs;
-        });
-
-        final myUid = context.read<AuthProvider>().user?.id;
-        if (myUid != null) {
-          await WatchTogetherService.instance.updateMemberFile(
-            roomCode: widget.roomCode,
-            uid: myUid,
-            fileName: name,
-            durationMs: durationMs,
-          );
-
-          final source = WatchVideoSource(
-            type: 'local',
-            title: name,
-            durationMs: durationMs,
-            selectedBy: myUid,
-          );
-          await WatchTogetherService.instance.updateRoomVideoSource(
-            roomCode: widget.roomCode,
-            videoSource: source,
-          );
-        }
-      }
-    } catch (e) {
-      debugPrint('File pick error: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Could not open video file: $e'),
-            backgroundColor: Colors.redAccent,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isPickingFile = false;
-        });
-      }
-    }
   }
 
   Future<void> _toggleReady() async {
