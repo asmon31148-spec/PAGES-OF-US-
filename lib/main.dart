@@ -275,6 +275,9 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold> with Wi
         auth.refreshUserData(auth.user!.id);
       }
       context.read<WorldProvider>().syncHardwareStepsAndLocationNow();
+      context.read<MemoriesProvider>().refreshAll();
+      context.read<VaultProvider>().refreshVaults();
+      context.read<StageProvider>().refreshSharedStageData();
     } else if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive || state == AppLifecycleState.detached) {
       if (mounted) {
         context.read<WorldProvider>().flushPersistenceNow();
@@ -300,25 +303,47 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold> with Wi
     final partner = authProvider.partner;
     final effectiveSpaceId = space?.id ?? user?.spaceId;
 
+    String? effectivePartnerId;
+    if (user != null) {
+      if (partner?.id != null && partner!.id.isNotEmpty) {
+        effectivePartnerId = partner.id;
+      } else if (space?.partnerId != null && space!.partnerId!.isNotEmpty && space.partnerId != user.id) {
+        effectivePartnerId = space.partnerId;
+      } else if (space != null) {
+        final memberOther = space.members.firstWhere((m) => m != user.id, orElse: () => '');
+        if (memberOther.isNotEmpty) {
+          effectivePartnerId = memberOther;
+        }
+      }
+      if ((effectivePartnerId == null || effectivePartnerId.isEmpty) &&
+          user.partnerId != null &&
+          user.partnerId!.isNotEmpty &&
+          user.partnerId != user.id) {
+        effectivePartnerId = user.partnerId;
+      }
+    }
+    final effectivePartnerName = partner?.nickname ??
+        LocalCacheService.getCachedPartner()?['nickname']?.toString();
+
     if (user == null) {
       _syncedSpaceId = null;
       _syncedPartnerId = null;
     } else if (effectiveSpaceId != null && effectiveSpaceId.isNotEmpty) {
-      if (_syncedSpaceId != effectiveSpaceId || _syncedPartnerId != partner?.id) {
+      if (_syncedSpaceId != effectiveSpaceId || _syncedPartnerId != effectivePartnerId) {
         _syncedSpaceId = effectiveSpaceId;
-        _syncedPartnerId = partner?.id;
+        _syncedPartnerId = effectivePartnerId;
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!mounted) return;
           context.read<StageProvider>().initSpaceListeners(
                 effectiveSpaceId,
                 user.id,
-                partner?.id,
+                effectivePartnerId,
               );
           final worldProvider = context.read<WorldProvider>();
           worldProvider.initWorldSync(
                 spaceId: effectiveSpaceId,
                 currentUserId: user.id,
-                partnerId: partner?.id,
+                partnerId: effectivePartnerId,
               );
           worldProvider.ensureTrackingStartedIfPermitted(
                 spaceId: effectiveSpaceId,
@@ -329,14 +354,14 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold> with Wi
           context.read<VaultProvider>().initVaultSync(
                 spaceId: effectiveSpaceId,
                 currentUserId: user.id,
-                partnerId: partner?.id,
-                partnerNickname: partner?.nickname,
+                partnerId: effectivePartnerId,
+                partnerNickname: effectivePartnerName,
               );
           context.read<MemoriesProvider>().initMemoriesSync(
                 spaceId: effectiveSpaceId,
                 currentUserId: user.id,
-                partnerId: partner?.id,
-                partnerNickname: partner?.nickname,
+                partnerId: effectivePartnerId,
+                partnerNickname: effectivePartnerName,
               );
           context.read<AudioProvider>().initMusicSync(effectiveSpaceId);
           context.read<ThemeProvider>().initThemeSync(

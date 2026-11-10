@@ -553,129 +553,164 @@ class FirebaseService {
     return updatedSpace;
   }
 
-  /// Migrates and merges all content from an old space into the shared sanctuary space
-  /// so that no memories, vaults, places, goals, or notes are ever lost when connecting
+  static Future<void> _mergeAppContentList({
+    required dynamic client,
+    required String oldId,
+    required String targetId,
+    String? wrapperKey,
+  }) async {
+    try {
+      final oldRow = await client.from('app_content').select('content').eq('id', oldId).maybeSingle();
+      if (oldRow == null || oldRow['content'] == null) return;
+
+      List<dynamic> extractList(dynamic content) {
+        if (wrapperKey == null && content is List) return List<dynamic>.from(content);
+        if (wrapperKey != null && content is Map && content[wrapperKey] is List) {
+          return List<dynamic>.from(content[wrapperKey] as List);
+        }
+        return [];
+      }
+
+      final oldList = extractList(oldRow['content']);
+      if (oldList.isEmpty) return;
+
+      final targetRow = await client.from('app_content').select('content').eq('id', targetId).maybeSingle();
+      final merged = extractList(targetRow?['content']);
+      for (final item in oldList) {
+        if (item is Map && item['id'] != null) {
+          if (!merged.any((m) => m is Map && m['id'] == item['id'])) {
+            merged.add(item);
+          }
+        } else if (!merged.contains(item)) {
+          merged.add(item);
+        }
+      }
+
+      final payload = wrapperKey == null
+          ? merged
+          : {wrapperKey: merged, 'updated_at': DateTime.now().toIso8601String()};
+      await client.from('app_content').upsert({
+        'id': targetId,
+        'content': payload,
+        'updated_at': DateTime.now().toIso8601String(),
+      });
+    } catch (_) {}
+  }
+
+  /// Migrates and merges ALL content (memories, letters, milestones, vaults, notes,
+  /// prompts, care, goals, playlists, places) from oldSpaceId into targetSpaceId.
   static Future<void> migrateSpaceData({
     required String oldSpaceId,
     required String targetSpaceId,
   }) async {
     if (oldSpaceId.isEmpty || targetSpaceId.isEmpty || oldSpaceId == targetSpaceId) return;
     try {
+      // 1. Migrate Firestore Milestones subcollection -> targetSpaceId
+      try {
+        final oldMlsSnap = await firestore.collection('spaces').doc(oldSpaceId).collection('milestones').get();
+        for (final doc in oldMlsSnap.docs) {
+          final data = Map<String, dynamic>.from(doc.data());
+          data['space_id'] = targetSpaceId;
+          await firestore.collection('spaces').doc(targetSpaceId).collection('milestones').doc(doc.id).set(data, SetOptions(merge: true));
+        }
+      } catch (_) {}
+
       final client = SupabaseService.client;
       if (client != null) {
-        // 1. Migrate memories
-        await client
-            .from('memories')
-            .update({'space_id': targetSpaceId})
-            .eq('space_id', oldSpaceId);
+        // 2. Migrate SQL tables: memories, letters, milestones
+        for (final table in ['memories', 'letters', 'milestones']) {
+          try {
+            await client.from(table).update({'space_id': targetSpaceId}).eq('space_id', oldSpaceId);
+          } catch (_) {}
+        }
 
-        // 2. Migrate vaults
-        final oldVaultsRow = await client
-            .from('app_content')
-            .select()
-            .eq('id', 'vaults_$oldSpaceId')
-            .maybeSingle();
+        // 3. Merge array-based app_content collections
+        await _mergeAppContentList(client: client, oldId: 'vaults_$oldSpaceId', targetId: 'vaults_$targetSpaceId');
+        await _mergeAppContentList(client: client, oldId: 'places_$oldSpaceId', targetId: 'places_$targetSpaceId');
+        await _mergeAppContentList(client: client, oldId: 'couple_goals_$oldSpaceId', targetId: 'couple_goals_$targetSpaceId');
+        await _mergeAppContentList(client: client, oldId: 'daily_care_$oldSpaceId', targetId: 'daily_care_$targetSpaceId');
+        await _mergeAppContentList(client: client, oldId: 'bucket_list_$oldSpaceId', targetId: 'bucket_list_$targetSpaceId', wrapperKey: 'items');
+        await _mergeAppContentList(client: client, oldId: 'playlists_$oldSpaceId', targetId: 'playlists_$targetSpaceId', wrapperKey: 'playlists');
+        await _mergeAppContentList(client: client, oldId: 'music_$oldSpaceId', targetId: 'music_$targetSpaceId', wrapperKey: 'songs');
+        await _mergeAppContentList(client: client, oldId: 'favorite_songs_$oldSpaceId', targetId: 'favorite_songs_$targetSpaceId', wrapperKey: 'favorites');
 
-        if (oldVaultsRow != null && oldVaultsRow['content'] != null) {
-          final oldVaultList = List.from(oldVaultsRow['content'] as List);
-          if (oldVaultList.isNotEmpty) {
-            final targetVaultsRow = await client
-                .from('app_content')
-                .select()
-                .eq('id', 'vaults_$targetSpaceId')
-                .maybeSingle();
-
-            List mergedVaults = List.from(oldVaultList);
-            if (targetVaultsRow != null && targetVaultsRow['content'] is List) {
-              final targetList = targetVaultsRow['content'] as List;
-              for (final v in targetList) {
-                if (v is Map && !mergedVaults.any((m) => m['id'] == v['id'])) {
-                  mergedVaults.add(v);
+        // 4. Merge Pinned Notes map
+        try {
+          final oldNotesRow = await client.from('app_content').select('content').eq('id', 'pinned_notes_$oldSpaceId').maybeSingle();
+          if (oldNotesRow != null && oldNotesRow['content'] is Map) {
+            final targetNotesRow = await client.from('app_content').select('content').eq('id', 'pinned_notes_$targetSpaceId').maybeSingle();
+            final targetNotes = <String, dynamic>{};
+            if (targetNotesRow != null && targetNotesRow['content'] is Map) {
+              final raw = Map<String, dynamic>.from(targetNotesRow['content'] as Map);
+              final inner = raw['notes'] is Map ? Map<String, dynamic>.from(raw['notes'] as Map) : raw;
+              targetNotes.addAll(inner);
+            }
+            final oldRaw = Map<String, dynamic>.from(oldNotesRow['content'] as Map);
+            final oldInner = oldRaw['notes'] is Map ? Map<String, dynamic>.from(oldRaw['notes'] as Map) : oldRaw;
+            oldInner.forEach((k, v) {
+              if (k != 'updatedAt' && k != 'updated_at' && !targetNotes.containsKey(k)) {
+                targetNotes[k] = v;
+                if (v is Map) {
+                  saveUserFeatureField(targetSpaceId, 'pinned_note', k, Map<String, dynamic>.from(v));
                 }
               }
-            }
-
+            });
             await client.from('app_content').upsert({
-              'id': 'vaults_$targetSpaceId',
-              'content': mergedVaults,
+              'id': 'pinned_notes_$targetSpaceId',
+              'content': {'notes': targetNotes, 'updated_at': DateTime.now().toIso8601String()},
               'updated_at': DateTime.now().toIso8601String(),
             });
           }
-        }
+        } catch (_) {}
 
-        // 3. Migrate places
-        final oldPlacesRow = await client
-            .from('app_content')
-            .select()
-            .eq('id', 'places_$oldSpaceId')
-            .maybeSingle();
-        if (oldPlacesRow != null && oldPlacesRow['content'] != null) {
-          final oldPlaces = List.from(oldPlacesRow['content'] as List);
-          if (oldPlaces.isNotEmpty) {
-            final targetPlacesRow = await client
-                .from('app_content')
-                .select()
-                .eq('id', 'places_$targetSpaceId')
-                .maybeSingle();
-            List mergedPlaces = List.from(oldPlaces);
-            if (targetPlacesRow != null && targetPlacesRow['content'] is List) {
-              for (final p in targetPlacesRow['content'] as List) {
-                if (p is Map && !mergedPlaces.any((m) => m['id'] == p['id'])) {
-                  mergedPlaces.add(p);
-                }
-              }
-            }
-            await client.from('app_content').upsert({
-              'id': 'places_$targetSpaceId',
-              'content': mergedPlaces,
-              'updated_at': DateTime.now().toIso8601String(),
-            });
-          }
-        }
-
-        // 4. Migrate couple_goals / firsts & dreams
-        final oldGoalsRow = await client
-            .from('app_content')
-            .select()
-            .eq('id', 'couple_goals_$oldSpaceId')
-            .maybeSingle();
-        if (oldGoalsRow != null && oldGoalsRow['content'] != null) {
-          final targetGoalsRow = await client
-              .from('app_content')
-              .select()
-              .eq('id', 'couple_goals_$targetSpaceId')
-              .maybeSingle();
-          if (targetGoalsRow == null) {
-            await client.from('app_content').upsert({
-              'id': 'couple_goals_$targetSpaceId',
-              'content': oldGoalsRow['content'],
-              'updated_at': DateTime.now().toIso8601String(),
-            });
-          }
-        }
-
-        // 5. Migrate daily care & daily prompt if target is empty
-        for (final feature in ['daily_care', 'daily_prompt', 'location']) {
-          final oldDoc = await client
-              .from('app_content')
-              .select()
-              .eq('id', '${feature}_$oldSpaceId')
-              .maybeSingle();
-          if (oldDoc != null && oldDoc['content'] != null) {
-            final targetDoc = await client
-                .from('app_content')
-                .select()
-                .eq('id', '${feature}_$targetSpaceId')
-                .maybeSingle();
-            if (targetDoc == null) {
+        // 5. Merge Daily Prompt answers & Location
+        try {
+          final oldPrompt = await client.from('app_content').select('content').eq('id', 'daily_prompt_$oldSpaceId').maybeSingle();
+          if (oldPrompt != null && oldPrompt['content'] is Map) {
+            final targetPrompt = await client.from('app_content').select('content').eq('id', 'daily_prompt_$targetSpaceId').maybeSingle();
+            if (targetPrompt == null || targetPrompt['content'] == null) {
               await client.from('app_content').upsert({
-                'id': '${feature}_$targetSpaceId',
-                'content': oldDoc['content'],
+                'id': 'daily_prompt_$targetSpaceId',
+                'content': oldPrompt['content'],
                 'updated_at': DateTime.now().toIso8601String(),
               });
+            } else if (targetPrompt['content'] is Map) {
+              final tMap = Map<String, dynamic>.from(targetPrompt['content'] as Map);
+              final oMap = Map<String, dynamic>.from(oldPrompt['content'] as Map);
+              if (tMap['id'] == oMap['id'] && oMap['answers'] is Map) {
+                final mergedAns = Map<String, dynamic>.from(tMap['answers'] as Map? ?? {});
+                (oMap['answers'] as Map).forEach((k, v) {
+                  if (!mergedAns.containsKey(k) || (mergedAns[k]?.toString().isEmpty ?? true)) {
+                    mergedAns[k.toString()] = v;
+                  }
+                });
+                tMap['answers'] = mergedAns;
+                await client.from('app_content').upsert({
+                  'id': 'daily_prompt_$targetSpaceId',
+                  'content': tMap,
+                  'updated_at': DateTime.now().toIso8601String(),
+                });
+              }
             }
           }
-        }
+        } catch (_) {}
+
+        try {
+          final oldLoc = await client.from('app_content').select('content').eq('id', 'location_$oldSpaceId').maybeSingle();
+          if (oldLoc != null && oldLoc['content'] is Map) {
+            final targetLoc = await client.from('app_content').select('content').eq('id', 'location_$targetSpaceId').maybeSingle();
+            final merged = <String, dynamic>{
+              ...Map<String, dynamic>.from(oldLoc['content'] as Map),
+              if (targetLoc != null && targetLoc['content'] is Map)
+                ...Map<String, dynamic>.from(targetLoc['content'] as Map),
+            };
+            await client.from('app_content').upsert({
+              'id': 'location_$targetSpaceId',
+              'content': merged,
+              'updated_at': DateTime.now().toIso8601String(),
+            });
+          }
+        } catch (_) {}
       }
     } catch (e) {
       debugPrint('Error migrating space data: $e');

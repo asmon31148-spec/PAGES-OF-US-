@@ -861,6 +861,67 @@ class AudioProvider extends ChangeNotifier {
     } catch (_) {}
   }
 
+  void _mergePlaylists(List<PlaylistItem> incoming) {
+    final merged = <String, PlaylistItem>{};
+    for (final p in _playlists) {
+      merged[p.id] = p;
+    }
+    for (final p in incoming) {
+      final existing = merged[p.id];
+      if (existing != null) {
+        final combinedSongs = <String>{...existing.songIds, ...p.songIds}.toList();
+        merged[p.id] = PlaylistItem(
+          id: p.id,
+          title: p.title.isNotEmpty ? p.title : existing.title,
+          coverColor: p.coverColor,
+          songIds: combinedSongs,
+        );
+      } else {
+        merged[p.id] = p;
+      }
+    }
+    final sanitized = _sanitizePlaylists(merged.values.toList());
+    _playlists
+      ..clear()
+      ..addAll(sanitized);
+    LocalCacheService.setCachedPlaylists(_playlists.map((p) => p.toJson()).toList());
+    notifyListeners();
+  }
+
+  void _applySongsPayload(Map<String, dynamic> data) {
+    bool hasChanges = false;
+    if (data['deleted_ids'] is List) {
+      final del = List<String>.from(data['deleted_ids'] as List);
+      _deletedSongIds.addAll(del);
+      LocalCacheService.setCachedDeletedSongIds(_deletedSongIds.toList());
+      final beforeCount = _songs.length;
+      _songs.removeWhere((s) => _deletedSongIds.contains(s.id));
+      if (_songs.length != beforeCount) hasChanges = true;
+    }
+    if (data['songs'] is List) {
+      final list = (data['songs'] as List)
+          .map((e) => SongItem.fromJson(Map<String, dynamic>.from(e as Map)))
+          .where((s) => !_deletedSongIds.contains(s.id))
+          .toList();
+      if (list.isNotEmpty || _songs.isNotEmpty) {
+        _songs = _deduplicateSongs([...list, ..._songs])
+            .where((s) => !_deletedSongIds.contains(s.id))
+            .toList();
+        LocalCacheService.setCachedSongs(_songs.map((s) => s.toJson()).toList());
+        hasChanges = true;
+      }
+    }
+    if (hasChanges) {
+      if (_songs.isEmpty) {
+        _currentSongIndex = 0;
+        _isSongPlaying = false;
+      } else if (_currentSongIndex >= _songs.length) {
+        _currentSongIndex = _songs.length - 1;
+      }
+      notifyListeners();
+    }
+  }
+
   void initMusicSync(String spaceId) {
     if (spaceId.isEmpty) return;
     _syncSpaceId = spaceId;
@@ -881,10 +942,7 @@ class AudioProvider extends ChangeNotifier {
             final list = data['playlists'] as List<dynamic>?;
             if (list != null && list.isNotEmpty) {
               final incoming = list.map((e) => PlaylistItem.fromJson(Map<String, dynamic>.from(e as Map))).toList();
-              _playlists.clear();
-              _playlists.addAll(_sanitizePlaylists(incoming));
-              LocalCacheService.setCachedPlaylists(_playlists.map((p) => p.toJson()).toList());
-              notifyListeners();
+              _mergePlaylists(incoming);
             }
           }
         });
@@ -897,30 +955,7 @@ class AudioProvider extends ChangeNotifier {
             .maybeSingle()
             .then((res) {
           if (res != null && res['content'] != null && res['content'] is Map) {
-            final data = Map<String, dynamic>.from(res['content'] as Map);
-            bool hasChanges = false;
-            if (data['deleted_ids'] is List) {
-              final del = List<String>.from(data['deleted_ids'] as List);
-              _deletedSongIds.addAll(del);
-              LocalCacheService.setCachedDeletedSongIds(_deletedSongIds.toList());
-              final beforeCount = _songs.length;
-              _songs.removeWhere((s) => _deletedSongIds.contains(s.id));
-              if (_songs.length != beforeCount) hasChanges = true;
-            }
-            if (data['songs'] is List) {
-              final list = (data['songs'] as List)
-                  .map((e) => SongItem.fromJson(Map<String, dynamic>.from(e as Map)))
-                  .where((s) => !_deletedSongIds.contains(s.id))
-                  .toList();
-              if (list.isNotEmpty || _songs.isNotEmpty) {
-                _songs = _deduplicateSongs(list);
-                LocalCacheService.setCachedSongs(_songs.map((s) => s.toJson()).toList());
-                hasChanges = true;
-              }
-            }
-            if (hasChanges) {
-              notifyListeners();
-            }
+            _applySongsPayload(Map<String, dynamic>.from(res['content'] as Map));
           }
         });
 
@@ -950,36 +985,11 @@ class AudioProvider extends ChangeNotifier {
         final list = data['playlists'] as List<dynamic>?;
         if (list != null && list.isNotEmpty) {
           final incoming = list.map((e) => PlaylistItem.fromJson(Map<String, dynamic>.from(e as Map))).toList();
-          _playlists.clear();
-          _playlists.addAll(_sanitizePlaylists(incoming));
-          LocalCacheService.setCachedPlaylists(_playlists.map((p) => p.toJson()).toList());
-          notifyListeners();
+          _mergePlaylists(incoming);
         }
       },
       onMusicUpdate: (data) {
-        bool hasChanges = false;
-        if (data['deleted_ids'] is List) {
-          final del = List<String>.from(data['deleted_ids'] as List);
-          _deletedSongIds.addAll(del);
-          LocalCacheService.setCachedDeletedSongIds(_deletedSongIds.toList());
-          final beforeCount = _songs.length;
-          _songs.removeWhere((s) => _deletedSongIds.contains(s.id));
-          if (_songs.length != beforeCount) hasChanges = true;
-        }
-        if (data['songs'] is List) {
-          final list = (data['songs'] as List)
-              .map((e) => SongItem.fromJson(Map<String, dynamic>.from(e as Map)))
-              .where((s) => !_deletedSongIds.contains(s.id))
-              .toList();
-          if (list.isNotEmpty || _songs.isNotEmpty) {
-            _songs = _deduplicateSongs(list);
-            LocalCacheService.setCachedSongs(_songs.map((s) => s.toJson()).toList());
-            hasChanges = true;
-          }
-        }
-        if (hasChanges) {
-          notifyListeners();
-        }
+        _applySongsPayload(data);
       },
     );
 
@@ -987,36 +997,7 @@ class AudioProvider extends ChangeNotifier {
     _musicCloudSub?.cancel();
     _musicCloudSub = FirebaseService.streamFeatureDoc(spaceId, 'music').listen((snap) {
       if (snap.exists && snap.data() != null) {
-        final data = snap.data()!;
-        bool hasChanges = false;
-        if (data['deleted_ids'] is List) {
-          final del = List<String>.from(data['deleted_ids'] as List);
-          _deletedSongIds.addAll(del);
-          LocalCacheService.setCachedDeletedSongIds(_deletedSongIds.toList());
-          final beforeCount = _songs.length;
-          _songs.removeWhere((s) => _deletedSongIds.contains(s.id));
-          if (_songs.length != beforeCount) hasChanges = true;
-        }
-        if (data['songs'] is List) {
-          final list = (data['songs'] as List)
-              .map((e) => SongItem.fromJson(Map<String, dynamic>.from(e as Map)))
-              .where((s) => !_deletedSongIds.contains(s.id))
-              .toList();
-          if (list.isNotEmpty || _songs.isNotEmpty) {
-            _songs = _deduplicateSongs(list);
-            LocalCacheService.setCachedSongs(_songs.map((s) => s.toJson()).toList());
-            hasChanges = true;
-          }
-        }
-        if (hasChanges) {
-          if (_songs.isEmpty) {
-            _currentSongIndex = 0;
-            _isSongPlaying = false;
-          } else if (_currentSongIndex >= _songs.length) {
-            _currentSongIndex = _songs.length - 1;
-          }
-          notifyListeners();
-        }
+        _applySongsPayload(snap.data()!);
       }
     });
 
@@ -1027,10 +1008,7 @@ class AudioProvider extends ChangeNotifier {
         final list = snap.data()!['playlists'] as List<dynamic>?;
         if (list != null && list.isNotEmpty) {
           final incoming = list.map((e) => PlaylistItem.fromJson(Map<String, dynamic>.from(e as Map))).toList();
-          _playlists.clear();
-          _playlists.addAll(_sanitizePlaylists(incoming));
-          LocalCacheService.setCachedPlaylists(_playlists.map((p) => p.toJson()).toList());
-          notifyListeners();
+          _mergePlaylists(incoming);
         }
       }
     });

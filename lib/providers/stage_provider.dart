@@ -33,6 +33,8 @@ class StageProvider extends ChangeNotifier {
   Map<String, PinnedNote> _pinnedNotes = {};
   List<CoupleGoalItem> _goals = [];
   List<DailyCareItem> _dailyCareItems = [];
+  final Set<String> _deletedGoalIds = {};
+  final Set<String> _deletedCareIds = {};
   bool _isPulsing = false;
   final List<TouchPoint> _touchPoints = [];
   TouchPoint? _partnerTouchPoint;
@@ -189,6 +191,8 @@ class StageProvider extends ChangeNotifier {
     _pinnedNotes = {};
     _goals = [];
     _dailyCareItems = [];
+    _deletedGoalIds.clear();
+    _deletedCareIds.clear();
     _drawingStrokes.clear();
     _touchPoints.clear();
     _partnerTouchPoint = null;
@@ -385,118 +389,19 @@ class StageProvider extends ChangeNotifier {
       if (snap.exists && snap.data() != null) {
         final data = snap.data()!;
         final rawNotes = data['notes'] is Map ? Map<String, dynamic>.from(data['notes'] as Map) : data;
-        final updatedMap = <String, PinnedNote>{};
-        rawNotes.forEach((k, v) {
-          if (k != 'updatedAt' && v is Map) {
-            // Strictly only admit notes for current user or active partner!
-            if (k == userId || (partnerId != null && partnerId.isNotEmpty && k == partnerId)) {
-              try {
-                updatedMap[k] = PinnedNote.fromJson(Map<String, dynamic>.from(v));
-              } catch (_) {}
-            }
-          }
-        });
-        _pinnedNotes = updatedMap;
-        LocalCacheService.setCachedPinnedNotes(
-          _pinnedNotes.map((k, v) => MapEntry(k, v.toJson())),
-        );
-        _syncWidget(partnerId);
-        notifyListeners();
+        _mergeRawPinnedNotes(rawNotes, userId: userId, partnerId: partnerId, spaceId: spaceId);
       }
     });
 
     // Supabase app_content fast-fetch for pinned notes (survives re-logins)
-    try {
-      final client = SupabaseService.client;
-      if (client != null) {
-        // Fetch shared space pinned notes
-        client
-            .from('app_content')
-            .select('content')
-            .eq('id', 'pinned_notes_$spaceId')
-            .maybeSingle()
-            .then((res) async {
-          if (res != null && res['content'] != null && res['content'] is Map) {
-            final data = Map<String, dynamic>.from(res['content'] as Map);
-            final rawNotes = data['notes'] is Map ? Map<String, dynamic>.from(data['notes'] as Map) : data;
-            bool changed = false;
-            rawNotes.forEach((k, v) {
-              if (k != 'updatedAt' && k != 'updated_at' && v is Map) {
-                if (k == userId || (partnerId != null && partnerId.isNotEmpty && k == partnerId)) {
-                  try {
-                    final note = PinnedNote.fromJson(Map<String, dynamic>.from(v));
-                    _pinnedNotes[k] = note;
-                    changed = true;
-                  } catch (_) {}
-                }
-              }
-            });
-            if (changed) {
-              await LocalCacheService.setCachedPinnedNotes(
-                _pinnedNotes.map((k, v) => MapEntry(k, v.toJson())),
-              );
-              _syncWidget(partnerId);
-              notifyListeners();
-            }
-          }
-        });
-
-        // Also check individual user note backup
-        client
-            .from('app_content')
-            .select('content')
-            .eq('id', 'pinned_note_${spaceId}_$userId')
-            .maybeSingle()
-            .then((res) async {
-          if (res != null && res['content'] != null && res['content'] is Map) {
-            try {
-              final note = PinnedNote.fromJson(Map<String, dynamic>.from(res['content'] as Map));
-              if (note.text.isNotEmpty && (!_pinnedNotes.containsKey(userId) || _pinnedNotes[userId]!.text.isEmpty)) {
-                _pinnedNotes[userId] = note;
-                await LocalCacheService.setCachedPinnedNotes(
-                  _pinnedNotes.map((k, v) => MapEntry(k, v.toJson())),
-                );
-                _syncWidget(partnerId);
-                notifyListeners();
-              }
-            } catch (_) {}
-          }
-        });
-
-        // Also check partner individual note backup if paired
-        if (partnerId != null && partnerId.isNotEmpty) {
-          client
-              .from('app_content')
-              .select('content')
-              .eq('id', 'pinned_note_${spaceId}_$partnerId')
-              .maybeSingle()
-              .then((res) async {
-            if (res != null && res['content'] != null && res['content'] is Map) {
-              try {
-                final note = PinnedNote.fromJson(Map<String, dynamic>.from(res['content'] as Map));
-                if (note.text.isNotEmpty && (!_pinnedNotes.containsKey(partnerId) || _pinnedNotes[partnerId]!.text.isEmpty)) {
-                  _pinnedNotes[partnerId] = note;
-                  await LocalCacheService.setCachedPinnedNotes(
-                    _pinnedNotes.map((k, v) => MapEntry(k, v.toJson())),
-                  );
-                  _syncWidget(partnerId);
-                  notifyListeners();
-                }
-              } catch (_) {}
-            }
-          });
-        }
-      }
-    } catch (_) {}
+    _fetchPinnedNotesFromSupabase(spaceId: spaceId, userId: userId, partnerId: partnerId);
 
     // 4. Listen to Daily Blind Prompt
     _dailyPromptSub?.cancel();
     _dailyPromptSub = FirebaseService.streamFeatureDoc(spaceId, 'daily_prompt').listen((snap) {
       if (snap.exists && snap.data() != null) {
         final parsed = DailyPrompt.fromJson(snap.data()!);
-        _dailyPrompt = _handleDailyPromptRollover(parsed, spaceId);
-        LocalCacheService.setCachedDailyPrompt(_dailyPrompt!.toJson());
-        notifyListeners();
+        _applyMergedDailyPrompt(parsed, spaceId);
       } else if (partnerId != null && partnerId.isNotEmpty && _dailyPrompt == null) {
         // Paired, but no prompt exists yet in space: establish shared prompt
         final todayStr = DateTime.now().toIso8601String().split('T').first;
@@ -518,25 +423,7 @@ class StageProvider extends ChangeNotifier {
     });
 
     // Supabase app_content fast-fetch for daily_prompt
-    try {
-      final client = SupabaseService.client;
-      if (client != null) {
-        client
-            .from('app_content')
-            .select('content')
-            .eq('id', 'daily_prompt_$spaceId')
-            .maybeSingle()
-            .then((res) {
-          if (res != null && res['content'] != null && res['content'] is Map) {
-            final promptMap = Map<String, dynamic>.from(res['content'] as Map);
-            final parsed = DailyPrompt.fromJson(promptMap);
-            _dailyPrompt = _handleDailyPromptRollover(parsed, spaceId);
-            LocalCacheService.setCachedDailyPrompt(_dailyPrompt!.toJson());
-            notifyListeners();
-          }
-        });
-      }
-    } catch (_) {}
+    _fetchDailyPromptFromSupabase(spaceId);
 
     // 4b. Listen to Prompt History
     _promptHistorySub?.cancel();
@@ -558,10 +445,10 @@ class StageProvider extends ChangeNotifier {
       if (snap.exists && snap.data() != null) {
         final list = snap.data()!['goals'] as List?;
         if (list != null && list.isNotEmpty) {
-          _goals = list
+          final incoming = list
               .map((e) => CoupleGoalItem.fromJson(Map<String, dynamic>.from(e as Map)))
               .toList();
-          notifyListeners();
+          _mergeGoals(incoming);
         }
       }
     });
@@ -577,13 +464,11 @@ class StageProvider extends ChangeNotifier {
         final data = snap.data()!;
         final list = data['care_items'] as List?;
         if (list != null) {
-          _dailyCareItems = list
+          final incoming = list
               .map((e) => DailyCareItem.fromJson(Map<String, dynamic>.from(e as Map)))
               .toList();
-
-          // Reschedule local exact alarm notifications for this device
-          NotificationService.scheduleDailyCareNotifications(
-            items: _dailyCareItems,
+          _mergeDailyCareItems(
+            incoming,
             currentUserId: userId,
             partnerName: partnerNickname,
           );
@@ -1312,8 +1197,175 @@ class StageProvider extends ChangeNotifier {
     } catch (_) {}
   }
 
+  bool _isAllowedNoteKey(
+    String key, {
+    required String userId,
+    String? partnerId,
+    required String spaceId,
+  }) {
+    if (key == 'updatedAt' || key == 'updated_at' || key == 'notes') {
+      return false;
+    }
+    if ((partnerId != null && partnerId.isNotEmpty) ||
+        !spaceId.startsWith('solo_')) {
+      return true;
+    }
+    return key == userId;
+  }
+
+  void _mergeRawPinnedNotes(
+    Map<String, dynamic> rawNotes, {
+    required String userId,
+    String? partnerId,
+    required String spaceId,
+  }) {
+    bool changed = false;
+    final updated = Map<String, PinnedNote>.from(_pinnedNotes);
+    rawNotes.forEach((k, v) {
+      if (v is Map &&
+          _isAllowedNoteKey(k, userId: userId, partnerId: partnerId, spaceId: spaceId)) {
+        try {
+          updated[k] = PinnedNote.fromJson(Map<String, dynamic>.from(v));
+          changed = true;
+        } catch (_) {}
+      }
+    });
+    if (changed) {
+      _pinnedNotes = updated;
+      LocalCacheService.setCachedPinnedNotes(
+        _pinnedNotes.map((k, v) => MapEntry(k, v.toJson())),
+      );
+      _syncWidget(partnerId);
+      notifyListeners();
+    }
+  }
+
+  Future<void> _fetchPinnedNotesFromSupabase({
+    required String spaceId,
+    required String userId,
+    String? partnerId,
+  }) async {
+    try {
+      final client = SupabaseService.client;
+      if (client == null) return;
+
+      final res = await client
+          .from('app_content')
+          .select('content')
+          .eq('id', 'pinned_notes_$spaceId')
+          .maybeSingle();
+      if (res != null && res['content'] != null && res['content'] is Map) {
+        final data = Map<String, dynamic>.from(res['content'] as Map);
+        final rawNotes = data['notes'] is Map
+            ? Map<String, dynamic>.from(data['notes'] as Map)
+            : data;
+        _mergeRawPinnedNotes(rawNotes, userId: userId, partnerId: partnerId, spaceId: spaceId);
+      }
+
+      final myRes = await client
+          .from('app_content')
+          .select('content')
+          .eq('id', 'pinned_note_${spaceId}_$userId')
+          .maybeSingle();
+      if (myRes != null && myRes['content'] is Map) {
+        final note = PinnedNote.fromJson(Map<String, dynamic>.from(myRes['content'] as Map));
+        if (note.text.isNotEmpty &&
+            (!_pinnedNotes.containsKey(userId) || _pinnedNotes[userId]!.text.isEmpty)) {
+          _pinnedNotes[userId] = note;
+          await LocalCacheService.setCachedPinnedNotes(
+            _pinnedNotes.map((k, v) => MapEntry(k, v.toJson())),
+          );
+          _syncWidget(partnerId);
+          notifyListeners();
+        }
+      }
+
+      if (partnerId != null && partnerId.isNotEmpty) {
+        final pRes = await client
+            .from('app_content')
+            .select('content')
+            .eq('id', 'pinned_note_${spaceId}_$partnerId')
+            .maybeSingle();
+        if (pRes != null && pRes['content'] is Map) {
+          final note = PinnedNote.fromJson(Map<String, dynamic>.from(pRes['content'] as Map));
+          if (note.text.isNotEmpty &&
+              (!_pinnedNotes.containsKey(partnerId) || _pinnedNotes[partnerId]!.text.isEmpty)) {
+            _pinnedNotes[partnerId] = note;
+            await LocalCacheService.setCachedPinnedNotes(
+              _pinnedNotes.map((k, v) => MapEntry(k, v.toJson())),
+            );
+            _syncWidget(partnerId);
+            notifyListeners();
+          }
+        }
+      }
+    } catch (_) {}
+  }
+
+  void _applyMergedDailyPrompt(DailyPrompt parsed, String spaceId) {
+    final existing = _dailyPrompt;
+    DailyPrompt candidate = parsed;
+    if (existing != null && existing.id == parsed.id) {
+      final mergedAnswers = <String, String>{...existing.answers, ...parsed.answers};
+      final mergedReveals = <String, bool>{...existing.reveals, ...parsed.reveals};
+      final mergedChecks = <String, bool>{...existing.careChecks, ...parsed.careChecks};
+      candidate = DailyPrompt(
+        id: parsed.id,
+        prompt: parsed.prompt.isNotEmpty ? parsed.prompt : existing.prompt,
+        category: parsed.category.isNotEmpty ? parsed.category : existing.category,
+        vibeTag: parsed.vibeTag.isNotEmpty ? parsed.vibeTag : existing.vibeTag,
+        answers: mergedAnswers,
+        reveals: mergedReveals,
+        careChecks: mergedChecks,
+      );
+    }
+    _dailyPrompt = _handleDailyPromptRollover(candidate, spaceId);
+    LocalCacheService.setCachedDailyPrompt(_dailyPrompt!.toJson());
+    notifyListeners();
+  }
+
+  Future<void> _fetchDailyPromptFromSupabase(String spaceId) async {
+    try {
+      final client = SupabaseService.client;
+      if (client == null) return;
+      final res = await client
+          .from('app_content')
+          .select('content')
+          .eq('id', 'daily_prompt_$spaceId')
+          .maybeSingle();
+      if (res != null && res['content'] != null && res['content'] is Map) {
+        final promptMap = Map<String, dynamic>.from(res['content'] as Map);
+        final parsed = DailyPrompt.fromJson(promptMap);
+        _applyMergedDailyPrompt(parsed, spaceId);
+      }
+    } catch (_) {}
+  }
+
+  /// Re-fetches all shared Stage data when the app resumes to foreground.
+  Future<void> refreshSharedStageData() async {
+    final spaceId = _activeSpaceId;
+    final userId = _activeUserId;
+    if (spaceId == null || userId == null) return;
+    final cachedPartner = LocalCacheService.getCachedPartner();
+    final partnerNickname = cachedPartner?['nickname']?.toString() ?? 'Partner';
+    await Future.wait([
+      _fetchPinnedNotesFromSupabase(
+        spaceId: spaceId,
+        userId: userId,
+        partnerId: _activePartnerId,
+      ),
+      _fetchDailyPromptFromSupabase(spaceId),
+      fetchGoals(spaceId),
+      fetchDailyCare(
+        spaceId,
+        currentUserId: userId,
+        partnerName: partnerNickname,
+      ),
+    ]);
+  }
+
   Future<void> saveDailyPromptAnswer(String spaceId, String userId, String answer) async {
-    final currentPrompt = _dailyPrompt ?? DailyPrompt(
+    var currentPrompt = _dailyPrompt ?? DailyPrompt(
       id: DateTime.now().toIso8601String().split('T').first,
       prompt: 'What was the sweetest little thought you had about us today?',
       category: 'Soft Affection',
@@ -1324,6 +1376,17 @@ class StageProvider extends ChangeNotifier {
     );
 
     final updatedAnswers = Map<String, String>.from(currentPrompt.answers);
+    // Merge remote answers for same prompt ID so concurrent partner answers aren't overwritten
+    try {
+      final remote = await SupabaseService.getAppContent('daily_prompt_$spaceId');
+      if (remote != null && remote['id']?.toString() == currentPrompt.id && remote['answers'] is Map) {
+        (remote['answers'] as Map).forEach((k, v) {
+          if (v != null && k.toString() != userId) {
+            updatedAnswers[k.toString()] = v.toString();
+          }
+        });
+      }
+    } catch (_) {}
     updatedAnswers[userId] = answer;
 
     final updatedPrompt = DailyPrompt(
@@ -1384,11 +1447,25 @@ class StageProvider extends ChangeNotifier {
       text: text,
       updatedAt: DateTime.now().toIso8601String(),
     );
+    try {
+      final remote = await SupabaseService.getAppContent('pinned_notes_$spaceId');
+      if (remote != null) {
+        final rawNotes = remote['notes'] is Map
+            ? Map<String, dynamic>.from(remote['notes'] as Map)
+            : remote;
+        _mergeRawPinnedNotes(
+          rawNotes,
+          userId: userId,
+          partnerId: _activePartnerId,
+          spaceId: spaceId,
+        );
+      }
+    } catch (_) {}
     _pinnedNotes[userId] = note;
     await LocalCacheService.setCachedPinnedNotes(
       _pinnedNotes.map((k, v) => MapEntry(k, v.toJson())),
     );
-    _syncWidget(null);
+    _syncWidget(_activePartnerId);
     notifyListeners();
 
     await FirebaseService.saveUserFeatureField(spaceId, 'pinned_note', userId, note.toJson());
@@ -1417,7 +1494,31 @@ class StageProvider extends ChangeNotifier {
     CoupleGoalItem(id: 'preset_7', title: 'Got Engaged', icon: '💍', category: 'future'),
   ];
 
+  void _mergeGoals(List<CoupleGoalItem> incoming) {
+    final mergedMap = <String, CoupleGoalItem>{};
+    for (final g in _goals) {
+      if (!_deletedGoalIds.contains(g.id)) {
+        mergedMap[g.id] = g;
+      }
+    }
+    for (final g in incoming) {
+      if (!_deletedGoalIds.contains(g.id)) {
+        final existing = mergedMap[g.id];
+        // Prefer completed version if either side marked it complete
+        if (existing != null && existing.isCompleted && !g.isCompleted) {
+          continue;
+        }
+        mergedMap[g.id] = g;
+      }
+    }
+    _goals = mergedMap.values.toList();
+    final pending = _goals.where((g) => !g.isCompleted).length;
+    NotificationService.scheduleWeeklyGoalReminder(pendingGoalsCount: pending);
+    notifyListeners();
+  }
+
   Future<void> fetchGoals(String spaceId) async {
+    final collected = <CoupleGoalItem>[];
     final supabase = SupabaseService.client;
     if (supabase != null) {
       try {
@@ -1427,18 +1528,34 @@ class StageProvider extends ChangeNotifier {
             .eq('id', 'couple_goals_$spaceId')
             .maybeSingle();
         if (res != null && res['content'] != null && res['content'] is List) {
-          final list = res['content'] as List;
-          if (list.isNotEmpty) {
-            _goals = list
-                .map((e) => CoupleGoalItem.fromJson(Map<String, dynamic>.from(e as Map)))
-                .toList();
-            final pending = _goals.where((g) => !g.isCompleted).length;
-            NotificationService.scheduleWeeklyGoalReminder(pendingGoalsCount: pending);
-            notifyListeners();
-            return;
+          for (final e in (res['content'] as List)) {
+            if (e is Map) {
+              collected.add(CoupleGoalItem.fromJson(Map<String, dynamic>.from(e)));
+            }
           }
         }
       } catch (_) {}
+    }
+    try {
+      final fsSnap = await FirebaseService.firestore
+          .collection('spaces')
+          .doc(spaceId)
+          .collection('features')
+          .doc('couple_goals')
+          .get();
+      final list = fsSnap.data()?['goals'] as List?;
+      if (list != null) {
+        for (final e in list) {
+          if (e is Map) {
+            collected.add(CoupleGoalItem.fromJson(Map<String, dynamic>.from(e)));
+          }
+        }
+      }
+    } catch (_) {}
+
+    if (collected.isNotEmpty) {
+      _mergeGoals(collected);
+      return;
     }
     if (_goals.isEmpty) {
       _goals = List.from(defaultPresetGoals);
@@ -1462,20 +1579,50 @@ class StageProvider extends ChangeNotifier {
   }
 
   Future<void> addGoal(String spaceId, CoupleGoalItem goal) async {
+    _deletedGoalIds.remove(goal.id);
     _goals.add(goal);
     notifyListeners();
     _syncGoalsToCloud(spaceId);
   }
 
   Future<void> deleteGoal(String spaceId, String goalId) async {
+    _deletedGoalIds.add(goalId);
     _goals.removeWhere((g) => g.id == goalId);
     notifyListeners();
     _syncGoalsToCloud(spaceId);
   }
 
   Future<void> _syncGoalsToCloud(String spaceId) async {
-    final jsonList = _goals.map((g) => g.toJson()).toList();
     final supabase = SupabaseService.client;
+    if (supabase != null) {
+      try {
+        final remote = await supabase
+            .from('app_content')
+            .select('content')
+            .eq('id', 'couple_goals_$spaceId')
+            .maybeSingle();
+        if (remote != null && remote['content'] is List) {
+          final merged = <String, CoupleGoalItem>{};
+          for (final raw in (remote['content'] as List)) {
+            if (raw is Map) {
+              final g = CoupleGoalItem.fromJson(Map<String, dynamic>.from(raw));
+              if (!_deletedGoalIds.contains(g.id)) {
+                merged[g.id] = g;
+              }
+            }
+          }
+          for (final g in _goals) {
+            if (!_deletedGoalIds.contains(g.id)) {
+              merged[g.id] = g;
+            }
+          }
+          _goals = merged.values.toList();
+          notifyListeners();
+        }
+      } catch (_) {}
+    }
+
+    final jsonList = _goals.map((g) => g.toJson()).toList();
     if (supabase != null) {
       try {
         await supabase.from('app_content').upsert({
@@ -1551,7 +1698,33 @@ class StageProvider extends ChangeNotifier {
     ),
   ];
 
+  void _mergeDailyCareItems(
+    List<DailyCareItem> incoming, {
+    String? currentUserId,
+    String? partnerName,
+  }) {
+    final mergedMap = <String, DailyCareItem>{};
+    for (final c in _dailyCareItems) {
+      if (!_deletedCareIds.contains(c.id)) {
+        mergedMap[c.id] = c;
+      }
+    }
+    for (final c in incoming) {
+      if (!_deletedCareIds.contains(c.id)) {
+        mergedMap[c.id] = c;
+      }
+    }
+    _dailyCareItems = mergedMap.values.toList();
+    NotificationService.scheduleDailyCareNotifications(
+      items: _dailyCareItems,
+      currentUserId: currentUserId,
+      partnerName: partnerName,
+    );
+    notifyListeners();
+  }
+
   Future<void> fetchDailyCare(String spaceId, {String? currentUserId, String? partnerName}) async {
+    final collected = <DailyCareItem>[];
     final supabase = SupabaseService.client;
     if (supabase != null) {
       try {
@@ -1561,21 +1734,38 @@ class StageProvider extends ChangeNotifier {
             .eq('id', 'daily_care_$spaceId')
             .maybeSingle();
         if (res != null && res['content'] != null && res['content'] is List) {
-          final list = res['content'] as List;
-          if (list.isNotEmpty) {
-            _dailyCareItems = list
-                .map((e) => DailyCareItem.fromJson(Map<String, dynamic>.from(e as Map)))
-                .toList();
-            NotificationService.scheduleDailyCareNotifications(
-              items: _dailyCareItems,
-              currentUserId: currentUserId,
-              partnerName: partnerName,
-            );
-            notifyListeners();
-            return;
+          for (final e in (res['content'] as List)) {
+            if (e is Map) {
+              collected.add(DailyCareItem.fromJson(Map<String, dynamic>.from(e)));
+            }
           }
         }
       } catch (_) {}
+    }
+    try {
+      final fsSnap = await FirebaseService.firestore
+          .collection('spaces')
+          .doc(spaceId)
+          .collection('features')
+          .doc('daily_care_schedules')
+          .get();
+      final list = fsSnap.data()?['care_items'] as List?;
+      if (list != null) {
+        for (final e in list) {
+          if (e is Map) {
+            collected.add(DailyCareItem.fromJson(Map<String, dynamic>.from(e)));
+          }
+        }
+      }
+    } catch (_) {}
+
+    if (collected.isNotEmpty) {
+      _mergeDailyCareItems(
+        collected,
+        currentUserId: currentUserId,
+        partnerName: partnerName,
+      );
+      return;
     }
     if (_dailyCareItems.isEmpty) {
       _dailyCareItems = List.from(defaultPresetCareItems);
@@ -1609,6 +1799,7 @@ class StageProvider extends ChangeNotifier {
   }
 
   Future<void> addCareItem(String spaceId, DailyCareItem item, {String? currentUserId, String? partnerName}) async {
+    _deletedCareIds.remove(item.id);
     _dailyCareItems.add(item);
     notifyListeners();
     _syncDailyCareToCloud(
@@ -1648,6 +1839,7 @@ class StageProvider extends ChangeNotifier {
   }
 
   Future<void> deleteCareItem(String spaceId, String careId) async {
+    _deletedCareIds.add(careId);
     _dailyCareItems.removeWhere((c) => c.id == careId);
     notifyListeners();
     _syncDailyCareToCloud(spaceId);
@@ -1688,8 +1880,36 @@ class StageProvider extends ChangeNotifier {
     String? lastItemTime,
     String? targetUserId,
   }) async {
-    final jsonList = _dailyCareItems.map((c) => c.toJson()).toList();
     final supabase = SupabaseService.client;
+    if (supabase != null) {
+      try {
+        final remote = await supabase
+            .from('app_content')
+            .select('content')
+            .eq('id', 'daily_care_$spaceId')
+            .maybeSingle();
+        if (remote != null && remote['content'] is List) {
+          final merged = <String, DailyCareItem>{};
+          for (final raw in (remote['content'] as List)) {
+            if (raw is Map) {
+              final c = DailyCareItem.fromJson(Map<String, dynamic>.from(raw));
+              if (!_deletedCareIds.contains(c.id)) {
+                merged[c.id] = c;
+              }
+            }
+          }
+          for (final c in _dailyCareItems) {
+            if (!_deletedCareIds.contains(c.id)) {
+              merged[c.id] = c;
+            }
+          }
+          _dailyCareItems = merged.values.toList();
+          notifyListeners();
+        }
+      } catch (_) {}
+    }
+
+    final jsonList = _dailyCareItems.map((c) => c.toJson()).toList();
     if (supabase != null) {
       try {
         await supabase.from('app_content').upsert({
