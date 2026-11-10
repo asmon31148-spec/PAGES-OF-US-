@@ -1584,7 +1584,7 @@ warning • Unused import: 'package:pages_of_us/core/theme/models/theme_palette.
    info • 'green' is deprecated and shouldn't be used. Use (*.g * 255.0).round().clamp(0, 255). Try replacing the use of the deprecated member with the replacement • test/theme_contrast_test.dart:19:29 • deprecated_member_use
    info • 'blue' is deprecated and shouldn't be used. Use (*.b * 255.0).round().clamp(0, 255). Try replacing the use of the deprecated member with the replacement • test/theme_contrast_test.dart:20:29 • deprecated_member_use
 
-1353 issues found. (ran in 14.3s)
+1353 issues found. (ran in 16.7s)
 === FLUTTER BUILD LOG ===
 Upgrading build.gradle
 Upgrading gradle.properties
@@ -1722,6 +1722,6 @@ Execution failed for task ':app:compileFlutterBuildRelease'.
 > Run with --scan to get full insights.
 > Get more help at https://help.gradle.org.
 
-BUILD FAILED in 3m 44s
-Running Gradle task 'assembleRelease'...                          225.3s
+BUILD FAILED in 3m 58s
+Running Gradle task 'assembleRelease'...                          239.1s
 Gradle task assembleRelease failed with exit code 1

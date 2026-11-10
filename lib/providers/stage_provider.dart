@@ -1308,7 +1308,10 @@ class StageProvider extends ChangeNotifier {
     if (existing != null && existing.id == parsed.id) {
       final mergedAnswers = <String, String>{...existing.answers, ...parsed.answers};
       final mergedReveals = <String, bool>{...existing.reveals, ...parsed.reveals};
-      final mergedChecks = <String, bool>{...existing.careChecks, ...parsed.careChecks};
+      final mergedChecks = <String, Map<String, dynamic>>{
+        ...existing.careChecks,
+        ...parsed.careChecks,
+      };
       candidate = DailyPrompt(
         id: parsed.id,
         prompt: parsed.prompt.isNotEmpty ? parsed.prompt : existing.prompt,
@@ -1317,6 +1320,8 @@ class StageProvider extends ChangeNotifier {
         answers: mergedAnswers,
         reveals: mergedReveals,
         careChecks: mergedChecks,
+        createdAt: parsed.createdAt ?? existing.createdAt,
+        isCustom: parsed.isCustom || existing.isCustom,
       );
     }
     _dailyPrompt = _handleDailyPromptRollover(candidate, spaceId);

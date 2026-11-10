@@ -359,8 +359,8 @@ class VaultProvider extends ChangeNotifier {
     final spaceId = _activeSpaceId;
     final userId = _currentUserId;
     if (spaceId == null || userId == null) return;
-    await initVaults(
-      spaceId,
+    await initVaultSync(
+      spaceId: spaceId,
       currentUserId: userId,
       partnerId: _partnerId,
       partnerNickname: _partnerNickname,
