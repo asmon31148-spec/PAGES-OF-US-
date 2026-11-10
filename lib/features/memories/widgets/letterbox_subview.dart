@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/author_identity.dart';
 import '../../../core/widgets/liquid_glass/liquid_glass_card.dart';
 import '../../../core/widgets/liquid_glass/liquid_glass_button.dart';
 import '../../../core/widgets/liquid_glass/liquid_glass_theme.dart';
@@ -26,7 +27,7 @@ class _LetterboxSubviewState extends State<LetterboxSubview> {
     final isDark = context.watch<ThemeProvider>().isDark;
     final memoriesProvider = context.watch<MemoriesProvider>();
     final authProvider = context.watch<AuthProvider>();
-    final spaceId = authProvider.space?.id ?? 'default_space';
+    final spaceId = authProvider.effectiveSpaceId ?? '';
     final user = authProvider.user;
 
     final letters = memoriesProvider.letters;
@@ -469,13 +470,17 @@ class _LetterboxSubviewState extends State<LetterboxSubview> {
                         ),
                         onPressed: () {
                           if (titleCtrl.text.trim().isNotEmpty && bodyCtrl.text.trim().isNotEmpty) {
+                            final myNick = context.read<AuthProvider>().user?.nickname;
                             context.read<MemoriesProvider>().sendLetter(
                                   spaceId: spaceId,
                                   title: titleCtrl.text.trim(),
                                   body: bodyCtrl.text.trim(),
                                   sealType: sealType,
                                   category: category,
-                                  author: userId,
+                                  author: AuthorIdentity.formatAuthorToken(
+                                    userId: userId,
+                                    userNickname: myNick,
+                                  ),
                                 );
                             Navigator.pop(ctx);
                           }

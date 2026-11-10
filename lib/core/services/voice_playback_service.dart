@@ -32,6 +32,7 @@ class VoicePlaybackService extends ChangeNotifier {
   bool _isBuffering = false;
 
   AudioProvider? _ambientAudio;
+  VoidCallback? _onCompletedCallback;
 
   /// Dedicated 60 FPS notifier for isolated waveform scrubbing without widget rebuilds
   final ValueNotifier<Duration> positionNotifier = ValueNotifier<Duration>(Duration.zero);
@@ -48,6 +49,25 @@ class VoicePlaybackService extends ChangeNotifier {
   double get playbackSpeed => _playbackSpeed;
 
   void _initListeners() {
+    _player.setReleaseMode(ReleaseMode.stop).catchError((_) {});
+    _player
+        .setAudioContext(
+          AudioContext(
+            android: const AudioContextAndroid(
+              isSpeakerphoneOn: false,
+              stayAwake: true,
+              contentType: AndroidContentType.speech,
+              usageType: AndroidUsageType.media,
+              audioFocus: AndroidAudioFocus.gainTransientMayDuck,
+            ),
+            iOS: AudioContextIOS(
+              category: AVAudioSessionCategory.playback,
+              options: const {AVAudioSessionOptions.duckOthers},
+            ),
+          ),
+        )
+        .catchError((_) {});
+
     _posSub = _player.onPositionChanged.listen((pos) {
       if (_playerState == PlayerState.playing) {
         _position = pos;
@@ -66,13 +86,23 @@ class VoicePlaybackService extends ChangeNotifier {
     });
 
     _stateSub = _player.onPlayerStateChanged.listen((state) {
-      if (state == PlayerState.completed) {
+      if (state == PlayerState.playing) {
+        if (_isBuffering || _playerState != PlayerState.playing) {
+          _isBuffering = false;
+          _playerState = PlayerState.playing;
+          notifyListeners();
+        }
+      } else if (state == PlayerState.completed) {
+        final cb = _onCompletedCallback;
+        _onCompletedCallback = null;
+        _isBuffering = false;
         _playerState = PlayerState.stopped;
         _position = Duration.zero;
         positionNotifier.value = Duration.zero;
         _activeId = null;
         _ambientAudio?.restoreFromMedia();
         notifyListeners();
+        cb?.call();
       }
     });
   }
@@ -83,8 +113,12 @@ class VoicePlaybackService extends ChangeNotifier {
     required String url,
     int? durationSeconds,
     AudioProvider? ambientAudio,
+    VoidCallback? onCompleted,
   }) async {
     if (_activeId == id) {
+      if (onCompleted != null) {
+        _onCompletedCallback = onCompleted;
+      }
       if (isPlaying) {
         await pause();
       } else if (isPaused) {
@@ -95,6 +129,7 @@ class VoicePlaybackService extends ChangeNotifier {
           url: url,
           durationSeconds: durationSeconds,
           ambientAudio: ambientAudio,
+          onCompleted: onCompleted,
         );
       }
     } else {
@@ -103,6 +138,7 @@ class VoicePlaybackService extends ChangeNotifier {
         url: url,
         durationSeconds: durationSeconds,
         ambientAudio: ambientAudio,
+        onCompleted: onCompleted,
       );
     }
   }
@@ -113,12 +149,14 @@ class VoicePlaybackService extends ChangeNotifier {
     required String url,
     int? durationSeconds,
     AudioProvider? ambientAudio,
+    VoidCallback? onCompleted,
   }) async {
     final cleanUrl = url.trim();
     if (cleanUrl.isEmpty) return;
 
     _ambientAudio = ambientAudio;
     _ambientAudio?.duckForMedia();
+    _onCompletedCallback = onCompleted;
 
     final currentSession = ++_sessionId;
 
@@ -136,13 +174,16 @@ class VoicePlaybackService extends ChangeNotifier {
 
     try {
       // 1. Stop any currently playing audio safely
-      await _player.stop();
+      try {
+        await _player.stop().timeout(const Duration(milliseconds: 600));
+      } catch (_) {}
 
       // Check if another play request intervened
       if (_sessionId != currentSession) return;
 
-      // 2. Resolve audio source (Local file, Asset, Stream, or Base64 Data URI)
+      // 2. Resolve audio source (Local file, Stream, or Base64 Data URI)
       Source source;
+      bool usedCachedRemoteFile = false;
       if (cleanUrl.startsWith('data:audio') || cleanUrl.startsWith('data:application')) {
         final commaIdx = cleanUrl.indexOf(',');
         final base64Str = commaIdx != -1 ? cleanUrl.substring(commaIdx + 1) : cleanUrl;
@@ -156,7 +197,12 @@ class VoicePlaybackService extends ChangeNotifier {
         final isDiskCached = await AudioCacheService.isCached(cleanUrl);
         if (isDiskCached) {
           final localPath = await AudioCacheService.getCachedAudioPath(cleanUrl);
-          source = DeviceFileSource(localPath);
+          if (!localPath.startsWith('http') && File(localPath).existsSync()) {
+            source = DeviceFileSource(localPath);
+            usedCachedRemoteFile = true;
+          } else {
+            source = UrlSource(cleanUrl);
+          }
         } else {
           // Stream directly from remote URL with 0ms pre-wait
           source = UrlSource(cleanUrl);
@@ -167,8 +213,27 @@ class VoicePlaybackService extends ChangeNotifier {
 
       if (_sessionId != currentSession) return;
 
-      await _player.setPlaybackRate(_playbackSpeed);
-      await _player.play(source);
+      await _player.setVolume(1.0);
+      try {
+        await _player.play(source);
+      } catch (playErr) {
+        // If cached file was malformed/unreadable by Android MediaPlayer, purge cache and stream live URL
+        if (usedCachedRemoteFile && _sessionId == currentSession) {
+          await AudioCacheService.deleteCached(cleanUrl);
+          await _player.play(UrlSource(cleanUrl));
+        } else {
+          rethrow;
+        }
+      }
+
+      if (_sessionId != currentSession) return;
+
+      // Apply custom playback speed ONLY after player enters prepared/playing state
+      if (_playbackSpeed != 1.0) {
+        try {
+          await _player.setPlaybackRate(_playbackSpeed);
+        } catch (_) {}
+      }
 
       _isBuffering = false;
       notifyListeners();

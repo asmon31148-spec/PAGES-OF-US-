@@ -57,7 +57,7 @@ class _GoalTrackerScreenState extends State<GoalTrackerScreen> {
     final isDark = context.watch<ThemeProvider>().isDark;
     final stageProvider = context.watch<StageProvider>();
     final authProvider = context.watch<AuthProvider>();
-    final spaceId = authProvider.space?.id ?? 'default_space';
+    final spaceId = authProvider.effectiveSpaceId ?? '';
     final nickname = authProvider.user?.nickname ?? 'You';
 
     final filteredGoals = stageProvider.goals.where((g) {

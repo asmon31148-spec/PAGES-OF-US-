@@ -7,6 +7,7 @@ import 'package:cloud_firestore/cloud_firestore.dart' hide Source;
 import '../data/models/memory_item.dart';
 import '../data/models/letter_item.dart';
 import '../data/models/milestone_item.dart';
+import '../core/utils/author_identity.dart';
 import '../data/services/supabase_service.dart';
 import '../data/services/firebase_service.dart';
 import '../core/services/notification_service.dart';
@@ -83,6 +84,7 @@ class MemoriesProvider extends ChangeNotifier {
     _searchQuery = '';
     _activeStackIndex = 0;
     _currentUserId = null;
+    _currentUserNickname = null;
     _currentPartnerId = null;
     _currentPartnerNickname = null;
     _currentSpaceId = null;
@@ -136,17 +138,31 @@ class MemoriesProvider extends ChangeNotifier {
     }).toList();
   }
 
+  String? _currentUserNickname;
   String? _currentPartnerId;
   String? _currentPartnerNickname;
   String? _currentSpaceId;
 
+  bool _isSharedSpace({required String spaceId, String? partnerId}) {
+    if (spaceId.isEmpty || spaceId == 'default_space') return false;
+    return (partnerId != null && partnerId.isNotEmpty) ||
+        !spaceId.startsWith('solo_');
+  }
+
   Future<void> initMemoriesSync({
     required String spaceId,
     required String currentUserId,
+    String? currentUserNickname,
     String? partnerId,
     String? partnerNickname,
   }) async {
+    if (spaceId.isEmpty || spaceId == 'default_space' || currentUserId.isEmpty) {
+      return;
+    }
     _currentUserId = currentUserId;
+    if (currentUserNickname != null && currentUserNickname.trim().isNotEmpty) {
+      _currentUserNickname = currentUserNickname.trim();
+    }
     _currentPartnerId = partnerId;
     _currentPartnerNickname = partnerNickname;
     _currentSpaceId = spaceId;
@@ -157,18 +173,21 @@ class MemoriesProvider extends ChangeNotifier {
       fetchMemories(
         spaceId: spaceId,
         currentUserId: currentUserId,
+        currentUserNickname: _currentUserNickname,
         partnerId: partnerId,
         partnerNickname: partnerNickname,
       ),
       fetchLetters(
         spaceId: spaceId,
         currentUserId: currentUserId,
+        currentUserNickname: _currentUserNickname,
         partnerId: partnerId,
         partnerNickname: partnerNickname,
       ),
       fetchMilestones(
         spaceId: spaceId,
         currentUserId: currentUserId,
+        currentUserNickname: _currentUserNickname,
         partnerId: partnerId,
         partnerNickname: partnerNickname,
       ),
@@ -229,6 +248,7 @@ class MemoriesProvider extends ChangeNotifier {
             callback: (_) => fetchMemories(
               spaceId: _currentSpaceId ?? spaceId,
               currentUserId: _currentUserId ?? currentUserId,
+              currentUserNickname: _currentUserNickname,
               partnerId: _currentPartnerId,
               partnerNickname: _currentPartnerNickname,
             ),
@@ -271,6 +291,7 @@ class MemoriesProvider extends ChangeNotifier {
             callback: (_) => fetchLetters(
               spaceId: _currentSpaceId ?? spaceId,
               currentUserId: _currentUserId ?? currentUserId,
+              currentUserNickname: _currentUserNickname,
               partnerId: _currentPartnerId,
               partnerNickname: _currentPartnerNickname,
             ),
@@ -286,6 +307,7 @@ class MemoriesProvider extends ChangeNotifier {
             callback: (_) => fetchMilestones(
               spaceId: _currentSpaceId ?? spaceId,
               currentUserId: _currentUserId ?? currentUserId,
+              currentUserNickname: _currentUserNickname,
               partnerId: _currentPartnerId,
               partnerNickname: _currentPartnerNickname,
             ),
@@ -296,9 +318,7 @@ class MemoriesProvider extends ChangeNotifier {
     // Firestore Dual-Sync Realtime Listener for Milestones
     try {
       _firestoreMilestonesSub?.cancel();
-      final isSharedCoupleSpace =
-          (partnerId != null && partnerId.isNotEmpty) ||
-          !spaceId.startsWith('solo_');
+      final isSharedCoupleSpace = _isSharedSpace(spaceId: spaceId, partnerId: partnerId);
       _firestoreMilestonesSub = FirebaseService.firestore
           .collection('spaces')
           .doc(spaceId)
@@ -310,8 +330,10 @@ class MemoriesProvider extends ChangeNotifier {
               data['id'] = doc.id;
               return MilestoneItem.fromJson(
                 data,
-                currentUserId: currentUserId,
-                partnerNickname: partnerNickname,
+                currentUserId: _currentUserId ?? currentUserId,
+                currentUserNickname: _currentUserNickname ?? currentUserNickname,
+                partnerId: _currentPartnerId ?? partnerId,
+                partnerNickname: _currentPartnerNickname ?? partnerNickname,
               );
             }).where((m) => isSharedCoupleSpace || m.isMine).toList();
             _mergeMilestones(incoming);
@@ -325,23 +347,28 @@ class MemoriesProvider extends ChangeNotifier {
   Future<void> refreshAll() async {
     final spaceId = _currentSpaceId;
     final userId = _currentUserId;
-    if (spaceId == null || userId == null) return;
+    if (spaceId == null || spaceId.isEmpty || spaceId == 'default_space' || userId == null) {
+      return;
+    }
     await Future.wait([
       fetchMemories(
         spaceId: spaceId,
         currentUserId: userId,
+        currentUserNickname: _currentUserNickname,
         partnerId: _currentPartnerId,
         partnerNickname: _currentPartnerNickname,
       ),
       fetchLetters(
         spaceId: spaceId,
         currentUserId: userId,
+        currentUserNickname: _currentUserNickname,
         partnerId: _currentPartnerId,
         partnerNickname: _currentPartnerNickname,
       ),
       fetchMilestones(
         spaceId: spaceId,
         currentUserId: userId,
+        currentUserNickname: _currentUserNickname,
         partnerId: _currentPartnerId,
         partnerNickname: _currentPartnerNickname,
       ),
@@ -353,10 +380,17 @@ class MemoriesProvider extends ChangeNotifier {
     required String currentUserId,
     String? partnerId,
   }) {
-    if (partnerId != null && partnerId.isNotEmpty) {
-      return 'space_id.eq.$spaceId,author.ilike.%$currentUserId%,author.ilike.%$partnerId%';
+    final clauses = <String>[];
+    if (spaceId.isNotEmpty && spaceId != 'default_space') {
+      clauses.add('space_id.eq.$spaceId');
     }
-    return 'space_id.eq.$spaceId,author.ilike.%$currentUserId%';
+    if (currentUserId.isNotEmpty) {
+      clauses.add('author.ilike.%$currentUserId%');
+    }
+    if (partnerId != null && partnerId.isNotEmpty) {
+      clauses.add('author.ilike.%$partnerId%');
+    }
+    return clauses.join(',');
   }
 
   void _healOrphanedRowSpaceIds(
@@ -400,6 +434,7 @@ class MemoriesProvider extends ChangeNotifier {
   Future<void> fetchMemories({
     required String spaceId,
     required String currentUserId,
+    String? currentUserNickname,
     String? partnerId,
     String? partnerNickname,
   }) async {
@@ -407,18 +442,18 @@ class MemoriesProvider extends ChangeNotifier {
       final supabase = SupabaseService.client;
       if (supabase == null) return;
 
-      final isSharedCoupleSpace =
-          (partnerId != null && partnerId.isNotEmpty) ||
-          !spaceId.startsWith('solo_');
+      final isSharedCoupleSpace = _isSharedSpace(spaceId: spaceId, partnerId: partnerId);
+      final orFilter = _buildCoupleOrFilter(
+        spaceId: spaceId,
+        currentUserId: currentUserId,
+        partnerId: partnerId,
+      );
+      if (orFilter.isEmpty) return;
 
       final data = await supabase
           .from('memories')
           .select()
-          .or(_buildCoupleOrFilter(
-            spaceId: spaceId,
-            currentUserId: currentUserId,
-            partnerId: partnerId,
-          ))
+          .or(orFilter)
           .order('created_at', ascending: false)
           .limit(100)
           .timeout(const Duration(seconds: 12));
@@ -437,7 +472,9 @@ class MemoriesProvider extends ChangeNotifier {
           .map((row) => MemoryItem.fromJson(
                 row as Map<String, dynamic>,
                 currentUserId: currentUserId,
-                partnerNickname: partnerNickname,
+                currentUserNickname: currentUserNickname ?? _currentUserNickname,
+                partnerId: partnerId ?? _currentPartnerId,
+                partnerNickname: partnerNickname ?? _currentPartnerNickname,
               ))
           .where((m) => isSharedCoupleSpace || m.isMine)
           .toList();
@@ -466,6 +503,7 @@ class MemoriesProvider extends ChangeNotifier {
   Future<void> fetchLetters({
     required String spaceId,
     required String currentUserId,
+    String? currentUserNickname,
     String? partnerId,
     String? partnerNickname,
   }) async {
@@ -473,18 +511,18 @@ class MemoriesProvider extends ChangeNotifier {
       final supabase = SupabaseService.client;
       if (supabase == null) return;
 
-      final isSharedCoupleSpace =
-          (partnerId != null && partnerId.isNotEmpty) ||
-          !spaceId.startsWith('solo_');
+      final isSharedCoupleSpace = _isSharedSpace(spaceId: spaceId, partnerId: partnerId);
+      final orFilter = _buildCoupleOrFilter(
+        spaceId: spaceId,
+        currentUserId: currentUserId,
+        partnerId: partnerId,
+      );
+      if (orFilter.isEmpty) return;
 
       final data = await supabase
           .from('letters')
           .select()
-          .or(_buildCoupleOrFilter(
-            spaceId: spaceId,
-            currentUserId: currentUserId,
-            partnerId: partnerId,
-          ))
+          .or(orFilter)
           .order('created_at', ascending: false)
           .limit(100)
           .timeout(const Duration(seconds: 12));
@@ -503,7 +541,9 @@ class MemoriesProvider extends ChangeNotifier {
           .map((row) => LetterItem.fromJson(
                 row as Map<String, dynamic>,
                 currentUserId: currentUserId,
-                partnerNickname: partnerNickname,
+                currentUserNickname: currentUserNickname ?? _currentUserNickname,
+                partnerId: partnerId ?? _currentPartnerId,
+                partnerNickname: partnerNickname ?? _currentPartnerNickname,
               ))
           .where((l) => isSharedCoupleSpace || l.isMine)
           .toList();
@@ -514,6 +554,7 @@ class MemoriesProvider extends ChangeNotifier {
   Future<void> fetchMilestones({
     required String spaceId,
     required String currentUserId,
+    String? currentUserNickname,
     String? partnerId,
     String? partnerNickname,
   }) async {
@@ -521,18 +562,18 @@ class MemoriesProvider extends ChangeNotifier {
       final supabase = SupabaseService.client;
       if (supabase == null) return;
 
-      final isSharedCoupleSpace =
-          (partnerId != null && partnerId.isNotEmpty) ||
-          !spaceId.startsWith('solo_');
+      final isSharedCoupleSpace = _isSharedSpace(spaceId: spaceId, partnerId: partnerId);
+      final orFilter = _buildCoupleOrFilter(
+        spaceId: spaceId,
+        currentUserId: currentUserId,
+        partnerId: partnerId,
+      );
+      if (orFilter.isEmpty) return;
 
       final data = await supabase
           .from('milestones')
           .select()
-          .or(_buildCoupleOrFilter(
-            spaceId: spaceId,
-            currentUserId: currentUserId,
-            partnerId: partnerId,
-          ))
+          .or(orFilter)
           .order('event_date', ascending: false)
           .limit(100)
           .timeout(const Duration(seconds: 12));
@@ -551,7 +592,9 @@ class MemoriesProvider extends ChangeNotifier {
           .map((row) => MilestoneItem.fromJson(
                 row as Map<String, dynamic>,
                 currentUserId: currentUserId,
-                partnerNickname: partnerNickname,
+                currentUserNickname: currentUserNickname ?? _currentUserNickname,
+                partnerId: partnerId ?? _currentPartnerId,
+                partnerNickname: partnerNickname ?? _currentPartnerNickname,
               ))
           .where((m) => isSharedCoupleSpace || m.isMine)
           .toList();
@@ -701,7 +744,6 @@ class MemoriesProvider extends ChangeNotifier {
       isRead: false,
     );
 
-    _currentUserId = author;
     _lastSentLetterId = newId;
     _letters.insert(0, newLetter);
     notifyListeners();
@@ -775,11 +817,16 @@ class MemoriesProvider extends ChangeNotifier {
     required String date,
     required String story,
     required String author,
+    String? authorNickname,
     String? imageUrl,
     String? audioUrl,
     int? audioDuration,
   }) async {
     final newId = 'mls_${DateTime.now().millisecondsSinceEpoch}';
+    final canonicalAuthor = AuthorIdentity.formatAuthorToken(
+      userId: author,
+      userNickname: authorNickname ?? _currentUserNickname,
+    );
 
     final item = MilestoneItem(
       id: newId,
@@ -788,7 +835,7 @@ class MemoriesProvider extends ChangeNotifier {
       rawDate: date,
       story: story,
       addedBy: 'You',
-      authorId: author,
+      authorId: canonicalAuthor,
       isMine: true,
       imageUrl: imageUrl,
       audioUrl: audioUrl,
@@ -803,7 +850,7 @@ class MemoriesProvider extends ChangeNotifier {
     try {
       final supabase = SupabaseService.client;
       if (supabase != null) {
-        await supabase.from('milestones').insert(item.toJson(spaceId: spaceId, author: author));
+        await supabase.from('milestones').insert(item.toJson(spaceId: spaceId, author: canonicalAuthor));
       }
     } catch (e) {
       debugPrint('Supabase milestone insert fallback: $e');
@@ -816,7 +863,7 @@ class MemoriesProvider extends ChangeNotifier {
           .doc(spaceId)
           .collection('milestones')
           .doc(newId)
-          .set(item.toJson(spaceId: spaceId, author: author));
+          .set(item.toJson(spaceId: spaceId, author: canonicalAuthor));
     } catch (e) {
       debugPrint('Firestore milestone insert error: $e');
     }

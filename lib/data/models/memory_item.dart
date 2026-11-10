@@ -1,3 +1,5 @@
+import '../../core/utils/author_identity.dart';
+
 class MemoryItem {
   final String id;
   final String title;
@@ -30,19 +32,22 @@ class MemoryItem {
   factory MemoryItem.fromJson(
     Map<String, dynamic> json, {
     String? currentUserId,
+    String? currentUserNickname,
+    String? partnerId,
     String? partnerNickname,
   }) {
-    final authorStr = json['author']?.toString() ?? '';
-    final isMine = currentUserId != null && authorStr.contains(currentUserId);
-    String parsedAuthor = '';
-    if (authorStr.contains(':::')) {
-      parsedAuthor = authorStr.split(':::').first.trim();
-    }
-    final authorName = isMine
-        ? 'You'
-        : (partnerNickname != null && partnerNickname.isNotEmpty
-            ? partnerNickname
-            : (parsedAuthor.isNotEmpty ? parsedAuthor : 'Partner'));
+    final identity = AuthorIdentity.resolve(
+      rawAuthor: json['author']?.toString(),
+      rawAuthorId: json['author_id']?.toString(),
+      currentUserId: currentUserId,
+      currentUserNickname: currentUserNickname,
+      partnerId: partnerId,
+      partnerNickname: partnerNickname,
+      explicitIsMine: json['is_mine'] == true,
+    );
+    final authorStr = identity.rawAuthor;
+    final isMine = identity.isMine;
+    final authorName = identity.displayName;
 
     final mUrl = json['media_url']?.toString() ?? '';
     final thumb = json['thumbnail_url']?.toString();

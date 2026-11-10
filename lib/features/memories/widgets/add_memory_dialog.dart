@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:record/record.dart';
 import 'package:path_provider/path_provider.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/author_identity.dart';
 import '../../../core/services/media_upload_service.dart';
 import '../../../providers/memories_provider.dart';
 import '../../../widgets/sanctuary_voice_player.dart';
@@ -197,7 +198,10 @@ class _AddMemoryDialogState extends State<AddMemoryDialog> {
         caption: _captionController.text.trim(),
         mediaUrl: mediaUrl,
         voiceUrl: voiceUrl,
-        author: widget.currentUserId,
+        author: AuthorIdentity.formatAuthorToken(
+          userId: widget.currentUserId,
+          userNickname: widget.userNickname,
+        ),
         currentUserId: widget.currentUserId,
       );
 

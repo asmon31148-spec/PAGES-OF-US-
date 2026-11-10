@@ -65,11 +65,14 @@ class _SanctuaryVoicePlayerState extends State<SanctuaryVoicePlayer> {
 
     service.togglePlay(
       id: widget.id,
-      url: widget.audioUrl,
+      url: urlOrClean(),
       durationSeconds: widget.durationSeconds,
       ambientAudio: widget.ambientAudio,
+      onCompleted: widget.onPlaybackCompleted,
     );
   }
+
+  String urlOrClean() => widget.audioUrl.trim();
 
   void _seekToFraction(VoicePlaybackService service, double fraction) {
     if (service.activeId != widget.id) {
@@ -140,28 +143,35 @@ class _SanctuaryVoicePlayerState extends State<SanctuaryVoicePlayer> {
             ? (widget.customAccentColor != null ? Colors.white.withOpacity(0.18) : const Color(0xFF3E3636))
             : const Color(0xFFD6CBC8);
 
-        return Container(
-          margin: widget.margin,
-          padding: widget.padding ?? const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-          decoration: BoxDecoration(
-            color: cardBg,
-            borderRadius: BorderRadius.circular(22),
-            border: Border.all(color: borderColor, width: 1.0),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(widget.isDark ? 0.25 : 0.05),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
+        return GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => _handleToggle(service),
+          child: Container(
+            margin: widget.margin,
+            padding: widget.padding ?? const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: cardBg,
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(
+                color: isPlaying ? terraColor.withOpacity(0.55) : borderColor,
+                width: 1.0,
               ),
-            ],
-          ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              // 1. Circular Terra Play/Pause Button
-              GestureDetector(
-                onTap: () => _handleToggle(service),
-                child: Container(
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(widget.isDark ? 0.25 : 0.05),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // 1. Circular Terra Play/Pause Button
+                GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => _handleToggle(service),
+                  child: Container(
                   width: 44,
                   height: 44,
                   decoration: BoxDecoration(
@@ -292,6 +302,7 @@ class _SanctuaryVoicePlayerState extends State<SanctuaryVoicePlayer> {
                 ),
               ),
             ],
+          ),
           ),
         );
       },

@@ -12,6 +12,7 @@ import 'package:intl/intl.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/services/media_upload_service.dart';
+import '../../../core/services/voice_playback_service.dart';
 import '../../../core/widgets/liquid_glass/liquid_glass_card.dart';
 import '../../../core/widgets/liquid_glass/liquid_glass_button.dart';
 import '../../../core/widgets/liquid_glass/liquid_glass_theme.dart';
@@ -40,9 +41,9 @@ class _TimelineSubviewState extends State<TimelineSubview> {
       (p) => p.milestones,
     );
     final authProvider = context.watch<AuthProvider>();
-    final spaceId = authProvider.space?.id ?? 'default_space';
+    final spaceId = authProvider.effectiveSpaceId ?? '';
     final user = authProvider.user;
-    final partnerNickname = authProvider.partner?.nickname ?? 'Partner';
+    final partnerNickname = authProvider.effectivePartnerNickname;
 
     // Filter milestones by selected branch
     final List<MilestoneItem> filteredMilestones = allMilestones.where((m) {
@@ -253,6 +254,15 @@ class _TimelineSubviewState extends State<TimelineSubview> {
     final branchColor = milestone.isMine
         ? (isDark ? AppColors.sageLight : AppColors.sage)
         : AppColors.terra;
+    final authorDisplayName = (!milestone.isMine &&
+            milestone.addedBy.isNotEmpty &&
+            milestone.addedBy != 'Partner')
+        ? milestone.addedBy
+        : partnerNickname;
+    final keptByLabel = milestone.isMine ? 'Kept by You' : 'Kept by $authorDisplayName';
+    final nodeInitial = milestone.isMine
+        ? 'Y'
+        : (authorDisplayName.isNotEmpty ? authorDisplayName[0].toUpperCase() : 'P');
 
     return IntrinsicHeight(
       child: Row(
@@ -300,7 +310,7 @@ class _TimelineSubviewState extends State<TimelineSubview> {
                     ),
                     alignment: Alignment.center,
                     child: Text(
-                      milestone.isMine ? 'Y' : (partnerNickname.isNotEmpty ? partnerNickname[0].toUpperCase() : 'P'),
+                      nodeInitial,
                       style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.bold,
@@ -361,7 +371,7 @@ class _TimelineSubviewState extends State<TimelineSubview> {
                               const SizedBox(width: 4),
                             ],
                             Text(
-                              milestone.isMine ? 'Kept by You' : 'Kept by $partnerNickname',
+                              keptByLabel,
                               style: TextStyle(
                                 fontSize: 10.5,
                                 fontStyle: FontStyle.italic,
@@ -422,33 +432,78 @@ class _TimelineSubviewState extends State<TimelineSubview> {
                               ),
                             ),
                           if (milestone.hasImage && milestone.hasAudio) const SizedBox(width: 8),
-                          if (milestone.hasAudio)
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: (isDark ? AppColors.darkCard : AppColors.lightCard),
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(
-                                  color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
-                                ),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(Icons.play_circle_fill_rounded, size: 16, color: branchColor),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    milestone.audioDuration != null
-                                        ? '${milestone.audioDuration}s Voice Whisper'
-                                        : 'Voice Whisper',
-                                    style: TextStyle(
-                                      fontSize: 10.5,
-                                      fontWeight: FontWeight.w500,
-                                      color: isDark ? AppColors.darkInk : AppColors.lightInk,
+                          if (milestone.hasAudio && milestone.audioUrl != null && milestone.audioUrl!.trim().isNotEmpty)
+                            AnimatedBuilder(
+                              animation: VoicePlaybackService.instance,
+                              builder: (context, _) {
+                                final voiceService = VoicePlaybackService.instance;
+                                final clipId = 'milestone_${milestone.id}';
+                                final isPlaying =
+                                    voiceService.activeId == clipId && voiceService.isPlaying;
+                                final isBuffering =
+                                    voiceService.activeId == clipId && voiceService.isBuffering;
+                                return GestureDetector(
+                                  behavior: HitTestBehavior.opaque,
+                                  onTap: () {
+                                    HapticFeedback.lightImpact();
+                                    voiceService.togglePlay(
+                                      id: clipId,
+                                      url: milestone.audioUrl!,
+                                      durationSeconds: milestone.audioDuration,
+                                      ambientAudio: context.read<AudioProvider>(),
+                                    );
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                    decoration: BoxDecoration(
+                                      color: isPlaying
+                                          ? branchColor.withOpacity(0.18)
+                                          : (isDark ? AppColors.darkCard : AppColors.lightCard),
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color: isPlaying
+                                            ? branchColor
+                                            : (isDark ? AppColors.darkBorder : AppColors.lightBorder),
+                                      ),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        if (isBuffering)
+                                          SizedBox(
+                                            width: 14,
+                                            height: 14,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 1.8,
+                                              color: branchColor,
+                                            ),
+                                          )
+                                        else
+                                          Icon(
+                                            isPlaying
+                                                ? Icons.pause_circle_filled_rounded
+                                                : Icons.play_circle_fill_rounded,
+                                            size: 18,
+                                            color: branchColor,
+                                          ),
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          isPlaying
+                                              ? 'Playing Voice Whisper...'
+                                              : (milestone.audioDuration != null
+                                                  ? '${milestone.audioDuration}s Voice Whisper'
+                                                  : 'Voice Whisper'),
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w600,
+                                            color: isDark ? AppColors.darkInk : AppColors.lightInk,
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
-                                ],
-                              ),
+                                );
+                              },
                             ),
                         ],
                       ),
@@ -502,6 +557,15 @@ class _TimelineSubviewState extends State<TimelineSubview> {
         final branchColor = milestone.isMine
         ? (isDark ? AppColors.sageLight : AppColors.sage)
         : AppColors.terra;
+    final authorDisplayName = (!milestone.isMine &&
+            milestone.addedBy.isNotEmpty &&
+            milestone.addedBy != 'Partner')
+        ? milestone.addedBy
+        : partnerNickname;
+    final keptByLabel = milestone.isMine ? 'Kept by You' : 'Kept by $authorDisplayName';
+    final nodeInitial = milestone.isMine
+        ? 'Y'
+        : (authorDisplayName.isNotEmpty ? authorDisplayName[0].toUpperCase() : 'P');
 
 
         return Container(
@@ -555,13 +619,13 @@ class _TimelineSubviewState extends State<TimelineSubview> {
                     radius: 14,
                     backgroundColor: branchColor.withOpacity(0.2),
                     child: Text(
-                      milestone.isMine ? 'Y' : (partnerNickname.isNotEmpty ? partnerNickname[0].toUpperCase() : 'P'),
+                      nodeInitial,
                       style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: branchColor),
                     ),
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    milestone.isMine ? 'Kept by You' : 'Kept by $partnerNickname',
+                    keptByLabel,
                     style: TextStyle(
                       fontSize: 12.5,
                       fontWeight: FontWeight.w600,
@@ -870,12 +934,14 @@ class _AddMilestoneModalSheetState extends State<_AddMilestoneModalSheet> {
       final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
 
       if (mounted) {
+        final myNickname = context.read<AuthProvider>().user?.nickname;
         await context.read<MemoriesProvider>().addMilestone(
               spaceId: widget.spaceId,
               title: _titleCtrl.text.trim(),
               date: dateStr,
               story: _storyCtrl.text.trim(),
               author: widget.userId,
+              authorNickname: myNickname,
               imageUrl: uploadedImageUrl,
               audioUrl: uploadedAudioUrl,
               audioDuration: _attachedAudio != null ? _recordSeconds : null,

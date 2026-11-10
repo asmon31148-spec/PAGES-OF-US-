@@ -1,3 +1,5 @@
+import '../../core/utils/author_identity.dart';
+
 class MilestoneItem {
   final String id;
   final String title;
@@ -93,14 +95,22 @@ class MilestoneItem {
   factory MilestoneItem.fromJson(
     Map<String, dynamic> json, {
     String? currentUserId,
+    String? currentUserNickname,
+    String? partnerId,
     String? partnerNickname,
   }) {
-    final authorStr = json['author_id']?.toString() ?? json['author']?.toString() ?? '';
-    final isMine = currentUserId != null &&
-        (authorStr == currentUserId ||
-         (authorStr.isNotEmpty && authorStr.contains(currentUserId)) ||
-         json['is_mine'] == true);
-    final authorName = isMine ? 'You' : (partnerNickname ?? 'Partner');
+    final identity = AuthorIdentity.resolve(
+      rawAuthor: json['author']?.toString(),
+      rawAuthorId: json['author_id']?.toString(),
+      currentUserId: currentUserId,
+      currentUserNickname: currentUserNickname,
+      partnerId: partnerId,
+      partnerNickname: partnerNickname,
+      explicitIsMine: json['is_mine'] == true,
+    );
+    final authorStr = identity.rawAuthor;
+    final isMine = identity.isMine;
+    final authorName = identity.displayName;
 
     final raw = json['event_date']?.toString() ??
         json['date']?.toString() ??

@@ -32,10 +32,31 @@ class AudioCacheService {
 
       final filename = _generateFilename(cleanUrl);
       final file = File('${cacheDir.path}/$filename');
-      return file.existsSync() && file.lengthSync() > 0;
+      return file.existsSync() && file.lengthSync() > 512;
     } catch (_) {
       return false;
     }
+  }
+
+  /// Removes a corrupted or unplayable cached audio file so playback falls back cleanly.
+  static Future<void> deleteCached(String url) async {
+    final cleanUrl = url.trim();
+    if (cleanUrl.isEmpty) return;
+    final memPath = _memoryCache.remove(cleanUrl);
+    if (memPath != null) {
+      try {
+        final f = File(memPath);
+        if (f.existsSync()) await f.delete();
+      } catch (_) {}
+    }
+    try {
+      final tempDir = await getTemporaryDirectory();
+      final cacheDir = Directory('${tempDir.path}/audio_cache');
+      final file = File('${cacheDir.path}/${_generateFilename(cleanUrl)}');
+      if (file.existsSync()) {
+        await file.delete();
+      }
+    } catch (_) {}
   }
 
   /// Returns a local cached file path for the given audio URL.
@@ -54,9 +75,10 @@ class AudioCacheService {
     if (_memoryCache.containsKey(cleanUrl)) {
       final cachedPath = _memoryCache[cleanUrl]!;
       final file = File(cachedPath);
-      if (file.existsSync() && file.lengthSync() > 0) {
+      if (file.existsSync() && file.lengthSync() > 512) {
         return cachedPath;
       }
+      _memoryCache.remove(cleanUrl);
     }
 
     try {
@@ -69,14 +91,16 @@ class AudioCacheService {
       final filename = _generateFilename(cleanUrl);
       final file = File('${cacheDir.path}/$filename');
 
-      if (file.existsSync() && file.lengthSync() > 0) {
+      if (file.existsSync() && file.lengthSync() > 512) {
         _memoryCache[cleanUrl] = file.path;
         return file.path;
       }
 
-      // Download and save locally
-      final response = await http.get(Uri.parse(cleanUrl));
-      if (response.statusCode == 200 && response.bodyBytes.isNotEmpty) {
+      // Download and save locally with timeout so network issues never stall prefetching
+      final response = await http
+          .get(Uri.parse(cleanUrl))
+          .timeout(const Duration(seconds: 15));
+      if (response.statusCode == 200 && response.bodyBytes.length > 512) {
         await file.writeAsBytes(response.bodyBytes);
         _memoryCache[cleanUrl] = file.path;
 
@@ -121,12 +145,13 @@ class AudioCacheService {
   }
 
   static String _generateFilename(String url) {
-    final ext = url.contains('.m4a')
-        ? '.m4a'
-        : (url.contains('.mp3')
-            ? '.mp3'
-            : (url.contains('.wav') ? '.wav' : '.m4a'));
-    return '${url.hashCode.abs()}$ext';
+    final path = (Uri.tryParse(url)?.path ?? url).toLowerCase();
+    for (final ext in const ['.m4a', '.aac', '.mp3', '.wav', '.ogg', '.webm']) {
+      if (path.endsWith(ext)) {
+        return '${url.hashCode.abs()}$ext';
+      }
+    }
+    return '${url.hashCode.abs()}.m4a';
   }
 
   /// Least-Recently-Used (LRU) automatic storage maintenance
