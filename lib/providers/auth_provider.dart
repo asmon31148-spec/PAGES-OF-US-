@@ -29,9 +29,13 @@ class AuthProvider extends ChangeNotifier {
   UserProfile? _partner;
   bool _isLoading = true;
   bool _isCreatingSpace = false;
+  bool _isExplicitSignOut = false;
+  bool _isDisposed = false;
+  String? _lastSyncedUid;
   String? _errorMessage;
 
   StreamSubscription? _authSub;
+  StreamSubscription? _fbAuthSub;
   StreamSubscription? _spaceSub;
   StreamSubscription? _partnerSub;
   StreamSubscription? _userSub;
@@ -91,7 +95,7 @@ class AuthProvider extends ChangeNotifier {
     _authSub = SupabaseService.authStateChanges.listen((data) async {
       final supaUser = data.session?.user ?? SupabaseService.currentAuthUser;
       if (supaUser != null) {
-        // Ensure background Firebase anonymous session for Firestore & RTDB synchronization
+        // Ensure background Firebase anonymous session ONLY if not already signed in
         try {
           if (FirebaseAuth.instance.currentUser == null) {
             await FirebaseAuth.instance.signInAnonymously();
@@ -100,31 +104,51 @@ class AuthProvider extends ChangeNotifier {
           debugPrint('Firebase background bridge note: $e');
         }
 
-        await refreshUserData(supaUser.id);
-      } else if (FirebaseService.currentUser == null || FirebaseService.currentUser!.isAnonymous) {
+        if (_lastSyncedUid != supaUser.id || _user == null || _space == null) {
+          _lastSyncedUid = supaUser.id;
+          await refreshUserData(supaUser.id);
+        }
+      } else if (data.event == AuthChangeEvent.signedOut &&
+          !_isExplicitSignOut &&
+          (FirebaseService.currentUser == null || FirebaseService.currentUser!.isAnonymous)) {
+        // Only clear session on explicit Supabase signOut — never on cold-start initialSession
         if (_user != null) {
-          _spaceSub?.cancel();
-          _partnerSub?.cancel();
-          _userSub?.cancel();
-          _spaceSub = null;
-          _partnerSub = null;
-          _userSub = null;
-          _user = null;
-          _space = null;
-          _partner = null;
-          await runSignOutHooks();
-          await LocalCacheService.clearAll();
-          notifyListeners();
+          await _clearSessionState();
         }
       }
     });
 
     // 2. Firebase Auth state listener (supports Google Sign-In & legacy Firebase users)
-    FirebaseService.authStateChanges.listen((fbUser) async {
-      if (fbUser != null && !fbUser.isAnonymous && _user == null) {
-        await refreshUserData(fbUser.uid);
+    _fbAuthSub = FirebaseService.authStateChanges.listen((fbUser) async {
+      if (fbUser != null && !fbUser.isAnonymous) {
+        if (_lastSyncedUid != fbUser.uid || _user == null || _space == null) {
+          _lastSyncedUid = fbUser.uid;
+          await refreshUserData(fbUser.uid);
+        }
       }
     });
+
+    // 3. Immediate sync for already-hydrated sessions or offline cached user fallback
+    final currentSupa = SupabaseService.currentAuthUser;
+    final currentFb = FirebaseService.currentUser;
+    if (currentSupa != null) {
+      if (_lastSyncedUid != currentSupa.id) {
+        _lastSyncedUid = currentSupa.id;
+        unawaited(refreshUserData(currentSupa.id));
+      }
+    } else if (currentFb != null && !currentFb.isAnonymous) {
+      if (_lastSyncedUid != currentFb.uid) {
+        _lastSyncedUid = currentFb.uid;
+        unawaited(refreshUserData(currentFb.uid));
+      }
+    } else if (_user != null) {
+      Future.delayed(const Duration(milliseconds: 1800), () {
+        if (!_isDisposed && !_isExplicitSignOut && _user != null && _lastSyncedUid == null) {
+          _lastSyncedUid = _user!.id;
+          unawaited(refreshUserData(_user!.id));
+        }
+      });
+    }
 
     // 3. Realtime listener for cross-device profile changes
     SupabaseService.setProfileUpdateListener((data) {
@@ -226,6 +250,7 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> refreshUserData(String uid) async {
+    _lastSyncedUid = uid;
     try {
       NotificationService.syncDeviceToken(uid);
       var profile = await FirebaseService.getUserProfile(uid);
@@ -641,33 +666,45 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> signOut() async {
+  Future<void> _clearSessionState() async {
     _spaceSub?.cancel();
     _partnerSub?.cancel();
     _userSub?.cancel();
     _spaceSub = null;
     _partnerSub = null;
     _userSub = null;
+    _lastSyncedUid = null;
     _user = null;
     _space = null;
     _partner = null;
     await runSignOutHooks();
     await LocalCacheService.clearAll();
-    try {
-      await SupabaseService.signOut();
-    } catch (_) {}
-    try {
-      await FirebaseService.signOut();
-    } catch (_) {}
     notifyListeners();
+  }
+
+  Future<void> signOut() async {
+    _isExplicitSignOut = true;
+    try {
+      await _clearSessionState();
+      try {
+        await SupabaseService.signOut();
+      } catch (_) {}
+      try {
+        await FirebaseService.signOut();
+      } catch (_) {}
+    } finally {
+      _isExplicitSignOut = false;
+    }
   }
 
   @override
   void dispose() {
+    _isDisposed = true;
     _spaceSub?.cancel();
     _partnerSub?.cancel();
     _userSub?.cancel();
     _authSub?.cancel();
+    _fbAuthSub?.cancel();
     super.dispose();
   }
 }
