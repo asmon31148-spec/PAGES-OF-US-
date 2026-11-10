@@ -34,6 +34,8 @@ class DeviceTelemetry {
   final bool isDeviceUnlocked;
   final DateTime? lastUnlockedAt;
   final int? unlockCountToday;
+  final int? stepsToday;
+  final bool hasStepSensor;
   final String networkType; // 'wifi', 'mobile', 'offline', 'online', 'unknown'
   final String? nowPlayingTitle;
   final String? nowPlayingArtist;
@@ -46,6 +48,8 @@ class DeviceTelemetry {
     required this.isDeviceUnlocked,
     this.lastUnlockedAt,
     this.unlockCountToday,
+    this.stepsToday,
+    this.hasStepSensor = false,
     required this.networkType,
     this.nowPlayingTitle,
     this.nowPlayingArtist,
@@ -61,6 +65,8 @@ class DeviceTelemetry {
       isDeviceUnlocked: json['isDeviceUnlocked'] == true,
       lastUnlockedAt: ms != null && ms > 0 ? DateTime.fromMillisecondsSinceEpoch(ms) : null,
       unlockCountToday: (json['unlockCountToday'] as num?)?.toInt(),
+      stepsToday: (json['stepsToday'] as num?)?.toInt(),
+      hasStepSensor: json['hasStepSensor'] == true,
       networkType: json['networkType']?.toString() ?? 'unknown',
       nowPlayingTitle: json['nowPlayingTitle']?.toString(),
       nowPlayingArtist: json['nowPlayingArtist']?.toString(),
@@ -76,6 +82,8 @@ class DeviceTelemetry {
         'isDeviceUnlocked': isDeviceUnlocked,
         if (lastUnlockedAt != null) 'lastUnlockedAtMs': lastUnlockedAt!.millisecondsSinceEpoch,
         if (unlockCountToday != null) 'unlockCountToday': unlockCountToday,
+        if (stepsToday != null) 'stepsToday': stepsToday,
+        'hasStepSensor': hasStepSensor,
         'networkType': networkType,
         if (nowPlayingTitle != null && nowPlayingTitle!.isNotEmpty) 'nowPlayingTitle': nowPlayingTitle,
         if (nowPlayingArtist != null && nowPlayingArtist!.isNotEmpty) 'nowPlayingArtist': nowPlayingArtist,
@@ -94,6 +102,8 @@ class DeviceTelemetry {
       isDeviceUnlocked: isDeviceUnlocked,
       lastUnlockedAt: lastUnlockedAt,
       unlockCountToday: unlockCountToday,
+      stepsToday: stepsToday,
+      hasStepSensor: hasStepSensor,
       networkType: networkType,
       nowPlayingTitle: clearNowPlaying ? null : (nowPlayingTitle ?? this.nowPlayingTitle),
       nowPlayingArtist: clearNowPlaying ? null : (nowPlayingArtist ?? this.nowPlayingArtist),
@@ -150,11 +160,32 @@ class DeviceStatusService {
         isDeviceUnlocked: res['isDeviceUnlocked'] == true,
         lastUnlockedAt: ms != null && ms > 0 ? DateTime.fromMillisecondsSinceEpoch(ms) : null,
         unlockCountToday: (res['unlockCountToday'] as num?)?.toInt(),
+        stepsToday: (res['stepsToday'] as num?)?.toInt(),
+        hasStepSensor: res['hasStepSensor'] == true,
         networkType: res['networkType']?.toString() ?? 'unknown',
         nowPlayingTitle: nowPlayingTitle,
         nowPlayingArtist: nowPlayingArtist,
         updatedAt: DateTime.now().toUtc().toIso8601String(),
       );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static Future<bool> syncStepSensor() async {
+    try {
+      final ok = await _channel.invokeMethod<bool>('syncStepSensor');
+      return ok == true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  static Future<int?> getHardwareStepsToday() async {
+    try {
+      final res = await _channel.invokeMapMethod<String, dynamic>('getHardwareStepsToday');
+      if (res == null) return null;
+      return (res['stepsToday'] as num?)?.toInt();
     } catch (_) {
       return null;
     }
