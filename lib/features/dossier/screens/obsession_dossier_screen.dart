@@ -14,6 +14,73 @@ import '../../../providers/world_provider.dart';
 import '../../../providers/theme_provider.dart';
 import '../../../data/models/secret_whisper.dart';
 
+class _DossierPalette {
+  final Color bg;
+  final Color card;
+  final Color heroStart;
+  final Color subtleFill;
+  final Color accent;
+  final Color primaryInk;
+  final Color mutedInk;
+  final Color softBorder;
+  final Color softGreen;
+  final Color softBlue;
+  final Color softAmber;
+  final Color softViolet;
+  final Color softBlush;
+
+  const _DossierPalette({
+    required this.bg,
+    required this.card,
+    required this.heroStart,
+    required this.subtleFill,
+    required this.accent,
+    required this.primaryInk,
+    required this.mutedInk,
+    required this.softBorder,
+    required this.softGreen,
+    required this.softBlue,
+    required this.softAmber,
+    required this.softViolet,
+    required this.softBlush,
+  });
+
+  factory _DossierPalette.fromBrightness(bool isDark) {
+    if (isDark) {
+      return const _DossierPalette(
+        bg: Color(0xFF1B1418), // Warm matte dusk plum — soft on OLED eyes
+        card: Color(0xFF251C21), // Cozy smoked mauve card
+        heroStart: Color(0xFF30222A), // Gentle velvet rose dusk
+        subtleFill: Color(0xFF2E2329),
+        accent: Color(0xFFD28799), // Muted dusty rosewood (zero neon glare)
+        primaryInk: Color(0xFFF2E4E9), // Warm cream-rose ink
+        mutedInk: Color(0xFFB398A2), // Gentle dusty mauve
+        softBorder: Color(0x22D28799),
+        softGreen: Color(0xFF7CB89E), // Calm sage mint
+        softBlue: Color(0xFF8AAED6), // Soft slate sky
+        softAmber: Color(0xFFD4B27D), // Warm chamomile honey
+        softViolet: Color(0xFFB498C8), // Muted lavender mist
+        softBlush: Color(0xFFE4B4C1),
+      );
+    }
+    return const _DossierPalette(
+      bg: Color(0xFFFAF3F5), // Warm rose-oat paper
+      card: Color(0xFFFFFAFA), // Soft silk cream card
+      heroStart: Color(0xFFF3E4E9), // Airy cashmere blush
+      subtleFill: Color(0xFFF2E6EA),
+      accent: Color(0xFFB46578), // Calm dusty rosewood
+      primaryInk: Color(0xFF33262B), // Gentle espresso-plum ink
+      mutedInk: Color(0xFF7C666F), // Soft mauve taupe
+      softBorder: Color(0x22B46578),
+      softGreen: Color(0xFF4B8B70),
+      softBlue: Color(0xFF537AA6),
+      softAmber: Color(0xFFA67C46),
+      softViolet: Color(0xFF7E6599),
+      softBlush: Color(0xFFA35D70),
+    );
+  }
+}
+
 class ObsessionDossierScreen extends StatefulWidget {
   const ObsessionDossierScreen({super.key});
 
@@ -131,14 +198,14 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Sealed whisper sent — burns after reading 🥀'),
-          backgroundColor: Color(0xFF9F1239),
+          backgroundColor: Color(0xFF8F5262),
           duration: Duration(seconds: 2),
         ),
       );
     }
   }
 
-  Future<void> _openAndBurnWhisper(SecretWhisper whisper, String spaceId, String readerId) async {
+  Future<void> _openAndBurnWhisper(SecretWhisper whisper, String spaceId, String readerId, _DossierPalette pal) async {
     if (whisper.isBurned) return;
     final stage = context.read<StageProvider>();
     HapticFeedback.heavyImpact();
@@ -151,13 +218,13 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
         child: Container(
           padding: const EdgeInsets.all(22),
           decoration: BoxDecoration(
-            color: const Color(0xFF14070D),
+            color: pal.card,
             borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: const Color(0xFFF43F5E).withOpacity(0.55), width: 1.4),
+            border: Border.all(color: pal.accent.withOpacity(0.4), width: 1.2),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF9F1239).withOpacity(0.4),
-                blurRadius: 28,
+                color: pal.accent.withOpacity(0.22),
+                blurRadius: 24,
               ),
             ],
           ),
@@ -168,20 +235,20 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
               const SizedBox(height: 8),
               Text(
                 'Whisper from ${whisper.senderNickname}',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFFFDE8EE),
+                  color: pal.primaryInk,
                 ),
               ),
               const SizedBox(height: 4),
-              const Text(
+              Text(
                 'SINGLE VIEW • BURNS PERMANENTLY ON CLOSE',
                 style: TextStyle(
                   fontSize: 9.5,
                   letterSpacing: 1.0,
                   fontWeight: FontWeight.w700,
-                  color: Color(0xFFF43F5E),
+                  color: pal.accent,
                 ),
               ),
               const SizedBox(height: 16),
@@ -189,18 +256,18 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
                 width: double.infinity,
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.05),
+                  color: pal.subtleFill,
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.white12),
+                  border: Border.all(color: pal.softBorder),
                 ),
                 child: Text(
                   whisper.text,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 15,
                     height: 1.45,
                     fontStyle: FontStyle.italic,
-                    color: Colors.white,
+                    color: pal.primaryInk,
                   ),
                 ),
               ),
@@ -216,7 +283,7 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
                     style: TextStyle(fontWeight: FontWeight.bold),
                   ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFBE123C),
+                    backgroundColor: pal.accent,
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                   ),
@@ -256,35 +323,35 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
     final stayPoints = world.partnerStayPointsToday;
     final weather = world.partnerWeather;
 
-    const crimson = Color(0xFFF43F5E);
-    const wineBg = Color(0xFF0A0408);
-    const cardBg = Color(0xFF150910);
+    final pal = _DossierPalette.fromBrightness(themeProv.isDark);
+    final crimson = pal.accent;
+    final cardBg = pal.card;
 
     return Scaffold(
-      backgroundColor: wineBg,
+      backgroundColor: pal.bg,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         titleSpacing: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 19),
+          icon: Icon(Icons.arrow_back_ios_new_rounded, color: pal.primaryInk, size: 19),
           onPressed: () => Navigator.pop(context),
         ),
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'Eyes On You',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w800,
-                color: Color(0xFFFDE8EE),
+                color: pal.primaryInk,
                 letterSpacing: -0.2,
               ),
             ),
             Text(
               partner != null ? 'Live Dossier • $partnerName' : 'Pair to activate radar',
-              style: const TextStyle(fontSize: 11, color: Color(0xFFB88896)),
+              style: TextStyle(fontSize: 11, color: pal.mutedInk),
             ),
           ],
         ),
@@ -307,7 +374,7 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
                             ? 'Velvet Noir theme activated 🥀 (tap again to turn off)'
                             : 'Velvet Noir deactivated — restored ${themeProv.currentTheme.name} ✨',
                       ),
-                      backgroundColor: activated ? const Color(0xFF9F1239) : AppColors.sage,
+                      backgroundColor: activated ? pal.accent : AppColors.sage,
                       duration: const Duration(seconds: 2),
                     ),
                   );
@@ -319,11 +386,11 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
                 color: themeProv.themeId == 'velvet_noir'
-                    ? crimson.withOpacity(0.24)
-                    : Colors.white.withOpacity(0.08),
+                    ? crimson.withOpacity(0.18)
+                    : pal.subtleFill,
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(
-                  color: themeProv.themeId == 'velvet_noir' ? crimson : Colors.white24,
+                  color: themeProv.themeId == 'velvet_noir' ? crimson.withOpacity(0.55) : pal.softBorder,
                 ),
               ),
               child: Text(
@@ -331,7 +398,7 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
                 style: TextStyle(
                   fontSize: 10.5,
                   fontWeight: FontWeight.bold,
-                  color: themeProv.themeId == 'velvet_noir' ? const Color(0xFFFDE8EE) : Colors.white70,
+                  color: themeProv.themeId == 'velvet_noir' ? pal.primaryInk : pal.mutedInk,
                 ),
               ),
             ),
@@ -339,12 +406,12 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
           IconButton(
             tooltip: 'Sync Live Signals',
             icon: _refreshing
-                ? const SizedBox(
+                ? SizedBox(
                     width: 16,
                     height: 16,
                     child: CircularProgressIndicator(strokeWidth: 2, color: crimson),
                   )
-                : const Icon(Icons.refresh_rounded, color: Colors.white, size: 21),
+                : Icon(Icons.refresh_rounded, color: pal.primaryInk, size: 21),
             onPressed: _refreshing ? null : _handleRefresh,
           ),
         ],
@@ -368,27 +435,25 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
                   pLoc: pLoc,
                   stage: stage,
                   world: world,
-                  crimson: crimson,
-                  cardBg: cardBg,
+                  pal: pal,
                 ),
 
                 const SizedBox(height: 16),
 
                 // 2. 100% Real Hardware Telemetry Cards (Zero Cut-off Text)
-                _sectionTitle('REAL-TIME HARDWARE & DEVICE PULSE', crimson),
+                _sectionTitle('REAL-TIME HARDWARE & DEVICE PULSE', pal),
                 const SizedBox(height: 8),
                 _buildTelemetrySection(
                   telemetry: telemetry,
                   movementState: movementState,
                   pLoc: pLoc,
-                  crimson: crimson,
-                  cardBg: cardBg,
+                  pal: pal,
                 ),
 
                 const SizedBox(height: 16),
 
                 // 3. Detailed Movement & Distance Analytics (100% Real GPS Metrics)
-                _sectionTitle('MOVEMENT & ACTIVITY ANALYTICS', crimson),
+                _sectionTitle('MOVEMENT & ACTIVITY ANALYTICS', pal),
                 const SizedBox(height: 8),
                 _buildMovementAnalyticsSection(
                   world: world,
@@ -396,47 +461,44 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
                   weather: weather,
                   partnerName: partnerName,
                   stayPointCount: stayPoints.length,
-                  crimson: crimson,
-                  cardBg: cardBg,
+                  pal: pal,
                 ),
 
                 const SizedBox(height: 16),
 
                 // 4. Interactive Full-Detail Route Breadcrumb Map (Google Dark / Satellite — Zero Watermark)
-                _sectionTitle('LIVE ROUTE & ZONE RADAR MAP', crimson),
+                _sectionTitle('LIVE ROUTE & ZONE RADAR MAP', pal),
                 const SizedBox(height: 8),
                 _buildBreadcrumbTrailMap(
                   pLoc: pLoc,
                   journeyPoints: journeyPoints,
                   pinnedPlaces: world.pinnedPlaces,
                   partnerName: partnerName,
-                  crimson: crimson,
-                  cardBg: cardBg,
+                  isDark: themeProv.isDark,
+                  pal: pal,
                 ),
 
                 const SizedBox(height: 16),
 
                 // 5. Geofence Arrival/Departure Radar + Stay Points Log
-                _sectionTitle('ARRIVAL, DEPARTURE & STOPS LOG', crimson),
+                _sectionTitle('ARRIVAL, DEPARTURE & STOPS LOG', pal),
                 const SizedBox(height: 8),
                 _buildTimelineLog(
                   geoEvents: geoEvents,
                   stayPoints: stayPoints,
-                  crimson: crimson,
-                  cardBg: cardBg,
+                  pal: pal,
                 ),
 
                 const SizedBox(height: 16),
 
                 // 6. Burn-After-Reading Secret Whispers
-                _sectionTitle('BURN-AFTER-READING WHISPERS', crimson),
+                _sectionTitle('BURN-AFTER-READING WHISPERS', pal),
                 const SizedBox(height: 8),
                 _buildWhispersSection(
                   stage: stage,
                   userId: user?.id ?? '',
                   spaceId: spaceId,
-                  crimson: crimson,
-                  cardBg: cardBg,
+                  pal: pal,
                 ),
               ],
             ),
@@ -446,7 +508,7 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
     );
   }
 
-  Widget _sectionTitle(String text, Color accent) {
+  Widget _sectionTitle(String text, _DossierPalette pal) {
     return Padding(
       padding: const EdgeInsets.only(left: 4),
       child: Text(
@@ -454,8 +516,8 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
         style: TextStyle(
           fontSize: 10.5,
           fontWeight: FontWeight.w800,
-          letterSpacing: 1.2,
-          color: accent.withOpacity(0.9),
+          letterSpacing: 1.1,
+          color: pal.mutedInk,
         ),
       ),
     );
@@ -468,8 +530,7 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
     required dynamic pLoc,
     required StageProvider stage,
     required WorldProvider world,
-    required Color crimson,
-    required Color cardBg,
+    required _DossierPalette pal,
   }) {
     final lastUpdated = telemetry?.updatedAt.isNotEmpty == true
         ? _formatIsoRelative(telemetry!.updatedAt)
@@ -483,12 +544,12 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [const Color(0xFF280B16), cardBg],
+          colors: [pal.heroStart, pal.card],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: crimson.withOpacity(0.35)),
+        border: Border.all(color: pal.softBorder),
       ),
       child: Column(
         children: [
@@ -496,14 +557,14 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
             children: [
               CircleAvatar(
                 radius: 26,
-                backgroundColor: crimson.withOpacity(0.2),
+                backgroundColor: pal.accent.withOpacity(0.18),
                 backgroundImage: partner?.avatarUrl != null
                     ? CachedNetworkImageProvider(partner!.avatarUrl!)
                     : null,
                 child: partner?.avatarUrl == null
                     ? Text(
                         partnerName.isNotEmpty ? partnerName[0].toUpperCase() : 'P',
-                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+                        style: TextStyle(color: pal.primaryInk, fontWeight: FontWeight.bold, fontSize: 18),
                       )
                     : null,
               ),
@@ -519,18 +580,18 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
                       children: [
                         Text(
                           partnerName,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 16.5,
                             fontWeight: FontWeight.bold,
-                            color: Color(0xFFFDE8EE),
+                            color: pal.primaryInk,
                           ),
                         ),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                           decoration: BoxDecoration(
                             color: telemetry?.isDeviceUnlocked == true
-                                ? const Color(0xFF34D399).withOpacity(0.18)
-                                : crimson.withOpacity(0.16),
+                                ? pal.softGreen.withOpacity(0.16)
+                                : pal.accent.withOpacity(0.15),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
@@ -541,8 +602,8 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
                               fontSize: 9,
                               fontWeight: FontWeight.w800,
                               color: telemetry?.isDeviceUnlocked == true
-                                  ? const Color(0xFF34D399)
-                                  : crimson,
+                                  ? pal.softGreen
+                                  : pal.accent,
                             ),
                           ),
                         ),
@@ -551,13 +612,13 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
                     const SizedBox(height: 4),
                     Text(
                       '📍 $placeLabel • Synced $lastUpdated',
-                      style: const TextStyle(fontSize: 12, color: Color(0xFFB88896)),
+                      style: TextStyle(fontSize: 12, color: pal.mutedInk),
                     ),
                     if (world.liveDistanceKm != null) ...[
                       const SizedBox(height: 2),
                       Text(
                         'Distance from you: ${world.formattedLiveDistance}',
-                        style: const TextStyle(fontSize: 11.5, color: Color(0xFFFDA4AF), fontWeight: FontWeight.w600),
+                        style: TextStyle(fontSize: 11.5, color: pal.softBlush, fontWeight: FontWeight.w600),
                       ),
                     ],
                   ],
@@ -569,21 +630,21 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.04),
+              color: pal.subtleFill,
               borderRadius: BorderRadius.circular(14),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Expanded(
+                Expanded(
                   child: Text(
                     'Share my live device telemetry with partner',
-                    style: TextStyle(fontSize: 11.5, color: Color(0xFFFDE8EE)),
+                    style: TextStyle(fontSize: 11.5, color: pal.primaryInk),
                   ),
                 ),
                 Switch.adaptive(
                   value: stage.isTelemetrySharingEnabled,
-                  activeColor: crimson,
+                  activeColor: pal.accent,
                   onChanged: (val) {
                     HapticFeedback.selectionClick();
                     stage.setTelemetrySharingEnabled(val);
@@ -601,8 +662,7 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
     required DeviceTelemetry? telemetry,
     required String? movementState,
     required dynamic pLoc,
-    required Color crimson,
-    required Color cardBg,
+    required _DossierPalette pal,
   }) {
     final screenLabel = telemetry == null
         ? 'Awaiting signal'
@@ -650,8 +710,8 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
           title: 'PHONE STATE & UNLOCK ACTIVITY',
           value: screenLabel,
           subtitle: unlockSub,
-          accent: telemetry?.isDeviceUnlocked == true ? const Color(0xFF34D399) : crimson,
-          cardBg: cardBg,
+          accent: telemetry?.isDeviceUnlocked == true ? pal.softGreen : pal.accent,
+          pal: pal,
           fullWidth: true,
         ),
         const SizedBox(height: 10),
@@ -666,8 +726,8 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
                 title: 'NETWORK',
                 value: netLabel,
                 subtitle: 'Live OS connection',
-                accent: const Color(0xFF60A5FA),
-                cardBg: cardBg,
+                accent: pal.softBlue,
+                pal: pal,
               ),
             ),
             const SizedBox(width: 10),
@@ -679,8 +739,8 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
                 title: 'BATTERY',
                 value: batLabel,
                 subtitle: telemetry?.isCharging == true ? 'Plugged in' : 'Hardware level',
-                accent: telemetry?.isCharging == true ? const Color(0xFF34D399) : Colors.amber,
-                cardBg: cardBg,
+                accent: telemetry?.isCharging == true ? pal.softGreen : pal.softAmber,
+                pal: pal,
               ),
             ),
           ],
@@ -691,8 +751,8 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
           title: 'MOVEMENT & GPS PRECISION',
           value: moveLabel,
           subtitle: gpsAccSub,
-          accent: crimson,
-          cardBg: cardBg,
+          accent: pal.accent,
+          pal: pal,
           fullWidth: true,
         ),
         const SizedBox(height: 10),
@@ -701,8 +761,8 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
           title: 'NOW LISTENING IN SANCTUARY',
           value: musicLabel,
           subtitle: musicSub,
-          accent: const Color(0xFFC084FC),
-          cardBg: cardBg,
+          accent: pal.softViolet,
+          pal: pal,
           fullWidth: true,
         ),
       ],
@@ -715,8 +775,7 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
     required dynamic weather,
     required String partnerName,
     required int stayPointCount,
-    required Color crimson,
-    required Color cardBg,
+    required _DossierPalette pal,
   }) {
     final todayKm = world.effectivePartnerJourneyKm;
     final weekKm = world.partnerJourneyKmThisWeek;
@@ -731,24 +790,24 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: cardBg,
+        color: pal.card,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: crimson.withOpacity(0.28)),
+        border: Border.all(color: pal.softBorder),
       ),
       child: Column(
         children: [
           Row(
             children: [
               Expanded(
-                child: _statBox('TODAY DISTANCE', '${todayKm.toStringAsFixed(2)} km', const Color(0xFFF43F5E)),
+                child: _statBox('TODAY DISTANCE', '${todayKm.toStringAsFixed(2)} km', pal.accent, pal),
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: _statBox('STEPS TODAY', '$steps', const Color(0xFF34D399)),
+                child: _statBox('STEPS TODAY', '$steps', pal.softGreen, pal),
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: _statBox('ACTIVE TIME', '$activeMins min', Colors.amber),
+                child: _statBox('ACTIVE TIME', '$activeMins min', pal.softAmber, pal),
               ),
             ],
           ),
@@ -756,22 +815,22 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
           Row(
             children: [
               Expanded(
-                child: _statBox('7-DAY TRAIL', '${weekKm.toStringAsFixed(1)} km', const Color(0xFF60A5FA)),
+                child: _statBox('7-DAY TRAIL', '${weekKm.toStringAsFixed(1)} km', pal.softBlue, pal),
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: _statBox('30-DAY TRAIL', '${monthKm.toStringAsFixed(1)} km', const Color(0xFFC084FC)),
+                child: _statBox('30-DAY TRAIL', '${monthKm.toStringAsFixed(1)} km', pal.softViolet, pal),
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: _statBox('STOPS TODAY', '$stayPointCount', const Color(0xFFFDA4AF)),
+                child: _statBox('STOPS TODAY', '$stayPointCount', pal.softBlush, pal),
               ),
             ],
           ),
           const SizedBox(height: 12),
-          const Divider(color: Colors.white10, height: 1),
+          Divider(color: pal.softBorder, height: 1),
           const SizedBox(height: 10),
-          _detailRow(Icons.flag_outlined, 'Started Today At', origin),
+          _detailRow(Icons.flag_outlined, 'Started Today At', origin, pal),
           const SizedBox(height: 6),
           _detailRow(
             Icons.wb_cloudy_outlined,
@@ -779,36 +838,38 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
             weather != null
                 ? '${weather.temperature.round()}°C • ${weather.condition} (Feels like ${weather.apparentTemperature.round()}°C, Wind ${weather.windSpeed.round()} km/h)'
                 : 'Awaiting live weather sync',
+            pal,
           ),
           const SizedBox(height: 6),
           _detailRow(
             Icons.favorite_border_rounded,
             'Mood Aura & Touches',
             '${mood != null ? '${mood.emoji} ${mood.label}' : 'No mood set'} • ${stage.partnerDailyTouches} touches today (${stage.weeklyTouches} weekly)',
+            pal,
           ),
         ],
       ),
     );
   }
 
-  Widget _statBox(String label, String value, Color accent) {
+  Widget _statBox(String label, String value, Color accent, _DossierPalette pal) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.04),
+        color: pal.subtleFill,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: accent.withOpacity(0.24)),
+        border: Border.all(color: accent.withOpacity(0.18)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             label,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 8.5,
               fontWeight: FontWeight.w800,
               letterSpacing: 0.5,
-              color: Color(0xFFB88896),
+              color: pal.mutedInk,
             ),
           ),
           const SizedBox(height: 3),
@@ -825,20 +886,20 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
     );
   }
 
-  Widget _detailRow(IconData icon, String label, String value) {
+  Widget _detailRow(IconData icon, String label, String value, _DossierPalette pal) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, size: 15, color: const Color(0xFFB88896)),
+        Icon(icon, size: 15, color: pal.mutedInk),
         const SizedBox(width: 8),
         Expanded(
           child: RichText(
             text: TextSpan(
-              style: const TextStyle(fontSize: 11.5, height: 1.35, color: Color(0xFFFDE8EE)),
+              style: TextStyle(fontSize: 11.5, height: 1.35, color: pal.primaryInk),
               children: [
                 TextSpan(
                   text: '$label: ',
-                  style: const TextStyle(color: Color(0xFFB88896), fontWeight: FontWeight.w600),
+                  style: TextStyle(color: pal.mutedInk, fontWeight: FontWeight.w600),
                 ),
                 TextSpan(text: value),
               ],
@@ -855,16 +916,16 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
     required String value,
     required String subtitle,
     required Color accent,
-    required Color cardBg,
+    required _DossierPalette pal,
     bool fullWidth = false,
   }) {
     return Container(
       width: fullWidth ? double.infinity : null,
       padding: const EdgeInsets.all(13),
       decoration: BoxDecoration(
-        color: cardBg,
+        color: pal.card,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: accent.withOpacity(0.28)),
+        border: Border.all(color: pal.softBorder),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -884,28 +945,28 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 9,
                     fontWeight: FontWeight.w800,
                     letterSpacing: 0.7,
-                    color: Color(0xFFB88896),
+                    color: pal.mutedInk,
                   ),
                 ),
                 const SizedBox(height: 3),
                 Text(
                   value,
                   softWrap: true,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13.5,
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFFFDE8EE),
+                    color: pal.primaryInk,
                   ),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   subtitle,
                   softWrap: true,
-                  style: const TextStyle(fontSize: 10.5, height: 1.3, color: Color(0xFF9F7583)),
+                  style: TextStyle(fontSize: 10.5, height: 1.3, color: pal.mutedInk),
                 ),
               ],
             ),
@@ -920,8 +981,8 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
     required List<JourneyPoint> journeyPoints,
     required List<dynamic> pinnedPlaces,
     required String partnerName,
-    required Color crimson,
-    required Color cardBg,
+    required bool isDark,
+    required _DossierPalette pal,
   }) {
     final trailCoords = journeyPoints
         .where((p) => p.lat != 0.0 && p.lng != 0.0)
@@ -934,14 +995,14 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
         width: double.infinity,
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: cardBg,
+          color: pal.card,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.white12),
+          border: Border.all(color: pal.softBorder),
         ),
-        child: const Text(
+        child: Text(
           'Awaiting partner live GPS coordinates to render today’s route trail & map.',
           textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 12, color: Color(0xFFB88896)),
+          style: TextStyle(fontSize: 12, color: pal.mutedInk),
         ),
       );
     }
@@ -953,9 +1014,9 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
 
     return Container(
       decoration: BoxDecoration(
-        color: cardBg,
+        color: pal.card,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: crimson.withOpacity(0.35)),
+        border: Border.all(color: pal.softBorder),
       ),
       child: Column(
         children: [
@@ -974,12 +1035,12 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
                     ),
                     children: [
                       TileLayer(
-                        key: ValueKey('dossier_map_${_isSatelliteMap ? 'sat' : 'dark'}'),
+                        key: ValueKey('dossier_map_${_isSatelliteMap ? 'sat' : (isDark ? 'dark' : 'light')}'),
                         urlTemplate: tileUrl,
                         subdomains: const ['0', '1', '2', '3'],
                         userAgentPackageName: 'com.pagesofus.app',
                         maxZoom: 20,
-                        tileBuilder: !_isSatelliteMap
+                        tileBuilder: (!_isSatelliteMap && isDark)
                             ? (context, tileWidget, tile) => ColorFiltered(
                                   colorFilter: const ColorFilter.matrix(_darkMapMatrix),
                                   child: tileWidget,
@@ -991,7 +1052,7 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
                           polylines: [
                             Polyline(
                               points: trailCoords,
-                              color: crimson,
+                              color: pal.accent,
                               strokeWidth: 4.5,
                             ),
                           ],
@@ -1005,9 +1066,9 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
                               height: 30,
                               child: Container(
                                 decoration: BoxDecoration(
-                                  color: Colors.black87,
+                                  color: pal.card.withOpacity(0.92),
                                   shape: BoxShape.circle,
-                                  border: Border.all(color: Colors.amber, width: 1.5),
+                                  border: Border.all(color: pal.softAmber, width: 1.5),
                                 ),
                                 alignment: Alignment.center,
                                 child: Text(zp.icon, style: const TextStyle(fontSize: 13)),
@@ -1021,11 +1082,11 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
                               height: 38,
                               child: Container(
                                 decoration: BoxDecoration(
-                                  color: crimson,
+                                  color: pal.accent,
                                   shape: BoxShape.circle,
                                   border: Border.all(color: Colors.white, width: 2.2),
                                   boxShadow: [
-                                    BoxShadow(color: crimson.withOpacity(0.7), blurRadius: 14),
+                                    BoxShadow(color: pal.accent.withOpacity(0.45), blurRadius: 12),
                                   ],
                                 ),
                                 alignment: Alignment.center,
@@ -1047,8 +1108,8 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
                     child: Column(
                       children: [
                         _mapControlChip(
-                          icon: _isSatelliteMap ? Icons.dark_mode_rounded : Icons.satellite_alt_rounded,
-                          label: _isSatelliteMap ? 'Dark' : 'Satellite',
+                          icon: _isSatelliteMap ? Icons.map_rounded : Icons.satellite_alt_rounded,
+                          label: _isSatelliteMap ? 'Street' : 'Satellite',
                           onTap: () {
                             HapticFeedback.selectionClick();
                             setState(() => _isSatelliteMap = !_isSatelliteMap);
@@ -1073,14 +1134,14 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                       decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.78),
+                        color: const Color(0xFF1F161B).withOpacity(0.84),
                         borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: crimson.withOpacity(0.4)),
+                        border: Border.all(color: pal.accent.withOpacity(0.35)),
                       ),
                       child: Text(
                         '${trailCoords.length} GPS points today • ${pinnedPlaces.length} zones',
                         style: const TextStyle(
-                            fontSize: 10.5, color: Colors.white, fontWeight: FontWeight.w600),
+                            fontSize: 10.5, color: Color(0xFFF2E4E9), fontWeight: FontWeight.w600),
                       ),
                     ),
                   ),
@@ -1099,13 +1160,13 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
                     children: [
                       Text(
                         pLoc?.placeName?.isNotEmpty == true ? '📍 ${pLoc!.placeName}' : '📍 Live Coordinates',
-                        style: const TextStyle(
-                            fontSize: 12.5, fontWeight: FontWeight.bold, color: Color(0xFFFDE8EE)),
+                        style: TextStyle(
+                            fontSize: 12.5, fontWeight: FontWeight.bold, color: pal.primaryInk),
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        'Lat ${center.latitude.toStringAsFixed(5)}, Lng ${center.longitude.toStringAsFixed(5)} • Red line shows today’s real route',
-                        style: const TextStyle(fontSize: 10.5, color: Color(0xFFB88896)),
+                        'Lat ${center.latitude.toStringAsFixed(5)}, Lng ${center.longitude.toStringAsFixed(5)} • Rose line shows today’s real route',
+                        style: TextStyle(fontSize: 10.5, color: pal.mutedInk),
                       ),
                     ],
                   ),
@@ -1120,13 +1181,13 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     decoration: BoxDecoration(
-                      color: crimson.withOpacity(0.18),
+                      color: pal.accent.withOpacity(0.15),
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: crimson.withOpacity(0.5)),
+                      border: Border.all(color: pal.accent.withOpacity(0.38)),
                     ),
-                    child: const Text(
+                    child: Text(
                       'Maps ↗',
-                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFFFDE8EE)),
+                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: pal.primaryInk),
                     ),
                   ),
                 ),
@@ -1148,18 +1209,18 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
         decoration: BoxDecoration(
-          color: Colors.black.withOpacity(0.78),
+          color: const Color(0xFF1F161B).withOpacity(0.84),
           borderRadius: BorderRadius.circular(10),
           border: Border.all(color: Colors.white24),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 13, color: Colors.white),
+            Icon(icon, size: 13, color: const Color(0xFFF2E4E9)),
             const SizedBox(width: 4),
             Text(
               label,
-              style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600, color: Colors.white),
+              style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600, color: Color(0xFFF2E4E9)),
             ),
           ],
         ),
@@ -1170,21 +1231,20 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
   Widget _buildTimelineLog({
     required List<dynamic> geoEvents,
     required List<dynamic> stayPoints,
-    required Color crimson,
-    required Color cardBg,
+    required _DossierPalette pal,
   }) {
     if (geoEvents.isEmpty && stayPoints.isEmpty) {
       return Container(
         width: double.infinity,
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: cardBg,
+          color: pal.card,
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: Colors.white12),
+          border: Border.all(color: pal.softBorder),
         ),
-        child: const Text(
+        child: Text(
           'No zone arrivals/departures or stops recorded yet today. Save key places on the World Map to trigger live arrival & departure alerts.',
-          style: TextStyle(fontSize: 12, height: 1.4, color: Color(0xFFB88896)),
+          style: TextStyle(fontSize: 12, height: 1.4, color: pal.mutedInk),
         ),
       );
     }
@@ -1192,14 +1252,15 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: cardBg,
+        color: pal.card,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: crimson.withOpacity(0.25)),
+        border: Border.all(color: pal.softBorder),
       ),
       child: Column(
         children: [
           ...geoEvents.take(10).map((ev) {
             final isArrival = ev.eventType == 'arrived';
+            final badgeColor = isArrival ? pal.softGreen : pal.accent;
             return Padding(
               padding: const EdgeInsets.only(bottom: 10),
               child: Row(
@@ -1208,7 +1269,7 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
                     width: 28,
                     height: 28,
                     decoration: BoxDecoration(
-                      color: (isArrival ? const Color(0xFF34D399) : crimson).withOpacity(0.15),
+                      color: badgeColor.withOpacity(0.14),
                       shape: BoxShape.circle,
                     ),
                     alignment: Alignment.center,
@@ -1221,15 +1282,15 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
                       children: [
                         Text(
                           '${isArrival ? 'Arrived at' : 'Left'} ${ev.placeName}',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 12.5,
                             fontWeight: FontWeight.bold,
-                            color: Color(0xFFFDE8EE),
+                            color: pal.primaryInk,
                           ),
                         ),
                         Text(
                           _formatIsoTime(ev.timestamp),
-                          style: const TextStyle(fontSize: 10.5, color: Color(0xFFB88896)),
+                          style: TextStyle(fontSize: 10.5, color: pal.mutedInk),
                         ),
                       ],
                     ),
@@ -1237,7 +1298,7 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                     decoration: BoxDecoration(
-                      color: (isArrival ? const Color(0xFF34D399) : crimson).withOpacity(0.15),
+                      color: badgeColor.withOpacity(0.14),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
@@ -1245,7 +1306,7 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
                       style: TextStyle(
                         fontSize: 9,
                         fontWeight: FontWeight.w800,
-                        color: isArrival ? const Color(0xFF34D399) : crimson,
+                        color: badgeColor,
                       ),
                     ),
                   ),
@@ -1266,15 +1327,15 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
                       children: [
                         Text(
                           sp.placeName,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 12.5,
                             fontWeight: FontWeight.w600,
-                            color: Color(0xFFFDE8EE),
+                            color: pal.primaryInk,
                           ),
                         ),
                         Text(
                           '${sp.timeRangeText} • ${sp.durationText}',
-                          style: const TextStyle(fontSize: 10.5, color: Color(0xFFB88896)),
+                          style: TextStyle(fontSize: 10.5, color: pal.mutedInk),
                         ),
                       ],
                     ),
@@ -1292,16 +1353,15 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
     required StageProvider stage,
     required String userId,
     required String spaceId,
-    required Color crimson,
-    required Color cardBg,
+    required _DossierPalette pal,
   }) {
     final whispers = stage.secretWhispers;
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: cardBg,
+        color: pal.card,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: crimson.withOpacity(0.30)),
+        border: Border.all(color: pal.softBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1311,12 +1371,12 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
               Expanded(
                 child: TextField(
                   controller: _whisperCtrl,
-                  style: const TextStyle(fontSize: 13, color: Colors.white),
+                  style: TextStyle(fontSize: 13, color: pal.primaryInk),
                   decoration: InputDecoration(
                     hintText: 'Send a secret whisper (burns after reading)...',
-                    hintStyle: const TextStyle(fontSize: 12, color: Color(0xFF8C6370)),
+                    hintStyle: TextStyle(fontSize: 12, color: pal.mutedInk),
                     filled: true,
-                    fillColor: Colors.white.withOpacity(0.05),
+                    fillColor: pal.subtleFill,
                     contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(14),
@@ -1331,7 +1391,7 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
                 child: Container(
                   padding: const EdgeInsets.all(11),
                   decoration: BoxDecoration(
-                    color: crimson,
+                    color: pal.accent,
                     borderRadius: BorderRadius.circular(14),
                   ),
                   child: _sendingWhisper
@@ -1352,7 +1412,7 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
               return GestureDetector(
                 onTap: () {
                   if (!isMine && !w.isBurned) {
-                    _openAndBurnWhisper(w, spaceId, userId);
+                    _openAndBurnWhisper(w, spaceId, userId, pal);
                   }
                 },
                 child: Container(
@@ -1360,11 +1420,11 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                   decoration: BoxDecoration(
                     color: w.isBurned
-                        ? Colors.white.withOpacity(0.03)
-                        : crimson.withOpacity(0.12),
+                        ? pal.subtleFill
+                        : pal.accent.withOpacity(0.11),
                     borderRadius: BorderRadius.circular(14),
                     border: Border.all(
-                      color: w.isBurned ? Colors.white10 : crimson.withOpacity(0.45),
+                      color: w.isBurned ? pal.softBorder : pal.accent.withOpacity(0.32),
                     ),
                   ),
                   child: Row(
@@ -1374,7 +1434,7 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
                             ? Icons.whatshot_outlined
                             : (isMine ? Icons.lock_clock_rounded : Icons.visibility_rounded),
                         size: 17,
-                        color: w.isBurned ? Colors.white38 : crimson,
+                        color: w.isBurned ? pal.mutedInk : pal.accent,
                       ),
                       const SizedBox(width: 10),
                       Expanded(
@@ -1387,13 +1447,13 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: w.isBurned ? FontWeight.normal : FontWeight.w600,
-                            color: w.isBurned ? Colors.white38 : const Color(0xFFFDE8EE),
+                            color: w.isBurned ? pal.mutedInk : pal.primaryInk,
                           ),
                         ),
                       ),
                       Text(
                         _formatIsoTime(w.createdAt),
-                        style: const TextStyle(fontSize: 10, color: Color(0xFF8C6370)),
+                        style: TextStyle(fontSize: 10, color: pal.mutedInk),
                       ),
                     ],
                   ),
