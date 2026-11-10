@@ -180,6 +180,19 @@ class MemoriesProvider extends ChangeNotifier {
     // Setup Supabase Realtime Channels
     final supabase = SupabaseService.client;
     if (supabase != null) {
+      if (_memoriesChannel != null) {
+        await supabase.removeChannel(_memoriesChannel!);
+        _memoriesChannel = null;
+      }
+      if (_lettersChannel != null) {
+        await supabase.removeChannel(_lettersChannel!);
+        _lettersChannel = null;
+      }
+      if (_milestonesChannel != null) {
+        await supabase.removeChannel(_milestonesChannel!);
+        _milestonesChannel = null;
+      }
+
       _memoriesChannel = supabase.channel(
         'memories_$spaceId',
         opts: const RealtimeChannelConfig(ack: false, self: false),
@@ -283,6 +296,9 @@ class MemoriesProvider extends ChangeNotifier {
     // Firestore Dual-Sync Realtime Listener for Milestones
     try {
       _firestoreMilestonesSub?.cancel();
+      final isSharedCoupleSpace =
+          (partnerId != null && partnerId.isNotEmpty) ||
+          !spaceId.startsWith('solo_');
       _firestoreMilestonesSub = FirebaseService.firestore
           .collection('spaces')
           .doc(spaceId)
@@ -297,16 +313,87 @@ class MemoriesProvider extends ChangeNotifier {
                 currentUserId: currentUserId,
                 partnerNickname: partnerNickname,
               );
-            }).where((m) {
-              if (partnerId != null && partnerId.isNotEmpty) {
-                return m.isMine || (m.authorId != null && m.authorId!.contains(partnerId));
-              }
-              return m.isMine;
-            }).toList();
+            }).where((m) => isSharedCoupleSpace || m.isMine).toList();
             _mergeMilestones(incoming);
           }, onError: (err) {
             debugPrint('Firestore milestones listener err: $err');
           });
+    } catch (_) {}
+  }
+
+  /// Re-fetches all shared memories, letters, and milestones for the active space.
+  Future<void> refreshAll() async {
+    final spaceId = _currentSpaceId;
+    final userId = _currentUserId;
+    if (spaceId == null || userId == null) return;
+    await Future.wait([
+      fetchMemories(
+        spaceId: spaceId,
+        currentUserId: userId,
+        partnerId: _currentPartnerId,
+        partnerNickname: _currentPartnerNickname,
+      ),
+      fetchLetters(
+        spaceId: spaceId,
+        currentUserId: userId,
+        partnerId: _currentPartnerId,
+        partnerNickname: _currentPartnerNickname,
+      ),
+      fetchMilestones(
+        spaceId: spaceId,
+        currentUserId: userId,
+        partnerId: _currentPartnerId,
+        partnerNickname: _currentPartnerNickname,
+      ),
+    ]);
+  }
+
+  String _buildCoupleOrFilter({
+    required String spaceId,
+    required String currentUserId,
+    String? partnerId,
+  }) {
+    if (partnerId != null && partnerId.isNotEmpty) {
+      return 'space_id.eq.$spaceId,author.ilike.%$currentUserId%,author.ilike.%$partnerId%';
+    }
+    return 'space_id.eq.$spaceId,author.ilike.%$currentUserId%';
+  }
+
+  void _healOrphanedRowSpaceIds(
+    SupabaseClient supabase,
+    String table,
+    List<dynamic> rows, {
+    required String spaceId,
+    required String currentUserId,
+    String? partnerId,
+  }) {
+    if (partnerId == null || partnerId.isEmpty || spaceId.startsWith('solo_')) {
+      return;
+    }
+    for (final raw in rows) {
+      if (raw is! Map) continue;
+      final rowId = raw['id']?.toString();
+      final rowSpace = raw['space_id']?.toString();
+      final author = raw['author']?.toString() ?? '';
+      final belongsToCouple =
+          author.contains(currentUserId) || author.contains(partnerId);
+      if (rowId != null &&
+          rowId.isNotEmpty &&
+          rowSpace != spaceId &&
+          belongsToCouple) {
+        unawaited(_healSingleRowSpaceId(supabase, table, rowId, spaceId));
+      }
+    }
+  }
+
+  Future<void> _healSingleRowSpaceId(
+    SupabaseClient supabase,
+    String table,
+    String rowId,
+    String spaceId,
+  ) async {
+    try {
+      await supabase.from(table).update({'space_id': spaceId}).eq('id', rowId);
     } catch (_) {}
   }
 
@@ -320,30 +407,39 @@ class MemoriesProvider extends ChangeNotifier {
       final supabase = SupabaseService.client;
       if (supabase == null) return;
 
-      var query = supabase.from('memories').select();
-      if (partnerId != null && partnerId.isNotEmpty) {
-        query = query.or('author.ilike.%$currentUserId%,author.ilike.%$partnerId%');
-      } else {
-        query = query.filter('author', 'ilike', '%$currentUserId%');
-      }
+      final isSharedCoupleSpace =
+          (partnerId != null && partnerId.isNotEmpty) ||
+          !spaceId.startsWith('solo_');
 
-      final data = await query
+      final data = await supabase
+          .from('memories')
+          .select()
+          .or(_buildCoupleOrFilter(
+            spaceId: spaceId,
+            currentUserId: currentUserId,
+            partnerId: partnerId,
+          ))
           .order('created_at', ascending: false)
-          .limit(50)
+          .limit(100)
           .timeout(const Duration(seconds: 12));
 
-      _memories = (data as List)
+      final rows = data as List;
+      _healOrphanedRowSpaceIds(
+        supabase,
+        'memories',
+        rows,
+        spaceId: spaceId,
+        currentUserId: currentUserId,
+        partnerId: partnerId,
+      );
+
+      _memories = rows
           .map((row) => MemoryItem.fromJson(
                 row as Map<String, dynamic>,
                 currentUserId: currentUserId,
                 partnerNickname: partnerNickname,
               ))
-          .where((m) {
-            if (partnerId != null && partnerId.isNotEmpty) {
-              return m.isMine || m.author.contains(partnerId);
-            }
-            return m.isMine;
-          })
+          .where((m) => isSharedCoupleSpace || m.isMine)
           .toList();
 
       // Background prefetch for instant 0ms voice whisper playback
@@ -377,30 +473,39 @@ class MemoriesProvider extends ChangeNotifier {
       final supabase = SupabaseService.client;
       if (supabase == null) return;
 
-      var query = supabase.from('letters').select();
-      if (partnerId != null && partnerId.isNotEmpty) {
-        query = query.or('author.ilike.%$currentUserId%,author.ilike.%$partnerId%');
-      } else {
-        query = query.filter('author', 'ilike', '%$currentUserId%');
-      }
+      final isSharedCoupleSpace =
+          (partnerId != null && partnerId.isNotEmpty) ||
+          !spaceId.startsWith('solo_');
 
-      final data = await query
+      final data = await supabase
+          .from('letters')
+          .select()
+          .or(_buildCoupleOrFilter(
+            spaceId: spaceId,
+            currentUserId: currentUserId,
+            partnerId: partnerId,
+          ))
           .order('created_at', ascending: false)
-          .limit(50)
+          .limit(100)
           .timeout(const Duration(seconds: 12));
 
-      _letters = (data as List)
+      final rows = data as List;
+      _healOrphanedRowSpaceIds(
+        supabase,
+        'letters',
+        rows,
+        spaceId: spaceId,
+        currentUserId: currentUserId,
+        partnerId: partnerId,
+      );
+
+      _letters = rows
           .map((row) => LetterItem.fromJson(
                 row as Map<String, dynamic>,
                 currentUserId: currentUserId,
                 partnerNickname: partnerNickname,
               ))
-          .where((l) {
-            if (partnerId != null && partnerId.isNotEmpty) {
-              return l.isMine || l.author.contains(partnerId);
-            }
-            return l.isMine;
-          })
+          .where((l) => isSharedCoupleSpace || l.isMine)
           .toList();
       notifyListeners();
     } catch (_) {}
@@ -416,53 +521,60 @@ class MemoriesProvider extends ChangeNotifier {
       final supabase = SupabaseService.client;
       if (supabase == null) return;
 
-      var query = supabase.from('milestones').select();
-      if (partnerId != null && partnerId.isNotEmpty) {
-        query = query.or('author.ilike.%$currentUserId%,author.ilike.%$partnerId%');
-      } else {
-        query = query.filter('author', 'ilike', '%$currentUserId%');
-      }
+      final isSharedCoupleSpace =
+          (partnerId != null && partnerId.isNotEmpty) ||
+          !spaceId.startsWith('solo_');
 
-      final data = await query
+      final data = await supabase
+          .from('milestones')
+          .select()
+          .or(_buildCoupleOrFilter(
+            spaceId: spaceId,
+            currentUserId: currentUserId,
+            partnerId: partnerId,
+          ))
           .order('event_date', ascending: false)
-          .limit(50)
+          .limit(100)
           .timeout(const Duration(seconds: 12));
 
-      final list = (data as List)
+      final rows = data as List;
+      _healOrphanedRowSpaceIds(
+        supabase,
+        'milestones',
+        rows,
+        spaceId: spaceId,
+        currentUserId: currentUserId,
+        partnerId: partnerId,
+      );
+
+      final list = rows
           .map((row) => MilestoneItem.fromJson(
                 row as Map<String, dynamic>,
                 currentUserId: currentUserId,
                 partnerNickname: partnerNickname,
               ))
-          .where((m) {
-            if (partnerId != null && partnerId.isNotEmpty) {
-              return m.isMine || (m.authorId != null && m.authorId!.contains(partnerId));
-            }
-            return m.isMine;
-          })
+          .where((m) => isSharedCoupleSpace || m.isMine)
           .toList();
       _mergeMilestones(list);
     } catch (_) {}
   }
 
   void _mergeMilestones(List<MilestoneItem> incoming) {
-    final filtered = incoming.where((m) {
-      if (_currentPartnerId != null && _currentPartnerId!.isNotEmpty) {
-        return m.isMine || (m.authorId != null && m.authorId!.contains(_currentPartnerId!));
-      }
-      return m.isMine;
-    }).toList();
+    final isSharedCoupleSpace =
+        (_currentPartnerId != null && _currentPartnerId!.isNotEmpty) ||
+        (_currentSpaceId != null && !_currentSpaceId!.startsWith('solo_'));
+
+    final filtered = incoming
+        .where((m) => isSharedCoupleSpace || m.isMine)
+        .toList();
 
     final Map<String, MilestoneItem> map = {for (final m in _milestones) m.id: m};
     for (final item in filtered) {
       map[item.id] = item;
     }
-    _milestones = map.values.where((m) {
-      if (_currentPartnerId != null && _currentPartnerId!.isNotEmpty) {
-        return m.isMine || (m.authorId != null && m.authorId!.contains(_currentPartnerId!));
-      }
-      return m.isMine;
-    }).toList()
+    _milestones = map.values
+        .where((m) => isSharedCoupleSpace || m.isMine)
+        .toList()
       ..sort((a, b) => b.rawDate.compareTo(a.rawDate));
     notifyListeners();
   }
