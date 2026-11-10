@@ -1,10 +1,10 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/services/device_status_service.dart';
@@ -23,8 +23,17 @@ class ObsessionDossierScreen extends StatefulWidget {
 
 class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
   final TextEditingController _whisperCtrl = TextEditingController();
+  final MapController _mapController = MapController();
   bool _sendingWhisper = false;
   bool _refreshing = false;
+  bool _isSatelliteMap = false;
+
+  static const List<double> _darkMapMatrix = <double>[
+    -0.20, -0.65, -0.07, 0, 215,
+    -0.18, -0.60, -0.06, 0, 225,
+    -0.20, -0.65, -0.07, 0, 220,
+    0,      0,      0,    1, 0,
+  ];
 
   @override
   void initState() {
@@ -32,6 +41,7 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         context.read<StageProvider>().refreshPartnerTelemetryNow();
+        context.read<WorldProvider>().refreshPartnerJourneyTrail();
       }
     });
   }
@@ -39,6 +49,7 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
   @override
   void dispose() {
     _whisperCtrl.dispose();
+    _mapController.dispose();
     super.dispose();
   }
 
@@ -49,6 +60,12 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
     if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
     if (diff.inHours < 24) return '${diff.inHours}h ${diff.inMinutes % 60}m ago';
     return DateFormat('MMM d, h:mm a').format(dt.toLocal());
+  }
+
+  String _formatExactAndRelative(DateTime? dt) {
+    if (dt == null) return 'Not recorded yet';
+    final local = dt.toLocal();
+    return '${DateFormat('h:mm a').format(local)} (${_formatRelativeTime(local)})';
   }
 
   String _formatIsoTime(String iso) {
@@ -73,8 +90,22 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
   Future<void> _handleRefresh() async {
     setState(() => _refreshing = true);
     HapticFeedback.lightImpact();
-    await context.read<StageProvider>().refreshPartnerTelemetryNow();
+    await Future.wait([
+      context.read<StageProvider>().refreshPartnerTelemetryNow(),
+      context.read<WorldProvider>().refreshPartnerJourneyTrail(),
+    ]);
     if (mounted) setState(() => _refreshing = false);
+  }
+
+  Future<void> _openInGoogleMaps(double lat, double lng, String name) async {
+    final geoUri = Uri.parse('geo:$lat,$lng?q=$lat,$lng(${Uri.encodeComponent(name)})');
+    try {
+      if (await launchUrl(geoUri, mode: LaunchMode.externalApplication)) return;
+    } catch (_) {}
+    final webUri = Uri.parse('https://www.google.com/maps/search/?api=1&query=$lat,$lng');
+    try {
+      await launchUrl(webUri, mode: LaunchMode.externalApplication);
+    } catch (_) {}
   }
 
   Future<void> _sendWhisper() async {
@@ -223,6 +254,7 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
     final journeyPoints = world.partnerJourneyToday;
     final geoEvents = world.geofenceEvents;
     final stayPoints = world.partnerStayPointsToday;
+    final weather = world.partnerWeather;
 
     const crimson = Color(0xFFF43F5E);
     const wineBg = Color(0xFF0A0408);
@@ -233,6 +265,7 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
+        titleSpacing: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 19),
           onPressed: () => Navigator.pop(context),
@@ -250,9 +283,7 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
               ),
             ),
             Text(
-              partner != null
-                  ? 'Live Hardware & Route Dossier • $partnerName'
-                  : 'Pair with your partner to activate live radar',
+              partner != null ? 'Live Dossier • $partnerName' : 'Pair to activate radar',
               style: const TextStyle(fontSize: 11, color: Color(0xFFB88896)),
             ),
           ],
@@ -284,7 +315,7 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
               }
             },
             child: Container(
-              margin: const EdgeInsets.symmetric(vertical: 10),
+              margin: const EdgeInsets.symmetric(vertical: 11),
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
                 color: themeProv.themeId == 'velvet_noir'
@@ -295,18 +326,13 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
                   color: themeProv.themeId == 'velvet_noir' ? crimson : Colors.white24,
                 ),
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    themeProv.themeId == 'velvet_noir' ? '🥀 Velvet ON' : '🥀 Velvet OFF',
-                    style: TextStyle(
-                      fontSize: 10.5,
-                      fontWeight: FontWeight.bold,
-                      color: themeProv.themeId == 'velvet_noir' ? const Color(0xFFFDE8EE) : Colors.white70,
-                    ),
-                  ),
-                ],
+              child: Text(
+                themeProv.themeId == 'velvet_noir' ? '🥀 Velvet ON' : '🥀 Velvet OFF',
+                style: TextStyle(
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.bold,
+                  color: themeProv.themeId == 'velvet_noir' ? const Color(0xFFFDE8EE) : Colors.white70,
+                ),
               ),
             ),
           ),
@@ -341,16 +367,17 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
                   telemetry: telemetry,
                   pLoc: pLoc,
                   stage: stage,
+                  world: world,
                   crimson: crimson,
                   cardBg: cardBg,
                 ),
 
-                const SizedBox(height: 14),
+                const SizedBox(height: 16),
 
-                // 2. 100% Real Hardware Telemetry Grid
-                _sectionTitle('REAL-TIME HARDWARE RADAR', crimson),
+                // 2. 100% Real Hardware Telemetry Cards (Zero Cut-off Text)
+                _sectionTitle('REAL-TIME HARDWARE & DEVICE PULSE', crimson),
                 const SizedBox(height: 8),
-                _buildTelemetryGrid(
+                _buildTelemetrySection(
                   telemetry: telemetry,
                   movementState: movementState,
                   pLoc: pLoc,
@@ -360,8 +387,23 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
 
                 const SizedBox(height: 16),
 
-                // 3. Today's Real GPS Breadcrumb Trail Map
-                _sectionTitle('24H ROUTE BREADCRUMB TRAIL', crimson),
+                // 3. Detailed Movement & Distance Analytics (100% Real GPS Metrics)
+                _sectionTitle('MOVEMENT & ACTIVITY ANALYTICS', crimson),
+                const SizedBox(height: 8),
+                _buildMovementAnalyticsSection(
+                  world: world,
+                  stage: stage,
+                  weather: weather,
+                  partnerName: partnerName,
+                  stayPointCount: stayPoints.length,
+                  crimson: crimson,
+                  cardBg: cardBg,
+                ),
+
+                const SizedBox(height: 16),
+
+                // 4. Interactive Full-Detail Route Breadcrumb Map (Google Dark / Satellite — Zero Watermark)
+                _sectionTitle('LIVE ROUTE & ZONE RADAR MAP', crimson),
                 const SizedBox(height: 8),
                 _buildBreadcrumbTrailMap(
                   pLoc: pLoc,
@@ -374,7 +416,7 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
 
                 const SizedBox(height: 16),
 
-                // 4. Geofence Arrival/Departure Radar + Stay Points Log
+                // 5. Geofence Arrival/Departure Radar + Stay Points Log
                 _sectionTitle('ARRIVAL, DEPARTURE & STOPS LOG', crimson),
                 const SizedBox(height: 8),
                 _buildTimelineLog(
@@ -386,7 +428,7 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
 
                 const SizedBox(height: 16),
 
-                // 5. Burn-After-Reading Secret Whispers
+                // 6. Burn-After-Reading Secret Whispers
                 _sectionTitle('BURN-AFTER-READING WHISPERS', crimson),
                 const SizedBox(height: 8),
                 _buildWhispersSection(
@@ -425,12 +467,17 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
     required DeviceTelemetry? telemetry,
     required dynamic pLoc,
     required StageProvider stage,
+    required WorldProvider world,
     required Color crimson,
     required Color cardBg,
   }) {
     final lastUpdated = telemetry?.updatedAt.isNotEmpty == true
         ? _formatIsoRelative(telemetry!.updatedAt)
         : (pLoc != null ? _formatIsoRelative(pLoc.updatedAt) : 'Awaiting signal');
+
+    final placeLabel = (pLoc?.placeName != null && pLoc!.placeName!.isNotEmpty)
+        ? pLoc.placeName!
+        : 'Location pending';
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -465,21 +512,19 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
+                    Wrap(
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 8,
+                      runSpacing: 4,
                       children: [
-                        Flexible(
-                          child: Text(
-                            partnerName,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFFFDE8EE),
-                            ),
+                        Text(
+                          partnerName,
+                          style: const TextStyle(
+                            fontSize: 16.5,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFFFDE8EE),
                           ),
                         ),
-                        const SizedBox(width: 8),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                           decoration: BoxDecoration(
@@ -503,15 +548,18 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 3),
+                    const SizedBox(height: 4),
                     Text(
-                      pLoc?.placeName?.isNotEmpty == true
-                          ? '📍 ${pLoc!.placeName} • Synced $lastUpdated'
-                          : 'Synced $lastUpdated',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 11.5, color: Color(0xFFB88896)),
+                      '📍 $placeLabel • Synced $lastUpdated',
+                      style: const TextStyle(fontSize: 12, color: Color(0xFFB88896)),
                     ),
+                    if (world.liveDistanceKm != null) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        'Distance from you: ${world.formattedLiveDistance}',
+                        style: const TextStyle(fontSize: 11.5, color: Color(0xFFFDA4AF), fontWeight: FontWeight.w600),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -549,7 +597,7 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
     );
   }
 
-  Widget _buildTelemetryGrid({
+  Widget _buildTelemetrySection({
     required DeviceTelemetry? telemetry,
     required String? movementState,
     required dynamic pLoc,
@@ -562,9 +610,10 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
             ? 'Unlocked & Active'
             : (telemetry.isScreenOn ? 'Lockscreen On' : 'Screen Off'));
 
-    final unlockSub = telemetry?.lastUnlockedAt != null
-        ? 'Last unlocked ${_formatRelativeTime(telemetry!.lastUnlockedAt)}'
-        : (telemetry != null ? 'Real OS screen state' : 'Needs partner app active');
+    final unlockSub = telemetry == null
+        ? 'Needs partner app active'
+        : 'Last unlocked: ${_formatExactAndRelative(telemetry.lastUnlockedAt)}'
+          '${telemetry.unlockCountToday != null ? ' • ${telemetry.unlockCountToday} unlocks today' : ''}';
 
     final netLabel = telemetry == null
         ? 'Awaiting signal'
@@ -584,48 +633,44 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
         ? telemetry!.nowPlayingTitle!
         : 'Silent / Idle';
     final musicSub = telemetry?.nowPlayingArtist?.isNotEmpty == true
-        ? telemetry!.nowPlayingArtist!
-        : 'In-app Music Sanctuary';
+        ? 'By ${telemetry!.nowPlayingArtist!} • Playing in Sanctuary'
+        : 'Sanctuary Music Player';
 
     final moveLabel = movementState ?? 'Awaiting GPS speed';
     final gpsAccSub = pLoc?.accuracy != null
-        ? 'GPS accuracy ±${pLoc!.accuracy!.round()}m'
-        : 'Hardware GPS sensor';
+        ? 'GPS accuracy ±${pLoc!.accuracy!.round()} meters'
+        : 'Waiting for GPS fix';
 
     return Column(
       children: [
+        _metricTile(
+          icon: telemetry?.isDeviceUnlocked == true
+              ? Icons.lock_open_rounded
+              : Icons.lock_outline_rounded,
+          title: 'PHONE STATE & UNLOCK ACTIVITY',
+          value: screenLabel,
+          subtitle: unlockSub,
+          accent: telemetry?.isDeviceUnlocked == true ? const Color(0xFF34D399) : crimson,
+          cardBg: cardBg,
+          fullWidth: true,
+        ),
+        const SizedBox(height: 10),
         Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(
-              child: _metricTile(
-                icon: telemetry?.isDeviceUnlocked == true
-                    ? Icons.lock_open_rounded
-                    : Icons.lock_outline_rounded,
-                title: 'PHONE STATE',
-                value: screenLabel,
-                subtitle: unlockSub,
-                accent: telemetry?.isDeviceUnlocked == true ? const Color(0xFF34D399) : crimson,
-                cardBg: cardBg,
-              ),
-            ),
-            const SizedBox(width: 10),
             Expanded(
               child: _metricTile(
                 icon: telemetry?.networkType == 'wifi'
                     ? Icons.wifi_rounded
                     : Icons.signal_cellular_alt_rounded,
-                title: 'CONNECTION',
+                title: 'NETWORK',
                 value: netLabel,
-                subtitle: 'Live hardware network',
+                subtitle: 'Live OS connection',
                 accent: const Color(0xFF60A5FA),
                 cardBg: cardBg,
               ),
             ),
-          ],
-        ),
-        const SizedBox(height: 10),
-        Row(
-          children: [
+            const SizedBox(width: 10),
             Expanded(
               child: _metricTile(
                 icon: telemetry?.isCharging == true
@@ -633,23 +678,22 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
                     : Icons.battery_std_rounded,
                 title: 'BATTERY',
                 value: batLabel,
-                subtitle: telemetry?.isCharging == true ? 'Plugged in' : 'Real battery level',
+                subtitle: telemetry?.isCharging == true ? 'Plugged in' : 'Hardware level',
                 accent: telemetry?.isCharging == true ? const Color(0xFF34D399) : Colors.amber,
                 cardBg: cardBg,
               ),
             ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: _metricTile(
-                icon: Icons.directions_run_rounded,
-                title: 'MOVEMENT',
-                value: moveLabel,
-                subtitle: gpsAccSub,
-                accent: crimson,
-                cardBg: cardBg,
-              ),
-            ),
           ],
+        ),
+        const SizedBox(height: 10),
+        _metricTile(
+          icon: Icons.directions_run_rounded,
+          title: 'MOVEMENT & GPS PRECISION',
+          value: moveLabel,
+          subtitle: gpsAccSub,
+          accent: crimson,
+          cardBg: cardBg,
+          fullWidth: true,
         ),
         const SizedBox(height: 10),
         _metricTile(
@@ -660,6 +704,144 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
           accent: const Color(0xFFC084FC),
           cardBg: cardBg,
           fullWidth: true,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMovementAnalyticsSection({
+    required WorldProvider world,
+    required StageProvider stage,
+    required dynamic weather,
+    required String partnerName,
+    required int stayPointCount,
+    required Color crimson,
+    required Color cardBg,
+  }) {
+    final todayKm = world.effectivePartnerJourneyKm;
+    final weekKm = world.partnerJourneyKmThisWeek;
+    final monthKm = world.partnerJourneyKmThisMonth;
+    final steps = world.effectivePartnerSteps;
+    final activeMins = world.effectivePartnerActiveMinutes;
+    final origin = world.effectivePartnerDeparturePlace;
+    final mood = stage.partnerMood;
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: cardBg,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: crimson.withOpacity(0.28)),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: _statBox('TODAY DISTANCE', '${todayKm.toStringAsFixed(2)} km', const Color(0xFFF43F5E)),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _statBox('EST. STEPS', '$steps', const Color(0xFF34D399)),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _statBox('ACTIVE TIME', '$activeMins min', Colors.amber),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: _statBox('7-DAY TRAIL', '${weekKm.toStringAsFixed(1)} km', const Color(0xFF60A5FA)),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _statBox('30-DAY TRAIL', '${monthKm.toStringAsFixed(1)} km', const Color(0xFFC084FC)),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _statBox('STOPS TODAY', '$stayPointCount', const Color(0xFFFDA4AF)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          const Divider(color: Colors.white10, height: 1),
+          const SizedBox(height: 10),
+          _detailRow(Icons.flag_outlined, 'Started Today At', origin),
+          const SizedBox(height: 6),
+          _detailRow(
+            Icons.wb_cloudy_outlined,
+            'Local Weather ($partnerName)',
+            weather != null
+                ? '${weather.temperature.round()}°C • ${weather.condition} (Feels like ${weather.apparentTemperature.round()}°C, Wind ${weather.windSpeed.round()} km/h)'
+                : 'Awaiting live weather sync',
+          ),
+          const SizedBox(height: 6),
+          _detailRow(
+            Icons.favorite_border_rounded,
+            'Mood Aura & Touches',
+            '${mood != null ? '${mood.emoji} ${mood.label}' : 'No mood set'} • ${stage.partnerDailyTouches} touches today (${stage.weeklyTouches} weekly)',
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _statBox(String label, String value, Color accent) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.04),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: accent.withOpacity(0.24)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 8.5,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.5,
+              color: Color(0xFFB88896),
+            ),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 13.5,
+              fontWeight: FontWeight.bold,
+              color: accent,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _detailRow(IconData icon, String label, String value) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 15, color: const Color(0xFFB88896)),
+        const SizedBox(width: 8),
+        Expanded(
+          child: RichText(
+            text: TextSpan(
+              style: const TextStyle(fontSize: 11.5, height: 1.35, color: Color(0xFFFDE8EE)),
+              children: [
+                TextSpan(
+                  text: '$label: ',
+                  style: const TextStyle(color: Color(0xFFB88896), fontWeight: FontWeight.w600),
+                ),
+                TextSpan(text: value),
+              ],
+            ),
+          ),
         ),
       ],
     );
@@ -683,6 +865,7 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
         border: Border.all(color: accent.withOpacity(0.28)),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
             padding: const EdgeInsets.all(8),
@@ -706,23 +889,21 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
                     color: Color(0xFFB88896),
                   ),
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: 3),
                 Text(
                   value,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                  softWrap: true,
                   style: const TextStyle(
-                    fontSize: 13,
+                    fontSize: 13.5,
                     fontWeight: FontWeight.bold,
                     color: Color(0xFFFDE8EE),
                   ),
                 ),
-                const SizedBox(height: 1),
+                const SizedBox(height: 2),
                 Text(
                   subtitle,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 10, color: Color(0xFF8C6370)),
+                  softWrap: true,
+                  style: const TextStyle(fontSize: 10.5, height: 1.3, color: Color(0xFF9F7583)),
                 ),
               ],
             ),
@@ -756,7 +937,7 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
           border: Border.all(color: Colors.white12),
         ),
         child: const Text(
-          'Awaiting partner live GPS coordinates to render today’s route trail.',
+          'Awaiting partner live GPS coordinates to render today’s route trail & map.',
           textAlign: TextAlign.center,
           style: TextStyle(fontSize: 12, color: Color(0xFFB88896)),
         ),
@@ -764,99 +945,222 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
     }
 
     final center = hasPartnerCoord ? LatLng(pLoc.lat, pLoc.lng) : trailCoords.last;
+    final tileUrl = _isSatelliteMap
+        ? 'https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}'
+        : 'https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}';
 
     return Container(
-      height: 220,
-      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: cardBg,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: crimson.withOpacity(0.35)),
       ),
-      child: Stack(
+      child: Column(
         children: [
-          FlutterMap(
-            options: MapOptions(
-              initialCenter: center,
-              initialZoom: 14.2,
-              interactionOptions: const InteractionOptions(flags: InteractiveFlag.all),
-            ),
-            children: [
-              TileLayer(
-                urlTemplate: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-                subdomains: const ['a', 'b', 'c', 'd'],
-                userAgentPackageName: 'com.pagesofus.app',
-              ),
-              if (trailCoords.length >= 2)
-                PolylineLayer(
-                  polylines: [
-                    Polyline(
-                      points: trailCoords,
-                      color: crimson,
-                      strokeWidth: 4.0,
+          SizedBox(
+            height: 260,
+            child: ClipRRect(
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+              child: Stack(
+                children: [
+                  FlutterMap(
+                    mapController: _mapController,
+                    options: MapOptions(
+                      initialCenter: center,
+                      initialZoom: 15.0,
+                      interactionOptions: const InteractionOptions(flags: InteractiveFlag.all),
                     ),
-                  ],
-                ),
-              MarkerLayer(
-                markers: [
-                  ...pinnedPlaces.map(
-                    (zp) => Marker(
-                      point: LatLng(zp.lat, zp.lng),
-                      width: 28,
-                      height: 28,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Colors.black87,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.amber, width: 1.5),
+                    children: [
+                      TileLayer(
+                        key: ValueKey('dossier_map_${_isSatelliteMap ? 'sat' : 'dark'}'),
+                        urlTemplate: tileUrl,
+                        subdomains: const ['0', '1', '2', '3'],
+                        userAgentPackageName: 'com.pagesofus.app',
+                        maxZoom: 20,
+                        tileBuilder: !_isSatelliteMap
+                            ? (context, tileWidget, tile) => ColorFiltered(
+                                  colorFilter: const ColorFilter.matrix(_darkMapMatrix),
+                                  child: tileWidget,
+                                )
+                            : null,
+                      ),
+                      if (trailCoords.length >= 2)
+                        PolylineLayer(
+                          polylines: [
+                            Polyline(
+                              points: trailCoords,
+                              color: crimson,
+                              strokeWidth: 4.5,
+                            ),
+                          ],
                         ),
-                        alignment: Alignment.center,
-                        child: Text(zp.icon, style: const TextStyle(fontSize: 13)),
+                      MarkerLayer(
+                        markers: [
+                          ...pinnedPlaces.map(
+                            (zp) => Marker(
+                              point: LatLng(zp.lat, zp.lng),
+                              width: 30,
+                              height: 30,
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.black87,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(color: Colors.amber, width: 1.5),
+                                ),
+                                alignment: Alignment.center,
+                                child: Text(zp.icon, style: const TextStyle(fontSize: 13)),
+                              ),
+                            ),
+                          ),
+                          if (hasPartnerCoord)
+                            Marker(
+                              point: LatLng(pLoc.lat, pLoc.lng),
+                              width: 38,
+                              height: 38,
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: crimson,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(color: Colors.white, width: 2.2),
+                                  boxShadow: [
+                                    BoxShadow(color: crimson.withOpacity(0.7), blurRadius: 14),
+                                  ],
+                                ),
+                                alignment: Alignment.center,
+                                child: Text(
+                                  partnerName.isNotEmpty ? partnerName[0].toUpperCase() : 'P',
+                                  style: const TextStyle(
+                                      color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  // Top-right Map Style & Center Controls
+                  Positioned(
+                    top: 10,
+                    right: 10,
+                    child: Column(
+                      children: [
+                        _mapControlChip(
+                          icon: _isSatelliteMap ? Icons.dark_mode_rounded : Icons.satellite_alt_rounded,
+                          label: _isSatelliteMap ? 'Dark' : 'Satellite',
+                          onTap: () {
+                            HapticFeedback.selectionClick();
+                            setState(() => _isSatelliteMap = !_isSatelliteMap);
+                          },
+                        ),
+                        const SizedBox(height: 6),
+                        _mapControlChip(
+                          icon: Icons.my_location_rounded,
+                          label: 'Center',
+                          onTap: () {
+                            HapticFeedback.lightImpact();
+                            _mapController.move(center, 15.5);
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                  // Bottom-left Trail Counter Pill
+                  Positioned(
+                    bottom: 10,
+                    left: 10,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.78),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: crimson.withOpacity(0.4)),
+                      ),
+                      child: Text(
+                        '${trailCoords.length} GPS points today • ${pinnedPlaces.length} zones',
+                        style: const TextStyle(
+                            fontSize: 10.5, color: Colors.white, fontWeight: FontWeight.w600),
                       ),
                     ),
                   ),
-                  if (hasPartnerCoord)
-                    Marker(
-                      point: LatLng(pLoc.lat, pLoc.lng),
-                      width: 34,
-                      height: 34,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: crimson,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 2),
-                          boxShadow: [
-                            BoxShadow(color: crimson.withOpacity(0.7), blurRadius: 12),
-                          ],
-                        ),
-                        alignment: Alignment.center,
-                        child: Text(
-                          partnerName.isNotEmpty ? partnerName[0].toUpperCase() : 'P',
-                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
-                        ),
-                      ),
-                    ),
                 ],
-              ),
-            ],
-          ),
-          Positioned(
-            bottom: 10,
-            left: 10,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-              decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.75),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: crimson.withOpacity(0.4)),
-              ),
-              child: Text(
-                '${trailCoords.length} live GPS breadcrumbs today',
-                style: const TextStyle(fontSize: 10.5, color: Colors.white, fontWeight: FontWeight.w600),
               ),
             ),
           ),
+          // Map Explanation & Exact Coordinates Bar
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        pLoc?.placeName?.isNotEmpty == true ? '📍 ${pLoc!.placeName}' : '📍 Live Coordinates',
+                        style: const TextStyle(
+                            fontSize: 12.5, fontWeight: FontWeight.bold, color: Color(0xFFFDE8EE)),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Lat ${center.latitude.toStringAsFixed(5)}, Lng ${center.longitude.toStringAsFixed(5)} • Red line shows today’s real route',
+                        style: const TextStyle(fontSize: 10.5, color: Color(0xFFB88896)),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                GestureDetector(
+                  onTap: () => _openInGoogleMaps(
+                    center.latitude,
+                    center.longitude,
+                    pLoc?.placeName ?? partnerName,
+                  ),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: crimson.withOpacity(0.18),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: crimson.withOpacity(0.5)),
+                    ),
+                    child: const Text(
+                      'Maps ↗',
+                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFFFDE8EE)),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
+      ),
+    );
+  }
+
+  Widget _mapControlChip({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+        decoration: BoxDecoration(
+          color: Colors.black.withOpacity(0.78),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: Colors.white24),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 13, color: Colors.white),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600, color: Colors.white),
+            ),
+          ],
+        ),
       ),
     );
   }
