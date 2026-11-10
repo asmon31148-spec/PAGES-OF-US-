@@ -43,7 +43,7 @@ Downloading packages...
 + fake_async 1.3.3
 + ffi 2.2.0
 + file 7.0.1
-+ file_picker 8.3.7 (13.3.2 available)
++ file_picker 8.3.7 (13.3.3 available)
 + file_selector_linux 0.9.4+1
 + file_selector_macos 0.9.5+2
 + file_selector_platform_interface 2.7.0
@@ -312,33 +312,27 @@ warning • Unused import: '../theme/app_colors.dart'. Try removing the import d
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/auth/widgets/pairing_modal.dart:108:62 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/auth/widgets/pairing_modal.dart:276:45 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/auth/widgets/pairing_modal.dart:278:64 • deprecated_member_use
-   info • The import of 'dart:ui' is unnecessary because all of the used elements are also provided by the import of 'package:flutter/material.dart'. Try removing the import directive • lib/features/dossier/screens/obsession_dossier_screen.dart:1:8 • unnecessary_import
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/dossier/screens/obsession_dossier_screen.dart:125:63 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/dossier/screens/obsession_dossier_screen.dart:128:48 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/dossier/screens/obsession_dossier_screen.dart:161:39 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/dossier/screens/obsession_dossier_screen.dart:291:31 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/dossier/screens/obsession_dossier_screen.dart:292:36 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/dossier/screens/obsession_dossier_screen.dart:416:25 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/dossier/screens/obsession_dossier_screen.dart:444:43 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/dossier/screens/obsession_dossier_screen.dart:452:42 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/dossier/screens/obsession_dossier_screen.dart:487:59 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/dossier/screens/obsession_dossier_screen.dart:488:43 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/dossier/screens/obsession_dossier_screen.dart:524:35 • deprecated_member_use
-   info • 'activeColor' is deprecated and shouldn't be used. Use activeThumbColor or activeTrackColor instead. This feature was deprecated after v3.31.0-2.0.pre. Try replacing the use of the deprecated member with the replacement • lib/features/dossier/screens/obsession_dossier_screen.dart:538:19 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/dossier/screens/obsession_dossier_screen.dart:683:42 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/dossier/screens/obsession_dossier_screen.dart:690:29 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/dossier/screens/obsession_dossier_screen.dart:774:43 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/dossier/screens/obsession_dossier_screen.dart:829:54 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/dossier/screens/obsession_dossier_screen.dart:849:37 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/dossier/screens/obsession_dossier_screen.dart:851:51 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/dossier/screens/obsession_dossier_screen.dart:891:43 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/dossier/screens/obsession_dossier_screen.dart:905:78 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/dossier/screens/obsession_dossier_screen.dart:934:78 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/dossier/screens/obsession_dossier_screen.dart:998:43 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/dossier/screens/obsession_dossier_screen.dart:1013:45 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/dossier/screens/obsession_dossier_screen.dart:1057:40 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/dossier/screens/obsession_dossier_screen.dart:1058:35 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/dossier/screens/obsession_dossier_screen.dart:1061:68 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/dossier/screens/obsession_dossier_screen.dart:223:50 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/dossier/screens/obsession_dossier_screen.dart:226:35 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/dossier/screens/obsession_dossier_screen.dart:389:31 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/dossier/screens/obsession_dossier_screen.dart:393:71 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/dossier/screens/obsession_dossier_screen.dart:560:45 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/dossier/screens/obsession_dossier_screen.dart:593:49 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/dossier/screens/obsession_dossier_screen.dart:594:46 • deprecated_member_use
+   info • 'activeColor' is deprecated and shouldn't be used. Use activeThumbColor or activeTrackColor instead. This feature was deprecated after v3.31.0-2.0.pre. Try replacing the use of the deprecated member with the replacement • lib/features/dossier/screens/obsession_dossier_screen.dart:647:19 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/dossier/screens/obsession_dossier_screen.dart:861:42 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/dossier/screens/obsession_dossier_screen.dart:936:29 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/dossier/screens/obsession_dossier_screen.dart:1069:51 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/dossier/screens/obsession_dossier_screen.dart:1089:65 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/dossier/screens/obsession_dossier_screen.dart:1137:56 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/dossier/screens/obsession_dossier_screen.dart:1139:62 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/dossier/screens/obsession_dossier_screen.dart:1184:41 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/dossier/screens/obsession_dossier_screen.dart:1186:60 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/dossier/screens/obsession_dossier_screen.dart:1212:42 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/dossier/screens/obsession_dossier_screen.dart:1272:41 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/dossier/screens/obsession_dossier_screen.dart:1301:41 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/dossier/screens/obsession_dossier_screen.dart:1424:38 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/dossier/screens/obsession_dossier_screen.dart:1427:71 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/memories/screens/letter_book_screen.dart:103:56 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/memories/screens/letter_book_screen.dart:103:89 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/memories/screens/letter_book_screen.dart:105:58 • deprecated_member_use
@@ -1009,28 +1003,27 @@ warning • The value of the local variable 'weatherCondition' isn't used. Try r
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/stage/widgets/stage_presence_view.dart:833:59 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/stage/widgets/stage_presence_view.dart:904:25 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/stage/widgets/stage_presence_view.dart:914:21 • deprecated_member_use
-  error • Undefined name 'stageProvider'. Try correcting the name to one that is defined, or defining the name • lib/features/stage/widgets/stage_quick_portal_bar.dart:171:23 • undefined_identifier
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/stage/widgets/stage_quick_portal_bar.dart:207:41 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/stage/widgets/stage_quick_portal_bar.dart:208:41 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/stage/widgets/stage_quick_portal_bar.dart:212:42 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/stage/widgets/stage_quick_portal_bar.dart:209:41 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/stage/widgets/stage_quick_portal_bar.dart:213:42 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/stage/widgets/stage_quick_portal_bar.dart:216:42 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/stage/widgets/stage_quick_portal_bar.dart:214:42 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/stage/widgets/stage_quick_portal_bar.dart:217:42 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/stage/widgets/stage_quick_portal_bar.dart:222:39 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/stage/widgets/stage_quick_portal_bar.dart:223:46 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/stage/widgets/stage_quick_portal_bar.dart:223:79 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/stage/widgets/stage_quick_portal_bar.dart:229:41 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/stage/widgets/stage_quick_portal_bar.dart:230:48 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/stage/widgets/stage_quick_portal_bar.dart:230:92 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/stage/widgets/stage_quick_portal_bar.dart:293:51 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/stage/widgets/stage_quick_portal_bar.dart:294:40 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/stage/widgets/stage_quick_portal_bar.dart:298:54 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/stage/widgets/stage_quick_portal_bar.dart:298:87 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/stage/widgets/stage_quick_portal_bar.dart:320:50 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/stage/widgets/stage_quick_portal_bar.dart:333:56 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/stage/widgets/stage_quick_portal_bar.dart:369:89 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/stage/widgets/stage_quick_portal_bar.dart:372:65 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/stage/widgets/stage_quick_portal_bar.dart:372:98 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/stage/widgets/stage_quick_portal_bar.dart:218:42 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/stage/widgets/stage_quick_portal_bar.dart:223:39 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/stage/widgets/stage_quick_portal_bar.dart:224:46 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/stage/widgets/stage_quick_portal_bar.dart:224:79 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/stage/widgets/stage_quick_portal_bar.dart:230:41 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/stage/widgets/stage_quick_portal_bar.dart:231:48 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/stage/widgets/stage_quick_portal_bar.dart:231:92 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/stage/widgets/stage_quick_portal_bar.dart:294:51 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/stage/widgets/stage_quick_portal_bar.dart:295:40 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/stage/widgets/stage_quick_portal_bar.dart:299:54 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/stage/widgets/stage_quick_portal_bar.dart:299:87 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/stage/widgets/stage_quick_portal_bar.dart:321:50 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/stage/widgets/stage_quick_portal_bar.dart:334:56 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/stage/widgets/stage_quick_portal_bar.dart:370:89 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/stage/widgets/stage_quick_portal_bar.dart:373:65 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/stage/widgets/stage_quick_portal_bar.dart:373:98 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/stage/widgets/theme_modal.dart:117:45 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/stage/widgets/theme_modal.dart:118:65 • deprecated_member_use
    info • 'activeColor' is deprecated and shouldn't be used. Use activeThumbColor or activeTrackColor instead. This feature was deprecated after v3.31.0-2.0.pre. Try replacing the use of the deprecated member with the replacement • lib/features/stage/widgets/theme_modal.dart:149:21 • deprecated_member_use
@@ -1272,20 +1265,20 @@ warning • The value of the local variable 'bg' isn't used. Try removing the va
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/screens/watch_lobby_screen.dart:347:55 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/screens/watch_lobby_screen.dart:368:47 • deprecated_member_use
 warning • Unused import: '../../../providers/theme_provider.dart'. Try removing the import directive • lib/features/watch_together/screens/watch_player_screen.dart:11:8 • unused_import
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/screens/watch_player_screen.dart:757:57 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/screens/watch_player_screen.dart:792:47 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/screens/watch_player_screen.dart:829:45 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/screens/watch_player_screen.dart:831:64 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/screens/watch_player_screen.dart:900:60 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/screens/watch_player_screen.dart:954:31 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/screens/watch_player_screen.dart:956:53 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/screens/watch_player_screen.dart:959:38 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/screens/watch_player_screen.dart:1005:33 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/screens/watch_player_screen.dart:1007:55 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/screens/watch_player_screen.dart:1010:37 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/screens/watch_player_screen.dart:1021:50 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/screens/watch_player_screen.dart:1165:39 • deprecated_member_use
-   info • 'onPopInvoked' is deprecated and shouldn't be used. Use onPopInvokedWithResult instead. This feature was deprecated after v3.22.0-12.0.pre. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/screens/watch_player_screen.dart:1181:7 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/screens/watch_player_screen.dart:842:57 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/screens/watch_player_screen.dart:877:47 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/screens/watch_player_screen.dart:914:45 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/screens/watch_player_screen.dart:916:64 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/screens/watch_player_screen.dart:985:60 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/screens/watch_player_screen.dart:1046:31 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/screens/watch_player_screen.dart:1048:53 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/screens/watch_player_screen.dart:1051:38 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/screens/watch_player_screen.dart:1097:33 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/screens/watch_player_screen.dart:1099:55 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/screens/watch_player_screen.dart:1102:37 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/screens/watch_player_screen.dart:1113:50 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/screens/watch_player_screen.dart:1264:39 • deprecated_member_use
+   info • 'onPopInvoked' is deprecated and shouldn't be used. Use onPopInvokedWithResult instead. This feature was deprecated after v3.22.0-12.0.pre. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/screens/watch_player_screen.dart:1280:7 • deprecated_member_use
 warning • Unused import: 'dart:io'. Try removing the import directive • lib/features/watch_together/screens/watch_waiting_screen.dart:2:8 • unused_import
 warning • Unused import: 'package:file_picker/file_picker.dart'. Try removing the import directive • lib/features/watch_together/screens/watch_waiting_screen.dart:5:8 • unused_import
 warning • Unused import: 'package:video_player/video_player.dart'. Try removing the import directive • lib/features/watch_together/screens/watch_waiting_screen.dart:6:8 • unused_import
@@ -1304,6 +1297,12 @@ warning • Unused import: 'package:video_player/video_player.dart'. Try removin
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/screens/watch_waiting_screen.dart:734:91 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/screens/watch_waiting_screen.dart:768:50 • deprecated_member_use
 warning • The value of the field '_myName' isn't used. Try removing the field, or using it • lib/features/watch_together/services/watch_call_service.dart:74:11 • unused_field
+  error • Const variables must be initialized with a constant value. Try changing the initializer to be a constant expression • lib/features/watch_together/services/watch_video_service.dart:117:15 • const_initialized_with_non_constant_value
+  error • Invalid constant value • lib/features/watch_together/services/watch_video_service.dart:117:15 • invalid_constant
+  error • The values in a const list literal must be constants. Try removing the keyword 'const' from the list literal • lib/features/watch_together/services/watch_video_service.dart:117:15 • non_constant_list_element
+  error • Undefined name '_client'. Try correcting the name to one that is defined, or defining the name • lib/features/watch_together/services/watch_video_service.dart:401:29 • undefined_identifier
+  error • Undefined name '_client'. Try correcting the name to one that is defined, or defining the name • lib/features/watch_together/services/watch_video_service.dart:417:32 • undefined_identifier
+  error • Expected a method, getter, setter or operator declaration. This appears to be incomplete code. Try removing it or completing it • lib/features/watch_together/services/watch_video_service.dart:436:1 • expected_executable
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/widgets/watch_call_overlay.dart:170:44 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/widgets/watch_call_overlay.dart:175:48 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/widgets/watch_call_overlay.dart:190:54 • deprecated_member_use
@@ -1379,6 +1378,7 @@ warning • The value of the field '_myName' isn't used. Try removing the field,
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/widgets/watch_controls_overlay.dart:538:72 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/widgets/watch_controls_overlay.dart:602:29 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/widgets/watch_controls_overlay.dart:604:48 • deprecated_member_use
+  error • The method 'searchYouTube' isn't defined for the type 'WatchVideoService'. Try correcting the name to the name of an existing method, or defining a method named 'searchYouTube' • lib/features/watch_together/widgets/watch_movie_picker_sheet.dart:85:56 • undefined_method
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/widgets/watch_movie_picker_sheet.dart:201:43 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/widgets/watch_movie_picker_sheet.dart:201:76 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/widgets/watch_movie_picker_sheet.dart:202:42 • deprecated_member_use
@@ -1549,14 +1549,14 @@ warning • Unused import: '../../../core/services/travel_route_service.dart'. T
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/world/widgets/route_section_tile.dart:164:39 • deprecated_member_use
 warning • Unused import: 'core/theme/app_colors.dart'. Try removing the import directive • lib/main.dart:11:8 • unused_import
 warning • The value of the field '_defaultTemplateSongs' isn't used. Try removing the field, or using it • lib/providers/audio_provider.dart:39:31 • unused_field
-warning • The operand can't be 'null', so the condition is always 'true'. Remove the condition • lib/providers/auth_provider.dart:312:19 • unnecessary_null_comparison
+warning • The operand can't be 'null', so the condition is always 'true'. Remove the condition • lib/providers/auth_provider.dart:337:19 • unnecessary_null_comparison
 warning • Unused import: 'package:audioplayers/audioplayers.dart'. Try removing the import directive • lib/providers/memories_provider.dart:4:8 • unused_import
 warning • Unused import: 'package:cloud_firestore/cloud_firestore.dart'. Try removing the import directive • lib/providers/memories_provider.dart:6:8 • unused_import
 warning • The value of the field '_voicePosSub' isn't used. Try removing the field, or using it • lib/providers/memories_provider.dart:44:23 • unused_field
 warning • The value of the field '_voiceDurSub' isn't used. Try removing the field, or using it • lib/providers/memories_provider.dart:45:23 • unused_field
 warning • The value of the field '_voiceStateSub' isn't used. Try removing the field, or using it • lib/providers/memories_provider.dart:46:23 • unused_field
 warning • The value of the field '_partnerNickname' isn't used. Try removing the field, or using it • lib/providers/vault_provider.dart:23:11 • unused_field
-warning • The value of the field '_candidatePlace' isn't used. Try removing the field, or using it • lib/providers/world_provider.dart:290:11 • unused_field
+warning • The value of the field '_candidatePlace' isn't used. Try removing the field, or using it • lib/providers/world_provider.dart:365:11 • unused_field
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/widgets/custom_bottom_nav.dart:46:40 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/widgets/custom_bottom_nav.dart:47:31 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/widgets/custom_bottom_nav.dart:49:35 • deprecated_member_use
@@ -1583,7 +1583,7 @@ warning • Unused import: 'package:pages_of_us/core/theme/models/theme_palette.
    info • 'green' is deprecated and shouldn't be used. Use (*.g * 255.0).round().clamp(0, 255). Try replacing the use of the deprecated member with the replacement • test/theme_contrast_test.dart:19:29 • deprecated_member_use
    info • 'blue' is deprecated and shouldn't be used. Use (*.b * 255.0).round().clamp(0, 255). Try replacing the use of the deprecated member with the replacement • test/theme_contrast_test.dart:20:29 • deprecated_member_use
 
-1356 issues found. (ran in 16.1s)
+1356 issues found. (ran in 17.0s)
 === FLUTTER BUILD LOG ===
 Upgrading build.gradle
 Upgrading gradle.properties
@@ -1689,11 +1689,29 @@ Preparing "Install NDK (Side by side) 28.2.13676358 v.28.2.13676358".
 Installing NDK (Side by side) 28.2.13676358 in /usr/local/lib/android/sdk/ndk/28.2.13676358
 "Install NDK (Side by side) 28.2.13676358 v.28.2.13676358" complete.
 "Install NDK (Side by side) 28.2.13676358 v.28.2.13676358" finished.
-lib/features/stage/widgets/stage_quick_portal_bar.dart:171:23: Error: The getter 'stageProvider' isn't defined for the type 'StageQuickPortalBar'.
- - 'StageQuickPortalBar' is from 'package:pages_of_us/features/stage/widgets/stage_quick_portal_bar.dart' ('lib/features/stage/widgets/stage_quick_portal_bar.dart').
-Try correcting the name to the name of an existing getter, or defining a getter or field named 'stageProvider'.
-            isActive: stageProvider.isGentleMode,
-                      ^^^^^^^^^^^^^
+lib/features/watch_together/services/watch_video_service.dart:436:1: Error: Expected a declaration, but got '}'.
+}
+^
+lib/features/watch_together/widgets/watch_movie_picker_sheet.dart:85:56: Error: The method 'searchYouTube' isn't defined for the type 'WatchVideoService'.
+ - 'WatchVideoService' is from 'package:pages_of_us/features/watch_together/services/watch_video_service.dart' ('lib/features/watch_together/services/watch_video_service.dart').
+Try correcting the name to the name of an existing method, or defining a method named 'searchYouTube'.
+      final results = await WatchVideoService.instance.searchYouTube(query);
+                                                       ^^^^^^^^^^^^^
+lib/features/watch_together/services/watch_video_service.dart:401:29: Error: Undefined name '_client'.
+        final video = await _client.videos.get(directId);
+                            ^^^^^^^
+lib/features/watch_together/services/watch_video_service.dart:417:32: Error: Undefined name '_client'.
+      final searchList = await _client.search.search(clean);
+                               ^^^^^^^
+lib/features/watch_together/services/watch_video_service.dart:86:55: Error: Constant evaluation error:
+  static const List<_ClientProfile> _clientProfiles = [
+                                                      ^
+lib/features/watch_together/services/watch_video_service.dart:117:32: Context: The invocation of 'ios' is not allowed in a constant expression.
+      client: YoutubeApiClient.ios,
+                               ^
+lib/features/watch_together/services/watch_video_service.dart:86:37: Context: While analyzing:
+  static const List<_ClientProfile> _clientProfiles = [
+                                    ^
 Target kernel_snapshot_program failed: Exception
 
 
@@ -1709,6 +1727,6 @@ Execution failed for task ':app:compileFlutterBuildRelease'.
 > Run with --scan to get full insights.
 > Get more help at https://help.gradle.org.
 
-BUILD FAILED in 3m 57s
-Running Gradle task 'assembleRelease'...                          238.4s
+BUILD FAILED in 4m 2s
+Running Gradle task 'assembleRelease'...                          243.2s
 Gradle task assembleRelease failed with exit code 1
