@@ -352,9 +352,19 @@ class _MemoryStackViewState extends State<MemoryStackView> {
         itemCount: memories.length,
         itemBuilder: (context, index) {
           final memory = memories[index];
+          final audioUrl = (memory.voiceUrl != null && memory.voiceUrl!.trim().isNotEmpty)
+              ? memory.voiceUrl!.trim()
+              : memory.mediaUrl.trim();
           return GlassMemoryCard(
             memory: memory,
             isDark: isDark,
+            onTap: memory.mediaType == 'audio' && audioUrl.isNotEmpty
+                ? () => memoriesProvider.playVoiceWhisper(
+                      memory.id,
+                      audioUrl,
+                      ambientAudio: audioProvider,
+                    )
+                : null,
           );
         },
       ),

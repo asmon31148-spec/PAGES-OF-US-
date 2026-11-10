@@ -28,12 +28,15 @@ class _MemoriesScreenState extends State<MemoriesScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final auth = context.read<AuthProvider>();
-      if (auth.space != null && auth.user != null) {
+      final spaceId = auth.effectiveSpaceId;
+      final user = auth.user;
+      if (spaceId != null && spaceId.isNotEmpty && user != null) {
         context.read<MemoriesProvider>().initMemoriesSync(
-              spaceId: auth.space!.id,
-              currentUserId: auth.user!.id,
-              partnerId: auth.partner?.id,
-              partnerNickname: auth.partner?.nickname,
+              spaceId: spaceId,
+              currentUserId: user.id,
+              currentUserNickname: user.nickname,
+              partnerId: auth.effectivePartnerId,
+              partnerNickname: auth.effectivePartnerNickname,
             );
       }
     });
@@ -45,7 +48,7 @@ class _MemoriesScreenState extends State<MemoriesScreen> {
     final memoriesProvider = context.read<MemoriesProvider>();
 
     final user = authProvider.user;
-    final spaceId = authProvider.space?.id ?? 'default_space';
+    final spaceId = authProvider.effectiveSpaceId ?? '';
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -73,12 +76,13 @@ class _MemoriesScreenState extends State<MemoriesScreen> {
                 child: RefreshIndicator(
                   color: AppColors.terra,
                   onRefresh: () async {
-                    if (authProvider.space != null && user != null) {
+                    if (spaceId.isNotEmpty && user != null) {
                       await memoriesProvider.initMemoriesSync(
                         spaceId: spaceId,
                         currentUserId: user.id,
-                        partnerId: authProvider.partner?.id,
-                        partnerNickname: authProvider.partner?.nickname,
+                        currentUserNickname: user.nickname,
+                        partnerId: authProvider.effectivePartnerId,
+                        partnerNickname: authProvider.effectivePartnerNickname,
                       );
                     }
                   },

@@ -16,7 +16,7 @@ class StageMilestonesCard extends StatelessWidget {
     final isDark = context.watch<ThemeProvider>().isDark;
     final stageProvider = context.watch<StageProvider>();
     final authProvider = context.watch<AuthProvider>();
-    final spaceId = authProvider.space?.id ?? 'default_space';
+    final spaceId = authProvider.effectiveSpaceId ?? '';
     final nickname = authProvider.user?.nickname ?? 'You';
 
     final goals = stageProvider.goals.isNotEmpty

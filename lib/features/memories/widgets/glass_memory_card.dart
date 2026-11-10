@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/services/voice_playback_service.dart';
 import '../../../core/widgets/liquid_glass/liquid_glass_theme.dart';
 import '../../../core/widgets/full_screen_video_player.dart';
 import '../../../data/models/memory_item.dart';
@@ -160,19 +161,73 @@ class GlassMemoryCard extends StatelessWidget {
                 ],
               )
             else
-              // Audio / Whisper fallback canvas
-              Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: isDark
-                        ? [const Color(0xFF261D1A), const Color(0xFF141722)]
-                        : [const Color(0xFFFFF5EE), const Color(0xFFF7F2FA)],
-                  ),
-                ),
-                alignment: Alignment.center,
-                child: const Icon(Icons.mic_none_rounded, size: 40, color: AppColors.terra),
+              // Audio / Whisper live playback canvas
+              AnimatedBuilder(
+                animation: VoicePlaybackService.instance,
+                builder: (context, _) {
+                  final service = VoicePlaybackService.instance;
+                  final isThisPlaying = service.activeId == memory.id && service.isPlaying;
+                  final isThisPaused = service.activeId == memory.id && service.isPaused;
+                  final isThisBuffering = service.activeId == memory.id && service.isBuffering;
+
+                  return Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: isDark
+                            ? [const Color(0xFF261D1A), const Color(0xFF141722)]
+                            : [const Color(0xFFFFF5EE), const Color(0xFFF7F2FA)],
+                      ),
+                    ),
+                    alignment: Alignment.center,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          width: 52,
+                          height: 52,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: AppColors.terra,
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppColors.terra.withOpacity(isThisPlaying ? 0.50 : 0.25),
+                                blurRadius: isThisPlaying ? 16 : 8,
+                                spreadRadius: isThisPlaying ? 2 : 0,
+                              ),
+                            ],
+                          ),
+                          child: Center(
+                            child: isThisBuffering
+                                ? const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                  )
+                                : Icon(
+                                    isThisPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                                    size: 30,
+                                    color: Colors.white,
+                                  ),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          isThisPlaying
+                              ? 'Playing...'
+                              : (isThisPaused ? 'Paused' : 'Tap to Listen'),
+                          style: const TextStyle(
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.terra,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
               ),
 
             // 2. Soft Translucent Bottom Glass Strip (Title, Date & Type Badge)
@@ -272,6 +327,16 @@ class GlassMemoryCard extends StatelessWidget {
         HapticFeedback.lightImpact();
         if (onTap != null) {
           onTap!();
+        } else if (isAudio) {
+          final audioUrl = (memory.voiceUrl != null && memory.voiceUrl!.trim().isNotEmpty)
+              ? memory.voiceUrl!.trim()
+              : memory.mediaUrl.trim();
+          if (audioUrl.isNotEmpty) {
+            VoicePlaybackService.instance.togglePlay(
+              id: memory.id,
+              url: audioUrl,
+            );
+          }
         } else if (isPhoto && memory.mediaUrl.isNotEmpty) {
           _openLightbox(context, memory.mediaUrl, memory.title);
         } else if (isVideo && memory.mediaUrl.isNotEmpty) {

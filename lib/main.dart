@@ -360,6 +360,7 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold> with Wi
           context.read<MemoriesProvider>().initMemoriesSync(
                 spaceId: effectiveSpaceId,
                 currentUserId: user.id,
+                currentUserNickname: user.nickname,
                 partnerId: effectivePartnerId,
                 partnerNickname: effectivePartnerName,
               );

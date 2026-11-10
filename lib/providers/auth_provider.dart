@@ -52,6 +52,46 @@ class AuthProvider extends ChangeNotifier {
   bool get isAuthenticated => _user != null;
   bool get isPaired => _space != null && _space!.members.length > 1;
 
+  /// Canonical active space ID (prefers live space doc, falls back to user profile).
+  String? get effectiveSpaceId {
+    if (_space != null && _space!.id.isNotEmpty) return _space!.id;
+    if (_user?.spaceId != null && _user!.spaceId!.isNotEmpty) {
+      return _user!.spaceId;
+    }
+    return null;
+  }
+
+  /// Canonical partner UID even before the partner profile document finishes streaming.
+  String? get effectivePartnerId {
+    final u = _user;
+    if (u == null) return null;
+    if (_partner?.id != null && _partner!.id.isNotEmpty && _partner!.id != u.id) {
+      return _partner!.id;
+    }
+    if (_space?.partnerId != null &&
+        _space!.partnerId!.isNotEmpty &&
+        _space!.partnerId != u.id) {
+      return _space!.partnerId;
+    }
+    if (_space != null) {
+      final other = _space!.members.firstWhere((m) => m != u.id, orElse: () => '');
+      if (other.isNotEmpty) return other;
+    }
+    if (u.partnerId != null && u.partnerId!.isNotEmpty && u.partnerId != u.id) {
+      return u.partnerId;
+    }
+    return null;
+  }
+
+  /// Canonical partner nickname with cached fallback.
+  String get effectivePartnerNickname {
+    final live = _partner?.nickname;
+    if (live != null && live.trim().isNotEmpty) return live.trim();
+    final cached = LocalCacheService.getCachedPartner()?['nickname']?.toString();
+    if (cached != null && cached.trim().isNotEmpty) return cached.trim();
+    return 'Partner';
+  }
+
   AuthProvider() {
     // 1. INSTANT LOCAL CACHE LOAD (0ms delay!)
     final cachedUser = LocalCacheService.getCachedUser();
