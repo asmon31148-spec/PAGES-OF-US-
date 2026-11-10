@@ -103,7 +103,7 @@ class MainActivity: AudioServiceActivity() {
         }
 
         return try {
-            val registered = sm.registerListener(stepListener, sensor, SensorManager.SENSOR_DELAY_NORMAL)
+            val registered = sm.registerListener(stepListener, sensor, SensorManager.SENSOR_DELAY_UI, 0)
             stepListenerRegistered = registered
             registered
         } catch (_: Exception) {

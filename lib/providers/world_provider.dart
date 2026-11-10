@@ -105,6 +105,9 @@ class WorldProvider extends ChangeNotifier {
   int? _hardwareStepsToday;
   int? _lastBroadcastSteps;
   int? _stationaryAnchorSteps;
+  DateTime? _lastStepActivityAt;
+  DateTime? _stepBurstWindowStart;
+  int _stepBurstCount = 0;
   String get _journeyPrefKey => _currentUserId != null ? 'journey_log_my_${_currentUserId!}' : 'journey_log_my_v2';
 
   Map<String, UserLocationData> get locations => Map.unmodifiable(_locations);
@@ -225,6 +228,9 @@ class WorldProvider extends ChangeNotifier {
     _hardwareStepsToday = null;
     _lastBroadcastSteps = null;
     _stationaryAnchorSteps = null;
+    _lastStepActivityAt = null;
+    _stepBurstWindowStart = null;
+    _stepBurstCount = 0;
 
     // Wipe journey log from SharedPreferences (user-scoped key cleaned separately)
     try {
@@ -264,7 +270,20 @@ class WorldProvider extends ChangeNotifier {
   WorldProvider() {
     AuthProvider.registerSignOutHook(resetState);
     DeviceStatusService.onHardwareStepsUpdated = (steps) {
-      if (_hardwareStepsToday != steps) {
+      final prev = _hardwareStepsToday;
+      if (prev != steps) {
+        if (prev != null && steps > prev) {
+          final now = DateTime.now();
+          if (_stepBurstWindowStart == null || now.difference(_stepBurstWindowStart!).inSeconds > 20) {
+            _stepBurstWindowStart = now;
+            _stepBurstCount = steps - prev;
+          } else {
+            _stepBurstCount += (steps - prev);
+          }
+          if (_stepBurstCount >= 4) {
+            _lastStepActivityAt = now;
+          }
+        }
         _hardwareStepsToday = steps;
         _pushHardwareStepsUpdate();
       }
@@ -279,23 +298,29 @@ class WorldProvider extends ChangeNotifier {
       return;
     }
     final existing = _locations[_currentUserId];
-    if (existing != null && existing.stepsToday != myStepsToday) {
-      final updated = existing.copyWith(
-        stepsToday: myStepsToday,
-        activeMinutesToday: myActiveMinutesToday,
-        journeyKmToday: myJourneyKmToday,
-        updatedAt: DateTime.now().toUtc().toIso8601String(),
-      );
-      _locations[_currentUserId!] = updated;
-      _lastBroadcastSteps = myStepsToday;
-      if (!_spaceId!.startsWith('solo_')) {
-        SupabaseService.broadcastEvent(
-          spaceId: _spaceId!,
-          eventType: 'LOCATION_UPDATE',
-          payload: {'location': updated.toJson()},
+    if (existing != null) {
+      final stepActive = _lastStepActivityAt != null &&
+          DateTime.now().difference(_lastStepActivityAt!).inSeconds <= 25;
+      final nextSpeed = stepActive && (existing.speedMps ?? 0.0) < 1.1 ? 1.2 : existing.speedMps;
+      if (existing.stepsToday != myStepsToday || (stepActive && (existing.speedMps ?? 0.0) < 1.1)) {
+        final updated = existing.copyWith(
+          stepsToday: myStepsToday,
+          activeMinutesToday: myActiveMinutesToday,
+          journeyKmToday: myJourneyKmToday,
+          speedMps: nextSpeed,
+          updatedAt: DateTime.now().toUtc().toIso8601String(),
         );
+        _locations[_currentUserId!] = updated;
+        _lastBroadcastSteps = myStepsToday;
+        if (!_spaceId!.startsWith('solo_')) {
+          SupabaseService.broadcastEvent(
+            spaceId: _spaceId!,
+            eventType: 'LOCATION_UPDATE',
+            payload: {'location': updated.toJson()},
+          );
+        }
+        _scheduleCloudPersist(updated);
       }
-      _scheduleCloudPersist(updated);
     }
     notifyListeners();
   }
@@ -585,17 +610,20 @@ class WorldProvider extends ChangeNotifier {
       final last = _myJourneyLog.last;
       final distM = calculateDistanceKm(last.lat, last.lng, point.lat, point.lng) * 1000;
 
-      // Gate 1: Confidence-cone minimum displacement (must exceed GPS uncertainty radius)
-      final minMoveM = max(22.0, position.accuracy * 1.4);
-      if (distM < minMoveM) return;
-
-      // Gate 2: Sensor fusion with real Android hardware pedometer
       if (_hardwareStepsToday != null && last.stepsAtPoint != null) {
         final stepDelta = _hardwareStepsToday! - last.stepsAtPoint!;
-        // Under 120m (walking scale): physically impossible without taking at least 12 footsteps
-        if (distM < 120.0 && stepDelta < 12) return;
+        if (stepDelta >= 12) {
+          // Real footsteps confirmed by Android hardware pedometer: allow 14m+ segments around home
+          if (distM < 14.0) return;
+        } else {
+          // Under 120m without >= 12 footsteps is room GPS drift — reject
+          if (distM < 120.0) return;
+          if (distM < max(22.0, position.accuracy * 1.4)) return;
+        }
       } else {
-        // Fallback when phone has no step sensor: require clearer displacement + velocity
+        // Fallback when phone has no step sensor: require clearer displacement + confidence cone
+        final minMoveM = max(22.0, position.accuracy * 1.4);
+        if (distM < minMoveM) return;
         if (distM < max(35.0, position.accuracy * 1.6) && position.speed < 0.8) return;
       }
     }
@@ -650,25 +678,29 @@ class WorldProvider extends ChangeNotifier {
       if (walkingOnly && (p2.speedMps > 5.0 || p1.speedMps > 5.0)) continue;
 
       final dKm = calculateDistanceKm(p1.lat, p1.lng, p2.lat, p2.lng);
-      if (dKm < 0.020) continue; // Ignore sub-20m jitter
+      final hasVerifiedSteps = (p1.stepsAtPoint != null && p2.stepsAtPoint != null)
+          ? (p2.stepsAtPoint! - p1.stepsAtPoint!) >= 12
+          : false;
+      final minSegKm = hasVerifiedSteps ? 0.014 : 0.020;
+      if (dKm < minSegKm) continue;
       if (walkingOnly && dKm >= 1.5) continue; // Single-step teleport guard
 
       // Reject low-accuracy short hops (< 150m with > 32m GPS cone)
       if (dKm < 0.15 && (p2.accuracyM > 32.0 || p1.accuracyM > 32.0)) continue;
 
       // Reject < 120m moves where hardware pedometer confirms zero/minimal steps
-      if (p1.stepsAtPoint != null && p2.stepsAtPoint != null && dKm < 0.12) {
-        if ((p2.stepsAtPoint! - p1.stepsAtPoint!) < 10) continue;
+      if (p1.stepsAtPoint != null && p2.stepsAtPoint != null && dKm < 0.12 && !hasVerifiedSteps) {
+        continue;
       }
 
-      // Anti-ping-pong check: ignore a bounce out & straight back (< 20m return) in room without real walking
-      if (i + 1 < filtered.length && dKm < 0.06) {
+      // Anti-ping-pong check: ignore a bounce out & straight back (< 20m return) ONLY when no real footsteps backed it
+      if (!hasVerifiedSteps && i + 1 < filtered.length && dKm < 0.06) {
         final p3 = filtered[i + 1];
         final roundTripReturnM = calculateDistanceKm(p1.lat, p1.lng, p3.lat, p3.lng) * 1000;
         final stepsAcross3 = (p1.stepsAtPoint != null && p3.stepsAtPoint != null)
             ? (p3.stepsAtPoint! - p1.stepsAtPoint!)
             : null;
-        if (roundTripReturnM < 20.0 && (stepsAcross3 == null || stepsAcross3 < 20)) {
+        if (roundTripReturnM < 20.0 && (stepsAcross3 == null || stepsAcross3 < 15)) {
           i++; // Skip both the outward & return phantom bounce points
           continue;
         }
@@ -737,8 +769,12 @@ class WorldProvider extends ChangeNotifier {
     return gpsMinutes;
   }
 
-  /// True ONLY when currently physically traveling (confirmed speed + displacement, never 1-tick indoor drift)
+  /// True when actively walking (real hardware footsteps in last 25s) OR physically traveling by GPS
   bool get isMyMoving {
+    if (_lastStepActivityAt != null &&
+        DateTime.now().difference(_lastStepActivityAt!).inSeconds <= 25) {
+      return true;
+    }
     final my = myLocation;
     if (my == null) return false;
     final hasSpeed = (my.speedMps ?? 0.0) >= 1.1;
@@ -747,7 +783,7 @@ class WorldProvider extends ChangeNotifier {
       final recent = _myJourneyLog.where((p) => now.difference(p.timestamp).inMinutes <= 3).toList();
       if (recent.length >= 2) {
         final d = calculateDistanceKm(recent.first.lat, recent.first.lng, recent.last.lat, recent.last.lng) * 1000;
-        if (d >= 40.0 || (hasSpeed && d >= 20.0)) return true;
+        if (d >= 40.0 || (hasSpeed && d >= 15.0)) return true;
       }
     }
     return false;
