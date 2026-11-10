@@ -578,10 +578,55 @@ class ThemeRegistry {
     ),
   );
 
-  /// All 13 living couple themes in order
+  // 14. VELVET NOIR (Dark Romance: Crimson Obsidian & Midnight Devotion)
+  static const AppThemeData velvetNoir = AppThemeData(
+    id: 'velvet_noir',
+    name: 'Velvet Noir',
+    description: 'Deep obsidian night with blood-crimson velvet, dark rose, and devoted shadow glow',
+    emoji: '🥀',
+    lightPalette: ThemePalette(
+      gradientColors: [
+        Color(0xFF9F1239), // Crimson Rose
+        Color(0xFF4C0519), // Deep Wine
+        Color(0xFF881337), // Dark Velvet
+      ],
+      glassTint: Color(0xFFFAF2F4),
+      glassOpacity: 0.90,
+      primaryText: Color(0xFF1F0910),
+      secondaryText: Color(0xFF6E3546),
+      accentColor: Color(0xFFBE123C),
+      iconColor: Color(0xFFBE123C),
+      dividerColor: Color(0x1F881337),
+      canvasBackground: Color(0xFFF5E9EC),
+      cardBackground: Color(0xFFFFFFFF),
+      specularBorderColor: Color(0xFFFFFFFF),
+      specularBorderOpacity: 0.60,
+    ),
+    darkPalette: ThemePalette(
+      gradientColors: [
+        Color(0xFF881337), // Blood Crimson
+        Color(0xFF3B0718), // Velvet Burgundy
+        Color(0xFF14060D), // Midnight Shadow
+      ],
+      glassTint: Color(0xFF11070C),
+      glassOpacity: 0.92,
+      primaryText: Color(0xFFFDE8EE),
+      secondaryText: Color(0xFFB88896),
+      accentColor: Color(0xFFE11D48),
+      iconColor: Color(0xFFF43F5E),
+      dividerColor: Color(0x28F43F5E),
+      canvasBackground: Color(0xFF070306),
+      cardBackground: Color(0xFF14090F),
+      specularBorderColor: Color(0xFFF43F5E),
+      specularBorderOpacity: 0.32,
+    ),
+  );
+
+  /// All 14 living couple themes in order
   static const List<AppThemeData> allThemes = [
     defaultSanctuary,
     sunsetChai,
+    velvetNoir,
     midnightRain,
     lavenderDream,
     skyAndMint,

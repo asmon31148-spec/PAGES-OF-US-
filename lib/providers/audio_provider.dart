@@ -9,6 +9,7 @@ import '../core/services/youtube_music_service.dart';
 import '../core/services/music_download_service.dart';
 import '../core/services/audio_handler.dart';
 import '../core/services/local_cache_service.dart';
+import '../core/services/device_status_service.dart';
 import '../data/services/firebase_service.dart';
 import '../data/services/supabase_service.dart';
 import 'auth_provider.dart';
@@ -335,6 +336,14 @@ class AudioProvider extends ChangeNotifier {
   }
 
   void _syncNotificationState() {
+    if (_isSongPlaying && _songs.isNotEmpty && currentSong.id != 'empty') {
+      DeviceStatusService.setNowPlaying(
+        title: currentSong.title,
+        artist: currentSong.artist,
+      );
+    } else {
+      DeviceStatusService.setNowPlaying(title: null, artist: null);
+    }
     if (audioHandler == null) return;
     if (_allowBackgroundPlayback || _isSongPlaying) {
       audioHandler!.updateSong(

@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../data/models/user_location_model.dart';
 import '../data/models/pinned_place.dart';
 import '../data/models/bucket_place.dart';
+import '../data/models/geofence_event.dart';
 import '../data/models/stay_point_model.dart';
 import '../data/services/firebase_service.dart';
 import '../data/services/supabase_service.dart';
@@ -53,6 +54,9 @@ class WorldProvider extends ChangeNotifier {
   final Map<String, UserLocationData> _locations = {};
   List<PinnedPlace> _pinnedPlaces = [];
   List<BucketPlace> _bucketList = [];
+  List<GeofenceEvent> _geofenceEvents = [];
+  final Set<String> _partnerInsideZoneIds = {};
+  bool _hasInitializedZones = false;
   bool _isSharing = true;
   bool _isLoading = false;
   String _gpsStatus = 'Standby';
@@ -102,6 +106,22 @@ class WorldProvider extends ChangeNotifier {
   bool _isTrackingInitializing = false;
   bool get isLiveTrackingActive => _positionStreamSub != null || _isTrackingInitializing;
   List<BucketPlace> get bucketList => List.unmodifiable(_bucketList);
+  List<GeofenceEvent> get geofenceEvents => List.unmodifiable(_geofenceEvents);
+
+  List<JourneyPoint> get partnerJourneyToday {
+    final start = _startOfToday;
+    return _partnerJourneyLog.where((p) => p.timestamp.isAfter(start)).toList();
+  }
+
+  String? get partnerMovementState {
+    final pLoc = partnerLocation;
+    if (pLoc == null) return null;
+    final speedMps = pLoc.speedMps;
+    if (speedMps == null) return null;
+    if (speedMps < 0.6) return 'Stationary';
+    if (speedMps < 2.4) return 'Walking • ${(speedMps * 3.6).toStringAsFixed(1)} km/h';
+    return 'In Transit • ${(speedMps * 3.6).round()} km/h';
+  }
 
   bool isInBucketList(String name, double lat, double lng) {
     final normName = name.trim().toLowerCase();
@@ -164,6 +184,9 @@ class WorldProvider extends ChangeNotifier {
     _locations.clear();
     _pinnedPlaces.clear();
     _bucketList.clear();
+    _geofenceEvents.clear();
+    _partnerInsideZoneIds.clear();
+    _hasInitializedZones = false;
     _myJourneyLog.clear();
     _partnerJourneyLog.clear();
     _geocodeCache.clear();
@@ -981,20 +1004,117 @@ class WorldProvider extends ChangeNotifier {
         notifyListeners();
       }
     });
+
+    // Fetch Genuine Geofence Arrival/Departure Event Log from Supabase app_content
+    try {
+      final geoRes = await supabase
+          .from('app_content')
+          .select('content')
+          .eq('id', 'geofence_log_$spaceId')
+          .maybeSingle();
+
+      if (geoRes != null && geoRes['content'] != null && geoRes['content'] is Map) {
+        final content = Map<String, dynamic>.from(geoRes['content'] as Map);
+        final list = content['events'] as List<dynamic>?;
+        if (list != null) {
+          _geofenceEvents = list
+              .map((e) => GeofenceEvent.fromJson(Map<String, dynamic>.from(e as Map)))
+              .toList();
+          notifyListeners();
+        }
+      }
+    } catch (_) {}
+
+    SupabaseService.setGeofenceEventListener((data) {
+      final list = data['events'] as List<dynamic>?;
+      if (list != null) {
+        _geofenceEvents = list
+            .map((e) => GeofenceEvent.fromJson(Map<String, dynamic>.from(e as Map)))
+            .toList();
+        notifyListeners();
+      }
+    });
+  }
+
+  Future<void> _recordGeofenceTransition({
+    required PinnedPlace place,
+    required String eventType,
+    required UserLocationData pLoc,
+  }) async {
+    final spaceId = _spaceId;
+    if (spaceId == null || spaceId.isEmpty) return;
+
+    final ev = GeofenceEvent(
+      id: 'geo_${DateTime.now().millisecondsSinceEpoch}_${place.id}',
+      placeId: place.id,
+      placeName: place.name,
+      placeIcon: place.icon,
+      eventType: eventType,
+      timestamp: DateTime.now().toUtc().toIso8601String(),
+      lat: pLoc.lat,
+      lng: pLoc.lng,
+    );
+
+    _geofenceEvents.insert(0, ev);
+    if (_geofenceEvents.length > 40) {
+      _geofenceEvents = _geofenceEvents.take(40).toList();
+    }
+    notifyListeners();
+
+    final eventsJson = _geofenceEvents.map((e) => e.toJson()).toList();
+    try {
+      await SupabaseService.upsertAppContent('geofence_log_$spaceId', {
+        'events': eventsJson,
+        'updated_at': DateTime.now().toIso8601String(),
+      });
+      await SupabaseService.broadcastEvent(
+        spaceId: spaceId,
+        eventType: 'GEOFENCE_EVENT',
+        payload: {'events': eventsJson},
+      );
+    } catch (_) {}
   }
 
   void _checkPartnerGeofence(UserLocationData pLoc) {
     if (_pinnedPlaces.isEmpty || pLoc.lat == 0.0 || pLoc.lng == 0.0) return;
+    final pName = pLoc.nickname.isNotEmpty ? pLoc.nickname : 'Your Partner';
+
+    // First sync snapshot initializes inside/outside zones without firing false departure spam
+    if (!_hasInitializedZones) {
+      _hasInitializedZones = true;
+      for (final place in _pinnedPlaces) {
+        final radiusKm = (place.radiusMeters / 1000.0).clamp(0.15, 2.0);
+        final dist = calculateDistanceKm(pLoc.lat, pLoc.lng, place.lat, place.lng);
+        if (dist <= radiusKm) {
+          _partnerInsideZoneIds.add(place.id);
+        }
+      }
+      return;
+    }
+
     for (final place in _pinnedPlaces) {
+      final radiusKm = (place.radiusMeters / 1000.0).clamp(0.15, 2.0);
       final dist = calculateDistanceKm(pLoc.lat, pLoc.lng, place.lat, place.lng);
-      // Within 300 meters
-      if (dist <= 0.3) {
+      final wasInside = _partnerInsideZoneIds.contains(place.id);
+      final isNowInside = dist <= radiusKm;
+
+      if (!wasInside && isNowInside) {
+        _partnerInsideZoneIds.add(place.id);
+        _recordGeofenceTransition(place: place, eventType: 'arrived', pLoc: pLoc);
         NotificationService.showPartnerArrivedPlaceNotification(
-          partnerNickname: pLoc.nickname.isNotEmpty ? pLoc.nickname : 'Your Partner',
+          partnerNickname: pName,
           placeName: place.name,
           placeTag: place.icon,
         );
-        break;
+      } else if (wasInside && dist > (radiusKm + 0.08)) {
+        // 80m hysteresis buffer prevents GPS jitter false departures
+        _partnerInsideZoneIds.remove(place.id);
+        _recordGeofenceTransition(place: place, eventType: 'departed', pLoc: pLoc);
+        NotificationService.showPartnerDepartedPlaceNotification(
+          partnerNickname: pName,
+          placeName: place.name,
+          placeTag: place.icon,
+        );
       }
     }
   }

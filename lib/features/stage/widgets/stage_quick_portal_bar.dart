@@ -13,6 +13,7 @@ import '../screens/daily_care_screen.dart';
 import 'goal_tracker_modal.dart';
 import 'stage_presence_view.dart';
 import '../../music/screens/music_sanctuary_screen.dart';
+import '../../dossier/screens/obsession_dossier_screen.dart';
 
 class StageQuickPortalBar extends StatelessWidget {
   final VoidCallback? onNotesTap;
@@ -89,6 +90,26 @@ class StageQuickPortalBar extends StatelessWidget {
                 context,
                 MaterialPageRoute(
                   builder: (_) => const MusicSanctuaryScreen(),
+                ),
+              );
+            },
+          ),
+
+          const SizedBox(width: 15),
+
+          // 3b. Eyes On You (Live Hardware & Route Dossier)
+          _buildPortalItem(
+            icon: Icons.visibility_rounded,
+            label: 'Dossier',
+            inkColor: inkColor,
+            isDark: isDark,
+            isActive: stageProvider.partnerTelemetry?.isDeviceUnlocked == true,
+            onTap: () {
+              HapticFeedback.lightImpact();
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const ObsessionDossierScreen(),
                 ),
               );
             },

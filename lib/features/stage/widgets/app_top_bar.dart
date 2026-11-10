@@ -10,6 +10,7 @@ import '../../../providers/auth_provider.dart';
 import '../../../providers/stage_provider.dart';
 import 'theme_modal.dart';
 import '../../music/screens/music_sanctuary_screen.dart';
+import '../../dossier/screens/obsession_dossier_screen.dart';
 import '../screens/touch_sanctuary_screen.dart';
 
 class AppTopBar extends StatelessWidget {
@@ -106,59 +107,85 @@ class AppTopBar extends StatelessWidget {
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Partner Live Battery & Charging Pill (100% Real Hardware Telemetry)
-              if (authProvider.partner != null && stageProvider.partnerBattery != null) ...[
-                Builder(
-                  builder: (context) {
-                    final bat = stageProvider.partnerBattery!;
-                    final isLow = bat.level <= 15 && !bat.isCharging;
-                    final accent = bat.isCharging
-                        ? const Color(0xFF34D399)
-                        : (isLow ? const Color(0xFFF87171) : AppColors.sageLight);
-                    return Tooltip(
-                      message: '${authProvider.partner!.nickname}\'s phone battery: ${bat.level}%${bat.isCharging ? ' (Charging)' : ''}',
-                      child: Container(
-                        height: 28,
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
-                        margin: const EdgeInsets.only(right: 6),
-                        decoration: BoxDecoration(
-                          color: isDark
-                              ? Colors.white.withOpacity(0.07)
-                              : Colors.white.withOpacity(0.55),
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(
-                            color: accent.withOpacity(0.45),
-                            width: 1,
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              bat.isCharging
-                                  ? Icons.battery_charging_full_rounded
-                                  : (isLow ? Icons.battery_alert_rounded : Icons.battery_std_rounded),
-                              size: 13.5,
-                              color: accent,
-                            ),
-                            const SizedBox(width: 2),
-                            Text(
-                              '${bat.level}%',
-                              style: TextStyle(
-                                fontSize: 10.5,
-                                fontWeight: FontWeight.w700,
-                                color: forceDark
-                                    ? AppColors.romanceInk
-                                    : (isDark ? AppColors.darkInk : AppColors.lightInk),
-                              ),
-                            ),
-                          ],
-                        ),
+              // Eyes On You / Live Dossier Quick-Access Pill (Home & World Header)
+              GestureDetector(
+                onTap: () {
+                  HapticFeedback.lightImpact();
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const ObsessionDossierScreen(),
+                    ),
+                  );
+                },
+                child: Tooltip(
+                  message: 'Eyes On You • Live Dossier',
+                  child: Container(
+                    height: 30,
+                    padding: EdgeInsets.symmetric(
+                      horizontal: (authProvider.partner != null && stageProvider.partnerBattery != null) ? 8 : 9,
+                    ),
+                    margin: const EdgeInsets.only(right: 6),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          const Color(0xFFF43F5E).withOpacity(0.24),
+                          const Color(0xFF9F1239).withOpacity(0.14),
+                        ],
                       ),
-                    );
-                  },
+                      borderRadius: BorderRadius.circular(15),
+                      border: Border.all(
+                        color: const Color(0xFFF43F5E).withOpacity(0.55),
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.visibility_rounded,
+                          size: 13.5,
+                          color: Color(0xFFF43F5E),
+                        ),
+                        if (authProvider.partner != null && stageProvider.partnerBattery != null) ...[
+                          Builder(
+                            builder: (context) {
+                              final bat = stageProvider.partnerBattery!;
+                              final isLow = bat.level <= 15 && !bat.isCharging;
+                              final accent = bat.isCharging
+                                  ? const Color(0xFF34D399)
+                                  : (isLow ? const Color(0xFFF87171) : const Color(0xFFFDE8EE));
+                              return Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const SizedBox(width: 4),
+                                  Icon(
+                                    bat.isCharging
+                                        ? Icons.battery_charging_full_rounded
+                                        : Icons.battery_std_rounded,
+                                    size: 12.5,
+                                    color: accent,
+                                  ),
+                                  Text(
+                                    '${bat.level}%',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w700,
+                                      color: forceDark
+                                          ? AppColors.romanceInk
+                                          : (isDark ? AppColors.darkInk : AppColors.lightInk),
+                                    ),
+                                  ),
+                                ],
+                              );
+                            },
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
                 ),
-              ],
+              ),
 
               // Music & Atmosphere Mute / Unmute Quick Toggle Button
               if (showMusic || audioProvider.isPlaying) ...[
