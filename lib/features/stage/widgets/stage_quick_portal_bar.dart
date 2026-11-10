@@ -28,6 +28,7 @@ class StageQuickPortalBar extends StatelessWidget {
     final isDark = context.select<ThemeProvider, bool>((t) => t.isDark);
     final isMusicPlaying = context.select<AudioProvider, bool>((a) => a.isPlaying);
     final isPartnerActive = context.select<StageProvider, bool>((s) => s.partnerTelemetry?.isDeviceUnlocked == true);
+    final isGentleMode = context.select<StageProvider, bool>((s) => s.isGentleMode);
 
     final inkColor = isDark ? AppColors.darkInk : AppColors.lightInk;
 
@@ -168,7 +169,7 @@ class StageQuickPortalBar extends StatelessWidget {
             label: 'Quiet Shell',
             inkColor: inkColor,
             isDark: isDark,
-            isActive: stageProvider.isGentleMode,
+            isActive: isGentleMode,
             onTap: () {
               HapticFeedback.lightImpact();
               StagePresenceView.showGentleModeSheet(context);
