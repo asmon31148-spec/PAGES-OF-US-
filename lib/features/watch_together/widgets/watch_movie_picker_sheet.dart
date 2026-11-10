@@ -127,6 +127,23 @@ class _WatchMoviePickerSheetState extends State<WatchMoviePickerSheet> {
       return;
     }
 
+    // Auto-detect if user pasted a YouTube link into Web Link tab
+    final ytId = WatchVideoService.instance.extractYouTubeId(url);
+    if (ytId != null && (url.contains('youtu.be') || url.contains('youtube.com'))) {
+      String title = _webTitleController.text.trim();
+      if (title.isEmpty) title = 'YouTube Cinema';
+      HapticFeedback.mediumImpact();
+      final source = WatchVideoSource(
+        type: 'youtube',
+        title: title,
+        youtubeId: ytId,
+        thumbnailUrl: 'https://img.youtube.com/vi/$ytId/hqdefault.jpg',
+      );
+      widget.onVideoSelected(source, null);
+      Navigator.pop(context);
+      return;
+    }
+
     String title = _webTitleController.text.trim();
     if (title.isEmpty) {
       final uri = Uri.tryParse(url);

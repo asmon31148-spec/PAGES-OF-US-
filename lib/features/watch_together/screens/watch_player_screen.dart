@@ -1,8 +1,11 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
+import 'package:webview_flutter/webview_flutter.dart';
+import 'package:webview_flutter_android/webview_flutter_android.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -50,6 +53,16 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
   bool _hasController = false;
   bool _isInitialized = false;
   String? _initError;
+
+  // WebView Cinema fallback state (Synced YouTube IFrame & Web Video Pages)
+  bool _isWebViewMode = false;
+  WebViewController? _webController;
+  bool _wvIsPlaying = false;
+  Duration _wvPosition = Duration.zero;
+  Duration _wvDuration = Duration.zero;
+  double _wvSpeed = 1.0;
+  bool _wvTouchThrough = false;
+  bool _triedMobileWebFallback = false;
 
   // Stream Subscriptions
   StreamSubscription<WatchPlayback>? _playbackSub;
@@ -219,73 +232,358 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
     } catch (_) {}
   }
 
+  bool get _currentIsPlaying => _isWebViewMode
+      ? _wvIsPlaying
+      : (_hasController && _controller.value.isPlaying);
+
+  Duration get _currentPosition => _isWebViewMode
+      ? _wvPosition
+      : (_hasController ? _controller.value.position : Duration.zero);
+
+  Duration get _currentDuration => _isWebViewMode
+      ? _wvDuration
+      : (_hasController ? _controller.value.duration : Duration.zero);
+
+  double get _currentSpeed => _isWebViewMode
+      ? _wvSpeed
+      : (_hasController ? _controller.value.playbackSpeed : 1.0);
+
+  Future<void> _playerPlay() async {
+    if (_isWebViewMode) {
+      _wvIsPlaying = true;
+      await _runWebJs("window._cinemaCmd && window._cinemaCmd('play');");
+    } else if (_hasController) {
+      await _controller.play();
+    }
+  }
+
+  Future<void> _playerPause() async {
+    if (_isWebViewMode) {
+      _wvIsPlaying = false;
+      await _runWebJs("window._cinemaCmd && window._cinemaCmd('pause');");
+    } else if (_hasController) {
+      await _controller.pause();
+    }
+  }
+
+  Future<void> _playerSeekTo(Duration position) async {
+    if (_isWebViewMode) {
+      _wvPosition = position;
+      final sec = position.inMilliseconds / 1000.0;
+      await _runWebJs("window._cinemaCmd && window._cinemaCmd('seek', $sec);");
+    } else if (_hasController) {
+      await _controller.seekTo(position);
+    }
+  }
+
+  Future<void> _playerSetSpeed(double speed) async {
+    if (_isWebViewMode) {
+      _wvSpeed = speed;
+      await _runWebJs("window._cinemaCmd && window._cinemaCmd('speed', $speed);");
+    } else if (_hasController) {
+      await _controller.setPlaybackSpeed(speed);
+    }
+  }
+
+  Future<void> _runWebJs(String js) async {
+    try {
+      await _webController?.runJavaScript(js);
+    } catch (_) {}
+  }
+
+  Future<bool> _tryNativeSources(List<WatchStreamSource> sources) async {
+    for (final src in sources) {
+      VideoPlayerController? candidate;
+      try {
+        candidate = VideoPlayerController.networkUrl(
+          Uri.parse(src.url),
+          httpHeaders: src.headers,
+        );
+        await candidate.initialize().timeout(const Duration(seconds: 12));
+        await _disposeCurrentController();
+        _controller = candidate;
+        _hasController = true;
+        _isWebViewMode = false;
+        try {
+          await _controller.setVolume(1.0);
+        } catch (_) {}
+        _controller.addListener(_videoPlayerListener);
+        if (mounted) {
+          setState(() {
+            _isInitialized = true;
+            _initError = null;
+          });
+        }
+        return true;
+      } catch (e) {
+        debugPrint('[WatchPlayer] Source ${src.label} failed: $e');
+        try {
+          await candidate?.dispose();
+        } catch (_) {}
+      }
+    }
+    return false;
+  }
+
   Future<void> _initializeVideoSource({bool forceRefresh = false}) async {
+    _triedMobileWebFallback = false;
+
     if (widget.videoType == 'youtube' && widget.youtubeId != null && widget.youtubeId!.isNotEmpty) {
       final sources = await WatchVideoService.instance.getPlayableYouTubeSources(
         widget.youtubeId!,
         forceRefresh: forceRefresh,
       );
-      if (sources.isEmpty) {
-        throw Exception('Unable to extract a playable YouTube stream right now. Tap Retry or try another video.');
+      if (sources.isNotEmpty && await _tryNativeSources(sources)) {
+        return;
       }
+      // Fast automatic failover to Synced YouTube IFrame Cinema WebView
+      await _activateWebViewYouTube(widget.youtubeId!);
+      return;
+    }
 
-      Object? lastErr;
-      for (final src in sources) {
-        VideoPlayerController? candidate;
-        try {
-          candidate = VideoPlayerController.networkUrl(
-            Uri.parse(src.url),
-            httpHeaders: src.headers,
-          );
-          await candidate.initialize().timeout(const Duration(seconds: 15));
-          await _disposeCurrentController();
-          _controller = candidate;
-          _hasController = true;
-          try {
-            await _controller.setVolume(1.0);
-          } catch (_) {}
-          _controller.addListener(_videoPlayerListener);
-          if (mounted) {
-            setState(() {
-              _isInitialized = true;
-              _initError = null;
-            });
-          }
+    if (widget.videoType == 'web_url' && widget.networkVideoUrl != null && widget.networkVideoUrl!.isNotEmpty) {
+      final resolved = await WatchVideoService.instance.resolveWebVideoSources(widget.networkVideoUrl!);
+      if (resolved.detectedYoutubeId != null) {
+        if (resolved.nativeSources.isNotEmpty && await _tryNativeSources(resolved.nativeSources)) {
           return;
-        } catch (e) {
-          lastErr = e;
-          debugPrint('[WatchPlayer] Source ${src.label} failed: $e');
-          try {
-            await candidate?.dispose();
-          } catch (_) {}
+        }
+        await _activateWebViewYouTube(resolved.detectedYoutubeId!);
+        return;
+      }
+      if (resolved.nativeSources.isNotEmpty && await _tryNativeSources(resolved.nativeSources)) {
+        return;
+      }
+      // Automatic failover to Synced Web Video Page Mode
+      await _activateWebViewUrl(resolved.webViewFallbackUrl ?? widget.networkVideoUrl!);
+      return;
+    }
+
+    if (widget.localVideoPath != null && widget.localVideoPath!.isNotEmpty) {
+      final ctrl = VideoPlayerController.file(File(widget.localVideoPath!));
+      await ctrl.initialize().timeout(const Duration(seconds: 18));
+      await _disposeCurrentController();
+      _controller = ctrl;
+      _hasController = true;
+      _isWebViewMode = false;
+      try {
+        await _controller.setVolume(1.0);
+      } catch (_) {}
+      _controller.addListener(_videoPlayerListener);
+      if (mounted) {
+        setState(() {
+          _isInitialized = true;
+          _initError = null;
+        });
+      }
+      return;
+    }
+
+    throw Exception('No video stream URL or local file provided.');
+  }
+
+  WebViewController _createBaseWebViewController({String? htmlVideoFallbackId}) {
+    const chromeUa =
+        'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36';
+    const params = PlatformWebViewControllerCreationParams();
+    final ctrl = WebViewController.fromPlatformCreationParams(params);
+    ctrl
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setBackgroundColor(Colors.black)
+      ..setUserAgent(chromeUa)
+      ..addJavaScriptChannel(
+        'CinemaBridge',
+        onMessageReceived: (JavaScriptMessage msg) {
+          _handleCinemaBridgeMessage(msg.message, htmlVideoFallbackId);
+        },
+      );
+
+    if (ctrl.platform is AndroidWebViewController) {
+      final androidCtrl = ctrl.platform as AndroidWebViewController;
+      androidCtrl.setMediaPlaybackRequiresUserGesture(false);
+    }
+    return ctrl;
+  }
+
+  void _handleCinemaBridgeMessage(String raw, String? ytFallbackId) {
+    if (!mounted || _isLeaving) return;
+    try {
+      final data = jsonDecode(raw);
+      if (data is! Map) return;
+      final type = data['type']?.toString() ?? '';
+      if (type == 'embedError' && ytFallbackId != null && !_triedMobileWebFallback) {
+        _triedMobileWebFallback = true;
+        _activateWebViewUrl('https://m.youtube.com/watch?v=$ytFallbackId');
+        return;
+      }
+      if (type == 'state') {
+        final playing = data['playing'] == true;
+        final posMs = (data['posMs'] as num?)?.toInt() ?? 0;
+        final durMs = (data['durMs'] as num?)?.toInt() ?? 0;
+        final rate = (data['rate'] as num?)?.toDouble() ?? 1.0;
+        final ended = data['ended'] == true;
+        setState(() {
+          _wvIsPlaying = playing;
+          if (posMs >= 0) _wvPosition = Duration(milliseconds: posMs);
+          if (durMs >= 0) _wvDuration = Duration(milliseconds: durMs);
+          _wvSpeed = rate;
+        });
+        if (ended && !_hasShownMovieEnded && durMs > 10000) {
+          _hasShownMovieEnded = true;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted && !_isLeaving) _showMovieEndedDialog();
+          });
         }
       }
-      throw lastErr ?? Exception('All YouTube stream fallbacks failed.');
-    }
-
-    VideoPlayerController ctrl;
-    if (widget.videoType == 'web_url' && widget.networkVideoUrl != null && widget.networkVideoUrl!.isNotEmpty) {
-      ctrl = VideoPlayerController.networkUrl(Uri.parse(widget.networkVideoUrl!));
-    } else if (widget.localVideoPath != null && widget.localVideoPath!.isNotEmpty) {
-      ctrl = VideoPlayerController.file(File(widget.localVideoPath!));
-    } else {
-      throw Exception('No video stream URL or local file provided.');
-    }
-
-    await ctrl.initialize().timeout(const Duration(seconds: 18));
-    await _disposeCurrentController();
-    _controller = ctrl;
-    _hasController = true;
-    try {
-      await _controller.setVolume(1.0);
     } catch (_) {}
-    _controller.addListener(_videoPlayerListener);
-    if (mounted) {
-      setState(() {
-        _isInitialized = true;
-        _initError = null;
+  }
+
+  Future<void> _activateWebViewYouTube(String youtubeId) async {
+    await _disposeCurrentController();
+    final ctrl = _createBaseWebViewController(htmlVideoFallbackId: youtubeId);
+    final html = '''
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body, #player { width: 100%; height: 100%; background: #000; overflow: hidden; }
+  </style>
+</head>
+<body>
+  <div id="player"></div>
+  <script src="https://www.youtube.com/iframe_api"></script>
+  <script>
+    var player;
+    var ready = false;
+    function sendState() {
+      if (!ready || !player || !window.CinemaBridge) return;
+      try {
+        var st = player.getPlayerState ? player.getPlayerState() : -1;
+        var pos = player.getCurrentTime ? player.getCurrentTime() : 0;
+        var dur = player.getDuration ? player.getDuration() : 0;
+        var rate = player.getPlaybackRate ? player.getPlaybackRate() : 1;
+        window.CinemaBridge.postMessage(JSON.stringify({
+          type: 'state',
+          playing: st === 1,
+          ended: st === 0,
+          posMs: Math.round(pos * 1000),
+          durMs: Math.round(dur * 1000),
+          rate: rate
+        }));
+      } catch (e) {}
+    }
+    function onYouTubeIframeAPIReady() {
+      player = new YT.Player('player', {
+        videoId: '$youtubeId',
+        width: '100%',
+        height: '100%',
+        playerVars: {
+          playsinline: 1,
+          rel: 0,
+          modestbranding: 1,
+          controls: 1,
+          enablejsapi: 1,
+          origin: 'https://www.youtube.com'
+        },
+        events: {
+          onReady: function() { ready = true; sendState(); },
+          onStateChange: function() { sendState(); },
+          onError: function(ev) {
+            if (window.CinemaBridge) {
+              window.CinemaBridge.postMessage(JSON.stringify({ type: 'embedError', code: ev.data }));
+            }
+          }
+        }
       });
     }
+    window._cinemaCmd = function(cmd, val) {
+      if (!ready || !player) return;
+      try {
+        if (cmd === 'play') player.playVideo();
+        else if (cmd === 'pause') player.pauseVideo();
+        else if (cmd === 'seek') player.seekTo(Number(val) || 0, true);
+        else if (cmd === 'speed') player.setPlaybackRate(Number(val) || 1);
+        setTimeout(sendState, 150);
+      } catch (e) {}
+    };
+    setInterval(sendState, 700);
+  </script>
+</body>
+</html>
+''';
+    await ctrl.loadHtmlString(html, baseUrl: 'https://www.youtube.com');
+    if (!mounted) return;
+    setState(() {
+      _webController = ctrl;
+      _isWebViewMode = true;
+      _wvIsPlaying = false;
+      _wvPosition = Duration.zero;
+      _wvDuration = Duration.zero;
+      _wvSpeed = 1.0;
+      _isInitialized = true;
+      _initError = null;
+    });
+  }
+
+  static const String _html5VideoBridgeJs = '''
+(function() {
+  if (window._cinemaHooked) return;
+  window._cinemaHooked = true;
+  function findVideo() {
+    return document.querySelector('video');
+  }
+  function sendState() {
+    var v = findVideo();
+    if (!v || !window.CinemaBridge) return;
+    try {
+      window.CinemaBridge.postMessage(JSON.stringify({
+        type: 'state',
+        playing: !v.paused && !v.ended,
+        ended: !!v.ended,
+        posMs: Math.round((v.currentTime || 0) * 1000),
+        durMs: Math.round((isFinite(v.duration) ? v.duration : 0) * 1000),
+        rate: v.playbackRate || 1
+      }));
+    } catch (e) {}
+  }
+  window._cinemaCmd = function(cmd, val) {
+    var v = findVideo();
+    if (!v) return;
+    try {
+      if (cmd === 'play') { v.muted = false; v.play(); }
+      else if (cmd === 'pause') v.pause();
+      else if (cmd === 'seek') v.currentTime = Number(val) || 0;
+      else if (cmd === 'speed') v.playbackRate = Number(val) || 1;
+      setTimeout(sendState, 150);
+    } catch (e) {}
+  };
+  setInterval(sendState, 700);
+})();
+''';
+
+  Future<void> _activateWebViewUrl(String url) async {
+    await _disposeCurrentController();
+    final ctrl = _createBaseWebViewController();
+    ctrl.setNavigationDelegate(
+      NavigationDelegate(
+        onPageFinished: (_) {
+          ctrl.runJavaScript(_html5VideoBridgeJs);
+        },
+      ),
+    );
+    await ctrl.loadRequest(Uri.parse(url));
+    if (!mounted) return;
+    setState(() {
+      _webController = ctrl;
+      _isWebViewMode = true;
+      _wvIsPlaying = false;
+      _wvPosition = Duration.zero;
+      _wvDuration = Duration.zero;
+      _wvSpeed = 1.0;
+      _isInitialized = true;
+      _initError = null;
+    });
   }
 
   Future<void> _retryStreamLoad() async {
@@ -293,6 +591,8 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
     setState(() {
       _initError = null;
       _isInitialized = false;
+      _isWebViewMode = false;
+      _webController = null;
     });
     try {
       await _initializeVideoSource(forceRefresh: true);
@@ -450,26 +750,26 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
 
     if (playback.isPlaying) {
       final targetMs = playback.positionMs + delay;
-      final currentMs = _controller.value.position.inMilliseconds;
+      final currentMs = _currentPosition.inMilliseconds;
 
       // Only seek if difference is large (> 1500ms) to prevent video frame thrashing and crashing
       if ((currentMs - targetMs).abs() > 1500) {
-        _controller.seekTo(Duration(milliseconds: targetMs));
+        _playerSeekTo(Duration(milliseconds: targetMs));
       }
-      if (!_controller.value.isPlaying) {
-        _controller.play();
+      if (!_currentIsPlaying) {
+        _playerPlay();
       }
       setState(() {
         _syncStatus = SyncStatus.inSync;
       });
     } else {
       // Pause action: only seek if significant difference
-      final currentMs = _controller.value.position.inMilliseconds;
+      final currentMs = _currentPosition.inMilliseconds;
       if ((currentMs - playback.positionMs).abs() > 1000) {
-        _controller.seekTo(Duration(milliseconds: playback.positionMs));
+        _playerSeekTo(Duration(milliseconds: playback.positionMs));
       }
-      if (_controller.value.isPlaying) {
-        _controller.pause();
+      if (_currentIsPlaying) {
+        _playerPause();
       }
     }
   }
@@ -478,7 +778,7 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
   void _startDriftCorrectionTimer() {
     _driftCheckTimer?.cancel();
     _driftCheckTimer = Timer.periodic(const Duration(seconds: 4), (_) {
-      if (!mounted || !_isInitialized || _isLeaving || !_controller.value.isPlaying || _isFastForwarding) return;
+      if (!mounted || !_isInitialized || _isLeaving || !_currentIsPlaying || _isFastForwarding) return;
       if (DateTime.now().isBefore(_ignoreRemoteUntil)) return;
 
       final myUid = context.read<AuthProvider>().user?.id;
@@ -488,7 +788,7 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
         final nowServer = WatchTogetherService.instance.currentServerTime;
         final expectedMs =
             _lastRemotePlayback!.positionMs + (nowServer - _lastRemotePlayback!.updatedAt);
-        final currentMs = _controller.value.position.inMilliseconds;
+        final currentMs = _currentPosition.inMilliseconds;
         final diff = (currentMs - expectedMs).abs();
 
         // If drift exceeds 1500 milliseconds, quietly correct to expected position
@@ -496,7 +796,7 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
           setState(() {
             _syncStatus = SyncStatus.syncing;
           });
-          _controller.seekTo(Duration(milliseconds: expectedMs));
+          _playerSeekTo(Duration(milliseconds: expectedMs));
           Future.delayed(const Duration(milliseconds: 1200), () {
             if (mounted && !_isLeaving) {
               setState(() {
@@ -524,7 +824,7 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
       positionMs: positionMs,
       updatedAt: WatchTogetherService.instance.currentServerTime,
       updatedBy: myUid,
-      speed: _controller.value.playbackSpeed,
+      speed: _currentSpeed,
     );
 
     WatchTogetherService.instance.updatePlayback(
@@ -532,7 +832,7 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
       uid: myUid,
       isPlaying: isPlaying,
       positionMs: positionMs,
-      speed: _controller.value.playbackSpeed,
+      speed: _currentSpeed,
       buffering: false,
     );
   }
@@ -541,17 +841,17 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
     if (!_isInitialized) return;
     HapticFeedback.lightImpact();
 
-    if (_controller.value.isPlaying) {
-      _controller.pause();
+    if (_currentIsPlaying) {
+      _playerPause();
       _sendPlaybackAction(
         isPlaying: false,
-        positionMs: _controller.value.position.inMilliseconds,
+        positionMs: _currentPosition.inMilliseconds,
       );
     } else {
-      _controller.play();
+      _playerPlay();
       _sendPlaybackAction(
         isPlaying: true,
-        positionMs: _controller.value.position.inMilliseconds,
+        positionMs: _currentPosition.inMilliseconds,
       );
     }
     setState(() {});
@@ -562,7 +862,7 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
     HapticFeedback.lightImpact();
 
     _targetSkipPosition = position;
-    _controller.seekTo(position);
+    _playerSeekTo(position);
 
     _skipDebounceTimer?.cancel();
     _skipDebounceTimer = Timer(const Duration(milliseconds: 600), () {
@@ -570,7 +870,7 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
     });
 
     _sendPlaybackAction(
-      isPlaying: _controller.value.isPlaying,
+      isPlaying: _currentIsPlaying,
       positionMs: position.inMilliseconds,
     );
     setState(() {});
@@ -580,17 +880,18 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
     if (!_isInitialized) return;
     HapticFeedback.lightImpact();
 
-    final base = _targetSkipPosition ?? _controller.value.position;
+    final base = _targetSkipPosition ?? _currentPosition;
     final target = forward
         ? base + const Duration(seconds: 10)
         : base - const Duration(seconds: 10);
 
+    final dur = _currentDuration;
     final clamped = target < Duration.zero
         ? Duration.zero
-        : (target > _controller.value.duration ? _controller.value.duration : target);
+        : (dur > Duration.zero && target > dur ? dur : target);
 
     _targetSkipPosition = clamped;
-    _controller.seekTo(clamped);
+    _playerSeekTo(clamped);
 
     _skipDebounceTimer?.cancel();
     _skipDebounceTimer = Timer(const Duration(milliseconds: 600), () {
@@ -598,7 +899,7 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
     });
 
     _sendPlaybackAction(
-      isPlaying: _controller.value.isPlaying,
+      isPlaying: _currentIsPlaying,
       positionMs: clamped.inMilliseconds,
     );
     setState(() {});
@@ -607,7 +908,7 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
   void _startSpeedUp() {
     if (!_isInitialized || _isLeaving) return;
     HapticFeedback.mediumImpact();
-    _controller.setPlaybackSpeed(2.0);
+    _playerSetSpeed(2.0);
     _ignoreRemoteUntil = DateTime.now().add(const Duration(seconds: 10));
     setState(() {
       _isFastForwarding = true;
@@ -617,13 +918,13 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
   void _stopSpeedUp() {
     if (!_isInitialized || _isLeaving) return;
     HapticFeedback.lightImpact();
-    _controller.setPlaybackSpeed(1.0);
+    _playerSetSpeed(1.0);
     setState(() {
       _isFastForwarding = false;
     });
     _sendPlaybackAction(
-      isPlaying: _controller.value.isPlaying,
-      positionMs: _controller.value.position.inMilliseconds,
+      isPlaying: _currentIsPlaying,
+      positionMs: _currentPosition.inMilliseconds,
     );
   }
 
@@ -756,7 +1057,7 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
     });
 
     try {
-      _controller.pause();
+      await _playerPause();
     } catch (_) {}
 
     try {
@@ -789,7 +1090,7 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
     final user = authProv.user;
     if (spaceId.isEmpty || user == null) return;
 
-    final dur = _controller.value.duration;
+    final dur = _currentDuration;
     final durMins = dur.inMinutes;
     final durationLabel = durMins > 0 ? '${durMins}m' : 'Movie Night';
     final cleanNote = reactionNote.trim();
@@ -1297,84 +1598,7 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
                     // Video Section
                     SizedBox(
                       height: MediaQuery.of(context).size.height * 0.38,
-                      child: Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          Positioned.fill(
-                            child: SizedBox.expand(
-                              child: FittedBox(
-                                fit: _videoFit,
-                                clipBehavior: Clip.hardEdge,
-                                alignment: Alignment.center,
-                                child: SizedBox(
-                                  width: _controller.value.size.width > 0
-                                      ? _controller.value.size.width
-                                      : 16,
-                                  height: _controller.value.size.height > 0
-                                      ? _controller.value.size.height
-                                      : 9,
-                                  child: VideoPlayer(_controller),
-                                ),
-                              ),
-                            ),
-                          ),
-                          // Floating Reactions over Video
-                          WatchFloatingReactions(key: _reactionsKey),
-                          // Fast Forward 2X HUD
-                          _buildFastForwardIndicator(),
-                          // Controls Overlay
-                          ValueListenableBuilder<WatchCallStatus>(
-                            valueListenable: WatchCallService.instance.callStatus,
-                            builder: (context, callStatus, _) {
-                              final isCallActive = callStatus == WatchCallStatus.connected ||
-                                  callStatus == WatchCallStatus.calling;
-                              return WatchControlsOverlay(
-                                isPlaying: _controller.value.isPlaying,
-                                position: _controller.value.position,
-                                duration: _controller.value.duration,
-                                syncStatus: _syncStatus,
-                                movieTitle: widget.movieTitle,
-                                isFullscreen: _isLandscape,
-                                isChatVisible: _isChatVisible,
-                                hasUnreadMessages: _hasUnreadMessages,
-                                onTogglePlay: _togglePlayPause,
-                                onSeek: _seek,
-                                onSkipBack10: () => _skip10Seconds(false),
-                                onSkipForward10: () => _skip10Seconds(true),
-                                onToggleFullscreen: _toggleFullscreen,
-                                onToggleAspectRatio: _toggleAspectRatio,
-                                aspectRatioLabel: _aspectRatioLabel,
-                                onSpeedUpStart: _startSpeedUp,
-                                onSpeedUpEnd: _stopSpeedUp,
-                                onStartCall: () {
-                                  if (callStatus == WatchCallStatus.idle) {
-                                    WatchCallService.instance.startCall(
-                                      roomCode: widget.roomCode,
-                                      myUid: myUid,
-                                      myName: myName,
-                                    );
-                                  } else {
-                                    WatchCallService.instance.endCall();
-                                  }
-                                },
-                                isCallActive: isCallActive,
-                                onToggleChat: () {
-                                  setState(() {
-                                    _isChatVisible = !_isChatVisible;
-                                    if (_isChatVisible) {
-                                      _hasUnreadMessages = false;
-                                      _quickToastMessage = null;
-                                    }
-                                  });
-                                },
-                                onLeave: _showLeaveConfirmation,
-                              );
-                            },
-                          ),
-                          // Quick notification toast over video in portrait
-                          _buildQuickToast(partnerAvatarUrl),
-                        ],
-                      ),
+                      child: _buildVideoStage(myUid: myUid, myName: myName, partnerAvatarUrl: partnerAvatarUrl),
                     ),
 
                     // Chat Section below video in Portrait
@@ -1476,78 +1700,8 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
                   fit: StackFit.expand,
                   children: [
                     Positioned.fill(
-                      child: SizedBox.expand(
-                        child: FittedBox(
-                          fit: _videoFit,
-                          clipBehavior: Clip.hardEdge,
-                          alignment: Alignment.center,
-                          child: SizedBox(
-                            width: _controller.value.size.width > 0
-                                ? _controller.value.size.width
-                                : 16,
-                            height: _controller.value.size.height > 0
-                                ? _controller.value.size.height
-                                : 9,
-                            child: VideoPlayer(_controller),
-                          ),
-                        ),
-                      ),
+                      child: _buildVideoStage(myUid: myUid, myName: myName, partnerAvatarUrl: partnerAvatarUrl),
                     ),
-                    // Floating Reactions over fullscreen video
-                    WatchFloatingReactions(key: _reactionsKey),
-                    // Fast Forward 2X HUD
-                    _buildFastForwardIndicator(),
-                    // Controls Overlay
-                    ValueListenableBuilder<WatchCallStatus>(
-                      valueListenable: WatchCallService.instance.callStatus,
-                      builder: (context, callStatus, _) {
-                        final isCallActive = callStatus == WatchCallStatus.connected ||
-                            callStatus == WatchCallStatus.calling;
-                        return WatchControlsOverlay(
-                          isPlaying: _controller.value.isPlaying,
-                          position: _controller.value.position,
-                          duration: _controller.value.duration,
-                          syncStatus: _syncStatus,
-                          movieTitle: widget.movieTitle,
-                          isFullscreen: _isLandscape,
-                          isChatVisible: _isChatVisible,
-                          hasUnreadMessages: _hasUnreadMessages,
-                          onTogglePlay: _togglePlayPause,
-                          onSeek: _seek,
-                          onSkipBack10: () => _skip10Seconds(false),
-                          onSkipForward10: () => _skip10Seconds(true),
-                          onToggleFullscreen: _toggleFullscreen,
-                          onToggleAspectRatio: _toggleAspectRatio,
-                          aspectRatioLabel: _aspectRatioLabel,
-                          onSpeedUpStart: _startSpeedUp,
-                          onSpeedUpEnd: _stopSpeedUp,
-                          onStartCall: () {
-                            if (callStatus == WatchCallStatus.idle) {
-                              WatchCallService.instance.startCall(
-                                roomCode: widget.roomCode,
-                                myUid: myUid,
-                                myName: myName,
-                              );
-                            } else {
-                              WatchCallService.instance.endCall();
-                            }
-                          },
-                          isCallActive: isCallActive,
-                          onToggleChat: () {
-                            setState(() {
-                              _isChatVisible = !_isChatVisible;
-                              if (_isChatVisible) {
-                                _hasUnreadMessages = false;
-                                _quickToastMessage = null;
-                              }
-                            });
-                          },
-                          onLeave: _showLeaveConfirmation,
-                        );
-                      },
-                    ),
-                    // Quick notification toast over video in landscape
-                    _buildQuickToast(partnerAvatarUrl),
                     // Translucent Overlay Chat in Landscape (Right 28% of screen)
                     if (_isChatVisible)
                       Positioned(
@@ -1603,6 +1757,127 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
           ),
         ),
       ),
+    );
+  }
+
+  /// Shared video viewport + reactions + synced controls for both Native ExoPlayer and WebView Cinema Mode.
+  Widget _buildVideoStage({
+    required String myUid,
+    required String myName,
+    required String partnerAvatarUrl,
+  }) {
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        Positioned.fill(
+          child: _isWebViewMode && _webController != null
+              ? WebViewWidget(controller: _webController!)
+              : SizedBox.expand(
+                  child: FittedBox(
+                    fit: _videoFit,
+                    clipBehavior: Clip.hardEdge,
+                    alignment: Alignment.center,
+                    child: SizedBox(
+                      width: _hasController && _controller.value.size.width > 0
+                          ? _controller.value.size.width
+                          : 16,
+                      height: _hasController && _controller.value.size.height > 0
+                          ? _controller.value.size.height
+                          : 9,
+                      child: _hasController ? VideoPlayer(_controller) : const SizedBox.shrink(),
+                    ),
+                  ),
+                ),
+        ),
+        // Floating Reactions over Video
+        WatchFloatingReactions(key: _reactionsKey),
+        // Fast Forward 2X HUD
+        _buildFastForwardIndicator(),
+        // Controls Overlay (disabled only when user explicitly enables touch-through to tap inside a web player)
+        if (!_wvTouchThrough)
+          ValueListenableBuilder<WatchCallStatus>(
+            valueListenable: WatchCallService.instance.callStatus,
+            builder: (context, callStatus, _) {
+              final isCallActive = callStatus == WatchCallStatus.connected ||
+                  callStatus == WatchCallStatus.calling;
+              return WatchControlsOverlay(
+                isPlaying: _currentIsPlaying,
+                position: _currentPosition,
+                duration: _currentDuration,
+                syncStatus: _syncStatus,
+                movieTitle: widget.movieTitle,
+                isFullscreen: _isLandscape,
+                isChatVisible: _isChatVisible,
+                hasUnreadMessages: _hasUnreadMessages,
+                onTogglePlay: _togglePlayPause,
+                onSeek: _seek,
+                onSkipBack10: () => _skip10Seconds(false),
+                onSkipForward10: () => _skip10Seconds(true),
+                onToggleFullscreen: _toggleFullscreen,
+                onToggleAspectRatio: _isWebViewMode ? null : _toggleAspectRatio,
+                aspectRatioLabel: _aspectRatioLabel,
+                onSpeedUpStart: _startSpeedUp,
+                onSpeedUpEnd: _stopSpeedUp,
+                onStartCall: () {
+                  if (callStatus == WatchCallStatus.idle) {
+                    WatchCallService.instance.startCall(
+                      roomCode: widget.roomCode,
+                      myUid: myUid,
+                      myName: myName,
+                    );
+                  } else {
+                    WatchCallService.instance.endCall();
+                  }
+                },
+                isCallActive: isCallActive,
+                onToggleChat: () {
+                  setState(() {
+                    _isChatVisible = !_isChatVisible;
+                    if (_isChatVisible) {
+                      _hasUnreadMessages = false;
+                      _quickToastMessage = null;
+                    }
+                  });
+                },
+                onLeave: _showLeaveConfirmation,
+              );
+            },
+          ),
+        // In WebView Cinema mode, give a small pill to toggle direct page touch vs Watch Together overlay
+        if (_isWebViewMode)
+          Positioned(
+            bottom: 10,
+            right: 10,
+            child: GestureDetector(
+              onTap: () => setState(() => _wvTouchThrough = !_wvTouchThrough),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.72),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: Colors.white24),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      _wvTouchThrough ? Icons.tune_rounded : Icons.touch_app_rounded,
+                      size: 13,
+                      color: Colors.white,
+                    ),
+                    const SizedBox(width: 5),
+                    Text(
+                      _wvTouchThrough ? 'Sync Controls' : 'Tap Video',
+                      style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600, color: Colors.white),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        // Quick notification toast over video
+        _buildQuickToast(partnerAvatarUrl),
+      ],
     );
   }
 }
