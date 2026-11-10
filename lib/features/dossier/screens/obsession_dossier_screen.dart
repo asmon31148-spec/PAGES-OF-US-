@@ -721,7 +721,9 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
     final todayKm = world.effectivePartnerJourneyKm;
     final weekKm = world.partnerJourneyKmThisWeek;
     final monthKm = world.partnerJourneyKmThisMonth;
-    final steps = world.effectivePartnerSteps;
+    final locSteps = world.effectivePartnerSteps;
+    final telemetrySteps = stage.partnerTelemetry?.stepsToday ?? 0;
+    final steps = telemetrySteps > locSteps ? telemetrySteps : locSteps;
     final activeMins = world.effectivePartnerActiveMinutes;
     final origin = world.effectivePartnerDeparturePlace;
     final mood = stage.partnerMood;
@@ -742,7 +744,7 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: _statBox('EST. STEPS', '$steps', const Color(0xFF34D399)),
+                child: _statBox('STEPS TODAY', '$steps', const Color(0xFF34D399)),
               ),
               const SizedBox(width: 8),
               Expanded(

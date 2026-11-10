@@ -274,8 +274,10 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold> with Wi
       if (auth.user != null) {
         auth.refreshUserData(auth.user!.id);
       }
+      context.read<WorldProvider>().syncHardwareStepsAndLocationNow();
     } else if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive || state == AppLifecycleState.detached) {
       if (mounted) {
+        context.read<WorldProvider>().flushPersistenceNow();
         final audioProvider = context.read<AudioProvider>();
         // Atmosphere sounds strictly stop when leaving the app!
         audioProvider.stopAtmosphereOnExit();
@@ -312,10 +314,17 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold> with Wi
                 user.id,
                 partner?.id,
               );
-          context.read<WorldProvider>().initWorldSync(
+          final worldProvider = context.read<WorldProvider>();
+          worldProvider.initWorldSync(
                 spaceId: effectiveSpaceId,
                 currentUserId: user.id,
                 partnerId: partner?.id,
+              );
+          worldProvider.ensureTrackingStartedIfPermitted(
+                spaceId: effectiveSpaceId,
+                currentUserId: user.id,
+                nickname: user.nickname,
+                avatarUrl: user.avatarUrl,
               );
           context.read<VaultProvider>().initVaultSync(
                 spaceId: effectiveSpaceId,

@@ -131,19 +131,19 @@ class _JourneyStatsCardState extends State<JourneyStatsCard>
     final Color inkColor = isDark ? AppColors.darkInk : AppColors.lightInk;
     final Color softColor = isDark ? AppColors.darkSoft : AppColors.lightSoft;
 
-    final distanceLabel = km < 0.05
+    final distanceLabel = km < 0.01
         ? '0 m'
         : km < 1.0
             ? '${(km * 1000).round()} m'
             : '${km.toStringAsFixed(2)} km';
 
-    final stepsLabel = (km < 0.05 && steps < 50)
+    final stepsLabel = steps <= 0
         ? '0'
         : steps > 999
             ? '${(steps / 1000).toStringAsFixed(1)}k'
             : '$steps';
 
-    final activeLabel = activeMinutes < 5
+    final activeLabel = activeMinutes < 1
         ? 'Resting'
         : activeMinutes < 60
             ? '$activeMinutes min'

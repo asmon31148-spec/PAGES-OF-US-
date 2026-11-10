@@ -1,10 +1,16 @@
 package com.pagesofus.app
 
+import android.Manifest
+import android.app.KeyguardManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.app.KeyguardManager
+import android.content.pm.PackageManager
+import android.hardware.Sensor
+import android.hardware.SensorEvent
+import android.hardware.SensorEventListener
+import android.hardware.SensorManager
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.os.BatteryManager
@@ -21,17 +27,27 @@ class MainActivity: AudioServiceActivity() {
     private val KEY_LAST_UNLOCKED = "last_unlocked_at_ms"
     private val KEY_UNLOCK_COUNT = "unlock_count_today"
     private val KEY_UNLOCK_DATE = "unlock_count_date"
+    private val KEY_STEP_DATE = "step_count_date"
+    private val KEY_STEP_LAST_RAW = "step_last_raw"
+    private val KEY_STEP_TODAY = "step_today_total"
+    private val KEY_STEP_HAS_BASELINE = "step_has_baseline"
     private var screenReceiver: BroadcastReceiver? = null
+    private var sensorManager: SensorManager? = null
+    private var stepSensor: Sensor? = null
+    private var stepListener: SensorEventListener? = null
+    private var stepListenerRegistered = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         registerScreenStateReceiver()
         recordUnlockIfInteractive()
+        registerStepCounterListener()
     }
 
     override fun onResume() {
         super.onResume()
         recordUnlockIfInteractive()
+        registerStepCounterListener()
     }
 
     override fun onDestroy() {
@@ -39,7 +55,105 @@ class MainActivity: AudioServiceActivity() {
             screenReceiver?.let { unregisterReceiver(it) }
         } catch (_: Exception) {}
         screenReceiver = null
+        try {
+            stepListener?.let { sensorManager?.unregisterListener(it) }
+        } catch (_: Exception) {}
+        stepListenerRegistered = false
         super.onDestroy()
+    }
+
+    private fun hasActivityRecognitionPermission(): Boolean {
+        return Build.VERSION.SDK_INT < Build.VERSION_CODES.Q ||
+            checkSelfPermission(Manifest.permission.ACTIVITY_RECOGNITION) == PackageManager.PERMISSION_GRANTED
+    }
+
+    private fun initStepSensor() {
+        if (sensorManager == null) {
+            sensorManager = getSystemService(Context.SENSOR_SERVICE) as? SensorManager
+        }
+        if (stepSensor == null) {
+            stepSensor = sensorManager?.getDefaultSensor(Sensor.TYPE_STEP_COUNTER)
+        }
+    }
+
+    private fun registerStepCounterListener(): Boolean {
+        initStepSensor()
+        val sensor = stepSensor ?: return false
+        val sm = sensorManager ?: return false
+        if (!hasActivityRecognitionPermission()) return false
+
+        if (stepListener == null) {
+            stepListener = object : SensorEventListener {
+                override fun onSensorChanged(event: SensorEvent?) {
+                    if (event?.sensor?.type == Sensor.TYPE_STEP_COUNTER && event.values.isNotEmpty()) {
+                        recordStepRawValue(event.values[0].toInt())
+                    }
+                }
+
+                override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
+            }
+        }
+
+        if (stepListenerRegistered) {
+            try {
+                stepListener?.let { sm.flush(it) }
+            } catch (_: Exception) {}
+            return true
+        }
+
+        return try {
+            val registered = sm.registerListener(stepListener, sensor, SensorManager.SENSOR_DELAY_NORMAL)
+            stepListenerRegistered = registered
+            registered
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    private fun recordStepRawValue(raw: Int) {
+        if (raw < 0) return
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val today = todayDateKey()
+        val storedDate = prefs.getString(KEY_STEP_DATE, "")
+        val hasBaseline = prefs.getBoolean(KEY_STEP_HAS_BASELINE, false)
+
+        if (storedDate != today || !hasBaseline) {
+            prefs.edit()
+                .putString(KEY_STEP_DATE, today)
+                .putBoolean(KEY_STEP_HAS_BASELINE, true)
+                .putInt(KEY_STEP_LAST_RAW, raw)
+                .putInt(KEY_STEP_TODAY, 0)
+                .apply()
+            return
+        }
+
+        val lastRaw = prefs.getInt(KEY_STEP_LAST_RAW, raw)
+        val todayTotal = prefs.getInt(KEY_STEP_TODAY, 0)
+        // Handle device reboot seamlessly when hardware counter resets below lastRaw
+        val delta = if (raw >= lastRaw) (raw - lastRaw) else raw
+        val updatedTotal = if (delta > 0) todayTotal + delta else todayTotal
+
+        prefs.edit()
+            .putInt(KEY_STEP_LAST_RAW, raw)
+            .putInt(KEY_STEP_TODAY, updatedTotal)
+            .apply()
+    }
+
+    private fun readHardwareStepsToday(): Int? {
+        initStepSensor()
+        if (stepSensor == null || !hasActivityRecognitionPermission()) {
+            return null
+        }
+        registerStepCounterListener()
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val today = todayDateKey()
+        val storedDate = prefs.getString(KEY_STEP_DATE, "")
+        val hasBaseline = prefs.getBoolean(KEY_STEP_HAS_BASELINE, false)
+        return if (storedDate == today && hasBaseline) {
+            prefs.getInt(KEY_STEP_TODAY, 0)
+        } else {
+            0
+        }
     }
 
     private fun registerScreenStateReceiver() {
@@ -184,6 +298,7 @@ class MainActivity: AudioServiceActivity() {
                                 .getLong(KEY_LAST_UNLOCKED, 0L)
                             val unlockCountToday = getUnlockCountToday()
                             val netType = readNetworkType()
+                            val stepsToday = readHardwareStepsToday()
 
                             result.success(
                                 mapOf(
@@ -193,11 +308,30 @@ class MainActivity: AudioServiceActivity() {
                                     "isDeviceUnlocked" to isUnlocked,
                                     "lastUnlockedAtMs" to if (lastUnlockedMs > 0L) lastUnlockedMs else null,
                                     "unlockCountToday" to unlockCountToday,
-                                    "networkType" to netType
+                                    "networkType" to netType,
+                                    "stepsToday" to stepsToday,
+                                    "hasStepSensor" to (stepSensor != null)
                                 )
                             )
                         } catch (e: Exception) {
                             result.error("TELEMETRY_ERROR", e.message, null)
+                        }
+                    }
+                    "syncStepSensor" -> {
+                        result.success(registerStepCounterListener())
+                    }
+                    "getHardwareStepsToday" -> {
+                        try {
+                            val stepsToday = readHardwareStepsToday()
+                            result.success(
+                                mapOf(
+                                    "stepsToday" to stepsToday,
+                                    "hasStepSensor" to (stepSensor != null),
+                                    "permissionGranted" to hasActivityRecognitionPermission()
+                                )
+                            )
+                        } catch (e: Exception) {
+                            result.error("STEP_ERROR", e.message, null)
                         }
                     }
                     else -> result.notImplemented()

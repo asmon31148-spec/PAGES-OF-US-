@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../data/models/user_location_model.dart';
 import '../data/models/pinned_place.dart';
@@ -13,6 +14,7 @@ import '../data/models/geofence_event.dart';
 import '../data/models/stay_point_model.dart';
 import '../data/services/firebase_service.dart';
 import '../data/services/supabase_service.dart';
+import '../core/services/device_status_service.dart';
 import '../core/services/weather_service.dart';
 import '../core/services/notification_service.dart';
 import 'auth_provider.dart';
@@ -88,10 +90,12 @@ class WorldProvider extends ChangeNotifier {
   DateTime? _stationaryAnchorTime;
   DateTime? _lastStationaryBroadcastTime;
 
-  // ── Journey log — accumulated GPS points for travel stats ───────────────────
+  // ── Journey log — accumulated GPS points & real hardware steps ───────────────
   List<JourneyPoint> _myJourneyLog = [];
   List<JourneyPoint> _partnerJourneyLog = [];
   Timer? _journeyPersistDebounce;
+  int? _hardwareStepsToday;
+  int? _lastBroadcastSteps;
   String get _journeyPrefKey => _currentUserId != null ? 'journey_log_my_${_currentUserId!}' : 'journey_log_my_v2';
 
   Map<String, UserLocationData> get locations => Map.unmodifiable(_locations);
@@ -209,6 +213,8 @@ class WorldProvider extends ChangeNotifier {
     _lastStationaryBroadcastTime = null;
     _isSharing = true;
     _isTrackingInitializing = false;
+    _hardwareStepsToday = null;
+    _lastBroadcastSteps = null;
 
     // Wipe journey log from SharedPreferences (user-scoped key cleaned separately)
     try {
@@ -513,6 +519,9 @@ class WorldProvider extends ChangeNotifier {
 
   /// Accumulates a GPS position into the personal journey log with indoor noise filtering.
   void _appendMyPoint(Position position) {
+    // Reject coarse cell/network jumps (> 55m accuracy) once we already have a baseline point
+    if (_myJourneyLog.isNotEmpty && position.accuracy > 55.0) return;
+
     final point = JourneyPoint(
       lat: position.latitude,
       lng: position.longitude,
@@ -521,11 +530,12 @@ class WorldProvider extends ChangeNotifier {
       speedMps: position.speed >= 0 ? position.speed : 0.0,
     );
 
-    // Filter out indoor GPS drift (< 35m displacement when stationary / speed < 0.6 m/s)
+    // Filter out micro GPS drift (< 10m stationary jitter, or < 18m with weak indoor fix)
     if (_myJourneyLog.isNotEmpty) {
       final last = _myJourneyLog.last;
       final distM = calculateDistanceKm(last.lat, last.lng, point.lat, point.lng) * 1000;
-      if (distM < 35 && position.speed < 0.6) return;
+      if (distM < 10.0) return;
+      if (distM < 18.0 && position.speed < 0.5 && position.accuracy > 18.0) return;
     }
 
     _myJourneyLog.add(point);
@@ -534,9 +544,9 @@ class WorldProvider extends ChangeNotifier {
     final cutoff = DateTime.now().subtract(const Duration(days: 31));
     _myJourneyLog.removeWhere((p) => p.timestamp.isBefore(cutoff));
 
-    // Debounced persist to SharedPreferences (max 1 write every 30 s)
+    // Persist quickly (5s debounce) so short outdoor trips aren't lost on app switch/close
     _journeyPersistDebounce?.cancel();
-    _journeyPersistDebounce = Timer(const Duration(seconds: 30), _persistJourneyLog);
+    _journeyPersistDebounce = Timer(const Duration(seconds: 5), _persistJourneyLog);
   }
 
   /// Accumulates the partner's incoming location into their journey log (session only).
@@ -547,7 +557,7 @@ class WorldProvider extends ChangeNotifier {
     if (_partnerJourneyLog.isNotEmpty) {
       final last = _partnerJourneyLog.last;
       final distM = calculateDistanceKm(last.lat, last.lng, point.lat, point.lng) * 1000;
-      if (distM < 35) return;
+      if (distM < 12.0) return;
     }
     _partnerJourneyLog.add(point);
 
@@ -570,7 +580,7 @@ class WorldProvider extends ChangeNotifier {
         filtered[i - 1].lat, filtered[i - 1].lng,
         filtered[i].lat, filtered[i].lng,
       );
-      if (d > 0.035) {
+      if (d >= 0.008) {
         total += d;
       }
     }
@@ -589,7 +599,7 @@ class WorldProvider extends ChangeNotifier {
         p1.lat, p1.lng,
         p2.lat, p2.lng,
       );
-      if (d > 0.035 && d < 1.0) {
+      if (d >= 0.008 && d < 1.5) {
         total += d;
       }
     }
@@ -614,8 +624,8 @@ class WorldProvider extends ChangeNotifier {
         filtered[i - 1].lat, filtered[i - 1].lng,
         filtered[i].lat, filtered[i].lng,
       );
-      // Filter out small jitter (< 0.035 km = 35m)
-      if (d > 0.035) {
+      // Filter only sub-8m static jitter so 10-15m GPS breadcrumbs accumulate accurately
+      if (d >= 0.008) {
         total += d;
       }
     }
@@ -636,7 +646,7 @@ class WorldProvider extends ChangeNotifier {
         p1.lat, p1.lng,
         p2.lat, p2.lng,
       );
-      if (d > 0.035 && d < 1.0) {
+      if (d >= 0.008 && d < 1.5) {
         total += d;
       }
     }
@@ -669,8 +679,17 @@ class WorldProvider extends ChangeNotifier {
   double get partnerJourneyKmThisWeek  => _calcJourneyKm(_partnerJourneyLog, const Duration(days: 7));
   double get partnerJourneyKmThisMonth => _calcJourneyKm(_partnerJourneyLog, const Duration(days: 30));
 
-  int get myStepsToday => (myWalkingKmToday * 1300).round();
-  int get myActiveMinutesToday => (myWalkingKmToday / 4.5 * 60).round();
+  int get myStepsToday =>
+      _hardwareStepsToday ?? (myWalkingKmToday * 1300).round();
+
+  int get myActiveMinutesToday {
+    final gpsMinutes = (myWalkingKmToday / 4.5 * 60).round();
+    if (_hardwareStepsToday != null && _hardwareStepsToday! > 0) {
+      final stepMinutes = (_hardwareStepsToday! / 105.0).round();
+      return stepMinutes > gpsMinutes ? stepMinutes : gpsMinutes;
+    }
+    return gpsMinutes;
+  }
 
   /// True ONLY when currently physically traveling (> 3 km/h or recent displacement)
   bool get isMyMoving {
@@ -808,19 +827,34 @@ class WorldProvider extends ChangeNotifier {
   }
 
   Future<void> _loadJourneyLog() async {
-    _loadStayPoints();
+    await _loadStayPoints();
     try {
       final prefs = await SharedPreferences.getInstance();
-      final raw = prefs.getString(_journeyPrefKey);
+      String? raw = prefs.getString(_journeyPrefKey);
+      if ((raw == null || raw.isEmpty) && _currentUserId != null) {
+        final legacyRaw = prefs.getString('journey_log_my_v2');
+        if (legacyRaw != null && legacyRaw.isNotEmpty) {
+          raw = legacyRaw;
+          await prefs.setString(_journeyPrefKey, legacyRaw);
+          await prefs.remove('journey_log_my_v2');
+        }
+      }
       if (raw != null && raw.isNotEmpty) {
         final list = jsonDecode(raw) as List<dynamic>;
-        _myJourneyLog = list
+        final loaded = list
             .map((e) => JourneyPoint.fromJson(Map<String, dynamic>.from(e as Map)))
             .toList();
-        // Prune stale entries immediately on load
         final cutoff = DateTime.now().subtract(const Duration(days: 31));
-        _myJourneyLog.removeWhere((p) => p.timestamp.isBefore(cutoff));
+        loaded.removeWhere((p) => p.timestamp.isBefore(cutoff));
+        if (loaded.length >= _myJourneyLog.length) {
+          _myJourneyLog = loaded;
+        }
       }
+      final hwSteps = await DeviceStatusService.getHardwareStepsToday();
+      if (hwSteps != null) {
+        _hardwareStepsToday = hwSteps;
+      }
+      notifyListeners();
     } catch (_) {}
   }
 
@@ -842,7 +876,7 @@ class WorldProvider extends ChangeNotifier {
     _spaceId = spaceId;
     _currentUserId = currentUserId;
     _partnerId = (partnerId != null && partnerId.isNotEmpty) ? partnerId : null;
-    _loadJourneyLog();
+    await _loadJourneyLog();
 
     if (_partnerId == null) {
       // Solo mode: purge any stale non-self locations
@@ -1219,6 +1253,21 @@ class WorldProvider extends ChangeNotifier {
         }
       }
 
+      // Ensure Android hardware step counter permission & listener are active
+      if (defaultTargetPlatform == TargetPlatform.android) {
+        try {
+          final activityStatus = await Permission.activityRecognition.status;
+          if (activityStatus.isDenied) {
+            await Permission.activityRecognition.request();
+          }
+          await DeviceStatusService.syncStepSensor();
+          final hwSteps = await DeviceStatusService.getHardwareStepsToday();
+          if (hwSteps != null) {
+            _hardwareStepsToday = hwSteps;
+          }
+        } catch (_) {}
+      }
+
       if (_gpsStatus != 'Location Service Off') {
         _gpsStatus = 'Acquiring GPS...';
       }
@@ -1242,12 +1291,25 @@ class WorldProvider extends ChangeNotifier {
         } catch (_) {}
       }
 
-      // 2. High-precision continuous position stream (15m filter prevents jitter & optimizes battery)
+      // 2. Continuous background-capable GPS stream (Android Foreground Service keeps tracking while phone is in pocket)
       _positionStreamSub?.cancel();
-      const settings = LocationSettings(
-        accuracy: LocationAccuracy.high,
-        distanceFilter: 15,
-      );
+      final LocationSettings settings = defaultTargetPlatform == TargetPlatform.android
+          ? AndroidSettings(
+              accuracy: LocationAccuracy.high,
+              distanceFilter: 10,
+              intervalDuration: const Duration(seconds: 10),
+              foregroundNotificationConfig: const ForegroundNotificationConfig(
+                notificationTitle: 'Pages of Us • Live Presence',
+                notificationText: 'Tracking your live route & footsteps for your partner',
+                notificationChannelName: 'Live Location Tether',
+                enableWakeLock: true,
+                setOngoing: true,
+              ),
+            )
+          : const LocationSettings(
+              accuracy: LocationAccuracy.high,
+              distanceFilter: 10,
+            );
 
       _positionStreamSub = Geolocator.getPositionStream(locationSettings: settings).listen(
         (Position position) {
@@ -1263,6 +1325,77 @@ class WorldProvider extends ChangeNotifier {
     }
   }
 
+  /// Auto-starts live tracking from home scaffold when location permission is already granted.
+  Future<void> ensureTrackingStartedIfPermitted({
+    required String spaceId,
+    required String currentUserId,
+    required String nickname,
+    String? avatarUrl,
+  }) async {
+    if (isLiveTrackingActive || !_isSharing) return;
+    try {
+      final perm = await Geolocator.checkPermission();
+      if (perm == LocationPermission.always || perm == LocationPermission.whileInUse) {
+        await startLiveTracking(
+          spaceId: spaceId,
+          currentUserId: currentUserId,
+          nickname: nickname,
+          avatarUrl: avatarUrl,
+        );
+      }
+    } catch (_) {}
+  }
+
+  /// Flushes hardware pedometer & fresh GPS immediately when app returns to foreground.
+  Future<void> syncHardwareStepsAndLocationNow() async {
+    if (_currentUserId == null || _spaceId == null) return;
+    try {
+      if (defaultTargetPlatform == TargetPlatform.android) {
+        await DeviceStatusService.syncStepSensor();
+        final hwSteps = await DeviceStatusService.getHardwareStepsToday();
+        if (hwSteps != null) {
+          _hardwareStepsToday = hwSteps;
+        }
+      }
+      final existing = _locations[_currentUserId];
+      if (existing != null && _hardwareStepsToday != null && existing.stepsToday != _hardwareStepsToday) {
+        final updated = existing.copyWith(
+          stepsToday: myStepsToday,
+          activeMinutesToday: myActiveMinutesToday,
+          journeyKmToday: myJourneyKmToday,
+          updatedAt: DateTime.now().toUtc().toIso8601String(),
+        );
+        _locations[_currentUserId!] = updated;
+        _lastBroadcastSteps = myStepsToday;
+        notifyListeners();
+        if (!_spaceId!.startsWith('solo_')) {
+          SupabaseService.broadcastEvent(
+            spaceId: _spaceId!,
+            eventType: 'LOCATION_UPDATE',
+            payload: {'location': updated.toJson()},
+          );
+        }
+        _scheduleCloudPersist(updated);
+      }
+      if (_isSharing && _gpsStatus != 'Permission Denied') {
+        final pos = await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.high,
+            timeLimit: Duration(seconds: 8),
+          ),
+        );
+        await _handleNewPosition(pos);
+      }
+    } catch (_) {}
+  }
+
+  /// Persists accumulated today points & stay timeline right away when app pauses.
+  Future<void> flushPersistenceNow() async {
+    _journeyPersistDebounce?.cancel();
+    await _persistJourneyLog();
+    await _persistStayPoints();
+  }
+
   void stopLiveTracking() {
     _positionStreamSub?.cancel();
     _positionStreamSub = null;
@@ -1274,6 +1407,18 @@ class WorldProvider extends ChangeNotifier {
     if (_currentUserId == null || _spaceId == null) return;
 
     final now = DateTime.now();
+
+    // Sync genuine Android hardware pedometer before stationary check so indoor/returned steps still broadcast
+    bool stepsChanged = false;
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      final hwSteps = await DeviceStatusService.getHardwareStepsToday();
+      if (hwSteps != null) {
+        if (_hardwareStepsToday != hwSteps || _lastBroadcastSteps != hwSteps) {
+          stepsChanged = true;
+        }
+        _hardwareStepsToday = hwSteps;
+      }
+    }
 
     // Smart stationary GPS sleep: suppress micro-jitter & save battery when stationary
     if (_stationaryAnchorLat == null || _stationaryAnchorLng == null) {
@@ -1294,8 +1439,8 @@ class WorldProvider extends ChangeNotifier {
             ? now.difference(_stationaryAnchorTime!).inMinutes
             : 0;
 
-        // After 2 minutes of staying stationary, throttle broadcasts to once every 4 minutes
-        if (stationaryMin >= 2) {
+        // Only throttle broadcasts if hardware steps have NOT changed either
+        if (stationaryMin >= 2 && !stepsChanged) {
           if (_lastStationaryBroadcastTime != null &&
               now.difference(_lastStationaryBroadcastTime!).inMinutes < 4) {
             // Sleep mode: do not churn CPU or flood WebSocket
@@ -1340,10 +1485,10 @@ class WorldProvider extends ChangeNotifier {
       _reverseGeocode(position.latitude, position.longitude);
     }
 
-    final walkingKm = myWalkingKmToday;
     final journeyKm = myJourneyKmToday;
-    final steps = (walkingKm * 1300).round();
-    final activeMinutes = (walkingKm / 4.5 * 60).round();
+    final steps = myStepsToday;
+    final activeMinutes = myActiveMinutesToday;
+    _lastBroadcastSteps = steps;
 
     if (_firstPlaceNameToday == null && _cachedPlaceName.isNotEmpty && _cachedPlaceName != 'Nearby') {
       _firstPlaceNameToday = _cachedPlaceName;
