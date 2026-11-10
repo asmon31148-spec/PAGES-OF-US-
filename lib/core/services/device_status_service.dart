@@ -33,6 +33,7 @@ class DeviceTelemetry {
   final bool isScreenOn;
   final bool isDeviceUnlocked;
   final DateTime? lastUnlockedAt;
+  final int? unlockCountToday;
   final String networkType; // 'wifi', 'mobile', 'offline', 'online', 'unknown'
   final String? nowPlayingTitle;
   final String? nowPlayingArtist;
@@ -44,6 +45,7 @@ class DeviceTelemetry {
     required this.isScreenOn,
     required this.isDeviceUnlocked,
     this.lastUnlockedAt,
+    this.unlockCountToday,
     required this.networkType,
     this.nowPlayingTitle,
     this.nowPlayingArtist,
@@ -58,6 +60,7 @@ class DeviceTelemetry {
       isScreenOn: json['isScreenOn'] == true,
       isDeviceUnlocked: json['isDeviceUnlocked'] == true,
       lastUnlockedAt: ms != null && ms > 0 ? DateTime.fromMillisecondsSinceEpoch(ms) : null,
+      unlockCountToday: (json['unlockCountToday'] as num?)?.toInt(),
       networkType: json['networkType']?.toString() ?? 'unknown',
       nowPlayingTitle: json['nowPlayingTitle']?.toString(),
       nowPlayingArtist: json['nowPlayingArtist']?.toString(),
@@ -72,6 +75,7 @@ class DeviceTelemetry {
         'isScreenOn': isScreenOn,
         'isDeviceUnlocked': isDeviceUnlocked,
         if (lastUnlockedAt != null) 'lastUnlockedAtMs': lastUnlockedAt!.millisecondsSinceEpoch,
+        if (unlockCountToday != null) 'unlockCountToday': unlockCountToday,
         'networkType': networkType,
         if (nowPlayingTitle != null && nowPlayingTitle!.isNotEmpty) 'nowPlayingTitle': nowPlayingTitle,
         if (nowPlayingArtist != null && nowPlayingArtist!.isNotEmpty) 'nowPlayingArtist': nowPlayingArtist,
@@ -89,6 +93,7 @@ class DeviceTelemetry {
       isScreenOn: isScreenOn,
       isDeviceUnlocked: isDeviceUnlocked,
       lastUnlockedAt: lastUnlockedAt,
+      unlockCountToday: unlockCountToday,
       networkType: networkType,
       nowPlayingTitle: clearNowPlaying ? null : (nowPlayingTitle ?? this.nowPlayingTitle),
       nowPlayingArtist: clearNowPlaying ? null : (nowPlayingArtist ?? this.nowPlayingArtist),
@@ -144,6 +149,7 @@ class DeviceStatusService {
         isScreenOn: res['isScreenOn'] == true,
         isDeviceUnlocked: res['isDeviceUnlocked'] == true,
         lastUnlockedAt: ms != null && ms > 0 ? DateTime.fromMillisecondsSinceEpoch(ms) : null,
+        unlockCountToday: (res['unlockCountToday'] as num?)?.toInt(),
         networkType: res['networkType']?.toString() ?? 'unknown',
         nowPlayingTitle: nowPlayingTitle,
         nowPlayingArtist: nowPlayingArtist,

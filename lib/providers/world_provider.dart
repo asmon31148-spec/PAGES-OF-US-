@@ -768,6 +768,42 @@ class WorldProvider extends ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       final json = jsonEncode(_myJourneyLog.map((p) => p.toJson()).toList());
       await prefs.setString(_journeyPrefKey, json);
+
+      final spaceId = _spaceId;
+      final uid = _currentUserId;
+      if (spaceId != null && spaceId.isNotEmpty && uid != null && uid.isNotEmpty) {
+        final todayPoints = _myJourneyLog
+            .where((p) => p.timestamp.isAfter(_startOfToday))
+            .toList();
+        final capped = todayPoints.length > 100
+            ? todayPoints.sublist(todayPoints.length - 100)
+            : todayPoints;
+        await SupabaseService.upsertAppContent('journey_today_${spaceId}_$uid', {
+          'points': capped.map((p) => p.toJson()).toList(),
+          'updated_at': DateTime.now().toIso8601String(),
+        });
+      }
+    } catch (_) {}
+  }
+
+  Future<void> refreshPartnerJourneyTrail() async {
+    final spaceId = _spaceId;
+    final pId = _partnerId;
+    if (spaceId == null || spaceId.isEmpty || pId == null || pId.isEmpty) return;
+    try {
+      final data = await SupabaseService.getAppContent('journey_today_${spaceId}_$pId');
+      if (data != null && data['points'] is List) {
+        final loaded = (data['points'] as List)
+            .map((e) => JourneyPoint.fromJson(Map<String, dynamic>.from(e as Map)))
+            .where((p) => p.timestamp.isAfter(DateTime.now().subtract(const Duration(hours: 24))))
+            .toList();
+        if (loaded.isNotEmpty) {
+          _partnerJourneyLog
+            ..clear()
+            ..addAll(loaded);
+          notifyListeners();
+        }
+      }
     } catch (_) {}
   }
 
@@ -1034,6 +1070,9 @@ class WorldProvider extends ChangeNotifier {
         notifyListeners();
       }
     });
+
+    // Fetch partner's persisted 24h route breadcrumbs so map shows complete route immediately
+    await refreshPartnerJourneyTrail();
   }
 
   Future<void> _recordGeofenceTransition({

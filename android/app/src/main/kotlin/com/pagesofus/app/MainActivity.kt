@@ -19,6 +19,8 @@ class MainActivity: AudioServiceActivity() {
     private val DEVICE_STATUS_CHANNEL = "com.pagesofus.app/device_status"
     private val PREFS_NAME = "pages_of_us_telemetry"
     private val KEY_LAST_UNLOCKED = "last_unlocked_at_ms"
+    private val KEY_UNLOCK_COUNT = "unlock_count_today"
+    private val KEY_UNLOCK_DATE = "unlock_count_date"
     private var screenReceiver: BroadcastReceiver? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -51,7 +53,7 @@ class MainActivity: AudioServiceActivity() {
             override fun onReceive(context: Context?, intent: Intent?) {
                 val action = intent?.action ?: return
                 if (action == Intent.ACTION_USER_PRESENT) {
-                    saveLastUnlockedNow()
+                    saveLastUnlockedNow(incrementCount = true)
                 } else if (action == Intent.ACTION_SCREEN_ON) {
                     recordUnlockIfInteractive()
                 }
@@ -71,16 +73,39 @@ class MainActivity: AudioServiceActivity() {
             val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
             val km = getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
             if (pm.isInteractive && !km.isKeyguardLocked) {
-                saveLastUnlockedNow()
+                saveLastUnlockedNow(incrementCount = false)
             }
         } catch (_: Exception) {}
     }
 
-    private fun saveLastUnlockedNow() {
-        getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            .edit()
+    private fun todayDateKey(): String {
+        val cal = java.util.Calendar.getInstance()
+        return "${cal.get(java.util.Calendar.YEAR)}-${cal.get(java.util.Calendar.MONTH) + 1}-${cal.get(java.util.Calendar.DAY_OF_MONTH)}"
+    }
+
+    private fun saveLastUnlockedNow(incrementCount: Boolean = false) {
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val today = todayDateKey()
+        val storedDate = prefs.getString(KEY_UNLOCK_DATE, "")
+        var count = if (storedDate == today) prefs.getInt(KEY_UNLOCK_COUNT, 0) else 0
+        if (incrementCount) {
+            count += 1
+        }
+        prefs.edit()
             .putLong(KEY_LAST_UNLOCKED, System.currentTimeMillis())
+            .putString(KEY_UNLOCK_DATE, today)
+            .putInt(KEY_UNLOCK_COUNT, count)
             .apply()
+    }
+
+    private fun getUnlockCountToday(): Int {
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val today = todayDateKey()
+        return if (prefs.getString(KEY_UNLOCK_DATE, "") == today) {
+            prefs.getInt(KEY_UNLOCK_COUNT, 0)
+        } else {
+            0
+        }
     }
 
     private fun readBatteryInfo(): Pair<Int, Boolean> {
@@ -157,6 +182,7 @@ class MainActivity: AudioServiceActivity() {
                             }
                             val lastUnlockedMs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
                                 .getLong(KEY_LAST_UNLOCKED, 0L)
+                            val unlockCountToday = getUnlockCountToday()
                             val netType = readNetworkType()
 
                             result.success(
@@ -166,6 +192,7 @@ class MainActivity: AudioServiceActivity() {
                                     "isScreenOn" to isScreenOn,
                                     "isDeviceUnlocked" to isUnlocked,
                                     "lastUnlockedAtMs" to if (lastUnlockedMs > 0L) lastUnlockedMs else null,
+                                    "unlockCountToday" to unlockCountToday,
                                     "networkType" to netType
                                 )
                             )
