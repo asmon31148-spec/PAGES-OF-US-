@@ -52,6 +52,7 @@ class UserProfile {
   }
 
   UserProfile copyWith({
+    String? id,
     String? nickname,
     String? avatarUrl,
     String? thought,
@@ -61,7 +62,7 @@ class UserProfile {
     bool clearPartner = false,
   }) {
     return UserProfile(
-      id: id,
+      id: id ?? this.id,
       email: email,
       nickname: nickname ?? this.nickname,
       avatarUrl: avatarUrl ?? this.avatarUrl,
