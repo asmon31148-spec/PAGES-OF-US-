@@ -104,7 +104,55 @@ class ThemeModal extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
+
+            // Extra Eye-Comfort Soft Layer Toggle (Warm Optical Filter + Soft Contrast)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              decoration: BoxDecoration(
+                color: isDark ? AppColors.darkCard : AppColors.lightCard,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: themeProvider.isEyeComfort
+                      ? palette.accentColor.withOpacity(0.45)
+                      : (isDark ? Colors.white10 : Colors.black.withOpacity(0.06)),
+                ),
+              ),
+              child: Row(
+                children: [
+                  const Text('🕊️', style: TextStyle(fontSize: 18)),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Eye Comfort Soft Layer',
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w700,
+                            color: isDark ? AppColors.darkInk : AppColors.lightInk,
+                          ),
+                        ),
+                        Text(
+                          'Warm pastel matte veil for gentle viewing',
+                          style: TextStyle(
+                            fontSize: 10.5,
+                            color: isDark ? AppColors.darkSoft : AppColors.lightSoft,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Switch.adaptive(
+                    value: themeProvider.isEyeComfort,
+                    activeColor: palette.accentColor,
+                    onChanged: (v) => themeProvider.toggleEyeComfort(v),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 10),
 
             // Open Full Theme Picker Button
             GestureDetector(

@@ -578,29 +578,29 @@ class ThemeRegistry {
     ),
   );
 
-  // 14. VELVET NOIR (Dark Romance: Crimson Obsidian & Midnight Devotion)
+  // 14. VELVET NOIR (Dark Romance: Crimson Obsidian in Dark Mode / Soft Rose Silk in Light Mode)
   static const AppThemeData velvetNoir = AppThemeData(
     id: 'velvet_noir',
     name: 'Velvet Noir',
-    description: 'Deep obsidian night with blood-crimson velvet, dark rose, and devoted shadow glow',
+    description: 'Deep obsidian crimson in dark mode, airy blush rose silk in light mode',
     emoji: '🥀',
     lightPalette: ThemePalette(
       gradientColors: [
-        Color(0xFF9F1239), // Crimson Rose
-        Color(0xFF4C0519), // Deep Wine
-        Color(0xFF881337), // Dark Velvet
+        Color(0xFFFBCFE8), // Soft Blush Petal (airy pastel — zero muddy dark blobs!)
+        Color(0xFFFECDD3), // Warm Rose Silk
+        Color(0xFFF5D0FE), // Soft Orchid Mist
       ],
-      glassTint: Color(0xFFFAF2F4),
-      glassOpacity: 0.90,
-      primaryText: Color(0xFF1F0910),
-      secondaryText: Color(0xFF6E3546),
-      accentColor: Color(0xFFBE123C),
-      iconColor: Color(0xFFBE123C),
-      dividerColor: Color(0x1F881337),
-      canvasBackground: Color(0xFFF5E9EC),
+      glassTint: Color(0xFFFFFFFF),
+      glassOpacity: 0.94,
+      primaryText: Color(0xFF280A14),
+      secondaryText: Color(0xFF703B4C),
+      accentColor: Color(0xFFE11D48),
+      iconColor: Color(0xFFE11D48),
+      dividerColor: Color(0x1AE11D48),
+      canvasBackground: Color(0xFFFFF8FA),
       cardBackground: Color(0xFFFFFFFF),
       specularBorderColor: Color(0xFFFFFFFF),
-      specularBorderOpacity: 0.60,
+      specularBorderOpacity: 0.72,
     ),
     darkPalette: ThemePalette(
       gradientColors: [
@@ -622,10 +622,55 @@ class ThemeRegistry {
     ),
   );
 
-  /// All 14 living couple themes in order
+  // 15. CASHMERE OAT (Eye-Comfort Soft Aesthetic: Warm Oat Milk & Chamomile Blush)
+  static const AppThemeData cashmereOat = AppThemeData(
+    id: 'cashmere_oat',
+    name: 'Cashmere Oat',
+    description: 'Ultra-gentle warm oat milk, soft chamomile cream & muted rosewood for pure eye comfort',
+    emoji: '🕊️',
+    lightPalette: ThemePalette(
+      gradientColors: [
+        Color(0xFFF3E5D8), // Warm Oat Milk
+        Color(0xFFEAD7C9), // Cashmere Cream
+        Color(0xFFE3DFD4), // Soft Chamomile Linen
+      ],
+      glassTint: Color(0xFFFFFBF6),
+      glassOpacity: 0.95,
+      primaryText: Color(0xFF2B241E),
+      secondaryText: Color(0xFF6B5D52),
+      accentColor: Color(0xFFB07259),
+      iconColor: Color(0xFFB07259),
+      dividerColor: Color(0x186B5D52),
+      canvasBackground: Color(0xFFF9F4EE),
+      cardBackground: Color(0xFFFFFCF7),
+      specularBorderColor: Color(0xFFFFFFFF),
+      specularBorderOpacity: 0.75,
+    ),
+    darkPalette: ThemePalette(
+      gradientColors: [
+        Color(0xFF3A2C24), // Roasted Cocoa
+        Color(0xFF28201B), // Warm Espresso
+        Color(0xFF1F1A17), // Soft Charcoal Velvet
+      ],
+      glassTint: Color(0xFF1A1512),
+      glassOpacity: 0.94,
+      primaryText: Color(0xFFF5ECE3),
+      secondaryText: Color(0xFFB5A495),
+      accentColor: Color(0xFFD49A7A),
+      iconColor: Color(0xFFD49A7A),
+      dividerColor: Color(0x22FFFFFF),
+      canvasBackground: Color(0xFF120E0C),
+      cardBackground: Color(0xFF1D1714),
+      specularBorderColor: Color(0xFFD49A7A),
+      specularBorderOpacity: 0.28,
+    ),
+  );
+
+  /// All 15 living couple themes in order
   static const List<AppThemeData> allThemes = [
     defaultSanctuary,
     sunsetChai,
+    cashmereOat,
     velvetNoir,
     midnightRain,
     lavenderDream,

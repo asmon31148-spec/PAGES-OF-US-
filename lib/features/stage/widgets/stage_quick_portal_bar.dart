@@ -25,10 +25,9 @@ class StageQuickPortalBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = context.watch<ThemeProvider>().isDark;
-    final audioProvider = context.watch<AudioProvider>();
-    final stageProvider = context.watch<StageProvider>();
-    final isMusicPlaying = audioProvider.isPlaying;
+    final isDark = context.select<ThemeProvider, bool>((t) => t.isDark);
+    final isMusicPlaying = context.select<AudioProvider, bool>((a) => a.isPlaying);
+    final isPartnerActive = context.select<StageProvider, bool>((s) => s.partnerTelemetry?.isDeviceUnlocked == true);
 
     final inkColor = isDark ? AppColors.darkInk : AppColors.lightInk;
 
@@ -103,7 +102,7 @@ class StageQuickPortalBar extends StatelessWidget {
             label: 'Dossier',
             inkColor: inkColor,
             isDark: isDark,
-            isActive: stageProvider.partnerTelemetry?.isDeviceUnlocked == true,
+            isActive: isPartnerActive,
             onTap: () {
               HapticFeedback.lightImpact();
               Navigator.push(

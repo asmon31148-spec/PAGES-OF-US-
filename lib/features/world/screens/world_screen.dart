@@ -9,7 +9,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../core/theme/app_colors.dart';
-import '../../../core/widgets/liquid_glass/liquid_glass_background.dart';
 import '../../../core/widgets/liquid_glass/liquid_glass_theme.dart';
 import '../../../providers/theme_provider.dart';
 import '../../../providers/auth_provider.dart';
@@ -280,8 +279,7 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
       },
       child: Scaffold(
         backgroundColor: Colors.transparent,
-        body: LiquidGlassBackground(
-          child: SafeArea(
+        body: SafeArea(
           child: _isFullScreenMap
               ? _buildMapCard(
                   isDark: isDark,
@@ -503,7 +501,6 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
             ),
           ],
         ),
-      ),
       ),
     ),
   );

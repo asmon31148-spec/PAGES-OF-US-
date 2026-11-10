@@ -146,6 +146,16 @@ class _SharedLivingThemeBackgroundState extends State<SharedLivingThemeBackgroun
           ),
         ),
 
+        // 1b. Extra Eye-Comfort Soft Optical Layer (zero blur GPU cost!)
+        if (themeProvider.isEyeComfort)
+          IgnorePointer(
+            child: Container(
+              color: isDark
+                  ? const Color(0xFF1F160E).withOpacity(0.18)
+                  : const Color(0xFFFBF3E6).withOpacity(0.28),
+            ),
+          ),
+
         // 2. Foreground Liquid Glass application content (isolated boundary for 60/120fps performance)
         RepaintBoundary(child: widget.child),
       ],
@@ -206,16 +216,17 @@ class LivingAtmospherePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     if (!isDark) {
-      // Light-mode: Soft pastel gradient canvas (warm peach cream -> lavender tint -> sky blue)
-      const bgGradient = LinearGradient(
+      // Light-mode: Respect theme canvasBackground blended softly into warm alabaster silk
+      final baseCanvas = palette.canvasBackground;
+      final bgGradient = LinearGradient(
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
         colors: [
-          Color(0xFFFFF7F2), // Warm peach cream
-          Color(0xFFF7F2FA), // Soft lavender tint
-          Color(0xFFF0F5FA), // Light sky blue
+          baseCanvas,
+          Color.lerp(baseCanvas, const Color(0xFFFFFBF7), 0.5) ?? baseCanvas,
+          baseCanvas,
         ],
-        stops: [0.0, 0.52, 1.0],
+        stops: const [0.0, 0.52, 1.0],
       );
       final bgPaint = Paint()
         ..shader = bgGradient.createShader(Rect.fromLTWH(0, 0, size.width, size.height));

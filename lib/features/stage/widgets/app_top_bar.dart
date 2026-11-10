@@ -41,17 +41,16 @@ class AppTopBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final themeProvider = context.watch<ThemeProvider>();
-    final audioProvider = context.watch<AudioProvider>();
-    final authProvider = context.watch<AuthProvider>();
-    final stageProvider = context.watch<StageProvider>();
-    final isPartnerTouching = stageProvider.isPartnerTouching;
-    final user = authProvider.user;
+    final isDarkTheme = context.select<ThemeProvider, bool>((t) => t.isDark);
+    final isAudioPlaying = context.select<AudioProvider, bool>((a) => a.isPlaying);
+    final user = context.select<AuthProvider, dynamic>((a) => a.user);
+    final hasPartner = context.select<AuthProvider, bool>((a) => a.partner != null);
+    final partnerBattery = context.select<StageProvider, dynamic>((s) => s.partnerBattery);
 
     final effectiveTitle = overrideTitle ?? title ?? 'Pages of Us';
     final effectiveSubtitle = overrideSubtitle ?? subtitle;
     final effectiveProfileTap = onOpenProfile ?? onAvatarTap;
-    final isDark = forceDark || themeProvider.isDark;
+    final isDark = forceDark || isDarkTheme;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
@@ -123,19 +122,19 @@ class AppTopBar extends StatelessWidget {
                   child: Container(
                     height: 30,
                     padding: EdgeInsets.symmetric(
-                      horizontal: (authProvider.partner != null && stageProvider.partnerBattery != null) ? 8 : 9,
+                      horizontal: (hasPartner && partnerBattery != null) ? 8 : 9,
                     ),
                     margin: const EdgeInsets.only(right: 6),
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors: [
-                          const Color(0xFFF43F5E).withOpacity(0.24),
-                          const Color(0xFF9F1239).withOpacity(0.14),
+                          const Color(0xFFF43F5E).withOpacity(isDark ? 0.24 : 0.14),
+                          const Color(0xFF9F1239).withOpacity(isDark ? 0.14 : 0.06),
                         ],
                       ),
                       borderRadius: BorderRadius.circular(15),
                       border: Border.all(
-                        color: const Color(0xFFF43F5E).withOpacity(0.55),
+                        color: const Color(0xFFF43F5E).withOpacity(isDark ? 0.55 : 0.45),
                         width: 1,
                       ),
                     ),
@@ -145,16 +144,18 @@ class AppTopBar extends StatelessWidget {
                         const Icon(
                           Icons.visibility_rounded,
                           size: 13.5,
-                          color: Color(0xFFF43F5E),
+                          color: Color(0xFFE11D48),
                         ),
-                        if (authProvider.partner != null && stageProvider.partnerBattery != null) ...[
+                        if (hasPartner && partnerBattery != null) ...[
                           Builder(
                             builder: (context) {
-                              final bat = stageProvider.partnerBattery!;
+                              final bat = partnerBattery!;
                               final isLow = bat.level <= 15 && !bat.isCharging;
                               final accent = bat.isCharging
-                                  ? const Color(0xFF34D399)
-                                  : (isLow ? const Color(0xFFF87171) : const Color(0xFFFDE8EE));
+                                  ? const Color(0xFF10B981)
+                                  : (isLow
+                                      ? const Color(0xFFEF4444)
+                                      : (isDark ? const Color(0xFFFDE8EE) : const Color(0xFF9F1239)));
                               return Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
@@ -188,11 +189,11 @@ class AppTopBar extends StatelessWidget {
               ),
 
               // Music & Atmosphere Mute / Unmute Quick Toggle Button
-              if (showMusic || audioProvider.isPlaying) ...[
+              if (showMusic || isAudioPlaying) ...[
                 GestureDetector(
                   onTap: () {
                     HapticFeedback.lightImpact();
-                    audioProvider.toggleMasterMute();
+                    context.read<AudioProvider>().toggleMasterMute();
                   },
                   onLongPress: () {
                     HapticFeedback.mediumImpact();
@@ -205,14 +206,14 @@ class AppTopBar extends StatelessWidget {
                   },
                   child: Container(
                     height: 32,
-                    padding: EdgeInsets.symmetric(horizontal: audioProvider.isPlaying ? 10 : 0),
-                    width: audioProvider.isPlaying ? null : 32,
+                    padding: EdgeInsets.symmetric(horizontal: isAudioPlaying ? 10 : 0),
+                    width: isAudioPlaying ? null : 32,
                     margin: const EdgeInsets.only(right: 6),
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
-                        colors: audioProvider.isPlaying
+                        colors: isAudioPlaying
                             ? [
                                 AppColors.terra.withOpacity(0.35),
                                 AppColors.terra.withOpacity(0.12),
@@ -224,12 +225,12 @@ class AppTopBar extends StatelessWidget {
                       ),
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
-                        color: audioProvider.isPlaying
+                        color: isAudioPlaying
                             ? AppColors.terra.withOpacity(0.7)
                             : (isDark ? Colors.white.withOpacity(0.20) : Colors.black.withOpacity(0.12)),
                         width: 1,
                       ),
-                      boxShadow: audioProvider.isPlaying
+                      boxShadow: isAudioPlaying
                           ? [
                               BoxShadow(
                                 color: AppColors.terra.withOpacity(0.35),
@@ -244,15 +245,15 @@ class AppTopBar extends StatelessWidget {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(
-                          audioProvider.isPlaying ? Icons.music_note_rounded : Icons.music_off_rounded,
+                          isAudioPlaying ? Icons.music_note_rounded : Icons.music_off_rounded,
                           size: 15,
-                          color: audioProvider.isPlaying
+                          color: isAudioPlaying
                               ? Colors.white
                               : (forceDark
                                   ? AppColors.romanceInk
                                   : (isDark ? AppColors.darkInk : AppColors.lightInk)),
                         ),
-                        if (audioProvider.isPlaying) ...[
+                        if (isAudioPlaying) ...[
                           const SizedBox(width: 4),
                           const Text(
                             'Playing',
@@ -274,7 +275,7 @@ class AppTopBar extends StatelessWidget {
                 GestureDetector(
                   onTap: () {
                     HapticFeedback.selectionClick();
-                    themeProvider.toggleDarkLight();
+                    context.read<ThemeProvider>().toggleDarkLight();
                   },
                   onLongPress: () => ThemeModal.show(context),
                   child: Container(
