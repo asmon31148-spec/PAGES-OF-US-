@@ -1297,12 +1297,6 @@ warning • Unused import: 'package:video_player/video_player.dart'. Try removin
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/screens/watch_waiting_screen.dart:734:91 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/screens/watch_waiting_screen.dart:768:50 • deprecated_member_use
 warning • The value of the field '_myName' isn't used. Try removing the field, or using it • lib/features/watch_together/services/watch_call_service.dart:74:11 • unused_field
-  error • Const variables must be initialized with a constant value. Try changing the initializer to be a constant expression • lib/features/watch_together/services/watch_video_service.dart:117:15 • const_initialized_with_non_constant_value
-  error • Invalid constant value • lib/features/watch_together/services/watch_video_service.dart:117:15 • invalid_constant
-  error • The values in a const list literal must be constants. Try removing the keyword 'const' from the list literal • lib/features/watch_together/services/watch_video_service.dart:117:15 • non_constant_list_element
-  error • Undefined name '_client'. Try correcting the name to one that is defined, or defining the name • lib/features/watch_together/services/watch_video_service.dart:401:29 • undefined_identifier
-  error • Undefined name '_client'. Try correcting the name to one that is defined, or defining the name • lib/features/watch_together/services/watch_video_service.dart:417:32 • undefined_identifier
-  error • Expected a method, getter, setter or operator declaration. This appears to be incomplete code. Try removing it or completing it • lib/features/watch_together/services/watch_video_service.dart:436:1 • expected_executable
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/widgets/watch_call_overlay.dart:170:44 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/widgets/watch_call_overlay.dart:175:48 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/widgets/watch_call_overlay.dart:190:54 • deprecated_member_use
@@ -1378,7 +1372,6 @@ warning • The value of the field '_myName' isn't used. Try removing the field,
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/widgets/watch_controls_overlay.dart:538:72 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/widgets/watch_controls_overlay.dart:602:29 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/widgets/watch_controls_overlay.dart:604:48 • deprecated_member_use
-  error • The method 'searchYouTube' isn't defined for the type 'WatchVideoService'. Try correcting the name to the name of an existing method, or defining a method named 'searchYouTube' • lib/features/watch_together/widgets/watch_movie_picker_sheet.dart:85:56 • undefined_method
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/widgets/watch_movie_picker_sheet.dart:201:43 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/widgets/watch_movie_picker_sheet.dart:201:76 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/widgets/watch_movie_picker_sheet.dart:202:42 • deprecated_member_use
@@ -1583,7 +1576,7 @@ warning • Unused import: 'package:pages_of_us/core/theme/models/theme_palette.
    info • 'green' is deprecated and shouldn't be used. Use (*.g * 255.0).round().clamp(0, 255). Try replacing the use of the deprecated member with the replacement • test/theme_contrast_test.dart:19:29 • deprecated_member_use
    info • 'blue' is deprecated and shouldn't be used. Use (*.b * 255.0).round().clamp(0, 255). Try replacing the use of the deprecated member with the replacement • test/theme_contrast_test.dart:20:29 • deprecated_member_use
 
-1356 issues found. (ran in 13.2s)
+1349 issues found. (ran in 16.7s)
 === FLUTTER BUILD LOG ===
 Upgrading build.gradle
 Upgrading gradle.properties
@@ -1630,96 +1623,20 @@ Loading local repository...
 [===========                            ] 30% Downloading android-ndk-r27-linux.
 [============                           ] 30% Downloading android-ndk-r27-linux.
 [============                           ] 31% Downloading android-ndk-r27-linux.
-[============                           ] 32% Downloading android-ndk-r27-linux.
 [============                           ] 33% Downloading android-ndk-r27-linux.
 [============                           ] 33% Unzipping...                      
-[============                           ] 33% Unzipping... android-ndk-r27/     
-[============                           ] 33% Unzipping... android-ndk-r27/READM
-[=============                          ] 33% Unzipping... android-ndk-r27/READM
-[=============                          ] 33% Unzipping... android-ndk-r27/meta/
-[=============                          ] 33% Unzipping... android-ndk-r27/shade
-[=============                          ] 33% Unzipping... android-ndk-r27/ndk-l
-[=============                          ] 33% Unzipping... android-ndk-r27/wrap.
-[=============                          ] 33% Unzipping... android-ndk-r27/ndk-w
-[=============                          ] 33% Unzipping... android-ndk-r27/toolc
-[=============                          ] 34% Unzipping... android-ndk-r27/toolc
-[=============                          ] 35% Unzipping... android-ndk-r27/toolc
-[==============                         ] 35% Unzipping... android-ndk-r27/toolc
-[==============                         ] 36% Unzipping... android-ndk-r27/toolc
-[==============                         ] 37% Unzipping... android-ndk-r27/toolc
-[===============                        ] 38% Unzipping... android-ndk-r27/toolc
-[===============                        ] 39% Unzipping... android-ndk-r27/toolc
-[===============                        ] 40% Unzipping... android-ndk-r27/toolc
-[================                       ] 40% Unzipping... android-ndk-r27/toolc
-[================                       ] 41% Unzipping... android-ndk-r27/toolc
-[================                       ] 42% Unzipping... android-ndk-r27/toolc
-[=================                      ] 43% Unzipping... android-ndk-r27/toolc
-[=================                      ] 44% Unzipping... android-ndk-r27/toolc
-[=================                      ] 45% Unzipping... android-ndk-r27/toolc
-[==================                     ] 45% Unzipping... android-ndk-r27/toolc
-[==================                     ] 46% Unzipping... android-ndk-r27/toolc
-[==================                     ] 47% Unzipping... android-ndk-r27/toolc
-[===================                    ] 48% Unzipping... android-ndk-r27/toolc
-[===================                    ] 49% Unzipping... android-ndk-r27/toolc
-[===================                    ] 50% Unzipping... android-ndk-r27/toolc
-[====================                   ] 50% Unzipping... android-ndk-r27/toolc
-[====================                   ] 51% Unzipping... android-ndk-r27/toolc
-[====================                   ] 52% Unzipping... android-ndk-r27/toolc
-[=====================                  ] 53% Unzipping... android-ndk-r27/toolc
-[=====================                  ] 54% Unzipping... android-ndk-r27/toolc
-[=====================                  ] 54% Unzipping... android-ndk-r27/build
-[=====================                  ] 54% Unzipping... android-ndk-r27/sourc
-[=====================                  ] 54% Unzipping... android-ndk-r27/NOTIC
-[=====================                  ] 54% Unzipping... android-ndk-r27/ndk-g
-[=====================                  ] 54% Unzipping... android-ndk-r27/NOTIC
-[=====================                  ] 54% Unzipping... android-ndk-r27/pytho
-[=====================                  ] 54% Unzipping... android-ndk-r27/prebu
-[=====================                  ] 54% Unzipping... android-ndk-r27/ndk-s
-[=====================                  ] 54% Unzipping... android-ndk-r27/ndk-b
-[=====================                  ] 54% Unzipping... android-ndk-r27/sourc
-[=====================                  ] 54% Unzipping... android-ndk-r27/simpl
-[=====================                  ] 55% Unzipping... android-ndk-r27/simpl
-[=====================                  ] 55% Unzipping... android-ndk-r27/CHANG
-[=======================================] 100% Unzipping... android-ndk-r27/CHAN
-
-Checking the license for package NDK (Side by side) 28.2.13676358 in /usr/local/lib/android/sdk/licenses
-License for package NDK (Side by side) 28.2.13676358 accepted.
-Preparing "Install NDK (Side by side) 28.2.13676358 v.28.2.13676358".
-"Install NDK (Side by side) 28.2.13676358 v.28.2.13676358" ready.
-Installing NDK (Side by side) 28.2.13676358 in /usr/local/lib/android/sdk/ndk/28.2.13676358
-"Install NDK (Side by side) 28.2.13676358 v.28.2.13676358" complete.
-"Install NDK (Side by side) 28.2.13676358 v.28.2.13676358" finished.
-lib/features/watch_together/services/watch_video_service.dart:436:1: Error: Expected a declaration, but got '}'.
-}
-^
-lib/features/watch_together/widgets/watch_movie_picker_sheet.dart:85:56: Error: The method 'searchYouTube' isn't defined for the type 'WatchVideoService'.
- - 'WatchVideoService' is from 'package:pages_of_us/features/watch_together/services/watch_video_service.dart' ('lib/features/watch_together/services/watch_video_service.dart').
-Try correcting the name to the name of an existing method, or defining a method named 'searchYouTube'.
-      final results = await WatchVideoService.instance.searchYouTube(query);
-                                                       ^^^^^^^^^^^^^
-lib/features/watch_together/services/watch_video_service.dart:401:29: Error: Undefined name '_client'.
-        final video = await _client.videos.get(directId);
-                            ^^^^^^^
-lib/features/watch_together/services/watch_video_service.dart:417:32: Error: Undefined name '_client'.
-      final searchList = await _client.search.search(clean);
-                               ^^^^^^^
-lib/features/watch_together/services/watch_video_service.dart:86:55: Error: Constant evaluation error:
-  static const List<_ClientProfile> _clientProfiles = [
-                                                      ^
-lib/features/watch_together/services/watch_video_service.dart:117:32: Context: The invocation of 'ios' is not allowed in a constant expression.
-      client: YoutubeApiClient.ios,
-                               ^
-lib/features/watch_together/services/watch_video_service.dart:86:37: Context: While analyzing:
-  static const List<_ClientProfile> _clientProfiles = [
-                                    ^
-Target kernel_snapshot_program failed: Exception
+Warning: An error occurred while preparing SDK package NDK (Side by side) 27.0.12077973: Error reading Zip content from a SeekableByteChannel.
 
 
 FAILURE: Build failed with an exception.
 
+* Where:
+Build file '/home/runner/work/PAGES-OF-US-/PAGES-OF-US-/android/build.gradle' line: 13
+
 * What went wrong:
-Execution failed for task ':app:compileFlutterBuildRelease'.
-> Process 'command '/opt/hostedtoolcache/flutter/stable-3.47.9-x64/flutter/bin/flutter'' finished with non-zero exit value 1
+A problem occurred evaluating root project 'android'.
+> A problem occurred configuring project ':app'.
+   > Process 'command '/usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager'' finished with non-zero exit value 1
 
 * Try:
 > Run with --stacktrace option to get the stack trace.
@@ -1727,6 +1644,7 @@ Execution failed for task ':app:compileFlutterBuildRelease'.
 > Run with --scan to get full insights.
 > Get more help at https://help.gradle.org.
 
-BUILD FAILED in 4m 15s
-Running Gradle task 'assembleRelease'...                          256.0s
+BUILD FAILED in 1m 23s
+[============                           ] 33% Unzipping...                      
+Running Gradle task 'assembleRelease'...                           84.5s
 Gradle task assembleRelease failed with exit code 1
