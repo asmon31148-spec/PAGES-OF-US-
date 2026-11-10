@@ -83,11 +83,11 @@ class WatchVideoService {
   int? _proxyPort;
   final Map<String, _ProxyTarget> _proxyTargets = {};
 
-  static const List<_ClientProfile> _clientProfiles = [
+  static final List<_ClientProfile> _clientProfiles = [
     _ClientProfile(
       name: 'androidVr',
       client: YoutubeApiClient.androidVr,
-      headers: {
+      headers: const {
         'User-Agent':
             'com.google.android.apps.youtube.vr.oculus/1.56.21 (Linux; U; Android 12L; eureka-user Build/SQ3A.220605.009.A1)',
       },
@@ -95,7 +95,7 @@ class WatchVideoService {
     _ClientProfile(
       name: 'tv',
       client: YoutubeApiClient.tv,
-      headers: {
+      headers: const {
         'User-Agent':
             'Mozilla/5.0 (SMART-TV; Linux; Tizen 6.0) AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/4.0 Chrome/76.0.3809.109 TV Safari/537.36',
         'Origin': 'https://www.youtube.com',
@@ -105,7 +105,7 @@ class WatchVideoService {
     _ClientProfile(
       name: 'safari',
       client: YoutubeApiClient.safari,
-      headers: {
+      headers: const {
         'User-Agent':
             'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15',
         'Origin': 'https://www.youtube.com',
@@ -115,7 +115,7 @@ class WatchVideoService {
     _ClientProfile(
       name: 'ios',
       client: YoutubeApiClient.ios,
-      headers: {
+      headers: const {
         'User-Agent': 'com.google.ios.youtube/19.29.1 (iPhone16,2; U; CPU iOS 17_5_1 like Mac OS X)',
       },
     ),
@@ -366,7 +366,6 @@ class WatchVideoService {
     final sources = await getPlayableYouTubeSources(videoId);
     return sources.isNotEmpty ? sources.first.url : null;
   }
-}
 
   /// Parse YouTube Video ID from any query, URL, embed, or short link
   String? extractYouTubeId(String input) {
