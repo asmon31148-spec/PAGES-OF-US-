@@ -47,6 +47,7 @@ class WatchPlayerScreen extends StatefulWidget {
 
 class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindingObserver {
   late VideoPlayerController _controller;
+  bool _hasController = false;
   bool _isInitialized = false;
   String? _initError;
 
@@ -188,32 +189,9 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
     };
     WatchCallService.instance.callStatus.addListener(_callStatusListener!);
 
-    // 2. Initialize video controller (Supports YouTube Stream, Web URL, and Local File)
+    // 2. Initialize video controller (Supports YouTube Stream with multi-client & proxy failover, Web URL, and Local File)
     try {
-      if (widget.videoType == 'youtube' && widget.youtubeId != null && widget.youtubeId!.isNotEmpty) {
-        final streamUrl = await WatchVideoService.instance.getYouTubeVideoStreamUrl(widget.youtubeId!);
-        if (streamUrl == null || streamUrl.isEmpty) {
-          throw Exception('Unable to extract playable stream for this YouTube video. Please try another video or paste a link.');
-        }
-        _controller = VideoPlayerController.networkUrl(Uri.parse(streamUrl));
-      } else if (widget.videoType == 'web_url' && widget.networkVideoUrl != null && widget.networkVideoUrl!.isNotEmpty) {
-        _controller = VideoPlayerController.networkUrl(Uri.parse(widget.networkVideoUrl!));
-      } else if (widget.localVideoPath != null && widget.localVideoPath!.isNotEmpty) {
-        _controller = VideoPlayerController.file(File(widget.localVideoPath!));
-      } else {
-        throw Exception('No video stream URL or local file provided.');
-      }
-
-      await _controller.initialize();
-      try {
-        await _controller.setVolume(1.0);
-      } catch (_) {}
-
-      _controller.addListener(_videoPlayerListener);
-
-      setState(() {
-        _isInitialized = true;
-      });
+      await _initializeVideoSource(forceRefresh: false);
 
       // 3. Connect real-time playback and room listeners
       _setupSyncListeners();
@@ -222,9 +200,112 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
       _startDriftCorrectionTimer();
     } catch (e) {
       debugPrint('Video init error: $e');
+      if (mounted) {
+        setState(() {
+          _initError = 'Could not load video: $e';
+        });
+      }
+    }
+  }
+
+  Future<void> _disposeCurrentController() async {
+    if (!_hasController) return;
+    _hasController = false;
+    try {
+      _controller.removeListener(_videoPlayerListener);
+    } catch (_) {}
+    try {
+      await _controller.dispose();
+    } catch (_) {}
+  }
+
+  Future<void> _initializeVideoSource({bool forceRefresh = false}) async {
+    if (widget.videoType == 'youtube' && widget.youtubeId != null && widget.youtubeId!.isNotEmpty) {
+      final sources = await WatchVideoService.instance.getPlayableYouTubeSources(
+        widget.youtubeId!,
+        forceRefresh: forceRefresh,
+      );
+      if (sources.isEmpty) {
+        throw Exception('Unable to extract a playable YouTube stream right now. Tap Retry or try another video.');
+      }
+
+      Object? lastErr;
+      for (final src in sources) {
+        VideoPlayerController? candidate;
+        try {
+          candidate = VideoPlayerController.networkUrl(
+            Uri.parse(src.url),
+            httpHeaders: src.headers,
+          );
+          await candidate.initialize().timeout(const Duration(seconds: 15));
+          await _disposeCurrentController();
+          _controller = candidate;
+          _hasController = true;
+          try {
+            await _controller.setVolume(1.0);
+          } catch (_) {}
+          _controller.addListener(_videoPlayerListener);
+          if (mounted) {
+            setState(() {
+              _isInitialized = true;
+              _initError = null;
+            });
+          }
+          return;
+        } catch (e) {
+          lastErr = e;
+          debugPrint('[WatchPlayer] Source ${src.label} failed: $e');
+          try {
+            await candidate?.dispose();
+          } catch (_) {}
+        }
+      }
+      throw lastErr ?? Exception('All YouTube stream fallbacks failed.');
+    }
+
+    VideoPlayerController ctrl;
+    if (widget.videoType == 'web_url' && widget.networkVideoUrl != null && widget.networkVideoUrl!.isNotEmpty) {
+      ctrl = VideoPlayerController.networkUrl(Uri.parse(widget.networkVideoUrl!));
+    } else if (widget.localVideoPath != null && widget.localVideoPath!.isNotEmpty) {
+      ctrl = VideoPlayerController.file(File(widget.localVideoPath!));
+    } else {
+      throw Exception('No video stream URL or local file provided.');
+    }
+
+    await ctrl.initialize().timeout(const Duration(seconds: 18));
+    await _disposeCurrentController();
+    _controller = ctrl;
+    _hasController = true;
+    try {
+      await _controller.setVolume(1.0);
+    } catch (_) {}
+    _controller.addListener(_videoPlayerListener);
+    if (mounted) {
       setState(() {
-        _initError = 'Could not load video: $e';
+        _isInitialized = true;
+        _initError = null;
       });
+    }
+  }
+
+  Future<void> _retryStreamLoad() async {
+    if (!mounted) return;
+    setState(() {
+      _initError = null;
+      _isInitialized = false;
+    });
+    try {
+      await _initializeVideoSource(forceRefresh: true);
+      if (mounted) {
+        _setupSyncListeners();
+        _startDriftCorrectionTimer();
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _initError = 'Could not load video: $e';
+        });
+      }
     }
   }
 
@@ -245,6 +326,10 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
   }
 
   void _setupSyncListeners() {
+    _playbackSub?.cancel();
+    _roomSub?.cancel();
+    _chatSub?.cancel();
+    _messageCountSub?.cancel();
     final myUid = context.read<AuthProvider>().user?.id;
 
     // 1. Playback stream
@@ -929,8 +1014,15 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
     _skipDebounceTimer?.cancel();
     _quickToastTimer?.cancel();
     WatchCallService.instance.dispose();
-    _controller.removeListener(_videoPlayerListener);
-    _controller.dispose();
+    if (_hasController) {
+      _hasController = false;
+      try {
+        _controller.removeListener(_videoPlayerListener);
+      } catch (_) {}
+      try {
+        _controller.dispose();
+      } catch (_) {}
+    }
 
     // Reset preferred orientation to default portrait
     SystemChrome.setPreferredOrientations([
@@ -1096,6 +1188,13 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
                   style: const TextStyle(color: Colors.white70, fontSize: 14),
                 ),
                 const SizedBox(height: 24),
+                ElevatedButton.icon(
+                  onPressed: _retryStreamLoad,
+                  icon: const Icon(Icons.refresh_rounded, size: 18, color: Colors.white),
+                  label: const Text('Retry Stream', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.sage),
+                ),
+                const SizedBox(height: 12),
                 ElevatedButton(
                   onPressed: () async {
                     final myUid = context.read<AuthProvider>().user?.id;
