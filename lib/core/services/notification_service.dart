@@ -574,6 +574,38 @@ class NotificationService {
     );
   }
 
+  static Future<void> showPartnerDepartedPlaceNotification({
+    required String partnerNickname,
+    required String placeName,
+    required String placeTag,
+  }) async {
+    final key = 'depart_${placeName}_${DateTime.now().hour}_${DateTime.now().minute ~/ 10}';
+    if (_recentNotifiedKeys.contains(key)) return;
+    _recentNotifiedKeys.add(key);
+
+    const androidDetails = AndroidNotificationDetails(
+      alertChannelId,
+      alertChannelName,
+      importance: Importance.high,
+      priority: Priority.high,
+      icon: _smallIcon,
+      largeIcon: _largeAppIcon,
+      color: Color(0xFF9F1239),
+      enableVibration: true,
+      styleInformation: BigTextStyleInformation(''),
+    );
+
+    final tagText = placeTag.isNotEmpty ? ' ($placeTag)' : '';
+
+    await _localNotifications.show(
+      (placeName.hashCode.abs() + 17) % 100000,
+      '$partnerNickname just left $placeName 🥀',
+      'Stepped out of "$placeName"$tagText — live radar updated.',
+      const NotificationDetails(android: androidDetails),
+      payload: 'tab_1',
+    );
+  }
+
   // =========================================================================
   // 4th: ADDING NEW MEMORIES (VIDEO, VOICE, PHOTO, LETTER, TIMELINE)
   // =========================================================================

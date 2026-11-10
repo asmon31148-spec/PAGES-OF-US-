@@ -8,6 +8,7 @@ import '../data/models/pinned_note.dart';
 import '../data/models/couple_goal_item.dart';
 import '../data/models/daily_care_item.dart';
 import '../data/models/drawing_stroke.dart';
+import '../data/models/secret_whisper.dart';
 import '../data/services/firebase_service.dart';
 import '../data/services/supabase_service.dart';
 import '../core/services/local_cache_service.dart';
@@ -70,10 +71,17 @@ class StageProvider extends ChangeNotifier {
   bool get isGentleMode => _isGentleMode;
   bool get partnerGentleMode => _partnerGentleMode;
 
-  // Live Partner Battery Telemetry (100% real hardware readings)
+  // Live Partner Hardware Telemetry & Secret Whispers (100% real readings)
   DeviceBatteryStatus? _partnerBattery;
+  DeviceTelemetry? _partnerTelemetry;
+  bool _isTelemetrySharingEnabled = true;
   Timer? _batterySyncTimer;
+  List<SecretWhisper> _secretWhispers = [];
+
   DeviceBatteryStatus? get partnerBattery => _partnerBattery;
+  DeviceTelemetry? get partnerTelemetry => _partnerTelemetry;
+  bool get isTelemetrySharingEnabled => _isTelemetrySharingEnabled;
+  List<SecretWhisper> get secretWhispers => List.unmodifiable(_secretWhispers);
 
   // Zero-Pressure Heartbeat Pulse (isolated Notifiers for buttery 60 FPS)
   final ValueNotifier<int> heartbeatPulseNotifier = ValueNotifier<int>(0);
@@ -159,6 +167,8 @@ class StageProvider extends ChangeNotifier {
     _batterySyncTimer?.cancel();
     _batterySyncTimer = null;
     _partnerBattery = null;
+    _partnerTelemetry = null;
+    _secretWhispers = [];
     _anniversarySub = null;
     _moodSub = null;
     _noteSub = null;
@@ -231,12 +241,28 @@ class StageProvider extends ChangeNotifier {
       _partnerTouchPoint = null;
       _partnerDailyTouches = 0;
       _partnerBattery = null;
+      _partnerTelemetry = null;
       _pinnedNotes.removeWhere((k, _) => k != userId);
       LocalCacheService.setCachedPartner(null);
       LocalCacheService.setCachedPartnerMood(null);
     }
 
-    // 0. Live Partner Hardware Battery Telemetry (100% real Android BatteryManager)
+    _isTelemetrySharingEnabled = LocalCacheService.prefs.getBool('telemetry_sharing_enabled') ?? true;
+
+    // 0. Live Partner Hardware Telemetry & Battery (100% real Android OS sensors)
+    void applyPartnerTelemetry(Map<String, dynamic> data) {
+      final parsed = DeviceTelemetry.fromJson(data);
+      _partnerTelemetry = parsed;
+      if (parsed.batteryLevel >= 0 && parsed.batteryLevel <= 100) {
+        _partnerBattery = DeviceBatteryStatus(
+          level: parsed.batteryLevel,
+          isCharging: parsed.isCharging,
+          updatedAt: parsed.updatedAt,
+        );
+      }
+      notifyListeners();
+    }
+
     SupabaseService.setBatteryStatusListener((data) {
       final sender = data['senderId']?.toString();
       if (sender != null && sender != userId && (partnerId == null || partnerId.isEmpty || sender == partnerId)) {
@@ -247,9 +273,35 @@ class StageProvider extends ChangeNotifier {
         }
       }
     });
+    SupabaseService.setDeviceTelemetryListener((data) {
+      final sender = data['senderId']?.toString();
+      if (sender != null && sender != userId && (partnerId == null || partnerId.isEmpty || sender == partnerId)) {
+        if (data['disabled'] == true) {
+          _partnerTelemetry = null;
+          notifyListeners();
+        } else {
+          applyPartnerTelemetry(data);
+        }
+      }
+    });
+    SupabaseService.setSecretWhisperListener((data) {
+      final list = data['whispers'] as List<dynamic>?;
+      if (list != null) {
+        _secretWhispers = list
+            .map((e) => SecretWhisper.fromJson(Map<String, dynamic>.from(e as Map)))
+            .toList();
+        notifyListeners();
+      }
+    });
+
     if (partnerId != null && partnerId.isNotEmpty) {
+      SupabaseService.getAppContent('telemetry_${spaceId}_$partnerId').then((data) {
+        if (data != null && data['disabled'] != true) {
+          applyPartnerTelemetry(data);
+        }
+      });
       SupabaseService.getAppContent('battery_${spaceId}_$partnerId').then((data) {
-        if (data != null) {
+        if (data != null && _partnerBattery == null) {
           final parsed = DeviceBatteryStatus.fromJson(data);
           if (parsed.level >= 0 && parsed.level <= 100) {
             _partnerBattery = parsed;
@@ -258,11 +310,28 @@ class StageProvider extends ChangeNotifier {
         }
       });
     }
-    _syncMyBattery(spaceId, userId);
-    _batterySyncTimer?.cancel();
-    _batterySyncTimer = Timer.periodic(const Duration(seconds: 90), (_) {
+
+    // Fetch Secret Whispers for this space
+    SupabaseService.getAppContent('secret_whispers_$spaceId').then((data) {
+      if (data != null && data['whispers'] is List) {
+        _secretWhispers = (data['whispers'] as List)
+            .map((e) => SecretWhisper.fromJson(Map<String, dynamic>.from(e as Map)))
+            .toList();
+        notifyListeners();
+      }
+    });
+
+    DeviceStatusService.onNowPlayingChanged = () {
       if (_activeSpaceId == spaceId && _activeUserId == userId) {
-        _syncMyBattery(spaceId, userId);
+        _syncMyTelemetry(spaceId, userId);
+      }
+    };
+
+    _syncMyTelemetry(spaceId, userId);
+    _batterySyncTimer?.cancel();
+    _batterySyncTimer = Timer.periodic(const Duration(seconds: 45), (_) {
+      if (_activeSpaceId == spaceId && _activeUserId == userId) {
+        _syncMyTelemetry(spaceId, userId);
       }
     });
 
@@ -1643,19 +1712,128 @@ class StageProvider extends ChangeNotifier {
     } catch (_) {}
   }
 
-  Future<void> _syncMyBattery(String spaceId, String userId) async {
+  Future<void> setTelemetrySharingEnabled(bool enabled) async {
+    _isTelemetrySharingEnabled = enabled;
+    await LocalCacheService.prefs.setBool('telemetry_sharing_enabled', enabled);
+    notifyListeners();
+    if (_activeSpaceId != null && _activeUserId != null) {
+      await _syncMyTelemetry(_activeSpaceId!, _activeUserId!);
+    }
+  }
+
+  Future<void> refreshPartnerTelemetryNow() async {
+    if (_activeSpaceId == null || _activeUserId == null) return;
+    await _syncMyTelemetry(_activeSpaceId!, _activeUserId!);
+    if (_activePartnerId != null && _activePartnerId!.isNotEmpty) {
+      final data = await SupabaseService.getAppContent('telemetry_${_activeSpaceId!}_${_activePartnerId!}');
+      if (data != null && data['disabled'] != true) {
+        final parsed = DeviceTelemetry.fromJson(data);
+        _partnerTelemetry = parsed;
+        if (parsed.batteryLevel >= 0 && parsed.batteryLevel <= 100) {
+          _partnerBattery = DeviceBatteryStatus(
+            level: parsed.batteryLevel,
+            isCharging: parsed.isCharging,
+            updatedAt: parsed.updatedAt,
+          );
+        }
+        notifyListeners();
+      }
+    }
+  }
+
+  Future<void> _syncMyTelemetry(String spaceId, String userId) async {
     if (spaceId.isEmpty || userId.isEmpty) return;
-    final status = await DeviceStatusService.getBatteryStatus();
-    if (status == null) return;
+
+    if (!_isTelemetrySharingEnabled) {
+      final disabledPayload = {'disabled': true, 'senderId': userId};
+      await SupabaseService.upsertAppContent('telemetry_${spaceId}_$userId', disabledPayload);
+      await SupabaseService.broadcastEvent(
+        spaceId: spaceId,
+        eventType: 'DEVICE_TELEMETRY',
+        payload: disabledPayload,
+      );
+      return;
+    }
+
+    final telemetry = await DeviceStatusService.getFullTelemetry(
+      nowPlayingTitle: DeviceStatusService.currentNowPlayingTitle,
+      nowPlayingArtist: DeviceStatusService.currentNowPlayingArtist,
+    );
+    if (telemetry == null) return;
+
     final payload = {
-      ...status.toJson(),
+      ...telemetry.toJson(),
       'senderId': userId,
     };
-    await SupabaseService.upsertAppContent('battery_${spaceId}_$userId', payload);
+    await SupabaseService.upsertAppContent('telemetry_${spaceId}_$userId', payload);
     await SupabaseService.broadcastEvent(
       spaceId: spaceId,
-      eventType: 'BATTERY_STATUS',
+      eventType: 'DEVICE_TELEMETRY',
       payload: payload,
+    );
+
+    if (telemetry.batteryLevel >= 0 && telemetry.batteryLevel <= 100) {
+      await SupabaseService.upsertAppContent('battery_${spaceId}_$userId', {
+        'level': telemetry.batteryLevel,
+        'isCharging': telemetry.isCharging,
+        'updatedAt': telemetry.updatedAt,
+        'senderId': userId,
+      });
+    }
+  }
+
+  Future<void> sendSecretWhisper({
+    required String spaceId,
+    required String senderId,
+    required String senderNickname,
+    required String text,
+  }) async {
+    final clean = text.trim();
+    if (spaceId.isEmpty || clean.isEmpty) return;
+    final whisper = SecretWhisper(
+      id: 'wsp_${DateTime.now().millisecondsSinceEpoch}',
+      senderId: senderId,
+      senderNickname: senderNickname,
+      text: clean,
+      createdAt: DateTime.now().toUtc().toIso8601String(),
+    );
+    _secretWhispers.insert(0, whisper);
+    if (_secretWhispers.length > 25) {
+      _secretWhispers = _secretWhispers.take(25).toList();
+    }
+    notifyListeners();
+
+    final listJson = _secretWhispers.map((w) => w.toJson()).toList();
+    await SupabaseService.upsertAppContent('secret_whispers_$spaceId', {
+      'whispers': listJson,
+      'updated_at': DateTime.now().toIso8601String(),
+    });
+    await SupabaseService.broadcastEvent(
+      spaceId: spaceId,
+      eventType: 'SECRET_WHISPER',
+      payload: {'whispers': listJson},
+    );
+  }
+
+  Future<void> revealAndBurnWhisper({
+    required String spaceId,
+    required String whisperId,
+    required String readerId,
+  }) async {
+    final idx = _secretWhispers.indexWhere((w) => w.id == whisperId);
+    if (idx == -1) return;
+    _secretWhispers[idx] = _secretWhispers[idx].burn(readerId);
+    notifyListeners();
+
+    final listJson = _secretWhispers.map((w) => w.toJson()).toList();
+    await SupabaseService.upsertAppContent('secret_whispers_$spaceId', {
+      'whispers': listJson,
+      'updated_at': DateTime.now().toIso8601String(),
+    });
+    await SupabaseService.broadcastEvent(
+      spaceId: spaceId,
+      eventType: 'SECRET_WHISPER',
+      payload: {'whispers': listJson},
     );
   }
 
