@@ -578,47 +578,47 @@ class ThemeRegistry {
     ),
   );
 
-  // 14. VELVET NOIR (Dark Romance: Crimson Obsidian in Dark Mode / Soft Rose Silk in Light Mode)
+  // 14. VELVET NOIR (Soft Dark Romance: Matte Dusk Rose in Dark Mode / Soft Rose Silk in Light Mode)
   static const AppThemeData velvetNoir = AppThemeData(
     id: 'velvet_noir',
     name: 'Velvet Noir',
-    description: 'Deep obsidian crimson in dark mode, airy blush rose silk in light mode',
+    description: 'Soft matte dusk rosewood in dark mode, calm blush silk in light mode — zero eye strain',
     emoji: '🥀',
     lightPalette: ThemePalette(
       gradientColors: [
-        Color(0xFFFBCFE8), // Soft Blush Petal (airy pastel — zero muddy dark blobs!)
-        Color(0xFFFECDD3), // Warm Rose Silk
-        Color(0xFFF5D0FE), // Soft Orchid Mist
+        Color(0xFFF6E0E8), // Soft Dusty Rose Mist
+        Color(0xFFF9E5E9), // Warm Blush Linen
+        Color(0xFFF1E2F4), // Gentle Orchid Milk
       ],
-      glassTint: Color(0xFFFFFFFF),
+      glassTint: Color(0xFFFFFBFB),
       glassOpacity: 0.94,
-      primaryText: Color(0xFF280A14),
-      secondaryText: Color(0xFF703B4C),
-      accentColor: Color(0xFFE11D48),
-      iconColor: Color(0xFFE11D48),
-      dividerColor: Color(0x1AE11D48),
-      canvasBackground: Color(0xFFFFF8FA),
-      cardBackground: Color(0xFFFFFFFF),
+      primaryText: Color(0xFF332229),
+      secondaryText: Color(0xFF7A5D68),
+      accentColor: Color(0xFFB46578),
+      iconColor: Color(0xFFB46578),
+      dividerColor: Color(0x18B46578),
+      canvasBackground: Color(0xFFFAF3F5),
+      cardBackground: Color(0xFFFFFAFA),
       specularBorderColor: Color(0xFFFFFFFF),
       specularBorderOpacity: 0.72,
     ),
     darkPalette: ThemePalette(
       gradientColors: [
-        Color(0xFF881337), // Blood Crimson
-        Color(0xFF3B0718), // Velvet Burgundy
-        Color(0xFF14060D), // Midnight Shadow
+        Color(0xFF3B242E), // Soft Velvet Rose-Plum
+        Color(0xFF2B1C23), // Warm Smoked Mauve
+        Color(0xFF20171C), // Matte Charcoal Dusk
       ],
-      glassTint: Color(0xFF11070C),
-      glassOpacity: 0.92,
-      primaryText: Color(0xFFFDE8EE),
-      secondaryText: Color(0xFFB88896),
-      accentColor: Color(0xFFE11D48),
-      iconColor: Color(0xFFF43F5E),
-      dividerColor: Color(0x28F43F5E),
-      canvasBackground: Color(0xFF070306),
-      cardBackground: Color(0xFF14090F),
-      specularBorderColor: Color(0xFFF43F5E),
-      specularBorderOpacity: 0.32,
+      glassTint: Color(0xFF241A1F),
+      glassOpacity: 0.94,
+      primaryText: Color(0xFFF2E4E9),
+      secondaryText: Color(0xFFB59BA4),
+      accentColor: Color(0xFFD08698),
+      iconColor: Color(0xFFD08698),
+      dividerColor: Color(0x1ED08698),
+      canvasBackground: Color(0xFF191216),
+      cardBackground: Color(0xFF241A1F),
+      specularBorderColor: Color(0xFFD08698),
+      specularBorderOpacity: 0.18,
     ),
   );
 
