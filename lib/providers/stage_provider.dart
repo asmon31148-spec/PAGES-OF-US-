@@ -329,7 +329,7 @@ class StageProvider extends ChangeNotifier {
 
     _syncMyTelemetry(spaceId, userId);
     _batterySyncTimer?.cancel();
-    _batterySyncTimer = Timer.periodic(const Duration(seconds: 45), (_) {
+    _batterySyncTimer = Timer.periodic(const Duration(seconds: 90), (_) {
       if (_activeSpaceId == spaceId && _activeUserId == userId) {
         _syncMyTelemetry(spaceId, userId);
       }

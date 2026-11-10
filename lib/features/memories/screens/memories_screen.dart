@@ -4,7 +4,6 @@ import '../../../core/theme/app_colors.dart';
 import '../../../providers/theme_provider.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../providers/memories_provider.dart';
-import '../../../core/widgets/liquid_glass/liquid_glass_background.dart';
 import '../../../core/widgets/liquid_glass/liquid_glass_segment_control.dart';
 import '../../../core/widgets/liquid_glass/liquid_glass_button.dart';
 import '../../stage/widgets/app_top_bar.dart';
@@ -50,8 +49,7 @@ class _MemoriesScreenState extends State<MemoriesScreen> {
 
     return Scaffold(
       backgroundColor: Colors.transparent,
-      body: LiquidGlassBackground(
-        child: SafeArea(
+      body: SafeArea(
           child: Column(
             children: [
               // Top Bar
@@ -98,7 +96,6 @@ class _MemoriesScreenState extends State<MemoriesScreen> {
             ],
           ),
         ),
-      ),
       floatingActionButton: LiquidGlassButton(
         icon: Icons.add_rounded,
         label: 'Keep Memory',

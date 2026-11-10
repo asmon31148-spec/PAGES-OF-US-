@@ -193,6 +193,16 @@ class LocalCacheService {
     await _prefs?.setString('cached_couple_theme_updated_at', isoDate);
   }
 
+  static bool getCachedEyeComfort() => _prefs?.getBool('cached_eye_comfort_layer') ?? false;
+  static Future<void> setCachedEyeComfort(bool enabled) async {
+    await _prefs?.setBool('cached_eye_comfort_layer', enabled);
+  }
+
+  static String? getCachedPreviousThemeId() => _prefs?.getString('cached_previous_theme_id');
+  static Future<void> setCachedPreviousThemeId(String id) async {
+    await _prefs?.setString('cached_previous_theme_id', id);
+  }
+
   // Music Songs & Deleted IDs (Persistent across app restarts)
   static List<Map<String, dynamic>>? getCachedSongs() {
     final str = _prefs?.getString('cached_music_songs');

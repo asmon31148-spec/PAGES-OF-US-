@@ -258,33 +258,57 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
           ],
         ),
         actions: [
-          IconButton(
-            tooltip: 'Switch to Velvet Noir Theme',
-            icon: Icon(
-              Icons.auto_awesome_rounded,
-              color: themeProv.themeId == 'velvet_noir' ? crimson : Colors.white70,
-              size: 20,
-            ),
-            onPressed: () async {
+          GestureDetector(
+            onTap: () async {
               HapticFeedback.lightImpact();
               if (spaceId.isNotEmpty && user != null) {
-                await themeProv.updateTheme(
-                  'velvet_noir',
+                final activated = await themeProv.toggleVelvetNoir(
                   spaceId: spaceId,
                   userId: user.id,
                   userName: user.nickname,
                 );
                 if (mounted) {
+                  ScaffoldMessenger.of(context).hideCurrentSnackBar();
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Velvet Noir theme activated 🥀'),
-                      backgroundColor: Color(0xFF9F1239),
-                      duration: Duration(seconds: 2),
+                    SnackBar(
+                      content: Text(
+                        activated
+                            ? 'Velvet Noir theme activated 🥀 (tap again to turn off)'
+                            : 'Velvet Noir deactivated — restored ${themeProv.currentTheme.name} ✨',
+                      ),
+                      backgroundColor: activated ? const Color(0xFF9F1239) : AppColors.sage,
+                      duration: const Duration(seconds: 2),
                     ),
                   );
                 }
               }
             },
+            child: Container(
+              margin: const EdgeInsets.symmetric(vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: themeProv.themeId == 'velvet_noir'
+                    ? crimson.withOpacity(0.24)
+                    : Colors.white.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: themeProv.themeId == 'velvet_noir' ? crimson : Colors.white24,
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    themeProv.themeId == 'velvet_noir' ? '🥀 Velvet ON' : '🥀 Velvet OFF',
+                    style: TextStyle(
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.bold,
+                      color: themeProv.themeId == 'velvet_noir' ? const Color(0xFFFDE8EE) : Colors.white70,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
           IconButton(
             tooltip: 'Sync Live Signals',

@@ -15,9 +15,11 @@ import '../core/theme/models/theme_palette.dart';
 /// - Dynamic WCAG AA compliant palette tokens
 class ThemeProvider extends ChangeNotifier {
   String _themeId = ThemeRegistry.defaultThemeId;
+  String _previousThemeId = ThemeRegistry.defaultThemeId;
   late AppThemeData _currentTheme;
   String _brightnessMode = 'system'; // 'light' | 'dark' | 'system'
   bool _isDark = false;
+  bool _isEyeComfort = false;
   ThemePerformanceLevel _performanceLevel = ThemePerformanceLevel.full;
 
   String? _lastUpdatedByName;
@@ -33,9 +35,11 @@ class ThemeProvider extends ChangeNotifier {
 
   // Getters
   String get themeId => _themeId;
+  String get previousThemeId => _previousThemeId;
   AppThemeData get currentTheme => _currentTheme;
   String get brightnessMode => _brightnessMode;
   bool get isDark => _isDark;
+  bool get isEyeComfort => _isEyeComfort;
   ThemePerformanceLevel get performanceLevel => _performanceLevel;
   String? get lastUpdatedByName => _lastUpdatedByName;
   DateTime? get lastUpdatedAt => _lastUpdatedAt;
@@ -48,12 +52,17 @@ class ThemeProvider extends ChangeNotifier {
   }
 
   void _loadFromLocalCache() {
-    // 1. Theme ID
+    // 1. Theme ID & Previous Theme ID
     final cachedId = LocalCacheService.getCachedThemeId();
     if (cachedId != null && cachedId.isNotEmpty) {
       _themeId = cachedId;
     }
+    final prevId = LocalCacheService.getCachedPreviousThemeId();
+    if (prevId != null && prevId.isNotEmpty && prevId != 'velvet_noir') {
+      _previousThemeId = prevId;
+    }
     _currentTheme = ThemeRegistry.getById(_themeId);
+    _isEyeComfort = LocalCacheService.getCachedEyeComfort();
 
     // 2. Brightness Mode ('light', 'dark', 'system')
     final cachedBrightness = LocalCacheService.getCachedBrightnessMode();
@@ -223,6 +232,11 @@ class ThemeProvider extends ChangeNotifier {
   }) async {
     if (_themeId == newThemeId) return;
 
+    if (newThemeId == 'velvet_noir' && _themeId != 'velvet_noir') {
+      _previousThemeId = _themeId;
+      LocalCacheService.setCachedPreviousThemeId(_previousThemeId);
+    }
+
     final now = DateTime.now().toUtc();
 
     // 1. Optimistic local update - ALWAYS STAYS PERSISTENT
@@ -267,6 +281,41 @@ class ThemeProvider extends ChangeNotifier {
           debugPrint('[ThemeProvider] Table couple_themes upsert skipped: $e');
         }
       }
+    }
+  }
+
+  /// Toggle Eye Comfort Soft Layer (soothing warm optical filter, zero GPU blur cost)
+  Future<void> toggleEyeComfort([bool? value]) async {
+    _isEyeComfort = value ?? !_isEyeComfort;
+    await LocalCacheService.setCachedEyeComfort(_isEyeComfort);
+    notifyListeners();
+  }
+
+  /// Toggle Velvet Noir Dark Romance theme ON / OFF (restores previous theme on deactivate)
+  Future<bool> toggleVelvetNoir({
+    required String spaceId,
+    required String userId,
+    required String userName,
+  }) async {
+    if (_themeId == 'velvet_noir') {
+      final restoreId = (_previousThemeId.isNotEmpty && _previousThemeId != 'velvet_noir')
+          ? _previousThemeId
+          : ThemeRegistry.defaultThemeId;
+      await updateTheme(
+        restoreId,
+        spaceId: spaceId,
+        userId: userId,
+        userName: userName,
+      );
+      return false; // deactivated
+    } else {
+      await updateTheme(
+        'velvet_noir',
+        spaceId: spaceId,
+        userId: userId,
+        userName: userName,
+      );
+      return true; // activated
     }
   }
 
