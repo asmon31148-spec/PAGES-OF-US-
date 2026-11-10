@@ -26,6 +26,8 @@ class JourneyPoint {
   final DateTime timestamp;
   final String city;
   final double speedMps;
+  final double accuracyM;
+  final int? stepsAtPoint;
 
   const JourneyPoint({
     required this.lat,
@@ -33,6 +35,8 @@ class JourneyPoint {
     required this.timestamp,
     this.city = '',
     this.speedMps = 0.0,
+    this.accuracyM = 0.0,
+    this.stepsAtPoint,
   });
 
   Map<String, dynamic> toJson() => {
@@ -41,6 +45,8 @@ class JourneyPoint {
     'ts': timestamp.millisecondsSinceEpoch,
     'city': city,
     'sp': speedMps,
+    if (accuracyM > 0.0) 'acc': accuracyM,
+    if (stepsAtPoint != null) 'st': stepsAtPoint,
   };
 
   factory JourneyPoint.fromJson(Map<String, dynamic> j) => JourneyPoint(
@@ -49,6 +55,8 @@ class JourneyPoint {
     timestamp: DateTime.fromMillisecondsSinceEpoch((j['ts'] as num).toInt()),
     city: j['city']?.toString() ?? '',
     speedMps: (j['sp'] as num?)?.toDouble() ?? 0.0,
+    accuracyM: (j['acc'] as num?)?.toDouble() ?? 0.0,
+    stepsAtPoint: (j['st'] as num?)?.toInt(),
   );
 }
 
@@ -96,6 +104,7 @@ class WorldProvider extends ChangeNotifier {
   Timer? _journeyPersistDebounce;
   int? _hardwareStepsToday;
   int? _lastBroadcastSteps;
+  int? _stationaryAnchorSteps;
   String get _journeyPrefKey => _currentUserId != null ? 'journey_log_my_${_currentUserId!}' : 'journey_log_my_v2';
 
   Map<String, UserLocationData> get locations => Map.unmodifiable(_locations);
@@ -215,6 +224,7 @@ class WorldProvider extends ChangeNotifier {
     _isTrackingInitializing = false;
     _hardwareStepsToday = null;
     _lastBroadcastSteps = null;
+    _stationaryAnchorSteps = null;
 
     // Wipe journey log from SharedPreferences (user-scoped key cleaned separately)
     try {
@@ -253,7 +263,41 @@ class WorldProvider extends ChangeNotifier {
 
   WorldProvider() {
     AuthProvider.registerSignOutHook(resetState);
+    DeviceStatusService.onHardwareStepsUpdated = (steps) {
+      if (_hardwareStepsToday != steps) {
+        _hardwareStepsToday = steps;
+        _pushHardwareStepsUpdate();
+      }
+    };
+    DeviceStatusService.ensureStepCallbackAttached();
     _loadJourneyLog();
+  }
+
+  void _pushHardwareStepsUpdate() {
+    if (_currentUserId == null || _spaceId == null) {
+      notifyListeners();
+      return;
+    }
+    final existing = _locations[_currentUserId];
+    if (existing != null && existing.stepsToday != myStepsToday) {
+      final updated = existing.copyWith(
+        stepsToday: myStepsToday,
+        activeMinutesToday: myActiveMinutesToday,
+        journeyKmToday: myJourneyKmToday,
+        updatedAt: DateTime.now().toUtc().toIso8601String(),
+      );
+      _locations[_currentUserId!] = updated;
+      _lastBroadcastSteps = myStepsToday;
+      if (!_spaceId!.startsWith('solo_')) {
+        SupabaseService.broadcastEvent(
+          spaceId: _spaceId!,
+          eventType: 'LOCATION_UPDATE',
+          payload: {'location': updated.toJson()},
+        );
+      }
+      _scheduleCloudPersist(updated);
+    }
+    notifyListeners();
   }
 
   @override
@@ -517,10 +561,15 @@ class WorldProvider extends ChangeNotifier {
     }
   }
 
-  /// Accumulates a GPS position into the personal journey log with indoor noise filtering.
+  /// Accumulates a GPS position into the personal journey log with strict room-drift rejection.
   void _appendMyPoint(Position position) {
-    // Reject coarse cell/network jumps (> 55m accuracy) once we already have a baseline point
-    if (_myJourneyLog.isNotEmpty && position.accuracy > 55.0) return;
+    // Reject weak/indoors coarse fixes (high accuracy radius causes phantom indoor bounce)
+    if (_myJourneyLog.isNotEmpty && position.accuracy > 28.0) {
+      final last = _myJourneyLog.last;
+      final distM = calculateDistanceKm(last.lat, last.lng, position.latitude, position.longitude) * 1000;
+      // Allow only genuine vehicle-scale transit (>= 150m & accuracy < 55m) when indoors/shaded
+      if (distM < 150.0 || position.accuracy > 55.0) return;
+    }
 
     final point = JourneyPoint(
       lat: position.latitude,
@@ -528,14 +577,27 @@ class WorldProvider extends ChangeNotifier {
       timestamp: DateTime.now(),
       city: _cachedCity,
       speedMps: position.speed >= 0 ? position.speed : 0.0,
+      accuracyM: position.accuracy,
+      stepsAtPoint: _hardwareStepsToday,
     );
 
-    // Filter out micro GPS drift (< 10m stationary jitter, or < 18m with weak indoor fix)
     if (_myJourneyLog.isNotEmpty) {
       final last = _myJourneyLog.last;
       final distM = calculateDistanceKm(last.lat, last.lng, point.lat, point.lng) * 1000;
-      if (distM < 10.0) return;
-      if (distM < 18.0 && position.speed < 0.5 && position.accuracy > 18.0) return;
+
+      // Gate 1: Confidence-cone minimum displacement (must exceed GPS uncertainty radius)
+      final minMoveM = max(22.0, position.accuracy * 1.4);
+      if (distM < minMoveM) return;
+
+      // Gate 2: Sensor fusion with real Android hardware pedometer
+      if (_hardwareStepsToday != null && last.stepsAtPoint != null) {
+        final stepDelta = _hardwareStepsToday! - last.stepsAtPoint!;
+        // Under 120m (walking scale): physically impossible without taking at least 12 footsteps
+        if (distM < 120.0 && stepDelta < 12) return;
+      } else {
+        // Fallback when phone has no step sensor: require clearer displacement + velocity
+        if (distM < max(35.0, position.accuracy * 1.6) && position.speed < 0.8) return;
+      }
     }
 
     _myJourneyLog.add(point);
@@ -557,7 +619,7 @@ class WorldProvider extends ChangeNotifier {
     if (_partnerJourneyLog.isNotEmpty) {
       final last = _partnerJourneyLog.last;
       final distM = calculateDistanceKm(last.lat, last.lng, point.lat, point.lng) * 1000;
-      if (distM < 12.0) return;
+      if (distM < 22.0) return;
     }
     _partnerJourneyLog.add(point);
 
@@ -571,40 +633,57 @@ class WorldProvider extends ChangeNotifier {
     return DateTime(now.year, now.month, now.day);
   }
 
-  double _calcJourneyKmSince(List<JourneyPoint> log, DateTime since) {
+  /// Computes verified travel distance with indoor ping-pong and pedometer sanity checks.
+  double _sumVerifiedDistanceKm(
+    List<JourneyPoint> log,
+    DateTime since, {
+    required bool walkingOnly,
+  }) {
     final filtered = log.where((p) => p.timestamp.isAfter(since)).toList();
     if (filtered.length < 2) return 0.0;
-    double total = 0.0;
-    for (int i = 1; i < filtered.length; i++) {
-      final d = calculateDistanceKm(
-        filtered[i - 1].lat, filtered[i - 1].lng,
-        filtered[i].lat, filtered[i].lng,
-      );
-      if (d >= 0.008) {
-        total += d;
-      }
-    }
-    return total;
-  }
 
-  double _calcWalkingKmSince(List<JourneyPoint> log, DateTime since) {
-    final filtered = log.where((p) => p.timestamp.isAfter(since)).toList();
-    if (filtered.length < 2) return 0.0;
     double total = 0.0;
     for (int i = 1; i < filtered.length; i++) {
       final p1 = filtered[i - 1];
       final p2 = filtered[i];
-      if (p2.speedMps > 5.0 || p1.speedMps > 5.0) continue;
-      final d = calculateDistanceKm(
-        p1.lat, p1.lng,
-        p2.lat, p2.lng,
-      );
-      if (d >= 0.008 && d < 1.5) {
-        total += d;
+
+      if (walkingOnly && (p2.speedMps > 5.0 || p1.speedMps > 5.0)) continue;
+
+      final dKm = calculateDistanceKm(p1.lat, p1.lng, p2.lat, p2.lng);
+      if (dKm < 0.020) continue; // Ignore sub-20m jitter
+      if (walkingOnly && dKm >= 1.5) continue; // Single-step teleport guard
+
+      // Reject low-accuracy short hops (< 150m with > 32m GPS cone)
+      if (dKm < 0.15 && (p2.accuracyM > 32.0 || p1.accuracyM > 32.0)) continue;
+
+      // Reject < 120m moves where hardware pedometer confirms zero/minimal steps
+      if (p1.stepsAtPoint != null && p2.stepsAtPoint != null && dKm < 0.12) {
+        if ((p2.stepsAtPoint! - p1.stepsAtPoint!) < 10) continue;
       }
+
+      // Anti-ping-pong check: ignore a bounce out & straight back (< 20m return) in room without real walking
+      if (i + 1 < filtered.length && dKm < 0.06) {
+        final p3 = filtered[i + 1];
+        final roundTripReturnM = calculateDistanceKm(p1.lat, p1.lng, p3.lat, p3.lng) * 1000;
+        final stepsAcross3 = (p1.stepsAtPoint != null && p3.stepsAtPoint != null)
+            ? (p3.stepsAtPoint! - p1.stepsAtPoint!)
+            : null;
+        if (roundTripReturnM < 20.0 && (stepsAcross3 == null || stepsAcross3 < 20)) {
+          i++; // Skip both the outward & return phantom bounce points
+          continue;
+        }
+      }
+
+      total += dKm;
     }
     return total;
   }
+
+  double _calcJourneyKmSince(List<JourneyPoint> log, DateTime since) =>
+      _sumVerifiedDistanceKm(log, since, walkingOnly: false);
+
+  double _calcWalkingKmSince(List<JourneyPoint> log, DateTime since) =>
+      _sumVerifiedDistanceKm(log, since, walkingOnly: true);
 
   int _countAreasSince(List<JourneyPoint> log, DateTime since) {
     final cities = log
@@ -614,44 +693,11 @@ class WorldProvider extends ChangeNotifier {
     return cities.isEmpty ? 0 : cities.length;
   }
 
-  double _calcJourneyKm(List<JourneyPoint> log, Duration period) {
-    final since = DateTime.now().subtract(period);
-    final filtered = log.where((p) => p.timestamp.isAfter(since)).toList();
-    if (filtered.length < 2) return 0.0;
-    double total = 0.0;
-    for (int i = 1; i < filtered.length; i++) {
-      final d = calculateDistanceKm(
-        filtered[i - 1].lat, filtered[i - 1].lng,
-        filtered[i].lat, filtered[i].lng,
-      );
-      // Filter only sub-8m static jitter so 10-15m GPS breadcrumbs accumulate accurately
-      if (d >= 0.008) {
-        total += d;
-      }
-    }
-    return total;
-  }
+  double _calcJourneyKm(List<JourneyPoint> log, Duration period) =>
+      _sumVerifiedDistanceKm(log, DateTime.now().subtract(period), walkingOnly: false);
 
-  double _calcWalkingKm(List<JourneyPoint> log, Duration period) {
-    final since = DateTime.now().subtract(period);
-    final filtered = log.where((p) => p.timestamp.isAfter(since)).toList();
-    if (filtered.length < 2) return 0.0;
-    double total = 0.0;
-    for (int i = 1; i < filtered.length; i++) {
-      final p1 = filtered[i - 1];
-      final p2 = filtered[i];
-      // Skip high-speed vehicle transit (> 5.0 m/s = ~18 km/h) from walking distance
-      if (p2.speedMps > 5.0 || p1.speedMps > 5.0) continue;
-      final d = calculateDistanceKm(
-        p1.lat, p1.lng,
-        p2.lat, p2.lng,
-      );
-      if (d >= 0.008 && d < 1.5) {
-        total += d;
-      }
-    }
-    return total;
-  }
+  double _calcWalkingKm(List<JourneyPoint> log, Duration period) =>
+      _sumVerifiedDistanceKm(log, DateTime.now().subtract(period), walkingOnly: true);
 
   int _countAreas(List<JourneyPoint> log, Duration period) {
     final since = DateTime.now().subtract(period);
@@ -691,17 +737,17 @@ class WorldProvider extends ChangeNotifier {
     return gpsMinutes;
   }
 
-  /// True ONLY when currently physically traveling (> 3 km/h or recent displacement)
+  /// True ONLY when currently physically traveling (confirmed speed + displacement, never 1-tick indoor drift)
   bool get isMyMoving {
     final my = myLocation;
     if (my == null) return false;
-    if ((my.speedMps ?? 0.0) >= 0.8) return true;
+    final hasSpeed = (my.speedMps ?? 0.0) >= 1.1;
     if (_myJourneyLog.length >= 2) {
       final now = DateTime.now();
       final recent = _myJourneyLog.where((p) => now.difference(p.timestamp).inMinutes <= 3).toList();
       if (recent.length >= 2) {
         final d = calculateDistanceKm(recent.first.lat, recent.first.lng, recent.last.lat, recent.last.lng) * 1000;
-        if (d >= 35.0) return true;
+        if (d >= 40.0 || (hasSpeed && d >= 20.0)) return true;
       }
     }
     return false;
@@ -711,13 +757,13 @@ class WorldProvider extends ChangeNotifier {
   bool get isPartnerMoving {
     final pLoc = partnerLocation;
     if (pLoc == null) return false;
-    if ((pLoc.speedMps ?? 0.0) >= 0.8) return true;
+    final hasSpeed = (pLoc.speedMps ?? 0.0) >= 1.1;
     if (_partnerJourneyLog.length >= 2) {
       final now = DateTime.now();
       final recent = _partnerJourneyLog.where((p) => now.difference(p.timestamp).inMinutes <= 3).toList();
       if (recent.length >= 2) {
         final d = calculateDistanceKm(recent.first.lat, recent.first.lng, recent.last.lat, recent.last.lng) * 1000;
-        if (d >= 35.0) return true;
+        if (d >= 40.0 || (hasSpeed && d >= 20.0)) return true;
       }
     }
     return false;
@@ -846,9 +892,18 @@ class WorldProvider extends ChangeNotifier {
             .toList();
         final cutoff = DateTime.now().subtract(const Duration(days: 31));
         loaded.removeWhere((p) => p.timestamp.isBefore(cutoff));
+        // One-time cleanup of pre-v1.0.132 unverified room-drift points (missing accuracy tag)
+        final cleanedKey = '${_journeyPrefKey}_clean132';
+        if (prefs.getBool(cleanedKey) != true) {
+          loaded.removeWhere((p) => p.accuracyM == 0.0);
+          await prefs.setString(_journeyPrefKey, jsonEncode(loaded.map((p) => p.toJson()).toList()));
+          await prefs.setBool(cleanedKey, true);
+        }
         if (loaded.length >= _myJourneyLog.length) {
           _myJourneyLog = loaded;
         }
+      } else {
+        await prefs.setBool('${_journeyPrefKey}_clean132', true);
       }
       final hwSteps = await DeviceStatusService.getHardwareStepsToday();
       if (hwSteps != null) {
@@ -1420,11 +1475,12 @@ class WorldProvider extends ChangeNotifier {
       }
     }
 
-    // Smart stationary GPS sleep: suppress micro-jitter & save battery when stationary
+    // Smart stationary Room-Lock Anchor (45m exit hysteresis + step-sensor verification)
     if (_stationaryAnchorLat == null || _stationaryAnchorLng == null) {
       _stationaryAnchorLat = position.latitude;
       _stationaryAnchorLng = position.longitude;
       _stationaryAnchorTime = now;
+      _stationaryAnchorSteps = _hardwareStepsToday;
     } else {
       final driftMeters = calculateDistanceKm(
         _stationaryAnchorLat!,
@@ -1433,26 +1489,33 @@ class WorldProvider extends ChangeNotifier {
         position.longitude,
       ) * 1000.0;
 
-      if (driftMeters < 18.0) {
-        // User is stationary (within 18m drift zone)
+      final stepsFromAnchor = (_hardwareStepsToday != null && _stationaryAnchorSteps != null)
+          ? (_hardwareStepsToday! - _stationaryAnchorSteps!)
+          : null;
+
+      final trulyLeftZone = (driftMeters >= 45.0 && position.accuracy <= 28.0) ||
+          (driftMeters >= 150.0 && position.accuracy <= 55.0) ||
+          (stepsFromAnchor != null && stepsFromAnchor >= 25 && driftMeters >= 22.0 && position.accuracy <= 28.0);
+
+      if (!trulyLeftZone) {
+        // User is stationary inside room/home zone — lock GPS anchor so room drift never accumulates
         final stationaryMin = _stationaryAnchorTime != null
             ? now.difference(_stationaryAnchorTime!).inMinutes
             : 0;
 
-        // Only throttle broadcasts if hardware steps have NOT changed either
         if (stationaryMin >= 2 && !stepsChanged) {
           if (_lastStationaryBroadcastTime != null &&
               now.difference(_lastStationaryBroadcastTime!).inMinutes < 4) {
-            // Sleep mode: do not churn CPU or flood WebSocket
             return;
           }
           _lastStationaryBroadcastTime = now;
         }
       } else {
-        // User has moved > 18 meters: wake up live tracking
+        // User genuinely moved out of stationary zone
         _stationaryAnchorLat = position.latitude;
         _stationaryAnchorLng = position.longitude;
         _stationaryAnchorTime = now;
+        _stationaryAnchorSteps = _hardwareStepsToday;
         _lastStationaryBroadcastTime = null;
       }
     }

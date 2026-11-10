@@ -36,6 +36,7 @@ class MainActivity: AudioServiceActivity() {
     private var stepSensor: Sensor? = null
     private var stepListener: SensorEventListener? = null
     private var stepListenerRegistered = false
+    private var telemetryChannel: MethodChannel? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -137,6 +138,14 @@ class MainActivity: AudioServiceActivity() {
             .putInt(KEY_STEP_LAST_RAW, raw)
             .putInt(KEY_STEP_TODAY, updatedTotal)
             .apply()
+
+        if (delta > 0) {
+            runOnUiThread {
+                try {
+                    telemetryChannel?.invokeMethod("onStepsChanged", mapOf("stepsToday" to updatedTotal))
+                } catch (_: Exception) {}
+            }
+        }
     }
 
     private fun readHardwareStepsToday(): Int? {
@@ -268,8 +277,8 @@ class MainActivity: AudioServiceActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, DEVICE_STATUS_CHANNEL)
-            .setMethodCallHandler { call, result ->
+        telemetryChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, DEVICE_STATUS_CHANNEL)
+        telemetryChannel?.setMethodCallHandler { call, result ->
                 when (call.method) {
                     "getBatteryStatus" -> {
                         try {

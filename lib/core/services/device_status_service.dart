@@ -119,6 +119,21 @@ class DeviceStatusService {
   static String? currentNowPlayingTitle;
   static String? currentNowPlayingArtist;
   static void Function()? onNowPlayingChanged;
+  static void Function(int stepsToday)? onHardwareStepsUpdated;
+  static bool _handlerAttached = false;
+
+  static void ensureStepCallbackAttached() {
+    if (_handlerAttached) return;
+    _handlerAttached = true;
+    _channel.setMethodCallHandler((call) async {
+      if (call.method == 'onStepsChanged') {
+        final args = call.arguments;
+        if (args is Map && args['stepsToday'] is num) {
+          onHardwareStepsUpdated?.call((args['stepsToday'] as num).toInt());
+        }
+      }
+    });
+  }
 
   static void setNowPlaying({String? title, String? artist}) {
     final cleanTitle = title?.trim();
