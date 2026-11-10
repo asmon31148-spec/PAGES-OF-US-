@@ -423,58 +423,104 @@ Only output valid JSON. No conversational preamble or markdown backticks.
     return null;
   }
 
-  // ── Overpass OpenStreetMap Spots ─────────────────────────────────────────
+  // ── Overpass OpenStreetMap + Photon Midpoint Spots ────────────────────────
   Future<List<MidpointSpot>> _fetchSpots(double lat, double lng) async {
+    final List<MidpointSpot> spots = [];
     try {
       final query =
           '[out:json][timeout:6];'
           '('
-          'node[amenity=cafe](around:10000,$lat,$lng);'
-          'node[leisure=park](around:10000,$lat,$lng);'
-          'node[amenity=restaurant](around:10000,$lat,$lng);'
+          'nwr[amenity~"cafe|restaurant"](around:10000,$lat,$lng);'
+          'nwr[leisure~"park|garden"](around:10000,$lat,$lng);'
           ');'
-          'out 6;';
-      final url = Uri.parse('https://overpass-api.de/api/interpreter');
-      final resp = await http
-          .post(url, body: {'data': query})
-          .timeout(const Duration(seconds: 6));
-      if (resp.statusCode != 200) return _defaultSpots();
+          'out center 10;';
+      const mirrors = [
+        'https://overpass-api.de/api/interpreter',
+        'https://overpass.kumi.systems/api/interpreter',
+      ];
+      for (final endpoint in mirrors) {
+        try {
+          final resp = await http
+              .post(
+                Uri.parse(endpoint),
+                headers: {'User-Agent': 'PagesOfUs/1.0', 'Accept': '*/*'},
+                body: {'data': query},
+              )
+              .timeout(const Duration(seconds: 6));
+          if (resp.statusCode == 200) {
+            final data = jsonDecode(resp.body) as Map<String, dynamic>;
+            final elements = data['elements'] as List? ?? [];
+            for (final el in elements) {
+              final m = el as Map<String, dynamic>;
+              final center = m['center'] as Map<String, dynamic>?;
+              final hLat = (m['lat'] as num?)?.toDouble() ?? (center?['lat'] as num?)?.toDouble() ?? 0;
+              final hLng = (m['lon'] as num?)?.toDouble() ?? (center?['lon'] as num?)?.toDouble() ?? 0;
+              if (hLat == 0 || hLng == 0) continue;
+              final tags = m['tags'] as Map<String, dynamic>? ?? {};
+              final name = tags['name']?.toString() ?? '';
+              if (name.isEmpty) continue;
 
-      final data = jsonDecode(resp.body) as Map<String, dynamic>;
-      final elements = data['elements'] as List? ?? [];
-      final List<MidpointSpot> spots = [];
+              final amenity = tags['amenity']?.toString() ?? '';
+              final leisure = tags['leisure']?.toString() ?? '';
 
-      for (final el in elements) {
-        final m = el as Map<String, dynamic>;
-        final hLat = (m['lat'] as num?)?.toDouble() ?? 0;
-        final hLng = (m['lon'] as num?)?.toDouble() ?? 0;
-        final tags = m['tags'] as Map<String, dynamic>? ?? {};
-        final name = tags['name']?.toString() ?? '';
-        if (name.isEmpty) continue;
+              String cat = 'spot';
+              String icon = '📍';
+              if (amenity == 'cafe') {
+                cat = 'Cozy Cafe';
+                icon = '☕';
+              } else if (leisure == 'park' || leisure == 'garden') {
+                cat = 'Scenic Park';
+                icon = '🌿';
+              } else if (amenity == 'restaurant') {
+                cat = 'Romantic Dining';
+                icon = '🍽️';
+              }
 
-        final amenity = tags['amenity']?.toString() ?? '';
-        final leisure = tags['leisure']?.toString() ?? '';
+              final dist = _haversineKm(lat, lng, hLat, hLng);
+              if (!spots.any((s) => s.name == name)) {
+                spots.add(MidpointSpot(
+                  name: name,
+                  category: cat,
+                  distanceKm: dist,
+                  icon: icon,
+                ));
+              }
+            }
+            if (spots.isNotEmpty) break;
+          }
+        } catch (_) {}
+      }
 
-        String cat = 'spot';
-        String icon = '📍';
-        if (amenity == 'cafe') {
-          cat = 'Cozy Cafe';
-          icon = '☕';
-        } else if (leisure == 'park') {
-          cat = 'Scenic Park';
-          icon = '🌿';
-        } else if (amenity == 'restaurant') {
-          cat = 'Romantic Dining';
-          icon = '🍽️';
-        }
-
-        final dist = _haversineKm(lat, lng, hLat, hLng);
-        spots.add(MidpointSpot(
-          name: name,
-          category: cat,
-          distanceKm: dist,
-          icon: icon,
-        ));
+      // Photon fallback if Overpass returned empty
+      if (spots.isEmpty) {
+        try {
+          final pRes = await http.get(
+            Uri.parse('https://photon.komoot.io/api/?q=cafe&lat=$lat&lon=$lng&limit=6'),
+            headers: {'Accept': 'application/json'},
+          ).timeout(const Duration(seconds: 5));
+          if (pRes.statusCode == 200) {
+            final pData = jsonDecode(utf8.decode(pRes.bodyBytes)) as Map<String, dynamic>;
+            final features = pData['features'] as List? ?? [];
+            for (final f in features) {
+              final props = f['properties'] as Map<String, dynamic>? ?? {};
+              final coords = f['geometry']?['coordinates'] as List? ?? [];
+              if (coords.length < 2) continue;
+              final name = props['name']?.toString() ?? '';
+              if (name.isEmpty) continue;
+              final pLat = (coords[1] as num).toDouble();
+              final pLng = (coords[0] as num).toDouble();
+              final dist = _haversineKm(lat, lng, pLat, pLng);
+              if (dist <= 25 && !spots.any((s) => s.name == name)) {
+                spots.add(MidpointSpot(
+                  name: name,
+                  category: 'Nearby Spot',
+                  distanceKm: dist,
+                  icon: '☕',
+                ));
+              }
+            }
+          }
+        } catch (_) {}
       }
 
       if (spots.isEmpty) return _defaultSpots();

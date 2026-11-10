@@ -10,6 +10,7 @@ import 'package:firebase_database/firebase_database.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../providers/theme_provider.dart';
 import '../../../providers/auth_provider.dart';
+import '../../../providers/memories_provider.dart';
 import '../models/watch_room_model.dart';
 import '../services/watch_together_service.dart';
 import '../widgets/watch_controls_overlay.dart';
@@ -73,6 +74,7 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
   bool _isChatVisible = true;
   bool _hasShownMovieEnded = false;
   bool _isLeaving = false;
+  bool _hasSavedTicketStub = false;
 
   // Skip debounce & target position
   Duration? _targetSkipPosition;
@@ -630,6 +632,18 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
           style: TextStyle(color: Colors.white70, fontSize: 13),
         ),
         actions: [
+          if (!_hasSavedTicketStub)
+            TextButton.icon(
+              onPressed: () async {
+                await _saveTicketStubToMemories('');
+                if (ctx.mounted) {
+                  Navigator.pop(ctx);
+                  await _leavePlayerAndRoom();
+                }
+              },
+              icon: const Icon(Icons.confirmation_number_outlined, size: 16, color: Colors.amber),
+              label: const Text('Save Ticket & Leave', style: TextStyle(color: Colors.amber)),
+            ),
           TextButton(
             onPressed: () => Navigator.pop(ctx),
             child: const Text('No, Stay', style: TextStyle(color: Colors.white60)),
@@ -682,100 +696,216 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
     }
   }
 
+  Future<void> _saveTicketStubToMemories(String reactionNote) async {
+    if (_hasSavedTicketStub) return;
+    final authProv = context.read<AuthProvider>();
+    final memProv = context.read<MemoriesProvider>();
+    final spaceId = authProv.space?.id ?? '';
+    final user = authProv.user;
+    if (spaceId.isEmpty || user == null) return;
+
+    final dur = _controller.value.duration;
+    final durMins = dur.inMinutes;
+    final durationLabel = durMins > 0 ? '${durMins}m' : 'Movie Night';
+    final cleanNote = reactionNote.trim();
+    final posterUrl = (widget.youtubeId != null && widget.youtubeId!.isNotEmpty)
+        ? 'https://img.youtube.com/vi/${widget.youtubeId}/hqdefault.jpg'
+        : '';
+
+    final caption = 'Cinema Ticket Stub • $durationLabel • Watched Together 🍿'
+        '${cleanNote.isNotEmpty ? '\n"$cleanNote"' : ''}';
+
+    await memProv.addMemory(
+      spaceId: spaceId,
+      title: '🎟️ ${widget.movieTitle}',
+      caption: caption,
+      mediaUrl: posterUrl,
+      author: user.nickname,
+      currentUserId: user.id,
+      partnerNickname: authProv.partner?.nickname,
+    );
+
+    if (mounted) {
+      setState(() {
+        _hasSavedTicketStub = true;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Cinema Ticket Stub saved to Memories 🎟️'),
+          backgroundColor: AppColors.sage,
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
   /// Screen 4: Movie Ended View
   void _showMovieEndedDialog() {
+    String noteDraft = '';
+    bool savingTicket = false;
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (ctx) => Dialog(
-        backgroundColor: Colors.transparent,
-        child: Container(
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: AppColors.darkSurface,
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: AppColors.terra.withOpacity(0.4), width: 1.5),
-            boxShadow: const [
-              BoxShadow(color: Colors.black54, blurRadius: 20, offset: Offset(0, 10)),
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text('🎉', style: TextStyle(fontSize: 48)),
-              const SizedBox(height: 12),
-              const Text(
-                'Movie Night Complete',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) => Dialog(
+          backgroundColor: Colors.transparent,
+          child: Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: AppColors.darkSurface,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: AppColors.terra.withOpacity(0.4), width: 1.5),
+              boxShadow: const [
+                BoxShadow(color: Colors.black54, blurRadius: 20, offset: Offset(0, 10)),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('🎉', style: TextStyle(fontSize: 44)),
+                const SizedBox(height: 10),
+                const Text(
+                  'Movie Night Complete',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'You shared another wonderful story together.',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 13, color: Colors.white70),
-              ),
-              const SizedBox(height: 24),
-              // Watch Another Button
-              SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: ElevatedButton.icon(
-                  onPressed: () async {
-                    Navigator.pop(ctx);
-                    final myUid = context.read<AuthProvider>().user?.id;
-                    if (myUid != null) {
-                      await WatchTogetherService.instance.resetRoomForAnother(
-                        roomCode: widget.roomCode,
-                        uid: myUid,
-                      );
-                    }
-                    if (mounted) {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => WatchWaitingScreen(
-                            roomCode: widget.roomCode,
-                            isHost: widget.isHost,
+                const SizedBox(height: 6),
+                Text(
+                  widget.movieTitle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 13, color: Colors.white70),
+                ),
+                const SizedBox(height: 16),
+                if (!_hasSavedTicketStub) ...[
+                  TextField(
+                    onChanged: (val) => noteDraft = val,
+                    maxLines: 1,
+                    style: const TextStyle(fontSize: 12.5, color: Colors.white),
+                    decoration: InputDecoration(
+                      hintText: 'Add a quick note for your ticket stub (optional)...',
+                      hintStyle: const TextStyle(fontSize: 11.5, color: Colors.white38),
+                      filled: true,
+                      fillColor: Colors.white.withOpacity(0.08),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 44,
+                    child: ElevatedButton.icon(
+                      onPressed: savingTicket
+                          ? null
+                          : () async {
+                              setDialogState(() => savingTicket = true);
+                              await _saveTicketStubToMemories(noteDraft);
+                              setDialogState(() => savingTicket = false);
+                            },
+                      icon: const Icon(Icons.confirmation_number_rounded, size: 17),
+                      label: Text(
+                        savingTicket ? 'Saving Ticket...' : 'Save Ticket Stub to Memories',
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.sage,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      ),
+                    ),
+                  ),
+                ] else ...[
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+                    decoration: BoxDecoration(
+                      color: AppColors.sage.withOpacity(0.18),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.sage.withOpacity(0.5)),
+                    ),
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.check_circle_rounded, size: 16, color: AppColors.sageLight),
+                        SizedBox(width: 6),
+                        Text(
+                          'Ticket Stub Saved to Memories 🎟️',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.sageLight,
                           ),
                         ),
-                      );
-                    }
-                  },
-                  icon: const Icon(Icons.replay_rounded, size: 18),
-                  label: const Text(
-                    'Watch Another',
-                    style: TextStyle(fontWeight: FontWeight.bold),
+                      ],
+                    ),
                   ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.terra,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                ],
+                const SizedBox(height: 12),
+                // Watch Another Button
+                SizedBox(
+                  width: double.infinity,
+                  height: 46,
+                  child: ElevatedButton.icon(
+                    onPressed: () async {
+                      Navigator.pop(ctx);
+                      final myUid = context.read<AuthProvider>().user?.id;
+                      if (myUid != null) {
+                        await WatchTogetherService.instance.resetRoomForAnother(
+                          roomCode: widget.roomCode,
+                          uid: myUid,
+                        );
+                      }
+                      if (mounted) {
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => WatchWaitingScreen(
+                              roomCode: widget.roomCode,
+                              isHost: widget.isHost,
+                            ),
+                          ),
+                        );
+                      }
+                    },
+                    icon: const Icon(Icons.replay_rounded, size: 18),
+                    label: const Text(
+                      'Watch Another',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.terra,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 10),
-              // Leave Button
-              SizedBox(
-                width: double.infinity,
-                height: 44,
-                child: OutlinedButton(
-                  onPressed: () async {
-                    Navigator.pop(ctx);
-                    await _leavePlayerAndRoom();
-                  },
-                  style: OutlinedButton.styleFrom(
-                    side: BorderSide(color: Colors.white.withOpacity(0.3)),
-                    foregroundColor: Colors.white70,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                const SizedBox(height: 10),
+                // Leave Button
+                SizedBox(
+                  width: double.infinity,
+                  height: 44,
+                  child: OutlinedButton(
+                    onPressed: () async {
+                      Navigator.pop(ctx);
+                      await _leavePlayerAndRoom();
+                    },
+                    style: OutlinedButton.styleFrom(
+                      side: BorderSide(color: Colors.white.withOpacity(0.3)),
+                      foregroundColor: Colors.white70,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    ),
+                    child: const Text('Leave to Home'),
                   ),
-                  child: const Text('Leave to Home'),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

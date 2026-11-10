@@ -139,14 +139,15 @@ class DatePlannerService {
       String? fairTravelNote;
 
       final straightDistance = _calculateHaversineKm(userLat, userLng, partnerLat, partnerLng);
+      final hasPartnerLoc = partnerLat != 0.0 && partnerLng != 0.0;
 
-      if (target == 'user' && userLat != 0.0) {
+      if ((target == 'user' || !hasPartnerLoc) && userLat != 0.0) {
         anchorLat = userLat;
         anchorLng = userLng;
         anchorCity = userCity.isNotEmpty ? userCity : 'Your City';
         mode = 'near_user';
         modeDescription = 'Searching near you in $anchorCity 📍';
-      } else if (target == 'partner' && partnerLat != 0.0) {
+      } else if (target == 'partner' && hasPartnerLoc) {
         anchorLat = partnerLat;
         anchorLng = partnerLng;
         anchorCity = partnerCity.isNotEmpty ? partnerCity : 'Partner City';
@@ -154,10 +155,10 @@ class DatePlannerService {
         modeDescription = 'Searching near $partnerNickname in $anchorCity 📍';
       } else {
         // Default: Midpoint between both partners
-        anchorLat = (userLat != 0.0 && partnerLat != 0.0)
+        anchorLat = (userLat != 0.0 && hasPartnerLoc)
             ? (userLat + partnerLat) / 2
             : (userLat != 0.0 ? userLat : partnerLat);
-        anchorLng = (userLng != 0.0 && partnerLng != 0.0)
+        anchorLng = (userLng != 0.0 && hasPartnerLoc)
             ? (userLng + partnerLng) / 2
             : (userLng != 0.0 ? userLng : partnerLng);
         anchorCity = userCity.isNotEmpty && partnerCity.isNotEmpty
@@ -300,9 +301,15 @@ class DatePlannerService {
     required String partnerCity,
     required String partnerNickname,
   }) async {
+    // Fast deterministic parse first — instant (<1ms) when user specifies location intent clearly
+    final localParsed = _ruleBasedParse(query);
+    if (localParsed['explicitTarget'] == 'true') {
+      return localParsed;
+    }
+
     final apiKey = AppConstants.groqApiKey;
     if (apiKey.isEmpty) {
-      return _ruleBasedParse(query);
+      return localParsed;
     }
 
     try {
@@ -313,13 +320,16 @@ User query: "$query"
 
 Extract JSON:
 {
-  "target": "user" | "partner" | "midpoint", // "user" if query mentions "near me", "around me", "my location", "here"; "partner" if query mentions "near her", "near partner", "around her", "$partnerCity"; "midpoint" if between us/halfway or if no location preference given
-  "category": string, // e.g. "library", "cafe", "restaurant", "park", "bookstore", "hotel", "rooftop"
-  "searchTerm": string, // clean place search term
-  "radiusMeters": string, // e.g. 100 meters -> "200", 500m -> "500", default "5000"
-  "icon": string // emoji
+  "target": "user" | "partner" | "midpoint",
+  "category": string,
+  "searchTerm": string,
+  "radiusMeters": string,
+  "icon": string
 }
-Output JSON only.
+Rules:
+- "target": "user" if query mentions "near me", "nearby", "around me", "my location", "here", "close by"; "partner" if "near her", "near him", "near partner", "$partnerCity"; else "midpoint".
+- Fix spelling typos in searchTerm (e.g. "caffe" -> "cafe", "resturant" -> "restaurant", "cinma" -> "cinema").
+- Output JSON only.
 ''';
 
       final res = await http.post(
@@ -329,7 +339,7 @@ Output JSON only.
           'Authorization': 'Bearer $apiKey',
         },
         body: jsonEncode({
-          'model': 'qwen/qwen3.8-27b',
+          'model': 'llama-3.1-8b-instant',
           'temperature': 0.1,
           'max_tokens': 150,
           'messages': [
@@ -338,76 +348,131 @@ Output JSON only.
           ],
           'response_format': {'type': 'json_object'},
         }),
-      ).timeout(const Duration(seconds: 5));
+      ).timeout(const Duration(seconds: 3));
 
       if (res.statusCode == 200) {
         final data = jsonDecode(utf8.decode(res.bodyBytes));
         final content = data['choices'][0]['message']['content']?.toString() ?? '';
         final decoded = jsonDecode(content) as Map<String, dynamic>;
         return {
-          'target': decoded['target']?.toString() ?? 'midpoint',
-          'category': decoded['category']?.toString() ?? 'place',
-          'searchTerm': decoded['searchTerm']?.toString() ?? query,
-          'radiusMeters': decoded['radiusMeters']?.toString() ?? '5000',
-          'icon': decoded['icon']?.toString() ?? '📍',
+          'target': decoded['target']?.toString() ?? localParsed['target']!,
+          'category': decoded['category']?.toString() ?? localParsed['category']!,
+          'searchTerm': decoded['searchTerm']?.toString() ?? localParsed['searchTerm']!,
+          'radiusMeters': decoded['radiusMeters']?.toString() ?? localParsed['radiusMeters']!,
+          'icon': decoded['icon']?.toString() ?? localParsed['icon']!,
         };
       }
     } catch (e) {
       debugPrint('[DatePlannerService] _understandIntentWithAi fallback: $e');
     }
 
-    return _ruleBasedParse(query);
+    return localParsed;
   }
 
   Map<String, String> _ruleBasedParse(String query) {
     final q = query.toLowerCase();
     String target = 'midpoint';
+    String explicitTarget = 'false';
+
     if (q.contains('near me') ||
+        q.contains('nearby me') ||
+        q.contains('nearby') ||
+        q.contains('near my') ||
         q.contains('around me') ||
         q.contains('from me') ||
         q.contains('my city') ||
-        q.contains('close to me')) {
+        q.contains('close to me') ||
+        q.contains('close by') ||
+        q.contains('around here')) {
       target = 'user';
+      explicitTarget = 'true';
     } else if (q.contains('near her') ||
+        q.contains('nearby her') ||
         q.contains('around her') ||
         q.contains('near him') ||
+        q.contains('nearby him') ||
         q.contains('her city') ||
+        q.contains('his city') ||
         q.contains('near partner')) {
       target = 'partner';
+      explicitTarget = 'true';
+    } else if (q.contains('halfway') || q.contains('between us') || q.contains('midpoint')) {
+      target = 'midpoint';
+      explicitTarget = 'true';
     }
 
     String category = 'cafe';
-    String icon = '☕';
-    if (q.contains('library') || q.contains('book')) {
+    String searchTerm = query
+        .replaceAll(
+          RegExp(
+            r'\b(nearby me|near me|around me|close to me|close by|near my|my location|nearby|near her|near him|near partner|around her|between us|halfway|midpoint)\b',
+            caseSensitive: false,
+          ),
+          '',
+        )
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+    String icon = '📍';
+
+    if (q.contains('cafe') || q.contains('caffe') || q.contains('coffee') || q.contains('tea') || q.contains('chai') || q.contains('boba')) {
+      category = 'cafe';
+      searchTerm = 'cafe';
+      icon = '☕';
+    } else if (q.contains('library') || q.contains('book')) {
       category = 'library';
+      searchTerm = 'library';
       icon = '📚';
-    } else if (q.contains('park') || q.contains('garden')) {
+    } else if (q.contains('park') || q.contains('garden') || q.contains('lake')) {
       category = 'park';
+      searchTerm = 'park';
       icon = '🌿';
-    } else if (q.contains('dinner') || q.contains('food') || q.contains('restaurant')) {
+    } else if (q.contains('dinner') || q.contains('food') || q.contains('restaurant') || q.contains('resturant') || q.contains('restorant') || q.contains('lunch') || q.contains('biryani') || q.contains('pizza') || q.contains('dine')) {
       category = 'restaurant';
-      icon = '🍷';
+      searchTerm = 'restaurant';
+      icon = '🍽️';
+    } else if (q.contains('cinema') || q.contains('cinma') || q.contains('movie') || q.contains('theatre') || q.contains('theater') || q.contains('multiplex')) {
+      category = 'cinema';
+      searchTerm = 'cinema';
+      icon = '🎬';
+    } else if (q.contains('mall') || q.contains('shopping')) {
+      category = 'mall';
+      searchTerm = 'mall';
+      icon = '🛍️';
+    } else if (q.contains('bakery') || q.contains('cake') || q.contains('pastry') || q.contains('ice cream') || q.contains('dessert')) {
+      category = 'bakery';
+      searchTerm = 'bakery';
+      icon = '🧁';
     } else if (q.contains('beach') || q.contains('sea')) {
       category = 'beach';
+      searchTerm = 'beach';
       icon = '🏖️';
-    } else if (q.contains('hotel') || q.contains('stay')) {
+    } else if (q.contains('hotel') || q.contains('stay') || q.contains('resort')) {
       category = 'hotel';
+      searchTerm = 'hotel';
       icon = '🏨';
+    } else if (q.contains('temple') || q.contains('mandir') || q.contains('church') || q.contains('mosque')) {
+      category = 'place_of_worship';
+      icon = '🕌';
+    }
+
+    if (searchTerm.isEmpty) {
+      searchTerm = category;
     }
 
     String radius = '5000';
     if (q.contains('100m') || q.contains('100 meters')) {
-      radius = '200';
-    } else if (q.contains('500m') || q.contains('500 meters')) {
       radius = '500';
+    } else if (q.contains('500m') || q.contains('500 meters')) {
+      radius = '1000';
     } else if (q.contains('1km') || q.contains('1 km')) {
-      radius = '1200';
+      radius = '2000';
     }
 
     return {
       'target': target,
+      'explicitTarget': explicitTarget,
       'category': category,
-      'searchTerm': category,
+      'searchTerm': searchTerm,
       'radiusMeters': radius,
       'icon': icon,
     };
@@ -415,7 +480,7 @@ Output JSON only.
 
 
 
-  /// 2. Real place lookup using OpenStreetMap Overpass (with expanding radius up to 35km)
+  /// 2. Multi-Engine 100% REAL Place Lookup (Photon + Nominatim Bounded + Overpass Multi-Mirror)
   Future<List<Map<String, dynamic>>> _fetchRealPlacesOSM({
     required double lat,
     required double lng,
@@ -424,79 +489,288 @@ Output JSON only.
     required String cityName,
     required int radiusMeters,
   }) async {
-    final places = <Map<String, dynamic>>[];
-    if (lat == 0.0 || lng == 0.0) return places;
+    if (lat == 0.0 || lng == 0.0) return [];
 
-    // Search radii: try local radius first, then widen to 35km if in rural/suburban area
-    final searchRadii = [
-      radiusMeters.clamp(5000, 15000),
-      35000,
+    final maxDistanceKm = math.max(radiusMeters / 1000.0, 25.0).clamp(10.0, 50.0);
+    final effectiveTerm = searchTerm.trim().isNotEmpty ? searchTerm.trim() : category;
+
+    // Run Photon, Nominatim Bounded, and Overpass Multi-Mirror in parallel for instant results
+    final results = await Future.wait([
+      _queryPhotonNearby(lat, lng, effectiveTerm, category, cityName, maxDistanceKm),
+      _queryNominatimBounded(lat, lng, effectiveTerm, category, cityName, maxDistanceKm),
+      _queryOverpassMultiMirror(lat, lng, effectiveTerm, category, cityName, radiusMeters),
+    ]);
+
+    final combined = <Map<String, dynamic>>[];
+    final seenKeys = <String>{};
+
+    // Prioritize Overpass & Nominatim (precise POI addresses) then Photon
+    final orderedLists = [results[1], results[2], results[0]];
+    for (final list in orderedLists) {
+      for (final p in list) {
+        final name = (p['name']?.toString() ?? '').trim();
+        if (name.isEmpty) continue;
+        final pLat = (p['lat'] as num?)?.toDouble() ?? 0.0;
+        final pLng = (p['lng'] as num?)?.toDouble() ?? 0.0;
+        if (pLat == 0.0 || pLng == 0.0) continue;
+
+        final distKm = _calculateHaversineKm(lat, lng, pLat, pLng);
+        if (distKm > maxDistanceKm) continue;
+
+        final normKey = '${name.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '')}_${pLat.toStringAsFixed(3)}_${pLng.toStringAsFixed(3)}';
+        if (seenKeys.contains(normKey)) continue;
+        seenKeys.add(normKey);
+
+        combined.add({
+          ...p,
+          '_distKm': distKm,
+        });
+      }
+    }
+
+    combined.sort((a, b) => ((a['_distKm'] as double?) ?? 999.0).compareTo((b['_distKm'] as double?) ?? 999.0));
+    return combined.take(15).toList();
+  }
+
+  Future<List<Map<String, dynamic>>> _queryPhotonNearby(
+    double lat,
+    double lng,
+    String searchTerm,
+    String category,
+    String cityName,
+    double maxDistanceKm,
+  ) async {
+    final places = <Map<String, dynamic>>[];
+    try {
+      final url = Uri.parse(
+        'https://photon.komoot.io/api/?q=${Uri.encodeComponent(searchTerm)}&lat=$lat&lon=$lng&limit=20',
+      );
+      final res = await http.get(url, headers: {
+        'User-Agent': 'PagesOfUs/1.0 (https://pagesofus.app)',
+        'Accept': 'application/json',
+      }).timeout(const Duration(seconds: 6));
+
+      if (res.statusCode == 200) {
+        final data = jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
+        final features = data['features'] as List<dynamic>? ?? [];
+        for (final f in features) {
+          final props = f['properties'] as Map<String, dynamic>? ?? {};
+          final geom = f['geometry'] as Map<String, dynamic>? ?? {};
+          final coords = geom['coordinates'] as List<dynamic>? ?? [];
+          if (coords.length < 2) continue;
+
+          final pLng = (coords[0] as num?)?.toDouble();
+          final pLat = (coords[1] as num?)?.toDouble();
+          if (pLat == null || pLng == null) continue;
+          if (_calculateHaversineKm(lat, lng, pLat, pLng) > maxDistanceKm) continue;
+
+          final name = props['name']?.toString().trim() ?? '';
+          if (name.isEmpty) continue;
+
+          final street = props['street']?.toString();
+          final locality = props['district']?.toString() ?? props['locality']?.toString() ?? props['city']?.toString() ?? props['county']?.toString();
+          final addrParts = [if (street != null && street.isNotEmpty) street, if (locality != null && locality.isNotEmpty) locality];
+          final addr = addrParts.isNotEmpty ? addrParts.join(', ') : cityName;
+
+          places.add({
+            'id': 'photon_${props['osm_id'] ?? '${pLat}_$pLng'}',
+            'name': name,
+            'type': props['osm_value']?.toString() ?? category,
+            'lat': pLat,
+            'lng': pLng,
+            'rating': null,
+            'reviews': null,
+            'price_level': 'Moderate',
+            'address': addr,
+            'is_open': true,
+            'google_maps_url': 'https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent('$name $addr')}',
+            'is_google_verified': false,
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('[DatePlannerService] Photon query note: $e');
+    }
+    return places;
+  }
+
+  Future<List<Map<String, dynamic>>> _queryNominatimBounded(
+    double lat,
+    double lng,
+    String searchTerm,
+    String category,
+    String cityName,
+    double maxDistanceKm,
+  ) async {
+    final places = <Map<String, dynamic>>[];
+    try {
+      // ~0.25 degrees ~ 27km box around anchor
+      final delta = (maxDistanceKm / 111.0).clamp(0.08, 0.35);
+      final west = (lng - delta).toStringAsFixed(5);
+      final east = (lng + delta).toStringAsFixed(5);
+      final north = (lat + delta).toStringAsFixed(5);
+      final south = (lat - delta).toStringAsFixed(5);
+
+      final url = Uri.parse(
+        'https://nominatim.openstreetmap.org/search?format=json&q=${Uri.encodeComponent(searchTerm)}&viewbox=$west,$north,$east,$south&bounded=1&addressdetails=1&limit=15',
+      );
+      final res = await http.get(url, headers: {
+        'User-Agent': 'PagesOfUs/1.0 (contact@pagesofus.app)',
+        'Accept': 'application/json',
+      }).timeout(const Duration(seconds: 6));
+
+      if (res.statusCode == 200) {
+        final list = jsonDecode(utf8.decode(res.bodyBytes)) as List<dynamic>;
+        for (final item in list) {
+          final m = item as Map<String, dynamic>;
+          final pLat = double.tryParse(m['lat']?.toString() ?? '');
+          final pLng = double.tryParse(m['lon']?.toString() ?? '');
+          if (pLat == null || pLng == null) continue;
+
+          final addrMap = m['address'] as Map<String, dynamic>? ?? {};
+          final rawName = m['name']?.toString().trim() ?? '';
+          final displayName = m['display_name']?.toString() ?? '';
+          final name = rawName.isNotEmpty
+              ? rawName
+              : (displayName.contains(',') ? displayName.split(',').first.trim() : displayName);
+          if (name.isEmpty) continue;
+
+          final road = addrMap['road']?.toString();
+          final area = addrMap['suburb']?.toString() ?? addrMap['neighbourhood']?.toString() ?? addrMap['city']?.toString() ?? addrMap['town']?.toString();
+          final addrParts = [if (road != null && road.isNotEmpty) road, if (area != null && area.isNotEmpty) area];
+          final addr = addrParts.isNotEmpty ? addrParts.join(', ') : cityName;
+
+          places.add({
+            'id': 'nom_${m['osm_id'] ?? '${pLat}_$pLng'}',
+            'name': name,
+            'type': m['type']?.toString() ?? category,
+            'lat': pLat,
+            'lng': pLng,
+            'rating': null,
+            'reviews': null,
+            'price_level': 'Moderate',
+            'address': addr,
+            'is_open': true,
+            'google_maps_url': 'https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent('$name $addr')}',
+            'is_google_verified': false,
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('[DatePlannerService] Nominatim query note: $e');
+    }
+    return places;
+  }
+
+  Future<List<Map<String, dynamic>>> _queryOverpassMultiMirror(
+    double lat,
+    double lng,
+    String searchTerm,
+    String category,
+    String cityName,
+    int radiusMeters,
+  ) async {
+    final places = <Map<String, dynamic>>[];
+    final radius = radiusMeters.clamp(5000, 20000);
+
+    String tagBlock;
+    switch (category.toLowerCase()) {
+      case 'cafe':
+        tagBlock = 'nwr["amenity"~"cafe|coffee_shop|tea|ice_cream"](around:$radius,$lat,$lng);';
+        break;
+      case 'restaurant':
+        tagBlock = 'nwr["amenity"~"restaurant|fast_food|food_court|cafe"](around:$radius,$lat,$lng);';
+        break;
+      case 'cinema':
+        tagBlock = 'nwr["amenity"~"cinema|theatre"](around:$radius,$lat,$lng);';
+        break;
+      case 'park':
+        tagBlock = 'nwr["leisure"~"park|garden|nature_reserve"](around:$radius,$lat,$lng);';
+        break;
+      case 'mall':
+        tagBlock = 'nwr["shop"~"mall|department_store|supermarket"](around:$radius,$lat,$lng);';
+        break;
+      case 'bakery':
+        tagBlock = 'nwr["shop"~"bakery|pastry|confectionery"](around:$radius,$lat,$lng);nwr["amenity"~"ice_cream|cafe"](around:$radius,$lat,$lng);';
+        break;
+      case 'library':
+        tagBlock = 'nwr["amenity"="library"](around:$radius,$lat,$lng);nwr["shop"="books"](around:$radius,$lat,$lng);';
+        break;
+      case 'hotel':
+        tagBlock = 'nwr["tourism"~"hotel|guest_house|resort"](around:$radius,$lat,$lng);';
+        break;
+      case 'beach':
+        tagBlock = 'nwr["natural"="beach"](around:$radius,$lat,$lng);nwr["leisure"="beach_resort"](around:$radius,$lat,$lng);';
+        break;
+      default:
+        tagBlock = '''
+          nwr["amenity"~"cafe|restaurant|fast_food|cinema|library|ice_cream"](around:$radius,$lat,$lng);
+          nwr["leisure"~"park|garden"](around:$radius,$lat,$lng);
+        ''';
+    }
+
+    final safeTerm = searchTerm.replaceAll('"', '').replaceAll("'", '').trim();
+    final nameClause = safeTerm.length >= 3
+        ? 'nwr["name"~"$safeTerm",i](around:$radius,$lat,$lng);'
+        : '';
+
+    final query = '[out:json][timeout:6];($tagBlock $nameClause);out center 20;';
+    const mirrors = [
+      'https://overpass-api.de/api/interpreter',
+      'https://overpass.kumi.systems/api/interpreter',
+      'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
     ];
 
-    for (final radius in searchRadii) {
+    for (final endpoint in mirrors) {
       try {
-        final query = '''
-[out:json][timeout:8];
-(
-  node["amenity"~"cafe|restaurant|fast_food|tea|ice_cream|library"](around:$radius,$lat,$lng);
-  node["leisure"~"park|garden"](around:$radius,$lat,$lng);
-);
-out center 12;
-''';
         final res = await http.post(
-          Uri.parse('https://overpass-api.de/api/interpreter'),
+          Uri.parse(endpoint),
           headers: {
-            'User-Agent': 'PagesOfUs/1.0 (https://pagesofus.app; support@pagesofus.app)',
-            'Accept': 'application/json',
+            'User-Agent': 'PagesOfUs/1.0',
+            'Accept': '*/*',
           },
           body: {'data': query},
-        ).timeout(const Duration(seconds: 8));
+        ).timeout(const Duration(seconds: 6));
 
         if (res.statusCode == 200) {
           final data = jsonDecode(utf8.decode(res.bodyBytes));
           final elements = (data['elements'] as List? ?? []);
           for (final el in elements) {
             final tags = el['tags'] as Map<String, dynamic>? ?? {};
-            final name = tags['name']?.toString()?.trim();
+            final name = tags['name']?.toString().trim();
             if (name == null || name.isEmpty) continue;
 
             final pLat = (el['lat'] ?? el['center']?['lat'] as num?)?.toDouble();
             final pLng = (el['lon'] ?? el['center']?['lon'] as num?)?.toDouble();
             if (pLat == null || pLng == null) continue;
 
-            // Avoid duplicates
-            if (!places.any((p) => p['name'] == name)) {
-              final street = tags['addr:street']?.toString();
-              final city = tags['addr:city']?.toString() ?? tags['addr:suburb']?.toString();
-              final addr = (street != null && city != null)
-                  ? '$street, $city'
-                  : (city ?? street ?? cityName);
+            final street = tags['addr:street']?.toString();
+            final city = tags['addr:city']?.toString() ?? tags['addr:suburb']?.toString();
+            final addr = (street != null && city != null)
+                ? '$street, $city'
+                : (city ?? street ?? cityName);
 
-              places.add({
-                'id': 'osm_${el['id']}',
-                'name': name,
-                'type': tags['amenity'] ?? tags['leisure'] ?? category,
-                'lat': pLat,
-                'lng': pLng,
-                'rating': null, // NO FAKE RATINGS
-                'reviews': null, // NO FAKE REVIEWS
-                'price_level': tags['cuisine'] != null ? 'Moderate' : 'Budget-friendly',
-                'address': addr,
-                'is_open': true,
-                'google_maps_url':
-                    'https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent('$name $addr')}',
-                'is_google_verified': false,
-              });
-            }
+            places.add({
+              'id': 'osm_${el['id']}',
+              'name': name,
+              'type': tags['amenity'] ?? tags['leisure'] ?? tags['shop'] ?? category,
+              'lat': pLat,
+              'lng': pLng,
+              'rating': null,
+              'reviews': null,
+              'price_level': tags['cuisine'] != null ? 'Moderate' : 'Budget-friendly',
+              'address': addr,
+              'is_open': true,
+              'google_maps_url': 'https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent('$name $addr')}',
+              'is_google_verified': false,
+            });
           }
+          if (places.isNotEmpty) break;
         }
       } catch (e) {
-        debugPrint('[DatePlannerService] Overpass query error: $e');
+        debugPrint('[DatePlannerService] Overpass mirror ($endpoint) note: $e');
       }
-
-      if (places.length >= 3) break;
     }
-
     return places;
   }
 
@@ -547,7 +821,7 @@ Output JSON:
           'Authorization': 'Bearer $apiKey',
         },
         body: jsonEncode({
-          'model': 'qwen/qwen3.8-27b',
+          'model': 'llama-3.1-8b-instant',
           'temperature': 0.2,
           'max_tokens': 120,
           'messages': [
@@ -556,7 +830,7 @@ Output JSON:
           ],
           'response_format': {'type': 'json_object'},
         }),
-      ).timeout(const Duration(seconds: 5));
+      ).timeout(const Duration(seconds: 3));
 
       if (res.statusCode == 200) {
         final data = jsonDecode(utf8.decode(res.bodyBytes));

@@ -111,6 +111,8 @@ class SupabaseService {
   static Function(Map<String, dynamic> data)? _onPlaylistsUpdate;
   static Function(Map<String, dynamic> data)? _onMusicUpdate;
   static Function(Map<String, dynamic> data)? _onProfileUpdate;
+  static Function(Map<String, dynamic> data)? _onBucketListUpdate;
+  static Function(Map<String, dynamic> data)? _onBatteryStatus;
 
   static void setThemeUpdateListener(Function(Map<String, dynamic> data)? callback) {
     _onThemeUpdate = callback;
@@ -126,6 +128,14 @@ class SupabaseService {
 
   static void setProfileUpdateListener(Function(Map<String, dynamic> data)? callback) {
     _onProfileUpdate = callback;
+  }
+
+  static void setBucketListListener(Function(Map<String, dynamic> data)? callback) {
+    _onBucketListUpdate = callback;
+  }
+
+  static void setBatteryStatusListener(Function(Map<String, dynamic> data)? callback) {
+    _onBatteryStatus = callback;
   }
 
   static void addLocationListener(Function(Map<String, dynamic> data) callback) {
@@ -266,6 +276,16 @@ class SupabaseService {
     ch.onBroadcast(
       event: 'PROFILE_UPDATE',
       callback: (payload) => _onProfileUpdate?.call(payload),
+    );
+
+    ch.onBroadcast(
+      event: 'BUCKET_LIST_UPDATE',
+      callback: (payload) => _onBucketListUpdate?.call(payload),
+    );
+
+    ch.onBroadcast(
+      event: 'BATTERY_STATUS',
+      callback: (payload) => _onBatteryStatus?.call(payload),
     );
 
     ch.subscribe((status, [error]) {

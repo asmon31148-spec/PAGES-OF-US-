@@ -1,12 +1,15 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/liquid_glass/liquid_glass_card.dart';
 import '../../../core/widgets/liquid_glass/liquid_glass_theme.dart';
 import '../../../core/services/date_planner_service.dart';
+import '../../../providers/world_provider.dart';
+import '../../../providers/auth_provider.dart';
 
 /// Interactive Apple Liquid Glass Date Planner AI Card.
 /// Meets Part C specifications:
@@ -130,8 +133,8 @@ class _DatePlannerCardState extends State<DatePlannerCard> {
   Widget build(BuildContext context) {
     final isDark = widget.isDark;
 
-    // Disabled state if tether is turned OFF
-    if (!widget.isTetherOn) {
+    // Disabled state only if tether is OFF AND user has no live coordinates yet
+    if (!widget.isTetherOn && widget.userLat == 0.0) {
       return Container(
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         padding: const EdgeInsets.all(18),
@@ -594,43 +597,121 @@ class _DatePlannerCardState extends State<DatePlannerCard> {
                     ),
                   ),
 
-                // Map Pin Redirect Button
-                GestureDetector(
-                  onTap: () {
-                    HapticFeedback.lightImpact();
-                    if (widget.onPlaceSelected != null) {
-                      widget.onPlaceSelected!(place.lat, place.lng, place.name, place.category);
-                    } else {
-                      _openGoogleMaps(
-                        place.googleMapsUrl,
-                        lat: place.lat,
-                        lng: place.lng,
-                        name: place.name,
-                      );
-                    }
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: AppColors.terra.withOpacity(0.14),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          'View on Map',
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.terra,
+                // Action Pills: Save to Bucket List + View on Map
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Builder(
+                      builder: (ctx) {
+                        final worldProv = ctx.watch<WorldProvider>();
+                        final authProv = ctx.read<AuthProvider>();
+                        final saved = worldProv.isInBucketList(place.name, place.lat, place.lng);
+                        return GestureDetector(
+                          onTap: () async {
+                            HapticFeedback.lightImpact();
+                            final spaceId = authProv.space?.id ?? '';
+                            final user = authProv.user;
+                            if (spaceId.isEmpty || user == null) return;
+                            if (!saved) {
+                              await worldProv.addToBucketList(
+                                spaceId: spaceId,
+                                name: place.name,
+                                category: place.category,
+                                icon: place.categoryIcon,
+                                address: place.address,
+                                lat: place.lat,
+                                lng: place.lng,
+                                googleMapsUrl: place.googleMapsUrl,
+                                addedById: user.id,
+                                addedByNickname: user.nickname,
+                              );
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('Saved "${place.name}" to Date Bucket List ⭐'),
+                                    backgroundColor: AppColors.sage,
+                                    duration: const Duration(seconds: 2),
+                                  ),
+                                );
+                              }
+                            }
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            margin: const EdgeInsets.only(right: 6),
+                            decoration: BoxDecoration(
+                              color: saved
+                                  ? AppColors.sage.withOpacity(0.18)
+                                  : Colors.amber.withOpacity(0.14),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: saved
+                                    ? AppColors.sage.withOpacity(0.5)
+                                    : Colors.amber.withOpacity(0.4),
+                                width: 0.8,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  saved ? Icons.check_rounded : Icons.star_rounded,
+                                  size: 11,
+                                  color: saved ? AppColors.sageLight : Colors.amber,
+                                ),
+                                const SizedBox(width: 3),
+                                Text(
+                                  saved ? 'Saved' : 'Bucket',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: saved ? AppColors.sageLight : Colors.amber.shade400,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                        SizedBox(width: 3),
-                        Icon(Icons.map_rounded, size: 11, color: AppColors.terra),
-                      ],
+                        );
+                      },
                     ),
-                  ),
+                    GestureDetector(
+                      onTap: () {
+                        HapticFeedback.lightImpact();
+                        if (widget.onPlaceSelected != null) {
+                          widget.onPlaceSelected!(place.lat, place.lng, place.name, place.category);
+                        } else {
+                          _openGoogleMaps(
+                            place.googleMapsUrl,
+                            lat: place.lat,
+                            lng: place.lng,
+                            name: place.name,
+                          );
+                        }
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: AppColors.terra.withOpacity(0.14),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              'Map',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.terra,
+                              ),
+                            ),
+                            SizedBox(width: 3),
+                            Icon(Icons.map_rounded, size: 11, color: AppColors.terra),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
