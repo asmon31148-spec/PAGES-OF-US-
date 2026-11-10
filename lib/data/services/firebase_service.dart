@@ -242,7 +242,7 @@ class FirebaseService {
     try {
       final q = await firestore
           .collection('users')
-          .where('email', '==', email.trim())
+          .where('email', isEqualTo: email.trim())
           .limit(1)
           .get();
       if (q.docs.isNotEmpty) {
