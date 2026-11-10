@@ -106,6 +106,60 @@ class AppTopBar extends StatelessWidget {
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
+              // Partner Live Battery & Charging Pill (100% Real Hardware Telemetry)
+              if (authProvider.partner != null && stageProvider.partnerBattery != null) ...[
+                Builder(
+                  builder: (context) {
+                    final bat = stageProvider.partnerBattery!;
+                    final isLow = bat.level <= 15 && !bat.isCharging;
+                    final accent = bat.isCharging
+                        ? const Color(0xFF34D399)
+                        : (isLow ? const Color(0xFFF87171) : AppColors.sageLight);
+                    return Tooltip(
+                      message: '${authProvider.partner!.nickname}\'s phone battery: ${bat.level}%${bat.isCharging ? ' (Charging)' : ''}',
+                      child: Container(
+                        height: 28,
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        margin: const EdgeInsets.only(right: 6),
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? Colors.white.withOpacity(0.07)
+                              : Colors.white.withOpacity(0.55),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: accent.withOpacity(0.45),
+                            width: 1,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              bat.isCharging
+                                  ? Icons.battery_charging_full_rounded
+                                  : (isLow ? Icons.battery_alert_rounded : Icons.battery_std_rounded),
+                              size: 13.5,
+                              color: accent,
+                            ),
+                            const SizedBox(width: 2),
+                            Text(
+                              '${bat.level}%',
+                              style: TextStyle(
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.w700,
+                                color: forceDark
+                                    ? AppColors.romanceInk
+                                    : (isDark ? AppColors.darkInk : AppColors.lightInk),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ],
+
               // Music & Atmosphere Mute / Unmute Quick Toggle Button
               if (showMusic || audioProvider.isPlaying) ...[
                 GestureDetector(

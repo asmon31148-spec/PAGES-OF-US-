@@ -7,6 +7,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/liquid_glass/liquid_glass_background.dart';
 import '../../../core/widgets/liquid_glass/liquid_glass_theme.dart';
@@ -17,6 +18,7 @@ import '../../stage/widgets/app_top_bar.dart';
 import '../../stage/widgets/profile_modal.dart';
 import '../../../data/models/user_location_model.dart';
 import '../../../data/models/pinned_place.dart';
+import '../../../data/models/bucket_place.dart';
 import '../widgets/journey_stats_card.dart';
 import '../widgets/date_planner_card.dart';
 import '../../music/widgets/glass/glass_ambient_background.dart';
@@ -487,6 +489,13 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
                         });
                         _mapController.move(LatLng(pLat, pLng), 15.5);
                       },
+                    ),
+
+                    // 9. Shared Date Bucket List
+                    _buildBucketListCard(
+                      isDark: isDark,
+                      worldProvider: worldProvider,
+                      spaceId: spaceId,
                     ),
                   ],
                 ),
@@ -2080,6 +2089,18 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
                           ),
                           itemBuilder: (context, idx) {
                             final item = results[idx];
+                            final lat = double.tryParse(item['lat']?.toString() ?? '') ?? 0.0;
+                            final lon = double.tryParse(item['lon']?.toString() ?? '') ?? 0.0;
+                            final placeName = (item['name'] ?? item['display_name'] ?? 'Place').toString();
+                            final displayName = (item['display_name'] ?? placeName).toString();
+                            final distKm = item['distance_km'] as double?;
+                            final distLabel = distKm != null
+                                ? (distKm < 1.0 ? '${(distKm * 1000).round()} m away' : '${distKm.toStringAsFixed(1)} km away')
+                                : null;
+                            final worldProv = context.watch<WorldProvider>();
+                            final authProv = context.read<AuthProvider>();
+                            final saved = lat != 0.0 && worldProv.isInBucketList(placeName, lat, lon);
+
                             return ListTile(
                               contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                               leading: Container(
@@ -2091,7 +2112,7 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
                                 child: const Icon(Icons.location_on, size: 18, color: AppColors.terra),
                               ),
                               title: Text(
-                                item['display_name'] ?? item['name'] ?? '',
+                                displayName,
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
@@ -2100,15 +2121,56 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
                                   color: isDark ? AppColors.darkInk : AppColors.lightInk,
                                 ),
                               ),
+                              subtitle: distLabel != null
+                                  ? Text(
+                                      distLabel,
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: isDark ? AppColors.darkSoft : AppColors.lightSoft,
+                                      ),
+                                    )
+                                  : null,
+                              trailing: lat != 0.0
+                                  ? IconButton(
+                                      tooltip: saved ? 'In Bucket List' : 'Save to Date Bucket List',
+                                      icon: Icon(
+                                        saved ? Icons.star_rounded : Icons.star_border_rounded,
+                                        color: saved ? Colors.amber : AppColors.terra,
+                                        size: 22,
+                                      ),
+                                      onPressed: () async {
+                                        HapticFeedback.lightImpact();
+                                        final spaceId = authProv.space?.id ?? '';
+                                        final user = authProv.user;
+                                        if (spaceId.isEmpty || user == null || saved) return;
+                                        await worldProv.addToBucketList(
+                                          spaceId: spaceId,
+                                          name: placeName,
+                                          category: (item['type'] ?? 'place').toString(),
+                                          icon: '⭐',
+                                          address: displayName,
+                                          lat: lat,
+                                          lng: lon,
+                                          googleMapsUrl: 'https://www.google.com/maps/search/?api=1&query=$lat,$lon',
+                                          addedById: user.id,
+                                          addedByNickname: user.nickname,
+                                        );
+                                        setModalState(() {});
+                                      },
+                                    )
+                                  : null,
                               onTap: () {
-                                final lat = double.tryParse(item['lat']?.toString() ?? '');
-                                final lon = double.tryParse(item['lon']?.toString() ?? '');
-                                if (lat != null && lon != null) {
-                                  _mapController.move(LatLng(lat, lon), 14.5);
+                                if (lat != 0.0 && lon != 0.0) {
+                                  setState(() {
+                                    _selectedDatePlacePos = LatLng(lat, lon);
+                                    _selectedDatePlaceName = placeName;
+                                    _selectedDatePlaceCategory = (item['type'] ?? 'place').toString();
+                                  });
+                                  _mapController.move(LatLng(lat, lon), 15.0);
                                   Navigator.pop(ctx);
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
-                                      content: Text('Centered map on ${item['name'] ?? 'location'}'),
+                                      content: Text('Centered map on $placeName'),
                                       duration: const Duration(seconds: 2),
                                       behavior: SnackBarBehavior.floating,
                                     ),
@@ -2178,6 +2240,253 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
     // General case: round to nearest whole-hour zone (15° per hour), clamped to valid range
     final tzOffsetHours = (lng / 15.0).round().clamp(-12, 14);
     return Duration(hours: tzOffsetHours);
+  }
+
+  Widget _buildBucketListCard({
+    required bool isDark,
+    required WorldProvider worldProvider,
+    required String spaceId,
+  }) {
+    final items = worldProvider.bucketList;
+    final visitedCount = items.where((b) => b.isVisited).length;
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF141722).withOpacity(0.75) : Colors.white.withOpacity(0.65),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: isDark ? Colors.white.withOpacity(0.12) : Colors.white.withOpacity(0.75),
+          width: 1.0,
+        ),
+        boxShadow: LiquidGlassTheme.cardShadow(isDark),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 34,
+                    height: 34,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.amber.withOpacity(0.16),
+                    ),
+                    child: const Icon(Icons.star_rounded, size: 18, color: Colors.amber),
+                  ),
+                  const SizedBox(width: 10),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Our Date Bucket List',
+                        style: TextStyle(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.bold,
+                          color: isDark ? AppColors.darkInk : AppColors.lightInk,
+                        ),
+                      ),
+                      Text(
+                        items.isEmpty
+                            ? 'Shared places you want to visit together'
+                            : '${items.length} saved • $visitedCount visited ✓',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: isDark ? AppColors.darkSoft : AppColors.lightSoft,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ],
+          ),
+          if (items.isEmpty) ...[
+            const SizedBox(height: 12),
+            Text(
+              'Search any cafe, park, or date spot above and tap ⭐ Bucket to save it permanently for you two.',
+              style: TextStyle(
+                fontSize: 11.5,
+                height: 1.4,
+                color: isDark ? AppColors.darkSoft : AppColors.lightSoft,
+              ),
+            ),
+          ] else ...[
+            const SizedBox(height: 12),
+            ...items.map((BucketPlace item) {
+              return Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.all(11),
+                decoration: BoxDecoration(
+                  color: item.isVisited
+                      ? AppColors.sage.withOpacity(isDark ? 0.14 : 0.10)
+                      : (isDark ? Colors.white.withOpacity(0.04) : Colors.white.withOpacity(0.55)),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: item.isVisited
+                        ? AppColors.sage.withOpacity(0.45)
+                        : (isDark ? Colors.white.withOpacity(0.10) : Colors.black.withOpacity(0.06)),
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(item.icon, style: const TextStyle(fontSize: 16)),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                item.name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.bold,
+                                  decoration: item.isVisited ? TextDecoration.lineThrough : null,
+                                  color: isDark ? AppColors.darkInk : AppColors.lightInk,
+                                ),
+                              ),
+                              if (item.address.isNotEmpty)
+                                Text(
+                                  item.address,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 10.5,
+                                    color: isDark ? AppColors.darkSoft : AppColors.lightSoft,
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.delete_outline_rounded, size: 17),
+                          color: isDark ? AppColors.darkSoft : AppColors.lightSoft,
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                          onPressed: () {
+                            HapticFeedback.lightImpact();
+                            worldProvider.removeFromBucketList(spaceId: spaceId, placeId: item.id);
+                          },
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        GestureDetector(
+                          onTap: () {
+                            HapticFeedback.selectionClick();
+                            worldProvider.toggleBucketVisited(spaceId: spaceId, placeId: item.id);
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: item.isVisited ? AppColors.sage : Colors.white.withOpacity(0.08),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: item.isVisited ? AppColors.sage : (isDark ? Colors.white24 : Colors.black12),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  item.isVisited ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
+                                  size: 12,
+                                  color: item.isVisited ? Colors.white : (isDark ? AppColors.darkSoft : AppColors.lightSoft),
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  item.isVisited ? 'Visited ✓' : 'Mark Visited',
+                                  style: TextStyle(
+                                    fontSize: 10.5,
+                                    fontWeight: FontWeight.w600,
+                                    color: item.isVisited ? Colors.white : (isDark ? AppColors.darkInk : AppColors.lightInk),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        GestureDetector(
+                          onTap: () {
+                            HapticFeedback.lightImpact();
+                            setState(() {
+                              _selectedDatePlacePos = LatLng(item.lat, item.lng);
+                              _selectedDatePlaceName = item.name;
+                              _selectedDatePlaceCategory = item.category;
+                              _isFullScreenMap = true;
+                            });
+                            _mapController.move(LatLng(item.lat, item.lng), 15.5);
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: AppColors.terra.withOpacity(0.14),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.pin_drop_rounded, size: 12, color: AppColors.terra),
+                                SizedBox(width: 3),
+                                Text(
+                                  'Pin on Map',
+                                  style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600, color: AppColors.terra),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        GestureDetector(
+                          onTap: () async {
+                            final uri = Uri.parse(
+                              item.googleMapsUrl.isNotEmpty
+                                  ? item.googleMapsUrl
+                                  : 'https://www.google.com/maps/search/?api=1&query=${item.lat},${item.lng}',
+                            );
+                            try {
+                              await launchUrl(uri, mode: LaunchMode.externalApplication);
+                            } catch (_) {}
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: isDark ? Colors.white.withOpacity(0.07) : Colors.black.withOpacity(0.05),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Text(
+                              'Maps ↗',
+                              style: TextStyle(
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.w600,
+                                color: isDark ? AppColors.darkInk : AppColors.lightInk,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              );
+            }),
+          ],
+        ],
+      ),
+    );
   }
 }
 

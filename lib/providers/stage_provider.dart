@@ -13,6 +13,7 @@ import '../data/services/supabase_service.dart';
 import '../core/services/local_cache_service.dart';
 import '../core/services/widget_sync_service.dart';
 import '../core/services/notification_service.dart';
+import '../core/services/device_status_service.dart';
 import 'auth_provider.dart';
 
 class TouchPoint {
@@ -68,6 +69,11 @@ class StageProvider extends ChangeNotifier {
   bool _partnerGentleMode = false;
   bool get isGentleMode => _isGentleMode;
   bool get partnerGentleMode => _partnerGentleMode;
+
+  // Live Partner Battery Telemetry (100% real hardware readings)
+  DeviceBatteryStatus? _partnerBattery;
+  Timer? _batterySyncTimer;
+  DeviceBatteryStatus? get partnerBattery => _partnerBattery;
 
   // Zero-Pressure Heartbeat Pulse (isolated Notifiers for buttery 60 FPS)
   final ValueNotifier<int> heartbeatPulseNotifier = ValueNotifier<int>(0);
@@ -150,6 +156,9 @@ class StageProvider extends ChangeNotifier {
     _gentleModeSub?.cancel();
     _drawingSaveDebounce?.cancel();
     _partnerTouchDecayTimer?.cancel();
+    _batterySyncTimer?.cancel();
+    _batterySyncTimer = null;
+    _partnerBattery = null;
     _anniversarySub = null;
     _moodSub = null;
     _noteSub = null;
@@ -221,10 +230,41 @@ class StageProvider extends ChangeNotifier {
       _partnerMood = null;
       _partnerTouchPoint = null;
       _partnerDailyTouches = 0;
+      _partnerBattery = null;
       _pinnedNotes.removeWhere((k, _) => k != userId);
       LocalCacheService.setCachedPartner(null);
       LocalCacheService.setCachedPartnerMood(null);
     }
+
+    // 0. Live Partner Hardware Battery Telemetry (100% real Android BatteryManager)
+    SupabaseService.setBatteryStatusListener((data) {
+      final sender = data['senderId']?.toString();
+      if (sender != null && sender != userId && (partnerId == null || partnerId.isEmpty || sender == partnerId)) {
+        final parsed = DeviceBatteryStatus.fromJson(data);
+        if (parsed.level >= 0 && parsed.level <= 100) {
+          _partnerBattery = parsed;
+          notifyListeners();
+        }
+      }
+    });
+    if (partnerId != null && partnerId.isNotEmpty) {
+      SupabaseService.getAppContent('battery_${spaceId}_$partnerId').then((data) {
+        if (data != null) {
+          final parsed = DeviceBatteryStatus.fromJson(data);
+          if (parsed.level >= 0 && parsed.level <= 100) {
+            _partnerBattery = parsed;
+            notifyListeners();
+          }
+        }
+      });
+    }
+    _syncMyBattery(spaceId, userId);
+    _batterySyncTimer?.cancel();
+    _batterySyncTimer = Timer.periodic(const Duration(seconds: 90), (_) {
+      if (_activeSpaceId == spaceId && _activeUserId == userId) {
+        _syncMyBattery(spaceId, userId);
+      }
+    });
 
     // 1. Listen to Anniversary
     _anniversarySub?.cancel();
@@ -1603,8 +1643,25 @@ class StageProvider extends ChangeNotifier {
     } catch (_) {}
   }
 
+  Future<void> _syncMyBattery(String spaceId, String userId) async {
+    if (spaceId.isEmpty || userId.isEmpty) return;
+    final status = await DeviceStatusService.getBatteryStatus();
+    if (status == null) return;
+    final payload = {
+      ...status.toJson(),
+      'senderId': userId,
+    };
+    await SupabaseService.upsertAppContent('battery_${spaceId}_$userId', payload);
+    await SupabaseService.broadcastEvent(
+      spaceId: spaceId,
+      eventType: 'BATTERY_STATUS',
+      payload: payload,
+    );
+  }
+
   @override
   void dispose() {
+    _batterySyncTimer?.cancel();
     _partnerTouchDecayTimer?.cancel();
     _drawingSaveDebounce?.cancel();
     _anniversarySub?.cancel();

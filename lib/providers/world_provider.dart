@@ -8,6 +8,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../data/models/user_location_model.dart';
 import '../data/models/pinned_place.dart';
+import '../data/models/bucket_place.dart';
 import '../data/models/stay_point_model.dart';
 import '../data/services/firebase_service.dart';
 import '../data/services/supabase_service.dart';
@@ -51,6 +52,7 @@ class JourneyPoint {
 class WorldProvider extends ChangeNotifier {
   final Map<String, UserLocationData> _locations = {};
   List<PinnedPlace> _pinnedPlaces = [];
+  List<BucketPlace> _bucketList = [];
   bool _isSharing = true;
   bool _isLoading = false;
   String _gpsStatus = 'Standby';
@@ -99,6 +101,14 @@ class WorldProvider extends ChangeNotifier {
   String? get partnerId => _partnerId;
   bool _isTrackingInitializing = false;
   bool get isLiveTrackingActive => _positionStreamSub != null || _isTrackingInitializing;
+  List<BucketPlace> get bucketList => List.unmodifiable(_bucketList);
+
+  bool isInBucketList(String name, double lat, double lng) {
+    final normName = name.trim().toLowerCase();
+    return _bucketList.any((b) =>
+        b.name.trim().toLowerCase() == normName ||
+        ((b.lat - lat).abs() < 0.0005 && (b.lng - lng).abs() < 0.0005));
+  }
 
   UserLocationData? get myLocation {
     if (_currentUserId != null && _locations.containsKey(_currentUserId)) {
@@ -153,6 +163,7 @@ class WorldProvider extends ChangeNotifier {
 
     _locations.clear();
     _pinnedPlaces.clear();
+    _bucketList.clear();
     _myJourneyLog.clear();
     _partnerJourneyLog.clear();
     _geocodeCache.clear();
@@ -939,6 +950,37 @@ class WorldProvider extends ChangeNotifier {
         notifyListeners();
       }
     } catch (_) {}
+
+    // Fetch Shared Date Bucket List from Supabase app_content
+    try {
+      final bucketRes = await supabase
+          .from('app_content')
+          .select('content')
+          .eq('id', 'bucket_list_$spaceId')
+          .maybeSingle();
+
+      if (bucketRes != null && bucketRes['content'] != null && bucketRes['content'] is Map) {
+        final content = Map<String, dynamic>.from(bucketRes['content'] as Map);
+        final list = content['items'] as List<dynamic>?;
+        if (list != null) {
+          _bucketList = list
+              .map((e) => BucketPlace.fromJson(Map<String, dynamic>.from(e as Map)))
+              .toList();
+          notifyListeners();
+        }
+      }
+    } catch (_) {}
+
+    // Realtime listener for partner's Bucket List changes
+    SupabaseService.setBucketListListener((data) {
+      final list = data['items'] as List<dynamic>?;
+      if (list != null) {
+        _bucketList = list
+            .map((e) => BucketPlace.fromJson(Map<String, dynamic>.from(e as Map)))
+            .toList();
+        notifyListeners();
+      }
+    });
   }
 
   void _checkPartnerGeofence(UserLocationData pLoc) {
@@ -1706,12 +1748,92 @@ class WorldProvider extends ChangeNotifier {
     } catch (_) {}
   }
 
+  // ── Shared Date Bucket List ────────────────────────────────────────────────
+  Future<void> _persistBucketList(String spaceId) async {
+    if (spaceId.isEmpty) return;
+    final itemsJson = _bucketList.map((e) => e.toJson()).toList();
+    try {
+      await SupabaseService.upsertAppContent('bucket_list_$spaceId', {
+        'items': itemsJson,
+        'updated_at': DateTime.now().toIso8601String(),
+      });
+      await SupabaseService.broadcastEvent(
+        spaceId: spaceId,
+        eventType: 'BUCKET_LIST_UPDATE',
+        payload: {'items': itemsJson},
+      );
+    } catch (_) {}
+  }
+
+  Future<void> addToBucketList({
+    required String spaceId,
+    required String name,
+    required String category,
+    required String icon,
+    required String address,
+    required double lat,
+    required double lng,
+    required String googleMapsUrl,
+    required String addedById,
+    required String addedByNickname,
+  }) async {
+    if (spaceId.isEmpty || name.trim().isEmpty) return;
+    if (isInBucketList(name, lat, lng)) return;
+
+    final item = BucketPlace(
+      id: 'bkt_${DateTime.now().millisecondsSinceEpoch}',
+      name: name.trim(),
+      category: category,
+      icon: icon,
+      address: address,
+      lat: lat,
+      lng: lng,
+      googleMapsUrl: googleMapsUrl.isNotEmpty
+          ? googleMapsUrl
+          : 'https://www.google.com/maps/search/?api=1&query=$lat,$lng',
+      addedById: addedById,
+      addedByNickname: addedByNickname,
+      addedAt: DateTime.now().toIso8601String(),
+    );
+
+    _bucketList.insert(0, item);
+    notifyListeners();
+    await _persistBucketList(spaceId);
+  }
+
+  Future<void> toggleBucketVisited({
+    required String spaceId,
+    required String placeId,
+    String? note,
+  }) async {
+    final idx = _bucketList.indexWhere((b) => b.id == placeId);
+    if (idx == -1) return;
+    final current = _bucketList[idx];
+    final nextVisited = !current.isVisited;
+    _bucketList[idx] = current.copyWith(
+      isVisited: nextVisited,
+      visitedAt: nextVisited ? DateTime.now().toIso8601String() : null,
+      note: note ?? current.note,
+    );
+    notifyListeners();
+    await _persistBucketList(spaceId);
+  }
+
+  Future<void> removeFromBucketList({
+    required String spaceId,
+    required String placeId,
+  }) async {
+    _bucketList.removeWhere((b) => b.id == placeId);
+    notifyListeners();
+    await _persistBucketList(spaceId);
+  }
+
   Future<List<Map<String, dynamic>>> searchPlaces(String query) async {
-    final clean = query.trim();
-    if (clean.isEmpty) return [];
+    final rawClean = query.trim();
+    if (rawClean.isEmpty) return [];
 
     // Check if user entered direct lat, lng coordinates e.g. "28.6139, 77.2090"
-    final coordMatch = RegExp(r'^([-+]?[0-9]*\.?[0-9]+)[\s,]+([-+]?[0-9]*\.?[0-9]+)$').firstMatch(clean);
+    final coordMatch = RegExp(r'^([-+]?[0-9]*\.?[0-9]+)[\s,]+([-+]?[0-9]*\.?[0-9]+)$').firstMatch(rawClean);
     if (coordMatch != null) {
       final lat = coordMatch.group(1);
       final lon = coordMatch.group(2);
@@ -1725,62 +1847,151 @@ class WorldProvider extends ChangeNotifier {
       ];
     }
 
-    // 1. Try Photon first (instant geocoding worldwide, zero rate limits)
-    try {
-      final photonUrl = Uri.parse(
-        'https://photon.komoot.io/api/?q=${Uri.encodeComponent(clean)}&limit=6',
-      );
-      final res = await http.get(photonUrl).timeout(const Duration(seconds: 4));
-      if (res.statusCode == 200) {
-        final data = jsonDecode(res.body) as Map<String, dynamic>;
-        final features = data['features'] as List<dynamic>?;
-        if (features != null && features.isNotEmpty) {
-          final results = <Map<String, dynamic>>[];
+    // Normalize "nearby me" / "near me" & common typos so OpenStreetMap APIs actually find nearby POIs
+    final lower = rawClean.toLowerCase();
+    final wantsNearby = lower.contains('nearby') ||
+        lower.contains('near me') ||
+        lower.contains('around me') ||
+        lower.contains('close to me') ||
+        lower.contains('close by') ||
+        lower.contains('near here');
+
+    String clean = rawClean
+        .replaceAll(
+          RegExp(
+            r'\b(nearby me|near me|around me|close to me|close by|near here|nearby)\b',
+            caseSensitive: false,
+          ),
+          '',
+        )
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+    if (clean.toLowerCase() == 'caffe' || clean.toLowerCase() == 'coffeeshop') {
+      clean = 'cafe';
+    } else if (clean.toLowerCase() == 'resturant' || clean.toLowerCase() == 'restorant') {
+      clean = 'restaurant';
+    } else if (clean.toLowerCase() == 'cinma') {
+      clean = 'cinema';
+    }
+    if (clean.isEmpty) clean = rawClean;
+
+    final myLoc = myLocation;
+    final hasLoc = myLoc != null && (myLoc.lat != 0.0 || myLoc.lng != 0.0);
+    final results = <Map<String, dynamic>>[];
+    final seen = <String>{};
+
+    void addCandidate({
+      required String name,
+      required String displayName,
+      required double lat,
+      required double lng,
+      String? type,
+    }) {
+      final key = '${name.toLowerCase()}_${lat.toStringAsFixed(3)}_${lng.toStringAsFixed(3)}';
+      if (seen.contains(key)) return;
+      seen.add(key);
+
+      final distKm = hasLoc ? calculateDistanceKm(myLoc.lat, myLoc.lng, lat, lng) : null;
+      results.add({
+        'display_name': displayName.isNotEmpty ? displayName : name,
+        'lat': lat.toString(),
+        'lon': lng.toString(),
+        'name': name.isNotEmpty ? name : 'Place',
+        if (type != null) 'type': type,
+        if (distKm != null) 'distance_km': distKm,
+      });
+    }
+
+    // Run Photon (with live coordinate bias!) + Nominatim bounded/global in parallel
+    final futures = <Future<void>>[];
+
+    futures.add(() async {
+      try {
+        final locBias = hasLoc ? '&lat=${myLoc.lat}&lon=${myLoc.lng}' : '';
+        final photonUrl = Uri.parse(
+          'https://photon.komoot.io/api/?q=${Uri.encodeComponent(clean)}$locBias&limit=12',
+        );
+        final res = await http.get(photonUrl, headers: {'Accept': 'application/json'}).timeout(const Duration(seconds: 5));
+        if (res.statusCode == 200) {
+          final data = jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
+          final features = data['features'] as List<dynamic>? ?? [];
           for (final f in features) {
             final props = f['properties'] as Map<String, dynamic>?;
-            final geom = f['geometry'] as Map<String, dynamic>?;
-            final coords = geom?['coordinates'] as List<dynamic>?;
+            final coords = f['geometry']?['coordinates'] as List<dynamic>?;
             if (props != null && coords != null && coords.length >= 2) {
-              final lon = coords[0].toString();
-              final lat = coords[1].toString();
+              final lon = (coords[0] as num).toDouble();
+              final lat = (coords[1] as num).toDouble();
+              if (wantsNearby && hasLoc && calculateDistanceKm(myLoc.lat, myLoc.lng, lat, lon) > 45.0) {
+                continue;
+              }
               final name = (props['name'] ?? '').toString();
+              final street = (props['street'] ?? '').toString();
               final city = (props['city'] ?? props['county'] ?? props['district'] ?? '').toString();
               final state = (props['state'] ?? '').toString();
               final country = (props['country'] ?? '').toString();
 
-              final parts = [name, city, state, country]
+              final parts = [name, street, city, state, country]
                   .where((s) => s.isNotEmpty)
                   .toSet()
                   .toList();
-              final displayName = parts.join(', ');
-
-              results.add({
-                'display_name': displayName.isNotEmpty ? displayName : name,
-                'lat': lat,
-                'lon': lon,
-                'name': name.isNotEmpty ? name : (city.isNotEmpty ? city : 'Place'),
-              });
+              addCandidate(
+                name: name.isNotEmpty ? name : (city.isNotEmpty ? city : clean),
+                displayName: parts.join(', '),
+                lat: lat,
+                lng: lon,
+                type: props['osm_value']?.toString(),
+              );
             }
           }
-          if (results.isNotEmpty) return results;
         }
-      }
-    } catch (_) {}
+      } catch (_) {}
+    }());
 
-    // 2. Fallback to Nominatim OpenStreetMap
-    try {
-      final url = Uri.parse(
-        'https://nominatim.openstreetmap.org/search?format=json&q=${Uri.encodeComponent(clean)}&limit=6',
-      );
-      final res = await http.get(url, headers: {
-        'User-Agent': 'PagesOfUsApp/1.0 (contact@pagesofus.app)',
-      }).timeout(const Duration(seconds: 4));
-      if (res.statusCode == 200) {
-        final list = jsonDecode(res.body) as List<dynamic>;
-        return list.map((e) => Map<String, dynamic>.from(e as Map)).toList();
-      }
-    } catch (_) {}
+    futures.add(() async {
+      try {
+        String nomQueryUrl = 'https://nominatim.openstreetmap.org/search?format=json&q=${Uri.encodeComponent(clean)}&addressdetails=1&limit=10';
+        if (hasLoc && wantsNearby) {
+          const delta = 0.25;
+          final west = (myLoc.lng - delta).toStringAsFixed(5);
+          final east = (myLoc.lng + delta).toStringAsFixed(5);
+          final north = (myLoc.lat + delta).toStringAsFixed(5);
+          final south = (myLoc.lat - delta).toStringAsFixed(5);
+          nomQueryUrl += '&viewbox=$west,$north,$east,$south&bounded=1';
+        }
+        final res = await http.get(
+          Uri.parse(nomQueryUrl),
+          headers: {'User-Agent': 'PagesOfUsApp/1.0 (contact@pagesofus.app)'},
+        ).timeout(const Duration(seconds: 5));
+        if (res.statusCode == 200) {
+          final list = jsonDecode(utf8.decode(res.bodyBytes)) as List<dynamic>;
+          for (final item in list) {
+            final m = Map<String, dynamic>.from(item as Map);
+            final lat = double.tryParse(m['lat']?.toString() ?? '');
+            final lon = double.tryParse(m['lon']?.toString() ?? '');
+            if (lat == null || lon == null) continue;
+            final display = m['display_name']?.toString() ?? '';
+            final rawName = (m['name']?.toString() ?? '').trim();
+            final name = rawName.isNotEmpty
+                ? rawName
+                : (display.contains(',') ? display.split(',').first.trim() : display);
+            addCandidate(
+              name: name,
+              displayName: display,
+              lat: lat,
+              lng: lon,
+              type: m['type']?.toString(),
+            );
+          }
+        }
+      } catch (_) {}
+    }());
 
-    return [];
+    await Future.wait(futures);
+
+    if (hasLoc && results.isNotEmpty) {
+      results.sort((a, b) => ((a['distance_km'] as double?) ?? 99999.0).compareTo((b['distance_km'] as double?) ?? 99999.0));
+    }
+
+    return results.take(15).toList();
   }
 }
