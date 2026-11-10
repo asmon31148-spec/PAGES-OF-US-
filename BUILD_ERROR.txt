@@ -213,6 +213,10 @@ Downloading packages...
 + web_socket 1.0.1
 + web_socket_channel 3.0.3
 + webrtc_interface 1.5.1
++ webview_flutter 4.14.1
++ webview_flutter_android 4.14.1
++ webview_flutter_platform_interface 2.15.1
++ webview_flutter_wkwebview 3.27.2
 + win32 5.15.0 (6.4.0 available)
 + wkt_parser 2.0.0
 + xdg_directories 1.1.0
@@ -220,7 +224,7 @@ Downloading packages...
 + yaml 3.1.4
 + yet_another_json_isolate 2.1.1
 + youtube_explode_dart 3.1.0
-Changed 217 dependencies!
+Changed 221 dependencies!
 51 packages have newer versions incompatible with dependency constraints.
 Try `flutter pub outdated` for more information.
 === FLUTTER ANALYZE ===
@@ -1264,21 +1268,22 @@ warning • The value of the local variable 'bg' isn't used. Try removing the va
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/screens/watch_lobby_screen.dart:342:60 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/screens/watch_lobby_screen.dart:347:55 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/screens/watch_lobby_screen.dart:368:47 • deprecated_member_use
-warning • Unused import: '../../../providers/theme_provider.dart'. Try removing the import directive • lib/features/watch_together/screens/watch_player_screen.dart:11:8 • unused_import
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/screens/watch_player_screen.dart:842:57 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/screens/watch_player_screen.dart:877:47 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/screens/watch_player_screen.dart:914:45 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/screens/watch_player_screen.dart:916:64 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/screens/watch_player_screen.dart:985:60 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/screens/watch_player_screen.dart:1046:31 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/screens/watch_player_screen.dart:1048:53 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/screens/watch_player_screen.dart:1051:38 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/screens/watch_player_screen.dart:1097:33 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/screens/watch_player_screen.dart:1099:55 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/screens/watch_player_screen.dart:1102:37 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/screens/watch_player_screen.dart:1113:50 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/screens/watch_player_screen.dart:1264:39 • deprecated_member_use
-   info • 'onPopInvoked' is deprecated and shouldn't be used. Use onPopInvokedWithResult instead. This feature was deprecated after v3.22.0-12.0.pre. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/screens/watch_player_screen.dart:1280:7 • deprecated_member_use
+warning • Unused import: '../../../providers/theme_provider.dart'. Try removing the import directive • lib/features/watch_together/screens/watch_player_screen.dart:14:8 • unused_import
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/screens/watch_player_screen.dart:1143:57 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/screens/watch_player_screen.dart:1178:47 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/screens/watch_player_screen.dart:1215:45 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/screens/watch_player_screen.dart:1217:64 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/screens/watch_player_screen.dart:1286:60 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/screens/watch_player_screen.dart:1347:31 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/screens/watch_player_screen.dart:1349:53 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/screens/watch_player_screen.dart:1352:38 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/screens/watch_player_screen.dart:1398:33 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/screens/watch_player_screen.dart:1400:55 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/screens/watch_player_screen.dart:1403:37 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/screens/watch_player_screen.dart:1414:50 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/screens/watch_player_screen.dart:1565:39 • deprecated_member_use
+   info • 'onPopInvoked' is deprecated and shouldn't be used. Use onPopInvokedWithResult instead. This feature was deprecated after v3.22.0-12.0.pre. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/screens/watch_player_screen.dart:1581:7 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/screens/watch_player_screen.dart:1856:39 • deprecated_member_use
 warning • Unused import: 'dart:io'. Try removing the import directive • lib/features/watch_together/screens/watch_waiting_screen.dart:2:8 • unused_import
 warning • Unused import: 'package:file_picker/file_picker.dart'. Try removing the import directive • lib/features/watch_together/screens/watch_waiting_screen.dart:5:8 • unused_import
 warning • Unused import: 'package:video_player/video_player.dart'. Try removing the import directive • lib/features/watch_together/screens/watch_waiting_screen.dart:6:8 • unused_import
@@ -1372,17 +1377,17 @@ warning • The value of the field '_myName' isn't used. Try removing the field,
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/widgets/watch_controls_overlay.dart:538:72 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/widgets/watch_controls_overlay.dart:602:29 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/widgets/watch_controls_overlay.dart:604:48 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/widgets/watch_movie_picker_sheet.dart:201:43 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/widgets/watch_movie_picker_sheet.dart:201:76 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/widgets/watch_movie_picker_sheet.dart:202:42 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/widgets/watch_movie_picker_sheet.dart:202:75 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/widgets/watch_movie_picker_sheet.dart:443:47 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/widgets/watch_movie_picker_sheet.dart:443:80 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/widgets/watch_movie_picker_sheet.dart:446:49 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/widgets/watch_movie_picker_sheet.dart:446:82 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/widgets/watch_movie_picker_sheet.dart:513:47 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/widgets/watch_movie_picker_sheet.dart:563:60 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/widgets/watch_movie_picker_sheet.dart:714:44 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/widgets/watch_movie_picker_sheet.dart:218:43 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/widgets/watch_movie_picker_sheet.dart:218:76 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/widgets/watch_movie_picker_sheet.dart:219:42 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/widgets/watch_movie_picker_sheet.dart:219:75 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/widgets/watch_movie_picker_sheet.dart:460:47 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/widgets/watch_movie_picker_sheet.dart:460:80 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/widgets/watch_movie_picker_sheet.dart:463:49 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/widgets/watch_movie_picker_sheet.dart:463:82 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/widgets/watch_movie_picker_sheet.dart:530:47 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/widgets/watch_movie_picker_sheet.dart:580:60 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/features/watch_together/widgets/watch_movie_picker_sheet.dart:731:44 • deprecated_member_use
    info • The import of 'dart:ui' is unnecessary because all of the used elements are also provided by the import of 'package:flutter/material.dart'. Try removing the import directive • lib/features/world/screens/world_screen.dart:1:8 • unnecessary_import
 warning • Unused import: '../../../data/models/pinned_place.dart'. Try removing the import directive • lib/features/world/screens/world_screen.dart:19:8 • unused_import
 warning • Unused import: '../../music/widgets/glass/glass_ambient_background.dart'. Try removing the import directive • lib/features/world/screens/world_screen.dart:23:8 • unused_import
@@ -1548,7 +1553,10 @@ warning • Unused import: 'package:cloud_firestore/cloud_firestore.dart'. Try r
 warning • The value of the field '_voicePosSub' isn't used. Try removing the field, or using it • lib/providers/memories_provider.dart:44:23 • unused_field
 warning • The value of the field '_voiceDurSub' isn't used. Try removing the field, or using it • lib/providers/memories_provider.dart:45:23 • unused_field
 warning • The value of the field '_voiceStateSub' isn't used. Try removing the field, or using it • lib/providers/memories_provider.dart:46:23 • unused_field
-warning • The value of the field '_partnerNickname' isn't used. Try removing the field, or using it • lib/providers/vault_provider.dart:23:11 • unused_field
+  error • The element type 'Map<String, dynamic>' can't be assigned to the map value type 'bool' • lib/providers/stage_provider.dart:1311:46 • map_value_type_not_assignable
+  error • The element type 'Map<String, dynamic>' can't be assigned to the map value type 'bool' • lib/providers/stage_provider.dart:1311:70 • map_value_type_not_assignable
+  error • The argument type 'Map<String, bool>' can't be assigned to the parameter type 'Map<String, Map<String, dynamic>>'.  • lib/providers/stage_provider.dart:1319:21 • argument_type_not_assignable
+  error • The method 'initVaults' isn't defined for the type 'VaultProvider'. Try correcting the name to the name of an existing method, or defining a method named 'initVaults' • lib/providers/vault_provider.dart:362:11 • undefined_method
 warning • The value of the field '_candidatePlace' isn't used. Try removing the field, or using it • lib/providers/world_provider.dart:365:11 • unused_field
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/widgets/custom_bottom_nav.dart:46:40 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/widgets/custom_bottom_nav.dart:47:31 • deprecated_member_use
@@ -1576,7 +1584,7 @@ warning • Unused import: 'package:pages_of_us/core/theme/models/theme_palette.
    info • 'green' is deprecated and shouldn't be used. Use (*.g * 255.0).round().clamp(0, 255). Try replacing the use of the deprecated member with the replacement • test/theme_contrast_test.dart:19:29 • deprecated_member_use
    info • 'blue' is deprecated and shouldn't be used. Use (*.b * 255.0).round().clamp(0, 255). Try replacing the use of the deprecated member with the replacement • test/theme_contrast_test.dart:20:29 • deprecated_member_use
 
-1349 issues found. (ran in 16.7s)
+1353 issues found. (ran in 14.3s)
 === FLUTTER BUILD LOG ===
 Upgrading build.gradle
 Upgrading gradle.properties
@@ -1623,20 +1631,90 @@ Loading local repository...
 [===========                            ] 30% Downloading android-ndk-r27-linux.
 [============                           ] 30% Downloading android-ndk-r27-linux.
 [============                           ] 31% Downloading android-ndk-r27-linux.
+[============                           ] 32% Downloading android-ndk-r27-linux.
 [============                           ] 33% Downloading android-ndk-r27-linux.
 [============                           ] 33% Unzipping...                      
-Warning: An error occurred while preparing SDK package NDK (Side by side) 27.0.12077973: Error reading Zip content from a SeekableByteChannel.
+[============                           ] 33% Unzipping... android-ndk-r27/     
+[============                           ] 33% Unzipping... android-ndk-r27/READM
+[=============                          ] 33% Unzipping... android-ndk-r27/READM
+[=============                          ] 33% Unzipping... android-ndk-r27/meta/
+[=============                          ] 33% Unzipping... android-ndk-r27/shade
+[=============                          ] 33% Unzipping... android-ndk-r27/ndk-l
+[=============                          ] 33% Unzipping... android-ndk-r27/wrap.
+[=============                          ] 33% Unzipping... android-ndk-r27/ndk-w
+[=============                          ] 33% Unzipping... android-ndk-r27/toolc
+[=============                          ] 34% Unzipping... android-ndk-r27/toolc
+[=============                          ] 35% Unzipping... android-ndk-r27/toolc
+[==============                         ] 35% Unzipping... android-ndk-r27/toolc
+[==============                         ] 36% Unzipping... android-ndk-r27/toolc
+[==============                         ] 37% Unzipping... android-ndk-r27/toolc
+[===============                        ] 38% Unzipping... android-ndk-r27/toolc
+[===============                        ] 39% Unzipping... android-ndk-r27/toolc
+[===============                        ] 40% Unzipping... android-ndk-r27/toolc
+[================                       ] 40% Unzipping... android-ndk-r27/toolc
+[================                       ] 41% Unzipping... android-ndk-r27/toolc
+[================                       ] 42% Unzipping... android-ndk-r27/toolc
+[=================                      ] 43% Unzipping... android-ndk-r27/toolc
+[=================                      ] 44% Unzipping... android-ndk-r27/toolc
+[=================                      ] 45% Unzipping... android-ndk-r27/toolc
+[==================                     ] 45% Unzipping... android-ndk-r27/toolc
+[==================                     ] 46% Unzipping... android-ndk-r27/toolc
+[==================                     ] 47% Unzipping... android-ndk-r27/toolc
+[===================                    ] 48% Unzipping... android-ndk-r27/toolc
+[===================                    ] 49% Unzipping... android-ndk-r27/toolc
+[===================                    ] 50% Unzipping... android-ndk-r27/toolc
+[====================                   ] 50% Unzipping... android-ndk-r27/toolc
+[====================                   ] 51% Unzipping... android-ndk-r27/toolc
+[====================                   ] 52% Unzipping... android-ndk-r27/toolc
+[=====================                  ] 53% Unzipping... android-ndk-r27/toolc
+[=====================                  ] 54% Unzipping... android-ndk-r27/toolc
+[=====================                  ] 54% Unzipping... android-ndk-r27/build
+[=====================                  ] 54% Unzipping... android-ndk-r27/sourc
+[=====================                  ] 54% Unzipping... android-ndk-r27/NOTIC
+[=====================                  ] 54% Unzipping... android-ndk-r27/ndk-g
+[=====================                  ] 54% Unzipping... android-ndk-r27/NOTIC
+[=====================                  ] 54% Unzipping... android-ndk-r27/pytho
+[=====================                  ] 54% Unzipping... android-ndk-r27/prebu
+[=====================                  ] 54% Unzipping... android-ndk-r27/ndk-s
+[=====================                  ] 54% Unzipping... android-ndk-r27/ndk-b
+[=====================                  ] 54% Unzipping... android-ndk-r27/sourc
+[=====================                  ] 54% Unzipping... android-ndk-r27/simpl
+[=====================                  ] 55% Unzipping... android-ndk-r27/simpl
+[=====================                  ] 55% Unzipping... android-ndk-r27/CHANG
+[=======================================] 100% Unzipping... android-ndk-r27/CHAN
+
+Checking the license for package NDK (Side by side) 28.2.13676358 in /usr/local/lib/android/sdk/licenses
+License for package NDK (Side by side) 28.2.13676358 accepted.
+Preparing "Install NDK (Side by side) 28.2.13676358 v.28.2.13676358".
+"Install NDK (Side by side) 28.2.13676358 v.28.2.13676358" ready.
+Installing NDK (Side by side) 28.2.13676358 in /usr/local/lib/android/sdk/ndk/28.2.13676358
+"Install NDK (Side by side) 28.2.13676358 v.28.2.13676358" complete.
+"Install NDK (Side by side) 28.2.13676358 v.28.2.13676358" finished.
+lib/providers/stage_provider.dart:1311:55: Error: Can't assign spread entry values of type 'Map<String, dynamic>' to map entry values of type 'bool'.
+ - 'Map' is from 'dart:core'.
+      final mergedChecks = <String, bool>{...existing.careChecks, ...parsed.careChecks};
+                                                      ^
+lib/providers/stage_provider.dart:1311:77: Error: Can't assign spread entry values of type 'Map<String, dynamic>' to map entry values of type 'bool'.
+ - 'Map' is from 'dart:core'.
+      final mergedChecks = <String, bool>{...existing.careChecks, ...parsed.careChecks};
+                                                                            ^
+lib/providers/stage_provider.dart:1319:21: Error: The argument type 'Map<String, bool>' can't be assigned to the parameter type 'Map<String, Map<String, dynamic>>'.
+ - 'Map' is from 'dart:core'.
+        careChecks: mergedChecks,
+                    ^
+lib/providers/vault_provider.dart:362:11: Error: The method 'initVaults' isn't defined for the type 'VaultProvider'.
+ - 'VaultProvider' is from 'package:pages_of_us/providers/vault_provider.dart' ('lib/providers/vault_provider.dart').
+Try correcting the name to the name of an existing method, or defining a method named 'initVaults'.
+    await initVaults(
+          ^^^^^^^^^^
+Target kernel_snapshot_program failed: Exception
 
 
 FAILURE: Build failed with an exception.
 
-* Where:
-Build file '/home/runner/work/PAGES-OF-US-/PAGES-OF-US-/android/build.gradle' line: 13
-
 * What went wrong:
-A problem occurred evaluating root project 'android'.
-> A problem occurred configuring project ':app'.
-   > Process 'command '/usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager'' finished with non-zero exit value 1
+Execution failed for task ':app:compileFlutterBuildRelease'.
+> Process 'command '/opt/hostedtoolcache/flutter/stable-3.47.9-x64/flutter/bin/flutter'' finished with non-zero exit value 1
 
 * Try:
 > Run with --stacktrace option to get the stack trace.
@@ -1644,7 +1722,6 @@ A problem occurred evaluating root project 'android'.
 > Run with --scan to get full insights.
 > Get more help at https://help.gradle.org.
 
-BUILD FAILED in 1m 23s
-[============                           ] 33% Unzipping...                      
-Running Gradle task 'assembleRelease'...                           84.5s
+BUILD FAILED in 3m 44s
+Running Gradle task 'assembleRelease'...                          225.3s
 Gradle task assembleRelease failed with exit code 1
