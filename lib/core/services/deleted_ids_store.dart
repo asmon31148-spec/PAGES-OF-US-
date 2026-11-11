@@ -99,10 +99,6 @@ class OrphanAuditService {
     )) {
       return true;
     }
-    final cleanTitle = (title ?? '').trim().toLowerCase();
-    if (cleanTitle == 'test' || cleanTitle == 'fgh' || cleanTitle == 'bvfd') {
-      return true;
-    }
     return false;
   }
 

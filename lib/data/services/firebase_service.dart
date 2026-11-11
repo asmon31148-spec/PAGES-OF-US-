@@ -765,7 +765,16 @@ class FirebaseService {
       'partner_id': null,
     }, SetOptions(merge: true));
 
-    // 4. Clear partnerId on remaining members (ex-partner)
+    // 4. Clear partnerId on remaining members (ex-partner) & purge departing user's location
+    try {
+      await firestore
+          .collection('spaces')
+          .doc(currentSpace.id)
+          .collection('features')
+          .doc('locations')
+          .update({'locations.$effectiveUid': FieldValue.delete()});
+    } catch (_) {}
+
     for (final memberId in remainingMembers) {
       try {
         await firestore.collection('users').doc(memberId).set({

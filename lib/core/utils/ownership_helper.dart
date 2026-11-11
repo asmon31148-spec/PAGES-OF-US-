@@ -35,6 +35,11 @@ class OwnershipHelper {
     final normPartnerName = (partnerNickname ?? '').trim().toLowerCase();
     final cleanActiveSpace = (activeSpaceId ?? '').trim();
 
+    // Skip nickname-based inference if both partners happen to share the exact same nickname
+    final sameNicknameInCouple = normMyName.isNotEmpty &&
+        normPartnerName.isNotEmpty &&
+        normMyName == normPartnerName;
+
     for (final row in rows) {
       final rawAuthor = (row['author'] ?? row['author_id'] ?? row['creatorId'])?.toString().trim() ?? '';
       if (!rawAuthor.contains(':::')) continue;
@@ -45,11 +50,14 @@ class OwnershipHelper {
       if (uidPart.isEmpty || uidPart == cleanMyUid || uidPart == cleanPartnerUid) continue;
 
       final rowSpace = (row['space_id'] ?? '').toString().trim();
-      final sameSpace = cleanActiveSpace.isEmpty || rowSpace.isEmpty || rowSpace == cleanActiveSpace;
+      final sameSpace = cleanActiveSpace.isNotEmpty &&
+          rowSpace.isNotEmpty &&
+          rowSpace == cleanActiveSpace;
+      if (!sameSpace || sameNicknameInCouple) continue;
 
       if (normMyName.isNotEmpty && prefix == normMyName) {
         myLegacyUids.add(uidPart);
-      } else if (normPartnerName.isNotEmpty && cleanPartnerUid.isNotEmpty && sameSpace && prefix == normPartnerName) {
+      } else if (normPartnerName.isNotEmpty && cleanPartnerUid.isNotEmpty && prefix == normPartnerName) {
         partnerLegacyUids.add(uidPart);
       }
     }
@@ -62,6 +70,7 @@ class OwnershipHelper {
     String? myUid,
     String? currentUserId,
     String? myNickname,
+    String? partnerNickname,
     Set<String> myLegacyUids = const {},
     String? partnerUid,
     String? activeSpaceId,
@@ -81,23 +90,23 @@ class OwnershipHelper {
       return false;
     }
 
-    // Legacy alias fallback for historical rows written before current Firebase UID
+    // Same-space legacy alias fallback for historical rows written before current Firebase UID
     final normMe = (myNickname ?? '').trim().toLowerCase();
-    if (normMe.isNotEmpty) {
+    final normPartner = (partnerNickname ?? '').trim().toLowerCase();
+    final sameNicknameInCouple = normPartner.isNotEmpty && normPartner == normMe;
+    final sameSpace = activeSpaceId != null &&
+        activeSpaceId.isNotEmpty &&
+        itemSpaceId != null &&
+        itemSpaceId.isNotEmpty &&
+        itemSpaceId == activeSpaceId;
+    if (normMe.isNotEmpty && sameSpace && !sameNicknameInCouple) {
       if (raw.contains(':::')) {
         final prefix = extractRawDisplayName(raw).toLowerCase();
         if (prefix == normMe) {
           return true;
         }
-      } else {
-        final sameSpace = activeSpaceId == null ||
-            activeSpaceId.isEmpty ||
-            itemSpaceId == null ||
-            itemSpaceId.isEmpty ||
-            itemSpaceId == activeSpaceId;
-        if (sameSpace && raw.toLowerCase() == normMe) {
-          return true;
-        }
+      } else if (raw.toLowerCase() == normMe) {
+        return true;
       }
     }
     return false;
@@ -109,6 +118,7 @@ class OwnershipHelper {
     String? legacyAuthor,
     String? partnerUid,
     String? partnerId,
+    String? myNickname,
     String? partnerNickname,
     Set<String> partnerLegacyUids = const {},
     String? myUid,
@@ -130,18 +140,20 @@ class OwnershipHelper {
     }
 
     final normPartner = (partnerNickname ?? '').trim().toLowerCase();
-    if (normPartner.isNotEmpty) {
-      final sameSpace = activeSpaceId == null ||
-          activeSpaceId.isEmpty ||
-          itemSpaceId == null ||
-          itemSpaceId.isEmpty ||
-          itemSpaceId == activeSpaceId;
+    final normMe = (myNickname ?? '').trim().toLowerCase();
+    final sameNicknameInCouple = normMe.isNotEmpty && normMe == normPartner;
+    final sameSpace = activeSpaceId != null &&
+        activeSpaceId.isNotEmpty &&
+        itemSpaceId != null &&
+        itemSpaceId.isNotEmpty &&
+        itemSpaceId == activeSpaceId;
+    if (normPartner.isNotEmpty && sameSpace && !sameNicknameInCouple) {
       if (raw.contains(':::')) {
         final prefix = extractRawDisplayName(raw).toLowerCase();
-        if (sameSpace && prefix == normPartner) {
+        if (prefix == normPartner) {
           return true;
         }
-      } else if (sameSpace && raw.toLowerCase() == normPartner) {
+      } else if (raw.toLowerCase() == normPartner) {
         return true;
       }
     }
@@ -170,6 +182,7 @@ class OwnershipHelper {
       myUid: myUid,
       currentUserId: currentUserId,
       myNickname: myNickname,
+      partnerNickname: partnerNickname,
       myLegacyUids: myLegacyUids,
       partnerUid: partnerId ?? partnerUid,
       activeSpaceId: activeSpaceId,
@@ -183,6 +196,7 @@ class OwnershipHelper {
       legacyAuthor: legacyAuthor,
       partnerUid: partnerUid,
       partnerId: partnerId,
+      myNickname: myNickname,
       partnerNickname: partnerNickname,
       partnerLegacyUids: partnerLegacyUids,
       myUid: currentUserId ?? myUid,

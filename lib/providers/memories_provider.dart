@@ -174,9 +174,11 @@ class MemoriesProvider extends ChangeNotifier {
       legacyAuthor: rawAuthor,
       myUid: uid,
       myNickname: _currentUserNickname,
+      partnerNickname: _currentPartnerNickname,
       myLegacyUids: _discoveredMyLegacyUids,
       partnerUid: _currentPartnerId,
       activeSpaceId: _currentSpaceId,
+      itemSpaceId: _currentSpaceId,
     );
   }
 
@@ -210,6 +212,7 @@ class MemoriesProvider extends ChangeNotifier {
       myLegacyUids: _discoveredMyLegacyUids,
       partnerUid: _currentPartnerId,
       activeSpaceId: _currentSpaceId,
+      itemSpaceId: _currentSpaceId,
     );
   }
 
@@ -555,10 +558,6 @@ class MemoriesProvider extends ChangeNotifier {
       if (legacyUid.isNotEmpty) {
         clauses.add('author.ilike.%$legacyUid%');
       }
-    }
-    final nick = (_currentUserNickname ?? '').trim();
-    if (nick.length >= 3) {
-      clauses.add('author.ilike.%$nick%');
     }
     if (partnerId != null && partnerId.isNotEmpty) {
       clauses.add('author.ilike.%$partnerId%');

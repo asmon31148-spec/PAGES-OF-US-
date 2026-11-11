@@ -217,17 +217,6 @@ void main() {
         ),
         isTrue,
       );
-
-      // Known throwaway test title
-      expect(
-        OrphanAuditService.looksSuspiciousRow(
-          ownerRaw: me,
-          title: 'fgh',
-          myUid: me,
-          partnerUid: partner,
-        ),
-        isTrue,
-      );
     });
 
     test('extractSupabaseStoragePath and extractImageKitFileName parse real URLs accurately', () {
@@ -424,6 +413,57 @@ void main() {
       );
       expect(resolved.stepsToday, isNull);
       expect(resolved.walkingMinutesToday, 0);
+    });
+
+    test('universal couple isolation: two couples sharing the exact same nickname never leak or claim each other', () {
+      final legacyA = <String>{};
+      final legacyB = <String>{};
+
+      // Foreign space row has identical nickname "Alex" but belongs to another couple space
+      OwnershipHelper.collectLegacyUidAliases(
+        [
+          {'space_id': 'space_foreign_888', 'author': 'Alex:::stranger_uid_888'},
+        ],
+        myUid: 'user_a_1',
+        myNickname: 'Alex',
+        partnerUid: 'user_b_2',
+        partnerNickname: 'Sam',
+        activeSpaceId: 'space_couple_123',
+        myLegacyUids: legacyA,
+        partnerLegacyUids: legacyB,
+      );
+      expect(legacyA, isEmpty);
+      expect(legacyB, isEmpty);
+
+      // Foreign "Alex:::stranger_uid_888" in another space is strictly invisible to our Alex
+      expect(
+        OwnershipHelper.canViewItem(
+          ownerUid: 'stranger_uid_888',
+          legacyAuthor: 'Alex:::stranger_uid_888',
+          myUid: 'user_a_1',
+          myNickname: 'Alex',
+          partnerUid: 'user_b_2',
+          partnerNickname: 'Sam',
+          activeSpaceId: 'space_couple_123',
+          itemSpaceId: 'space_foreign_888',
+        ),
+        isFalse,
+      );
+
+      // Two partners inside the same couple who share nickname "Alex" only match by UID, never nickname
+      expect(
+        OwnershipHelper.isOwner(
+          ownerUid: 'user_b_2',
+          legacyAuthor: 'Alex:::user_b_2',
+          myUid: 'user_a_1',
+          myNickname: 'Alex',
+          partnerNickname: 'Alex',
+          partnerUid: 'user_b_2',
+          activeSpaceId: 'space_couple_123',
+          itemSpaceId: 'space_couple_123',
+        ),
+        isFalse,
+      );
     });
   });
 }
