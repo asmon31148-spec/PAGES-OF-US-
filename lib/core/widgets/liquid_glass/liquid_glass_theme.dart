@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../theme/models/theme_palette.dart';
+import '../../theme/models/theme_palette.dart';
 
 /// Clean, sharp, zero-blur flat-glass design tokens.
 class LiquidGlassTheme {

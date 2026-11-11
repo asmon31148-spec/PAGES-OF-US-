@@ -143,7 +143,7 @@ class AppTopBar extends StatelessWidget {
                         Icon(
                           Icons.visibility_rounded,
                           size: 13.5,
-                          color: isDark ? AppColors.darkInk : AppColors.sageDark,
+                          color: isDark ? AppColors.darkInk : AppColors.sage,
                         ),
                         if (hasPartner && partnerBattery != null) ...[
                           Builder(

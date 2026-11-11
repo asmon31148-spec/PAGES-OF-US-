@@ -141,6 +141,17 @@ void main() {
       // 300s closed session + 120s active session = 420s
       expect(summary.screenTimeSecondsToday, 420);
     });
+
+    test('ScreenEvent.fromJson parses native tsMs and durationSec keys', () {
+      final ev = ScreenEvent.fromJson({
+        'type': 'lock',
+        'tsMs': 1700000000000,
+        'durationSec': 185,
+      });
+      expect(ev.type, 'lock');
+      expect(ev.timestampMs, 1700000000000);
+      expect(ev.durationSeconds, 185);
+    });
   });
 
   group('TelemetryMath - GPS Distance Filtering & Trail Sums', () {

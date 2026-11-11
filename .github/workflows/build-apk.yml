@@ -124,6 +124,8 @@ jobs:
           cat pub_get_log.txt >> BUILD_ERROR.txt 2>/dev/null || true
           echo "=== FLUTTER ANALYZE ===" >> BUILD_ERROR.txt
           cat analyze_log.txt >> BUILD_ERROR.txt 2>/dev/null || true
+          echo "=== FLUTTER TEST ===" >> BUILD_ERROR.txt
+          cat test_log.txt >> BUILD_ERROR.txt 2>/dev/null || true
           echo "=== FLUTTER BUILD LOG ===" >> BUILD_ERROR.txt
           tail -n 250 build_log.txt >> BUILD_ERROR.txt 2>/dev/null || true
           git add BUILD_ERROR.txt

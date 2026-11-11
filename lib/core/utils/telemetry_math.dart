@@ -3,22 +3,28 @@ import 'dart:math' as math;
 class ScreenEvent {
   final String type; // 'unlock' | 'lock' | 'screen_on'
   final int timestampMs;
+  final int durationSeconds;
 
   const ScreenEvent({
     required this.type,
     required this.timestampMs,
+    this.durationSeconds = 0,
   });
 
   factory ScreenEvent.fromJson(Map<String, dynamic> json) {
+    final tsVal = json['tsMs'] ?? json['ts'] ?? json['timestampMs'];
+    final durVal = json['durationSec'] ?? json['durationSeconds'] ?? 0;
     return ScreenEvent(
       type: json['type']?.toString() ?? 'unlock',
-      timestampMs: (json['ts'] as num?)?.toInt() ?? 0,
+      timestampMs: (tsVal as num?)?.toInt() ?? 0,
+      durationSeconds: (durVal as num?)?.toInt() ?? 0,
     );
   }
 
   Map<String, dynamic> toJson() => {
         'type': type,
-        'ts': timestampMs,
+        'tsMs': timestampMs,
+        if (durationSeconds > 0) 'durationSec': durationSeconds,
       };
 }
 
@@ -87,6 +93,8 @@ class GpsTrackPoint {
 class DiscrepancyReport {
   final bool hasDiscrepancy;
   final String reason;
+
+  String get note => reason;
 
   const DiscrepancyReport({
     required this.hasDiscrepancy,
@@ -160,9 +168,13 @@ class TelemetryMath {
   TelemetryMath._();
 
   /// Returns YYYY-MM-DD in the specified UTC offset (defaults to device local offset).
-  static String localDateKeyFor(DateTime utcOrLocal, {int? offsetMinutes}) {
+  static String localDateKeyFor(
+    DateTime utcOrLocal, {
+    int? offsetMinutes,
+    int? timeZoneOffsetMinutes,
+  }) {
     final utc = utcOrLocal.toUtc();
-    final offset = offsetMinutes ?? DateTime.now().timeZoneOffset.inMinutes;
+    final offset = offsetMinutes ?? timeZoneOffsetMinutes ?? DateTime.now().timeZoneOffset.inMinutes;
     final shifted = utc.add(Duration(minutes: offset));
     final y = shifted.year.toString().padLeft(4, '0');
     final m = shifted.month.toString().padLeft(2, '0');
