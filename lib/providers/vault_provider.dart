@@ -24,11 +24,45 @@ class VaultProvider extends ChangeNotifier {
   StreamSubscription? _vaultSub;
   String? _activeSpaceId;
   String? _currentUserId;
+  String? _currentUserNickname;
   String? _partnerId;
   String? _partnerNickname;
+  final Set<String> _myLegacyUids = {};
+  final Set<String> _partnerLegacyUids = {};
 
   VaultProvider() {
     AuthProvider.registerSignOutHook(resetState);
+    AuthProvider.registerDisconnectHook(clearPartnerState);
+  }
+
+  void clearPartnerState() {
+    _partnerId = null;
+    _partnerNickname = null;
+    _partnerLegacyUids.clear();
+    final uid = _currentUserId ?? '';
+    if (uid.isNotEmpty) {
+      _vaults = _vaults.where((v) => _isMyVault(v, uid)).toList();
+      if (_selectedVault != null && !_vaults.any((v) => v.id == _selectedVault!.id)) {
+        _selectedVault = _vaults.isNotEmpty ? _vaults.first : null;
+      }
+    } else {
+      _vaults = [];
+      _selectedVault = null;
+    }
+    notifyListeners();
+  }
+
+  bool _isMyVault(VaultItem v, String currentUserId) {
+    final ownerUid = OwnershipHelper.extractOwnerUid(v.creatorId);
+    return OwnershipHelper.isOwner(
+      ownerUid: ownerUid,
+      legacyAuthor: v.creatorName,
+      myUid: currentUserId,
+      myNickname: _currentUserNickname,
+      myLegacyUids: _myLegacyUids,
+      partnerUid: _partnerId,
+      activeSpaceId: _activeSpaceId,
+    );
   }
 
   List<VaultItem> get vaults => List.unmodifiable(_vaults);
@@ -82,13 +116,19 @@ class VaultProvider extends ChangeNotifier {
     final ownerUid = OwnershipHelper.extractOwnerUid(v.creatorId);
     return OwnershipHelper.canViewItem(
       ownerUid: ownerUid,
+      legacyAuthor: v.creatorName,
       myUid: currentUserId,
+      myNickname: _currentUserNickname,
+      myLegacyUids: _myLegacyUids,
       partnerUid: _partnerId,
+      partnerNickname: _partnerNickname,
+      partnerLegacyUids: _partnerLegacyUids,
+      activeSpaceId: _activeSpaceId,
     );
   }
 
   List<VaultItem> getFilteredVaults(String currentUserId) {
-    final myVaults = _vaults.where((v) => v.creatorId == currentUserId).toList();
+    final myVaults = _vaults.where((v) => _isMyVault(v, currentUserId)).toList();
     if (!_isSharedCoupleSpace) {
       return myVaults;
     }
@@ -96,7 +136,7 @@ class VaultProvider extends ChangeNotifier {
       case 'mine':
         return myVaults;
       case 'partner':
-        return _vaults.where((v) => v.creatorId != currentUserId).toList();
+        return _vaults.where((v) => !_isMyVault(v, currentUserId)).toList();
       case 'all':
       default:
         return List<VaultItem>.from(_vaults);
@@ -209,12 +249,23 @@ class VaultProvider extends ChangeNotifier {
   Future<void> initVaultSync({
     required String spaceId,
     required String currentUserId,
+    String? currentUserNickname,
     String? partnerId,
     String? partnerNickname,
   }) async {
     if (spaceId.isEmpty) return;
+    if (_currentUserId == null || _currentUserId != currentUserId) {
+      _myLegacyUids.clear();
+      _partnerLegacyUids.clear();
+    }
+    if (partnerId == null || partnerId.isEmpty || _partnerId != partnerId) {
+      _partnerLegacyUids.clear();
+    }
     _activeSpaceId = spaceId;
     _currentUserId = currentUserId;
+    if (currentUserNickname != null && currentUserNickname.trim().isNotEmpty) {
+      _currentUserNickname = currentUserNickname.trim();
+    }
     _partnerId = partnerId;
     _partnerNickname = partnerNickname;
 
@@ -451,8 +502,7 @@ class VaultProvider extends ChangeNotifier {
     final myUid = _currentUserId ?? '';
     if (target != null && myUid.isNotEmpty) {
       final ownerUid = OwnershipHelper.extractOwnerUid(target.creatorId);
-      if (ownerUid.isNotEmpty &&
-          !OwnershipHelper.canDeleteItem(ownerUid: ownerUid, myUid: myUid)) {
+      if (ownerUid.isNotEmpty && !_isMyVault(target, myUid)) {
         return false;
       }
     }

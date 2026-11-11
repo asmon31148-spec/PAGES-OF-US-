@@ -16,7 +16,7 @@ import '../../../providers/theme_provider.dart';
 import '../../../data/models/secret_whisper.dart';
 import 'telemetry_debug_screen.dart';
 
-class _DossierPalette {
+class DossierPalette {
   final Color bg;
   final Color card;
   final Color heroStart;
@@ -31,7 +31,7 @@ class _DossierPalette {
   final Color softViolet;
   final Color softBlush;
 
-  const _DossierPalette({
+  const DossierPalette({
     required this.bg,
     required this.card,
     required this.heroStart,
@@ -47,25 +47,44 @@ class _DossierPalette {
     required this.softBlush,
   });
 
-  factory _DossierPalette.fromBrightness(bool isDark) {
-    if (isDark) {
-      return const _DossierPalette(
-        bg: Color(0xFF1B1418), // Warm matte dusk plum — soft on OLED eyes
-        card: Color(0xFF251C21), // Cozy smoked mauve card
-        heroStart: Color(0xFF30222A), // Gentle velvet rose dusk
-        subtleFill: Color(0xFF2E2329),
-        accent: Color(0xFFD28799), // Muted dusty rosewood (zero neon glare)
-        primaryInk: Color(0xFFF2E4E9), // Warm cream-rose ink
-        mutedInk: Color(0xFFB398A2), // Gentle dusty mauve
-        softBorder: Color(0x22D28799),
-        softGreen: Color(0xFF7CB89E), // Calm sage mint
-        softBlue: Color(0xFF8AAED6), // Soft slate sky
-        softAmber: Color(0xFFD4B27D), // Warm chamomile honey
-        softViolet: Color(0xFFB498C8), // Muted lavender mist
-        softBlush: Color(0xFFE4B4C1),
+  factory DossierPalette.fromBrightness(bool isDark, {bool isVelvet = false}) {
+    if (isVelvet) {
+      // Rich obsidian & crimson-velvet romance palette (Velvet ON)
+      return const DossierPalette(
+        bg: Color(0xFF120A0E),
+        card: Color(0xFF1F1117),
+        heroStart: Color(0xFF2D1520),
+        subtleFill: Color(0xFF28171F),
+        accent: Color(0xFFE06C88),
+        primaryInk: Color(0xFFF6E6EB),
+        mutedInk: Color(0xFFBD96A3),
+        softBorder: Color(0x3AE06C88),
+        softGreen: Color(0xFF7CB89E),
+        softBlue: Color(0xFF8AAED6),
+        softAmber: Color(0xFFD9AE74),
+        softViolet: Color(0xFFC29AD3),
+        softBlush: Color(0xFFEB9CB0),
       );
     }
-    return const _DossierPalette(
+    if (isDark) {
+      // Calm smoked slate palette when Velvet is OFF in dark mode
+      return const DossierPalette(
+        bg: Color(0xFF14181F),
+        card: Color(0xFF1E242E),
+        heroStart: Color(0xFF252D3A),
+        subtleFill: Color(0xFF242B36),
+        accent: Color(0xFF7FA3C7),
+        primaryInk: Color(0xFFECF1F7),
+        mutedInk: Color(0xFF9BA8BA),
+        softBorder: Color(0x287FA3C7),
+        softGreen: Color(0xFF7CB89E),
+        softBlue: Color(0xFF8AAED6),
+        softAmber: Color(0xFFD4B27D),
+        softViolet: Color(0xFFA9A2D0),
+        softBlush: Color(0xFFB5C4D8),
+      );
+    }
+    return const DossierPalette(
       bg: Color(0xFFFAF3F5), // Warm rose-oat paper
       card: Color(0xFFFFFAFA), // Soft silk cream card
       heroStart: Color(0xFFF3E4E9), // Airy cashmere blush
@@ -96,6 +115,11 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
   bool _sendingWhisper = false;
   bool _refreshing = false;
   bool _isSatelliteMap = false;
+  bool _useOsmFallback = false;
+  int _tileErrorCount = 0;
+  bool _mapTilesLoading = true;
+  bool _mapLoadFailed = false;
+  LatLng? _lastCenteredCoord;
   bool _batteryOptExempt = true;
   bool _healthConnectPermitted = true;
   List<JourneyPoint>? _snappedTrail;
@@ -231,7 +255,7 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
     }
   }
 
-  Future<void> _openAndBurnWhisper(SecretWhisper whisper, String spaceId, String readerId, _DossierPalette pal) async {
+  Future<void> _openAndBurnWhisper(SecretWhisper whisper, String spaceId, String readerId, DossierPalette pal) async {
     if (whisper.isBurned) return;
     final stage = context.read<StageProvider>();
     HapticFeedback.heavyImpact();
@@ -343,7 +367,9 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
     final stayPoints = world.partnerStayPointsToday;
     final weather = world.partnerWeather;
 
-    final pal = _DossierPalette.fromBrightness(themeProv.isDark);
+    final isVelvet = themeProv.themeId == 'velvet_noir';
+    final useDarkMapTint = themeProv.isDark || isVelvet;
+    final pal = DossierPalette.fromBrightness(themeProv.isDark, isVelvet: isVelvet);
     final crimson = pal.accent;
     final cardBg = pal.card;
 
@@ -499,7 +525,7 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
                       : journeyPoints,
                   pinnedPlaces: world.pinnedPlaces,
                   partnerName: partnerName,
-                  isDark: themeProv.isDark,
+                  isDark: useDarkMapTint,
                   pal: pal,
                 ),
 
@@ -533,7 +559,7 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
     );
   }
 
-  Widget _sectionTitle(String text, _DossierPalette pal) {
+  Widget _sectionTitle(String text, DossierPalette pal) {
     return Padding(
       padding: const EdgeInsets.only(left: 4),
       child: Text(
@@ -555,7 +581,7 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
     required dynamic pLoc,
     required StageProvider stage,
     required WorldProvider world,
-    required _DossierPalette pal,
+    required DossierPalette pal,
   }) {
     final lastUpdated = telemetry?.updatedAt.isNotEmpty == true
         ? _formatIsoRelative(telemetry!.updatedAt)
@@ -747,7 +773,7 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
     required DeviceTelemetry? telemetry,
     required String? movementState,
     required dynamic pLoc,
-    required _DossierPalette pal,
+    required DossierPalette pal,
   }) {
     final screenLabel = telemetry == null
         ? 'Awaiting signal'
@@ -919,7 +945,7 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
     required dynamic weather,
     required String partnerName,
     required int stayPointCount,
-    required _DossierPalette pal,
+    required DossierPalette pal,
   }) {
     final metrics = world.resolvePartnerMetrics(
       telemetry: stage.partnerTelemetry,
@@ -1015,7 +1041,7 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
     );
   }
 
-  Widget _statBox(String label, String value, Color accent, _DossierPalette pal) {
+  Widget _statBox(String label, String value, Color accent, DossierPalette pal) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
       decoration: BoxDecoration(
@@ -1049,7 +1075,7 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
     );
   }
 
-  Widget _detailRow(IconData icon, String label, String value, _DossierPalette pal) {
+  Widget _detailRow(IconData icon, String label, String value, DossierPalette pal) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1079,7 +1105,7 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
     required String value,
     required String subtitle,
     required Color accent,
-    required _DossierPalette pal,
+    required DossierPalette pal,
     bool fullWidth = false,
   }) {
     return Container(
@@ -1145,7 +1171,7 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
     required List<dynamic> pinnedPlaces,
     required String partnerName,
     required bool isDark,
-    required _DossierPalette pal,
+    required DossierPalette pal,
   }) {
     final trailCoords = journeyPoints
         .where((p) => p.lat != 0.0 && p.lng != 0.0)
@@ -1171,9 +1197,27 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
     }
 
     final center = hasPartnerCoord ? LatLng(pLoc.lat, pLoc.lng) : trailCoords.last;
+    if (_lastCenteredCoord == null ||
+        (_lastCenteredCoord!.latitude - center.latitude).abs() > 0.0005 ||
+        (_lastCenteredCoord!.longitude - center.longitude).abs() > 0.0005) {
+      _lastCenteredCoord = center;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          try {
+            _mapController.move(center, 15.0);
+          } catch (_) {}
+        }
+      });
+    }
+
+    final usingOsm = !_isSatelliteMap && _useOsmFallback;
     final tileUrl = _isSatelliteMap
         ? 'https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}'
-        : 'https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}';
+        : (usingOsm
+            ? 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'
+            : 'https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}');
+    final subdomains = usingOsm ? const <String>[] : const ['0', '1', '2', '3'];
+    final maxNativeZoom = usingOsm ? 19 : 20;
 
     return Container(
       decoration: BoxDecoration(
@@ -1194,22 +1238,70 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
                     options: MapOptions(
                       initialCenter: center,
                       initialZoom: 15.0,
+                      minZoom: 3.0,
+                      maxZoom: 21.0,
+                      onMapReady: () {
+                        if (mounted) {
+                          try {
+                            _mapController.move(center, 15.0);
+                          } catch (_) {}
+                        }
+                      },
                       interactionOptions: const InteractionOptions(flags: InteractiveFlag.all),
                     ),
                     children: [
                       TileLayer(
-                        key: ValueKey('dossier_map_${_isSatelliteMap ? 'sat' : (isDark ? 'dark' : 'light')}'),
+                        key: ValueKey('dossier_map_${_isSatelliteMap ? 'sat' : (usingOsm ? 'osm' : 'g')}_${isDark ? 'dark' : 'light'}'),
                         urlTemplate: tileUrl,
-                        subdomains: const ['0', '1', '2', '3'],
+                        subdomains: subdomains,
                         userAgentPackageName: 'com.pagesofus.app',
                         maxZoom: 21,
-                        maxNativeZoom: 19,
-                        tileBuilder: (!_isSatelliteMap && isDark)
-                            ? (context, tileWidget, tile) => ColorFiltered(
-                                  colorFilter: const ColorFilter.matrix(_darkMapMatrix),
-                                  child: tileWidget,
-                                )
-                            : null,
+                        maxNativeZoom: maxNativeZoom,
+                        errorTileCallback: (tile, error, stackTrace) {
+                          if (!mounted) return;
+                          _tileErrorCount++;
+                          if (!_isSatelliteMap && !_useOsmFallback && _tileErrorCount >= 4) {
+                            WidgetsBinding.instance.addPostFrameCallback((_) {
+                              if (mounted) {
+                                setState(() {
+                                  _useOsmFallback = true;
+                                  _tileErrorCount = 0;
+                                  _mapTilesLoading = true;
+                                  _mapLoadFailed = false;
+                                });
+                              }
+                            });
+                          } else if (_tileErrorCount >= 8) {
+                            WidgetsBinding.instance.addPostFrameCallback((_) {
+                              if (mounted) {
+                                setState(() {
+                                  _mapTilesLoading = false;
+                                  _mapLoadFailed = true;
+                                });
+                              }
+                            });
+                          }
+                        },
+                        tileBuilder: (context, tileWidget, tile) {
+                          if (_mapTilesLoading || _mapLoadFailed) {
+                            WidgetsBinding.instance.addPostFrameCallback((_) {
+                              if (mounted && (_mapTilesLoading || _mapLoadFailed)) {
+                                setState(() {
+                                  _mapTilesLoading = false;
+                                  _mapLoadFailed = false;
+                                  _tileErrorCount = 0;
+                                });
+                              }
+                            });
+                          }
+                          if (!_isSatelliteMap && isDark) {
+                            return ColorFiltered(
+                              colorFilter: const ColorFilter.matrix(_darkMapMatrix),
+                              child: tileWidget,
+                            );
+                          }
+                          return tileWidget;
+                        },
                       ),
                       if (trailCoords.length >= 2)
                         PolylineLayer(
@@ -1262,6 +1354,73 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
                       ),
                     ],
                   ),
+                  if (_mapTilesLoading && !_mapLoadFailed)
+                    Positioned(
+                      top: 10,
+                      left: 10,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1F161B).withOpacity(0.84),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: pal.accent.withOpacity(0.35)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            SizedBox(
+                              width: 11,
+                              height: 11,
+                              child: CircularProgressIndicator(strokeWidth: 1.8, color: pal.accent),
+                            ),
+                            const SizedBox(width: 6),
+                            const Text(
+                              'Loading map tiles…',
+                              style: TextStyle(fontSize: 10.5, color: Color(0xFFF2E4E9), fontWeight: FontWeight.w600),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  if (_mapLoadFailed)
+                    Positioned.fill(
+                      child: Container(
+                        color: pal.card.withOpacity(0.92),
+                        alignment: Alignment.center,
+                        padding: const EdgeInsets.all(20),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.map_outlined, color: pal.accent, size: 28),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Map tiles could not load. Check internet connection and retry.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(fontSize: 12, color: pal.primaryInk, fontWeight: FontWeight.w600),
+                            ),
+                            const SizedBox(height: 10),
+                            ElevatedButton.icon(
+                              onPressed: () {
+                                HapticFeedback.lightImpact();
+                                setState(() {
+                                  _tileErrorCount = 0;
+                                  _mapLoadFailed = false;
+                                  _mapTilesLoading = true;
+                                  _useOsmFallback = !_useOsmFallback;
+                                });
+                              },
+                              icon: const Icon(Icons.refresh_rounded, size: 16),
+                              label: const Text('Retry Map'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: pal.accent,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   // Top-right Map Style & Center Controls
                   Positioned(
                     top: 10,
@@ -1273,7 +1432,12 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
                           label: _isSatelliteMap ? 'Street' : 'Satellite',
                           onTap: () {
                             HapticFeedback.selectionClick();
-                            setState(() => _isSatelliteMap = !_isSatelliteMap);
+                            setState(() {
+                              _isSatelliteMap = !_isSatelliteMap;
+                              _tileErrorCount = 0;
+                              _mapLoadFailed = false;
+                              _mapTilesLoading = true;
+                            });
                           },
                         ),
                         const SizedBox(height: 6),
@@ -1392,7 +1556,7 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
   Widget _buildTimelineLog({
     required List<dynamic> geoEvents,
     required List<dynamic> stayPoints,
-    required _DossierPalette pal,
+    required DossierPalette pal,
   }) {
     if (geoEvents.isEmpty && stayPoints.isEmpty) {
       return Container(
@@ -1514,7 +1678,7 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
     required StageProvider stage,
     required String userId,
     required String spaceId,
-    required _DossierPalette pal,
+    required DossierPalette pal,
   }) {
     final whispers = stage.secretWhispers;
     return Container(

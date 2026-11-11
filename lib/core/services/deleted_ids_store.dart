@@ -79,7 +79,7 @@ class OrphanAuditItem {
 /// Always reports found candidates first before deleting.
 class OrphanAuditService {
   static final RegExp _testOwnerPattern = RegExp(
-    r'^(asmon|test|dummy|seed|sample|unknown)$',
+    r'^(test|dummy|seed|sample|unknown)$',
     caseSensitive: false,
   );
 

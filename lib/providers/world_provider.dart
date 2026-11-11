@@ -181,11 +181,13 @@ class WorldProvider extends ChangeNotifier {
   }
 
   void clearPartner() {
-    if (_partnerId != null) {
-      _locations.remove(_partnerId);
-    }
+    _locations.removeWhere((key, _) => _currentUserId == null || key != _currentUserId);
     _partnerId = null;
     _partnerWeather = null;
+    _partnerJourneyLog.clear();
+    _partnerStayPoints.clear();
+    _partnerInsideZoneIds.clear();
+    _partnerFirstPlaceToday = null;
     notifyListeners();
   }
 
@@ -272,6 +274,7 @@ class WorldProvider extends ChangeNotifier {
 
   WorldProvider() {
     AuthProvider.registerSignOutHook(resetState);
+    AuthProvider.registerDisconnectHook(clearPartner);
     DeviceStatusService.onHardwareStepsUpdated = (steps) {
       final prev = _hardwareStepsToday;
       if (prev != steps) {
@@ -1099,17 +1102,12 @@ class WorldProvider extends ChangeNotifier {
                   _locations[key] = loc;
                   hasChanges = true;
                 }
-              } else if (key != currentUserId && key != 'updatedAt') {
-                if (_partnerId == null || _partnerId!.isEmpty) {
-                  _partnerId = key;
-                }
-                if (key == _partnerId) {
-                  _locations[key] = loc;
-                  hasChanges = true;
-                  if (loc.lat != 0.0 || loc.lng != 0.0) {
-                    if (loc.placeName == null || loc.placeName == 'Nearby' || loc.placeName!.trim().isEmpty) {
-                      _reverseGeocodePartner(key, loc.lat, loc.lng);
-                    }
+              } else if (_partnerId != null && _partnerId!.isNotEmpty && key == _partnerId) {
+                _locations[key] = loc;
+                hasChanges = true;
+                if (loc.lat != 0.0 || loc.lng != 0.0) {
+                  if (loc.placeName == null || loc.placeName == 'Nearby' || loc.placeName!.trim().isEmpty) {
+                    _reverseGeocodePartner(key, loc.lat, loc.lng);
                   }
                 }
               }
@@ -1155,10 +1153,10 @@ class WorldProvider extends ChangeNotifier {
   void _handleSupabaseLocationUpdate(Map<String, dynamic> data) {
     if (data['location'] != null && data['location'] is Map) {
       final loc = UserLocationData.fromJson(Map<String, dynamic>.from(data['location'] as Map));
-      if (loc.userId != _currentUserId) {
-        if (_partnerId == null || _partnerId!.isEmpty) {
-          _partnerId = loc.userId;
-        }
+      if (loc.userId != _currentUserId &&
+          _partnerId != null &&
+          _partnerId!.isNotEmpty &&
+          loc.userId == _partnerId) {
         _locations[loc.userId] = loc;
         if (_partnerFirstPlaceToday == null && loc.placeName != null && loc.placeName!.isNotEmpty && loc.placeName != 'Nearby') {
           _partnerFirstPlaceToday = loc.placeName;

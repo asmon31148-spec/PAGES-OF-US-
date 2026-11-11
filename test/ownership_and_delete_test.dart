@@ -4,6 +4,7 @@ import 'package:pages_of_us/core/services/deleted_ids_store.dart';
 import 'package:pages_of_us/core/services/local_cache_service.dart';
 import 'package:pages_of_us/core/services/media_upload_service.dart';
 import 'package:pages_of_us/core/utils/ownership_helper.dart';
+import 'package:pages_of_us/features/dossier/screens/obsession_dossier_screen.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -181,15 +182,25 @@ void main() {
         isTrue,
       );
 
-      // Legacy hardcoded test owner
+      // Legacy hardcoded test owner (non-real handle)
       expect(
         OrphanAuditService.looksSuspiciousRow(
-          ownerRaw: 'asmon',
-          title: 'FOR U',
+          ownerRaw: 'test',
+          title: 'Seed item',
           myUid: me,
           partnerUid: partner,
         ),
         isTrue,
+      );
+      // Real legacy user handle matching 'asmon' must NOT be auto-classified as dummy seed
+      expect(
+        OrphanAuditService.looksSuspiciousRow(
+          ownerRaw: 'Asmon:::$me',
+          title: 'FOR U',
+          myUid: me,
+          partnerUid: partner,
+        ),
+        isFalse,
       );
 
       // Foreign owner outside current couple
@@ -233,6 +244,101 @@ void main() {
         MediaUploadService.extractImageKitFileName('https://cdn.other.io/clip.mp4'),
         isNull,
       );
+    });
+  });
+
+  group('Legacy UID Recovery, Isolation & Velvet Dossier Palette', () {
+    const newUid = 'uid_current_001';
+    const legacyUid = 'uid_previous_001';
+    const partnerUid = 'uid_partner_002';
+    const thirdPartyUid = 'uid_thirdparty_999';
+    const spaceId = 'space_pair_123';
+
+    test('collectLegacyUidAliases recovers prior UID from same-space Nickname:::LegacyUid without cross-account leakage', () {
+      final myLegacy = <String>{};
+      final partnerLegacy = <String>{};
+
+      OwnershipHelper.collectLegacyUidAliases(
+        [
+          {'space_id': spaceId, 'author': 'Alice:::$legacyUid'},
+          {'space_id': 'space_other_999', 'author': 'OtherUser:::$thirdPartyUid'},
+        ],
+        myUid: newUid,
+        myNickname: 'Alice',
+        partnerUid: partnerUid,
+        partnerNickname: 'Bob',
+        activeSpaceId: spaceId,
+        myLegacyUids: myLegacy,
+        partnerLegacyUids: partnerLegacy,
+      );
+
+      expect(myLegacy, contains(legacyUid));
+      expect(myLegacy, isNot(contains(thirdPartyUid)));
+      expect(partnerLegacy, isEmpty);
+
+      // Bare prior-UID item now becomes viewable AND deletable by the rightful owner
+      expect(
+        OwnershipHelper.canViewItem(
+          ownerUid: legacyUid,
+          myUid: newUid,
+          myNickname: 'Alice',
+          myLegacyUids: myLegacy,
+          partnerUid: null, // works even when solo!
+        ),
+        isTrue,
+      );
+      expect(
+        OwnershipHelper.canDeleteItem(
+          ownerUid: legacyUid,
+          myUid: newUid,
+          myNickname: 'Alice',
+          myLegacyUids: myLegacy,
+        ),
+        isTrue,
+      );
+
+      // Same-space legacy bare handle ('alice') matches case-insensitively
+      expect(
+        OwnershipHelper.canViewItem(
+          ownerUid: 'alice',
+          myUid: newUid,
+          myNickname: 'Alice',
+          activeSpaceId: spaceId,
+          itemSpaceId: spaceId,
+        ),
+        isTrue,
+      );
+
+      // Third-party account's row remains strictly hidden
+      expect(
+        OwnershipHelper.canViewItem(
+          ownerUid: thirdPartyUid,
+          myUid: newUid,
+          myNickname: 'Alice',
+          myLegacyUids: myLegacy,
+          partnerUid: partnerUid,
+          partnerNickname: 'Bob',
+          partnerLegacyUids: partnerLegacy,
+          activeSpaceId: spaceId,
+          itemSpaceId: 'space_other_999',
+        ),
+        isFalse,
+      );
+    });
+
+    test('DossierPalette produces genuinely distinct colors when Velvet Noir is ON vs OFF', () {
+      final velvetLightBase = DossierPalette.fromBrightness(false, isVelvet: true);
+      final lightOff = DossierPalette.fromBrightness(false, isVelvet: false);
+      final velvetDarkBase = DossierPalette.fromBrightness(true, isVelvet: true);
+      final darkOff = DossierPalette.fromBrightness(true, isVelvet: false);
+
+      expect(velvetLightBase.bg, isNot(equals(lightOff.bg)));
+      expect(velvetLightBase.accent, isNot(equals(lightOff.accent)));
+      expect(velvetDarkBase.bg, isNot(equals(darkOff.bg)));
+      expect(velvetDarkBase.card, isNot(equals(darkOff.card)));
+      expect(velvetDarkBase.accent, isNot(equals(darkOff.accent)));
+      // Velvet palette stays rich deep obsidian-crimson regardless of light/dark toggle
+      expect(velvetLightBase.bg, equals(velvetDarkBase.bg));
     });
   });
 }

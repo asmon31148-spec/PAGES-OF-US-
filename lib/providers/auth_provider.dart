@@ -113,10 +113,17 @@ class AuthProvider extends ChangeNotifier {
   }
 
   static final List<FutureOr<void> Function()> _signOutHooks = [];
+  static final List<FutureOr<void> Function()> _disconnectHooks = [];
 
   static void registerSignOutHook(FutureOr<void> Function() hook) {
     if (!_signOutHooks.contains(hook)) {
       _signOutHooks.add(hook);
+    }
+  }
+
+  static void registerDisconnectHook(FutureOr<void> Function() hook) {
+    if (!_disconnectHooks.contains(hook)) {
+      _disconnectHooks.add(hook);
     }
   }
 
@@ -126,6 +133,16 @@ class AuthProvider extends ChangeNotifier {
         await hook();
       } catch (e) {
         debugPrint('SignOut hook error: $e');
+      }
+    }
+  }
+
+  static Future<void> runDisconnectHooks() async {
+    for (final hook in _disconnectHooks) {
+      try {
+        await hook();
+      } catch (e) {
+        debugPrint('Disconnect hook error: $e');
       }
     }
   }
@@ -194,11 +211,14 @@ class AuthProvider extends ChangeNotifier {
     SupabaseService.setProfileUpdateListener((data) {
       try {
         final updatedProfile = UserProfile.fromJson(data);
+        final activePartnerUid = effectivePartnerId;
         if (_user != null && updatedProfile.id == _user!.id) {
           _user = updatedProfile;
           LocalCacheService.setCachedUser(updatedProfile.toJson());
           notifyListeners();
-        } else if (_partner == null || updatedProfile.id == _partner?.id || (_user != null && updatedProfile.id != _user!.id)) {
+        } else if (activePartnerUid != null &&
+            activePartnerUid.isNotEmpty &&
+            updatedProfile.id == activePartnerUid) {
           _partner = updatedProfile;
           LocalCacheService.setCachedPartner(updatedProfile.toJson());
           notifyListeners();
@@ -290,6 +310,20 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> refreshUserData(String uid) async {
+    final prevCachedUid = LocalCacheService.getCachedUser()?['id']?.toString();
+    if ((_user != null && _user!.id != uid) ||
+        (prevCachedUid != null && prevCachedUid.isNotEmpty && prevCachedUid != uid)) {
+      _spaceSub?.cancel();
+      _partnerSub?.cancel();
+      _userSub?.cancel();
+      _spaceSub = null;
+      _partnerSub = null;
+      _userSub = null;
+      _space = null;
+      _partner = null;
+      await runSignOutHooks();
+      await LocalCacheService.clearAll();
+    }
     _lastSyncedUid = uid;
     try {
       NotificationService.syncDeviceToken(uid);
@@ -656,6 +690,8 @@ class AuthProvider extends ChangeNotifier {
       await LocalCacheService.setCachedSpace(newSpace.toJson());
       await LocalCacheService.setCachedUser(_user!.toJson());
       await LocalCacheService.setCachedPartner(null);
+      await LocalCacheService.setCachedPartnerMood(null);
+      await runDisconnectHooks();
       _listenToSpace(newSpace.id, _user!.id);
       _isLoading = false;
       notifyListeners();

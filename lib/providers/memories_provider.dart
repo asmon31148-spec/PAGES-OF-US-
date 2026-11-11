@@ -146,6 +146,94 @@ class MemoriesProvider extends ChangeNotifier {
   String? _currentPartnerId;
   String? _currentPartnerNickname;
   String? _currentSpaceId;
+  final Set<String> _discoveredMyLegacyUids = {};
+  final Set<String> _discoveredPartnerLegacyUids = {};
+
+  void clearPartnerState() {
+    _currentPartnerId = null;
+    _currentPartnerNickname = null;
+    _discoveredPartnerLegacyUids.clear();
+    final uid = _currentUserId ?? '';
+    if (uid.isNotEmpty) {
+      _memories = _memories.where((m) => _isMyItem(m.author)).toList();
+      _letters = _letters.where((l) => _isMyItem(l.author)).toList();
+      _milestones = _milestones.where((m) => _isMyItem(m.authorId)).toList();
+    } else {
+      _memories = [];
+      _letters = [];
+      _milestones = [];
+    }
+    notifyListeners();
+  }
+
+  bool _isMyItem(String? rawAuthor) {
+    final uid = _currentUserId ?? '';
+    if (uid.isEmpty) return false;
+    return OwnershipHelper.isOwner(
+      ownerUid: OwnershipHelper.extractOwnerUid(rawAuthor),
+      legacyAuthor: rawAuthor,
+      myUid: uid,
+      myNickname: _currentUserNickname,
+      myLegacyUids: _discoveredMyLegacyUids,
+      partnerUid: _currentPartnerId,
+      activeSpaceId: _currentSpaceId,
+    );
+  }
+
+  bool _canViewRawAuthor(String? rawAuthor, {String? partnerId, String? partnerNickname, String? itemSpaceId}) {
+    final uid = _currentUserId ?? '';
+    if (uid.isEmpty) return false;
+    final pid = partnerId ?? _currentPartnerId;
+    final pNick = partnerNickname ?? _currentPartnerNickname;
+    return OwnershipHelper.canViewItem(
+      ownerUid: OwnershipHelper.extractOwnerUid(rawAuthor),
+      legacyAuthor: rawAuthor,
+      myUid: uid,
+      myNickname: _currentUserNickname,
+      myLegacyUids: _discoveredMyLegacyUids,
+      partnerUid: pid,
+      partnerNickname: pNick,
+      partnerLegacyUids: _discoveredPartnerLegacyUids,
+      activeSpaceId: _currentSpaceId,
+      itemSpaceId: itemSpaceId,
+    );
+  }
+
+  bool _canDeleteRawAuthor(String? rawAuthor) {
+    final uid = _currentUserId ?? '';
+    if (uid.isEmpty) return false;
+    return OwnershipHelper.canDeleteItem(
+      ownerUid: OwnershipHelper.extractOwnerUid(rawAuthor),
+      legacyAuthor: rawAuthor,
+      myUid: uid,
+      myNickname: _currentUserNickname,
+      myLegacyUids: _discoveredMyLegacyUids,
+      partnerUid: _currentPartnerId,
+      activeSpaceId: _currentSpaceId,
+    );
+  }
+
+  bool _learnLegacyAliases(
+    List<dynamic> rows, {
+    required String currentUserId,
+    String? currentUserNickname,
+    String? partnerId,
+    String? partnerNickname,
+    required String spaceId,
+  }) {
+    final beforeCount = _discoveredMyLegacyUids.length + _discoveredPartnerLegacyUids.length;
+    OwnershipHelper.collectLegacyUidAliases(
+      rows.whereType<Map>().map((e) => Map<String, dynamic>.from(e)),
+      myUid: currentUserId,
+      myNickname: currentUserNickname ?? _currentUserNickname,
+      partnerUid: partnerId ?? _currentPartnerId,
+      partnerNickname: partnerNickname ?? _currentPartnerNickname,
+      activeSpaceId: spaceId,
+      myLegacyUids: _discoveredMyLegacyUids,
+      partnerLegacyUids: _discoveredPartnerLegacyUids,
+    );
+    return (_discoveredMyLegacyUids.length + _discoveredPartnerLegacyUids.length) > beforeCount;
+  }
 
   bool _isSharedSpace({required String spaceId, String? partnerId}) {
     if (spaceId.isEmpty || spaceId == 'default_space') return false;
@@ -163,6 +251,16 @@ class MemoriesProvider extends ChangeNotifier {
     if (spaceId.isEmpty || spaceId == 'default_space' || currentUserId.isEmpty) {
       return;
     }
+    AuthProvider.registerDisconnectHook(clearPartnerState);
+
+    if (_currentUserId == null || _currentUserId != currentUserId) {
+      _discoveredMyLegacyUids.clear();
+      _discoveredPartnerLegacyUids.clear();
+    }
+    if (partnerId == null || partnerId.isEmpty || _currentPartnerId != partnerId) {
+      _discoveredPartnerLegacyUids.clear();
+    }
+
     _currentUserId = currentUserId;
     if (currentUserNickname != null && currentUserNickname.trim().isNotEmpty) {
       _currentUserNickname = currentUserNickname.trim();
@@ -170,9 +268,15 @@ class MemoriesProvider extends ChangeNotifier {
     _currentPartnerId = partnerId;
     _currentPartnerNickname = partnerNickname;
     _currentSpaceId = spaceId;
+    if (partnerId == null || partnerId.isEmpty) {
+      _memories = _memories.where((m) => _isMyItem(m.author)).toList();
+      _letters = _letters.where((l) => _isMyItem(l.author)).toList();
+      _milestones = _milestones.where((m) => _isMyItem(m.authorId)).toList();
+    }
     _isLoading = true;
     notifyListeners();
 
+    final prevAliasCount = _discoveredMyLegacyUids.length + _discoveredPartnerLegacyUids.length;
     await Future.wait([
       fetchMemories(
         spaceId: spaceId,
@@ -196,6 +300,34 @@ class MemoriesProvider extends ChangeNotifier {
         partnerNickname: partnerNickname,
       ),
     ]);
+
+    // If first pass uncovered legacy prior UIDs (e.g. Nickname:::OldUid), re-fetch once
+    // so bare historical UID rows in earlier spaces also appear immediately.
+    if (_discoveredMyLegacyUids.length + _discoveredPartnerLegacyUids.length > prevAliasCount) {
+      await Future.wait([
+        fetchMemories(
+          spaceId: spaceId,
+          currentUserId: currentUserId,
+          currentUserNickname: _currentUserNickname,
+          partnerId: partnerId,
+          partnerNickname: partnerNickname,
+        ),
+        fetchLetters(
+          spaceId: spaceId,
+          currentUserId: currentUserId,
+          currentUserNickname: _currentUserNickname,
+          partnerId: partnerId,
+          partnerNickname: partnerNickname,
+        ),
+        fetchMilestones(
+          spaceId: spaceId,
+          currentUserId: currentUserId,
+          currentUserNickname: _currentUserNickname,
+          partnerId: partnerId,
+          partnerNickname: partnerNickname,
+        ),
+      ]);
+    }
 
     _isLoading = false;
     notifyListeners();
@@ -397,8 +529,22 @@ class MemoriesProvider extends ChangeNotifier {
     if (currentUserId.isNotEmpty) {
       clauses.add('author.ilike.%$currentUserId%');
     }
+    for (final legacyUid in _discoveredMyLegacyUids) {
+      if (legacyUid.isNotEmpty) {
+        clauses.add('author.ilike.%$legacyUid%');
+      }
+    }
+    final nick = (_currentUserNickname ?? '').trim();
+    if (nick.length >= 3) {
+      clauses.add('author.ilike.%$nick%');
+    }
     if (partnerId != null && partnerId.isNotEmpty) {
       clauses.add('author.ilike.%$partnerId%');
+      for (final pLegacy in _discoveredPartnerLegacyUids) {
+        if (pLegacy.isNotEmpty) {
+          clauses.add('author.ilike.%$pLegacy%');
+        }
+      }
     }
     return clauses.join(',');
   }
@@ -411,25 +557,8 @@ class MemoriesProvider extends ChangeNotifier {
     required String currentUserId,
     String? partnerId,
   }) {
-    if (partnerId == null || partnerId.isEmpty || spaceId.startsWith('solo_')) {
-      return;
-    }
-    for (final raw in rows) {
-      if (raw is! Map) continue;
-      final rowId = raw['id']?.toString();
-      final rowSpace = raw['space_id']?.toString();
-      final ownerUid = OwnershipHelper.extractOwnerUid(
-        (raw['author'] ?? raw['author_id'])?.toString(),
-      );
-      // Only migrate rows strictly owned by currentUserId into the active shared space;
-      // never overwrite or mutate partner/foreign ownership or unrelated rows.
-      if (rowId != null &&
-          rowId.isNotEmpty &&
-          rowSpace != spaceId &&
-          OwnershipHelper.isOwner(ownerUid: ownerUid, myUid: currentUserId)) {
-        unawaited(_healSingleRowSpaceId(supabase, table, rowId, spaceId));
-      }
-    }
+    // Client-side recovery must NEVER silently mutate existing DB rows;
+    // DB space/owner backfill runs strictly via user-approved SQL migration.
   }
 
   Future<void> _healSingleRowSpaceId(
@@ -479,26 +608,38 @@ class MemoriesProvider extends ChangeNotifier {
         partnerId: partnerId,
       );
 
+      _learnLegacyAliases(
+        rows,
+        currentUserId: currentUserId,
+        currentUserNickname: currentUserNickname ?? _currentUserNickname,
+        partnerId: partnerId,
+        partnerNickname: partnerNickname ?? _currentPartnerNickname,
+        spaceId: spaceId,
+      );
+
       final tombstones = DeletedIdsStore.getIds('memories');
       final effectivePid = partnerId ?? _currentPartnerId;
+      final effectivePNick = partnerNickname ?? _currentPartnerNickname;
       _memories = rows
           .where((r) => r is Map && !tombstones.contains(r['id']?.toString()))
+          .where((r) {
+            final map = r as Map;
+            final rawAuthor = (map['author'] ?? map['author_id'])?.toString();
+            final itemSpace = map['space_id']?.toString();
+            return _canViewRawAuthor(
+              rawAuthor,
+              partnerId: effectivePid,
+              partnerNickname: effectivePNick,
+              itemSpaceId: itemSpace,
+            );
+          })
           .map((row) => MemoryItem.fromJson(
                 row as Map<String, dynamic>,
                 currentUserId: currentUserId,
                 currentUserNickname: currentUserNickname ?? _currentUserNickname,
                 partnerId: effectivePid,
-                partnerNickname: partnerNickname ?? _currentPartnerNickname,
+                partnerNickname: effectivePNick,
               ))
-          .where((m) {
-            final ownerUid = OwnershipHelper.extractOwnerUid(m.author);
-            return OwnershipHelper.canViewItem(
-                  ownerUid: ownerUid,
-                  myUid: currentUserId,
-                  partnerUid: effectivePid,
-                ) ||
-                (ownerUid.isEmpty && m.isMine);
-          })
           .toList();
 
       // Background prefetch for instant 0ms voice whisper playback
@@ -560,26 +701,38 @@ class MemoriesProvider extends ChangeNotifier {
         partnerId: partnerId,
       );
 
+      _learnLegacyAliases(
+        rows,
+        currentUserId: currentUserId,
+        currentUserNickname: currentUserNickname ?? _currentUserNickname,
+        partnerId: partnerId,
+        partnerNickname: partnerNickname ?? _currentPartnerNickname,
+        spaceId: spaceId,
+      );
+
       final tombstones = DeletedIdsStore.getIds('letters');
       final effectivePid = partnerId ?? _currentPartnerId;
+      final effectivePNick = partnerNickname ?? _currentPartnerNickname;
       _letters = rows
           .where((r) => r is Map && !tombstones.contains(r['id']?.toString()))
+          .where((r) {
+            final map = r as Map;
+            final rawAuthor = (map['author'] ?? map['author_id'])?.toString();
+            final itemSpace = map['space_id']?.toString();
+            return _canViewRawAuthor(
+              rawAuthor,
+              partnerId: effectivePid,
+              partnerNickname: effectivePNick,
+              itemSpaceId: itemSpace,
+            );
+          })
           .map((row) => LetterItem.fromJson(
                 row as Map<String, dynamic>,
                 currentUserId: currentUserId,
                 currentUserNickname: currentUserNickname ?? _currentUserNickname,
                 partnerId: effectivePid,
-                partnerNickname: partnerNickname ?? _currentPartnerNickname,
+                partnerNickname: effectivePNick,
               ))
-          .where((l) {
-            final ownerUid = OwnershipHelper.extractOwnerUid(l.author);
-            return OwnershipHelper.canViewItem(
-                  ownerUid: ownerUid,
-                  myUid: currentUserId,
-                  partnerUid: effectivePid,
-                ) ||
-                (ownerUid.isEmpty && l.isMine);
-          })
           .toList();
       notifyListeners();
     } catch (e) {
@@ -623,26 +776,38 @@ class MemoriesProvider extends ChangeNotifier {
         partnerId: partnerId,
       );
 
+      _learnLegacyAliases(
+        rows,
+        currentUserId: currentUserId,
+        currentUserNickname: currentUserNickname ?? _currentUserNickname,
+        partnerId: partnerId,
+        partnerNickname: partnerNickname ?? _currentPartnerNickname,
+        spaceId: spaceId,
+      );
+
       final tombstones = DeletedIdsStore.getIds('milestones');
       final effectivePid = partnerId ?? _currentPartnerId;
+      final effectivePNick = partnerNickname ?? _currentPartnerNickname;
       final list = rows
           .where((r) => r is Map && !tombstones.contains(r['id']?.toString()))
+          .where((r) {
+            final map = r as Map;
+            final rawAuthor = (map['author'] ?? map['author_id'])?.toString();
+            final itemSpace = map['space_id']?.toString();
+            return _canViewRawAuthor(
+              rawAuthor,
+              partnerId: effectivePid,
+              partnerNickname: effectivePNick,
+              itemSpaceId: itemSpace,
+            );
+          })
           .map((row) => MilestoneItem.fromJson(
                 row as Map<String, dynamic>,
                 currentUserId: currentUserId,
                 currentUserNickname: currentUserNickname ?? _currentUserNickname,
                 partnerId: effectivePid,
-                partnerNickname: partnerNickname ?? _currentPartnerNickname,
+                partnerNickname: effectivePNick,
               ))
-          .where((m) {
-            final ownerUid = OwnershipHelper.extractOwnerUid(m.authorId);
-            return OwnershipHelper.canViewItem(
-                  ownerUid: ownerUid,
-                  myUid: currentUserId,
-                  partnerUid: effectivePid,
-                ) ||
-                (ownerUid.isEmpty && m.isMine);
-          })
           .toList();
       // Replace authoritatively with server list minus tombstones rather than resurrecting deleted entries
       _milestones = list..sort((a, b) => b.rawDate.compareTo(a.rawDate));
@@ -654,13 +819,10 @@ class MemoriesProvider extends ChangeNotifier {
 
   void _mergeMilestones(List<MilestoneItem> incoming) {
     final tombstones = DeletedIdsStore.getIds('milestones');
-    final uid = _currentUserId ?? '';
-    final pid = _currentPartnerId;
     final filtered = incoming.where((m) {
       if (tombstones.contains(m.id)) return false;
-      final ownerUid = OwnershipHelper.extractOwnerUid(m.authorId);
-      return OwnershipHelper.canViewItem(ownerUid: ownerUid, myUid: uid, partnerUid: pid) ||
-          (ownerUid.isEmpty && m.isMine);
+      return _canViewRawAuthor(m.authorId) ||
+          (OwnershipHelper.extractOwnerUid(m.authorId).isEmpty && m.isMine);
     }).toList();
 
     final Map<String, MilestoneItem> map = {
@@ -671,9 +833,8 @@ class MemoriesProvider extends ChangeNotifier {
       map[item.id] = item;
     }
     _milestones = map.values.where((m) {
-      final ownerUid = OwnershipHelper.extractOwnerUid(m.authorId);
-      return OwnershipHelper.canViewItem(ownerUid: ownerUid, myUid: uid, partnerUid: pid) ||
-          (ownerUid.isEmpty && m.isMine);
+      return _canViewRawAuthor(m.authorId) ||
+          (OwnershipHelper.extractOwnerUid(m.authorId).isEmpty && m.isMine);
     }).toList()
       ..sort((a, b) => b.rawDate.compareTo(a.rawDate));
     notifyListeners();
@@ -767,8 +928,7 @@ class MemoriesProvider extends ChangeNotifier {
     final target = idx != -1 ? _memories[idx] : null;
     if (target != null && _currentUserId != null && _currentUserId!.isNotEmpty) {
       final ownerUid = OwnershipHelper.extractOwnerUid(target.author);
-      if (ownerUid.isNotEmpty &&
-          !OwnershipHelper.canDeleteItem(ownerUid: ownerUid, myUid: _currentUserId!)) {
+      if (ownerUid.isNotEmpty && !_canDeleteRawAuthor(target.author)) {
         return false;
       }
     }
@@ -884,8 +1044,7 @@ class MemoriesProvider extends ChangeNotifier {
     final target = idx != -1 ? _letters[idx] : null;
     if (target != null && _currentUserId != null && _currentUserId!.isNotEmpty) {
       final ownerUid = OwnershipHelper.extractOwnerUid(target.author);
-      if (ownerUid.isNotEmpty &&
-          !OwnershipHelper.canDeleteItem(ownerUid: ownerUid, myUid: _currentUserId!)) {
+      if (ownerUid.isNotEmpty && !_canDeleteRawAuthor(target.author)) {
         return false;
       }
     }
@@ -968,8 +1127,7 @@ class MemoriesProvider extends ChangeNotifier {
     final target = idx != -1 ? _milestones[idx] : null;
     if (target != null && _currentUserId != null && _currentUserId!.isNotEmpty) {
       final ownerUid = OwnershipHelper.extractOwnerUid(target.authorId);
-      if (ownerUid.isNotEmpty &&
-          !OwnershipHelper.canDeleteItem(ownerUid: ownerUid, myUid: _currentUserId!)) {
+      if (ownerUid.isNotEmpty && !_canDeleteRawAuthor(target.authorId)) {
         return false;
       }
     }

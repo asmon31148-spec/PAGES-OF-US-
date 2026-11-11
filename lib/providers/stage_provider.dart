@@ -140,6 +140,7 @@ class StageProvider extends ChangeNotifier {
 
   StageProvider() {
     AuthProvider.registerSignOutHook(resetState);
+    AuthProvider.registerDisconnectHook(clearPartnerState);
     // 1. INSTANT ZERO-LATENCY LOAD FROM LOCAL CACHE
     _anniversaryDate = LocalCacheService.getCachedAnniversary();
     final cachedMyMood = LocalCacheService.getCachedMyMood();
@@ -224,6 +225,25 @@ class StageProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Wipes ALL partner-specific live telemetry, battery, mood, and notes immediately on unpair.
+  void clearPartnerState() {
+    _partnerMood = null;
+    _partnerTouchPoint = null;
+    _partnerDailyTouches = 0;
+    _partnerBattery = null;
+    _partnerTelemetry = null;
+    _partnerDailySummaries = [];
+    if (_activeUserId != null && _activeUserId!.isNotEmpty) {
+      _pinnedNotes.removeWhere((k, _) => k != _activeUserId);
+    } else {
+      _pinnedNotes.clear();
+    }
+    _activePartnerId = null;
+    LocalCacheService.setCachedPartner(null);
+    LocalCacheService.setCachedPartnerMood(null);
+    notifyListeners();
+  }
+
   void _loadTouchMetrics() {
     try {
       final prefs = LocalCacheService.prefs;
@@ -254,19 +274,24 @@ class StageProvider extends ChangeNotifier {
         _activePartnerId == partnerId;
     if (isSameSpace && _anniversarySub != null) return;
 
+    final partnerChanged = _activePartnerId != partnerId;
     _activeSpaceId = spaceId;
     _activeUserId = userId;
     _activePartnerId = partnerId;
 
-    if (partnerId == null || partnerId.isEmpty) {
+    if (partnerId == null || partnerId.isEmpty || partnerChanged) {
       _partnerMood = null;
       _partnerTouchPoint = null;
       _partnerDailyTouches = 0;
       _partnerBattery = null;
       _partnerTelemetry = null;
+      _partnerDailySummaries = [];
       _pinnedNotes.removeWhere((k, _) => k != userId);
-      LocalCacheService.setCachedPartner(null);
-      LocalCacheService.setCachedPartnerMood(null);
+      if (partnerId == null || partnerId.isEmpty) {
+        LocalCacheService.setCachedPartner(null);
+        LocalCacheService.setCachedPartnerMood(null);
+      }
+      notifyListeners();
     }
 
     _isTelemetrySharingEnabled = LocalCacheService.prefs.getBool('telemetry_sharing_enabled') ?? true;
@@ -287,7 +312,10 @@ class StageProvider extends ChangeNotifier {
 
     SupabaseService.setBatteryStatusListener((data) {
       final sender = data['senderId']?.toString();
-      if (sender != null && sender != userId && (partnerId == null || partnerId.isEmpty || sender == partnerId)) {
+      if (_activePartnerId != null &&
+          _activePartnerId!.isNotEmpty &&
+          sender == _activePartnerId &&
+          sender != userId) {
         final parsed = DeviceBatteryStatus.fromJson(data);
         if (parsed.level >= 0 && parsed.level <= 100) {
           _partnerBattery = parsed;
@@ -297,7 +325,10 @@ class StageProvider extends ChangeNotifier {
     });
     SupabaseService.setDeviceTelemetryListener((data) {
       final sender = data['senderId']?.toString();
-      if (sender != null && sender != userId && (partnerId == null || partnerId.isEmpty || sender == partnerId)) {
+      if (_activePartnerId != null &&
+          _activePartnerId!.isNotEmpty &&
+          sender == _activePartnerId &&
+          sender != userId) {
         if (data['disabled'] == true) {
           _partnerTelemetry = null;
           notifyListeners();

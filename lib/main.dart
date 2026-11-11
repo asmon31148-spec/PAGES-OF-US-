@@ -359,6 +359,7 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold> with Wi
           context.read<VaultProvider>().initVaultSync(
                 spaceId: effectiveSpaceId,
                 currentUserId: user.id,
+                currentUserNickname: user.nickname,
                 partnerId: effectivePartnerId,
                 partnerNickname: effectivePartnerName,
               );

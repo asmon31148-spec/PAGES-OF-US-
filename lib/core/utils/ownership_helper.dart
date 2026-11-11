@@ -7,28 +7,100 @@
 class OwnershipHelper {
   OwnershipHelper._();
 
+  static String extractRawDisplayName(String? raw) {
+    final clean = raw?.trim() ?? '';
+    if (clean.isEmpty) return '';
+    if (clean.contains(':::')) {
+      return clean.split(':::').first.trim();
+    }
+    return clean;
+  }
+
+  /// Dynamically infers legacy prior UIDs owned by the active user or partner
+  /// from historical compound tokens (`Nickname:::LegacyUid`) inside the same
+  /// space, without hardcoding any user IDs or names in code.
+  static void collectLegacyUidAliases(
+    Iterable<Map<String, dynamic>> rows, {
+    required String myUid,
+    String? myNickname,
+    String? partnerUid,
+    String? partnerNickname,
+    String? activeSpaceId,
+    required Set<String> myLegacyUids,
+    required Set<String> partnerLegacyUids,
+  }) {
+    final cleanMyUid = myUid.trim();
+    final cleanPartnerUid = (partnerUid ?? '').trim();
+    final normMyName = (myNickname ?? '').trim().toLowerCase();
+    final normPartnerName = (partnerNickname ?? '').trim().toLowerCase();
+    final cleanActiveSpace = (activeSpaceId ?? '').trim();
+
+    for (final row in rows) {
+      final rawAuthor = (row['author'] ?? row['author_id'] ?? row['creatorId'])?.toString().trim() ?? '';
+      if (!rawAuthor.contains(':::')) continue;
+      final parts = rawAuthor.split(':::');
+      if (parts.length < 2) continue;
+      final prefix = parts.first.trim().toLowerCase();
+      final uidPart = parts.last.trim();
+      if (uidPart.isEmpty || uidPart == cleanMyUid || uidPart == cleanPartnerUid) continue;
+
+      final rowSpace = (row['space_id'] ?? '').toString().trim();
+      final sameSpace = cleanActiveSpace.isEmpty || rowSpace.isEmpty || rowSpace == cleanActiveSpace;
+
+      if (normMyName.isNotEmpty && prefix == normMyName) {
+        myLegacyUids.add(uidPart);
+      } else if (normPartnerName.isNotEmpty && cleanPartnerUid.isNotEmpty && sameSpace && prefix == normPartnerName) {
+        partnerLegacyUids.add(uidPart);
+      }
+    }
+  }
+
   static bool isOwner({
     String? ownerUid,
     String? ownerId,
     String? legacyAuthor,
     String? myUid,
     String? currentUserId,
+    String? myNickname,
+    Set<String> myLegacyUids = const {},
+    String? partnerUid,
+    String? activeSpaceId,
+    String? itemSpaceId,
   }) {
     final uid = (currentUserId ?? myUid ?? '').trim();
     if (uid.isEmpty) return false;
-    final cleanOwner = (ownerId ?? ownerUid ?? '').trim();
-    if (cleanOwner.isNotEmpty) {
-      if (cleanOwner.contains(':::')) {
-        return cleanOwner.split(':::').last.trim() == uid;
+    final cleanPartner = (partnerUid ?? '').trim();
+    final raw = (ownerId ?? ownerUid ?? legacyAuthor ?? '').trim();
+    if (raw.isEmpty) return false;
+
+    final extractedUid = extractOwnerUid(ownerId ?? ownerUid, legacyAuthor: legacyAuthor);
+    if (extractedUid == uid || (myLegacyUids.isNotEmpty && myLegacyUids.contains(extractedUid))) {
+      return true;
+    }
+    if (cleanPartner.isNotEmpty && extractedUid == cleanPartner) {
+      return false;
+    }
+
+    // Legacy alias fallback for historical rows written before current Firebase UID
+    final normMe = (myNickname ?? '').trim().toLowerCase();
+    if (normMe.isNotEmpty) {
+      if (raw.contains(':::')) {
+        final prefix = extractRawDisplayName(raw).toLowerCase();
+        if (prefix == normMe) {
+          return true;
+        }
+      } else {
+        final sameSpace = activeSpaceId == null ||
+            activeSpaceId.isEmpty ||
+            itemSpaceId == null ||
+            itemSpaceId.isEmpty ||
+            itemSpaceId == activeSpaceId;
+        if (sameSpace && raw.toLowerCase() == normMe) {
+          return true;
+        }
       }
-      return cleanOwner == uid;
     }
-    final cleanLegacy = legacyAuthor?.trim() ?? '';
-    if (cleanLegacy.contains(':::')) {
-      final parts = cleanLegacy.split(':::');
-      return parts.length >= 2 && parts[1].trim() == uid;
-    }
-    return cleanLegacy == uid;
+    return false;
   }
 
   static bool isOwnedByPartner({
@@ -37,22 +109,43 @@ class OwnershipHelper {
     String? legacyAuthor,
     String? partnerUid,
     String? partnerId,
+    String? partnerNickname,
+    Set<String> partnerLegacyUids = const {},
+    String? myUid,
+    String? activeSpaceId,
+    String? itemSpaceId,
   }) {
     final pid = (partnerId ?? partnerUid ?? '').trim();
     if (pid.isEmpty) return false;
-    final cleanOwner = (ownerId ?? ownerUid ?? '').trim();
-    if (cleanOwner.isNotEmpty) {
-      if (cleanOwner.contains(':::')) {
-        return cleanOwner.split(':::').last.trim() == pid;
+    final cleanMyUid = (myUid ?? '').trim();
+    final raw = (ownerId ?? ownerUid ?? legacyAuthor ?? '').trim();
+    if (raw.isEmpty) return false;
+
+    final extractedUid = extractOwnerUid(ownerId ?? ownerUid, legacyAuthor: legacyAuthor);
+    if (extractedUid == pid || (partnerLegacyUids.isNotEmpty && partnerLegacyUids.contains(extractedUid))) {
+      return true;
+    }
+    if (cleanMyUid.isNotEmpty && extractedUid == cleanMyUid) {
+      return false;
+    }
+
+    final normPartner = (partnerNickname ?? '').trim().toLowerCase();
+    if (normPartner.isNotEmpty) {
+      final sameSpace = activeSpaceId == null ||
+          activeSpaceId.isEmpty ||
+          itemSpaceId == null ||
+          itemSpaceId.isEmpty ||
+          itemSpaceId == activeSpaceId;
+      if (raw.contains(':::')) {
+        final prefix = extractRawDisplayName(raw).toLowerCase();
+        if (sameSpace && prefix == normPartner) {
+          return true;
+        }
+      } else if (sameSpace && raw.toLowerCase() == normPartner) {
+        return true;
       }
-      return cleanOwner == pid;
     }
-    final cleanLegacy = legacyAuthor?.trim() ?? '';
-    if (cleanLegacy.contains(':::')) {
-      final parts = cleanLegacy.split(':::');
-      return parts.length >= 2 && parts[1].trim() == pid;
-    }
-    return cleanLegacy == pid;
+    return false;
   }
 
   static bool canViewItem({
@@ -61,8 +154,14 @@ class OwnershipHelper {
     String? legacyAuthor,
     String? myUid,
     String? currentUserId,
+    String? myNickname,
+    Set<String> myLegacyUids = const {},
     String? partnerUid,
     String? partnerId,
+    String? partnerNickname,
+    Set<String> partnerLegacyUids = const {},
+    String? activeSpaceId,
+    String? itemSpaceId,
   }) {
     if (isOwner(
       ownerUid: ownerUid,
@@ -70,6 +169,11 @@ class OwnershipHelper {
       legacyAuthor: legacyAuthor,
       myUid: myUid,
       currentUserId: currentUserId,
+      myNickname: myNickname,
+      myLegacyUids: myLegacyUids,
+      partnerUid: partnerId ?? partnerUid,
+      activeSpaceId: activeSpaceId,
+      itemSpaceId: itemSpaceId,
     )) {
       return true;
     }
@@ -79,6 +183,11 @@ class OwnershipHelper {
       legacyAuthor: legacyAuthor,
       partnerUid: partnerUid,
       partnerId: partnerId,
+      partnerNickname: partnerNickname,
+      partnerLegacyUids: partnerLegacyUids,
+      myUid: currentUserId ?? myUid,
+      activeSpaceId: activeSpaceId,
+      itemSpaceId: itemSpaceId,
     );
   }
 
@@ -88,6 +197,11 @@ class OwnershipHelper {
     String? legacyAuthor,
     String? myUid,
     String? currentUserId,
+    String? myNickname,
+    Set<String> myLegacyUids = const {},
+    String? partnerUid,
+    String? activeSpaceId,
+    String? itemSpaceId,
   }) {
     return isOwner(
       ownerUid: ownerUid,
@@ -95,6 +209,11 @@ class OwnershipHelper {
       legacyAuthor: legacyAuthor,
       myUid: myUid,
       currentUserId: currentUserId,
+      myNickname: myNickname,
+      myLegacyUids: myLegacyUids,
+      partnerUid: partnerUid,
+      activeSpaceId: activeSpaceId,
+      itemSpaceId: itemSpaceId,
     );
   }
 
