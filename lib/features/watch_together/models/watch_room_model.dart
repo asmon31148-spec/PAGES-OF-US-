@@ -65,6 +65,7 @@ class WatchPlayback {
   final String updatedBy;
   final double speed;
   final bool buffering;
+  final int actionSeq;
 
   const WatchPlayback({
     this.isPlaying = false,
@@ -73,6 +74,7 @@ class WatchPlayback {
     this.updatedBy = '',
     this.speed = 1.0,
     this.buffering = false,
+    this.actionSeq = 0,
   });
 
   factory WatchPlayback.fromMap(Map<dynamic, dynamic>? map) {
@@ -84,6 +86,7 @@ class WatchPlayback {
       updatedBy: map['updatedBy']?.toString() ?? '',
       speed: (map['speed'] as num?)?.toDouble() ?? 1.0,
       buffering: map['buffering'] == true,
+      actionSeq: (map['actionSeq'] as num?)?.toInt() ?? 0,
     );
   }
 
@@ -94,6 +97,7 @@ class WatchPlayback {
         'updatedBy': updatedBy,
         'speed': speed,
         'buffering': buffering,
+        'actionSeq': actionSeq,
       };
 }
 

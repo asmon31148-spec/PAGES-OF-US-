@@ -66,6 +66,10 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
   bool _wvAdActive = false;
   bool _triedMobileWebFallback = false;
 
+  // Extracted HD/SD stream sources & selected quality state
+  List<WatchStreamSource> _availableSources = const [];
+  String _qualityLabel = 'Auto';
+
   // Stream Subscriptions
   StreamSubscription<WatchPlayback>? _playbackSub;
   StreamSubscription<WatchRoom?>? _roomSub;
@@ -76,6 +80,9 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
   WatchPlayback? _lastRemotePlayback;
   WatchPlayback? _pendingRemotePlayback;
   DateTime _ignoreRemoteUntil = DateTime.now();
+  int _lastSentActionAtMs = 0;
+  int _lastRemoteActionSeq = 0;
+  int _lastRemoteUpdatedAt = 0;
   DateTime? _partnerOfflineSince;
   Timer? _driftCheckTimer;
   SyncStatus _syncStatus = SyncStatus.inSync;
@@ -311,6 +318,7 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
         _controller = candidate;
         _hasController = true;
         _isWebViewMode = false;
+        _qualityLabel = src.qualityLabel;
         try {
           await _controller.setVolume(1.0);
         } catch (_) {}
@@ -340,6 +348,7 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
         widget.youtubeId!,
         forceRefresh: forceRefresh,
       );
+      _availableSources = WatchVideoService.instance.extractSelectableQualities(sources);
       if (sources.isNotEmpty && await _tryNativeSources(sources)) {
         return;
       }
@@ -351,12 +360,14 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
     if (widget.videoType == 'web_url' && widget.networkVideoUrl != null && widget.networkVideoUrl!.isNotEmpty) {
       final resolved = await WatchVideoService.instance.resolveWebVideoSources(widget.networkVideoUrl!);
       if (resolved.detectedYoutubeId != null) {
+        _availableSources = WatchVideoService.instance.extractSelectableQualities(resolved.nativeSources);
         if (resolved.nativeSources.isNotEmpty && await _tryNativeSources(resolved.nativeSources)) {
           return;
         }
         await _activateWebViewYouTube(resolved.detectedYoutubeId!);
         return;
       }
+      _availableSources = WatchVideoService.instance.extractSelectableQualities(resolved.nativeSources);
       if (resolved.nativeSources.isNotEmpty && await _tryNativeSources(resolved.nativeSources)) {
         return;
       }
@@ -521,6 +532,20 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body, #player { width: 100%; height: 100%; background: #000; overflow: hidden; }
+    iframe { width: 100% !important; height: 100% !important; border: 0 !important; }
+    .ytp-large-play-button,
+    .ytp-cued-thumbnail-overlay,
+    .ytp-cued-thumbnail-overlay-image,
+    .ytp-watermark,
+    .ytp-pause-overlay,
+    .ytp-ce-element,
+    .ytp-show-cards-title,
+    .ytp-chrome-top,
+    .ytp-chrome-bottom {
+      display: none !important;
+      opacity: 0 !important;
+      pointer-events: none !important;
+    }
   </style>
 </head>
 <body>
@@ -529,6 +554,7 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
   <script>
     var player;
     var ready = false;
+    var pendingCmds = [];
     function sendState() {
       if (!ready || !player || !window.CinemaBridge) return;
       try {
@@ -545,6 +571,25 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
           durMs: Math.round(dur * 1000),
           rate: rate
         }));
+      } catch (e) {}
+    }
+    function execCmd(cmd, val) {
+      if (!ready || !player) {
+        pendingCmds.push([cmd, val]);
+        return;
+      }
+      try {
+        try { player.unMute(); player.setVolume(100); } catch(e) {}
+        if (cmd === 'play') player.playVideo();
+        else if (cmd === 'pause') player.pauseVideo();
+        else if (cmd === 'seek') player.seekTo(Number(val) || 0, true);
+        else if (cmd === 'speed') player.setPlaybackRate(Number(val) || 1);
+        else if (cmd === 'quality') {
+          var q = String(val || 'hd720');
+          if (player.setPlaybackQualityRange) player.setPlaybackQualityRange(q, q);
+          if (player.setPlaybackQuality) player.setPlaybackQuality(q);
+        }
+        setTimeout(sendState, 120);
       } catch (e) {}
     }
     function onYouTubeIframeAPIReady() {
@@ -564,7 +609,18 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
           origin: 'https://www.youtube.com'
         },
         events: {
-          onReady: function() { ready = true; try { player.unMute(); player.setVolume(100); } catch(e) {} sendState(); },
+          onReady: function() {
+            ready = true;
+            try { player.unMute(); player.setVolume(100); } catch(e) {}
+            try {
+              if (player.setPlaybackQualityRange) player.setPlaybackQualityRange('hd720', 'highres');
+            } catch(e) {}
+            while (pendingCmds.length > 0) {
+              var pair = pendingCmds.shift();
+              execCmd(pair[0], pair[1]);
+            }
+            sendState();
+          },
           onStateChange: function() { sendState(); },
           onError: function(ev) {
             if (window.CinemaBridge) {
@@ -574,18 +630,19 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
         }
       });
     }
-    window._cinemaCmd = function(cmd, val) {
-      if (!ready || !player) return;
-      try {
-        try { player.unMute(); player.setVolume(100); } catch(e) {}
-        if (cmd === 'play') player.playVideo();
-        else if (cmd === 'pause') player.pauseVideo();
-        else if (cmd === 'seek') player.seekTo(Number(val) || 0, true);
-        else if (cmd === 'speed') player.setPlaybackRate(Number(val) || 1);
-        setTimeout(sendState, 150);
-      } catch (e) {}
+    window._cinemaCmd = execCmd;
+    window._cinemaSetFit = function(fitMode) {
+      var el = document.getElementById('player');
+      if (!el) return;
+      if (fitMode === 'cover') {
+        el.style.transform = 'scale(1.18)';
+      } else if (fitMode === 'fill') {
+        el.style.transform = 'scale(1.22, 1.04)';
+      } else {
+        el.style.transform = 'none';
+      }
     };
-    setInterval(sendState, 600);
+    setInterval(sendState, 350);
   </script>
 </body>
 </html>
@@ -600,6 +657,7 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
       _wvDuration = Duration.zero;
       _wvSpeed = 1.0;
       _wvAdActive = false;
+      _qualityLabel = '720p';
       _isInitialized = true;
       _initError = null;
     });
@@ -609,91 +667,124 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
 (function() {
   if (window._cinemaHooked) return;
   window._cinemaHooked = true;
+  window._cinemaFitMode = window._cinemaFitMode || 'contain';
 
-  // 1. Pure Fullscreen Cinema Isolation CSS: hides YouTube chrome, Open App, Subscribe, Comments & Mute overlay
-  try {
-    if (!document.getElementById('sanctuary-cinema-css')) {
-      var st = document.createElement('style');
-      st.id = 'sanctuary-cinema-css';
-      st.textContent = `
-        html, body {
-          background: #000 !important;
-          margin: 0 !important;
-          padding: 0 !important;
-          overflow: hidden !important;
-          width: 100vw !important;
-          height: 100vh !important;
-        }
-        ytm-mobile-topbar-renderer,
-        ytm-header-bar-renderer,
-        #header-bar,
-        .mobile-topbar-header,
-        .mobile-topbar-header-content,
-        ytm-watch-metadata,
-        ytm-slim-video-information-renderer,
-        ytm-slim-owner-renderer,
-        ytm-item-section-renderer,
-        ytm-comments-entry-point-header-renderer,
-        ytm-engagement-panel-section-list-renderer,
-        ytm-companion-slot-renderer,
-        ytm-promoted-sparkles-web-renderer,
-        ytm-mealbar-promo-renderer,
-        .watch-below-the-player,
-        .ytm-autonav-bar,
-        .ytp-chrome-top,
-        .ytp-chrome-bottom,
-        .ytp-pause-overlay,
-        .ytp-watermark,
-        .ytp-unmute,
-        button.ytp-unmute,
-        .player-controls-top,
-        .player-controls-bottom,
-        .ytm-bottom-sheet-layout-content-wrapper {
-          display: none !important;
-          opacity: 0 !important;
-          pointer-events: none !important;
-        }
-        #player-container-id,
-        .player-container,
-        #player,
-        #movie_player,
-        .html5-video-player {
-          position: fixed !important;
-          top: 0 !important;
-          left: 0 !important;
-          right: 0 !important;
-          bottom: 0 !important;
-          width: 100vw !important;
-          height: 100vh !important;
-          max-width: 100vw !important;
-          max-height: 100vh !important;
-          margin: 0 !important;
-          padding: 0 !important;
-          background: #000 !important;
-          z-index: 999999 !important;
-        }
-        video {
-          position: fixed !important;
-          top: 0 !important;
-          left: 0 !important;
-          width: 100vw !important;
-          height: 100vh !important;
-          object-fit: contain !important;
-          background: #000 !important;
-        }
-      `;
-      (document.head || document.documentElement).appendChild(st);
-    }
-  } catch (e) {}
+  // 1. Pure Fullscreen Cinema Isolation CSS: hides YouTube chrome, play flash, branding & ad overlays
+  function ensureCinemaCss() {
+    try {
+      if (!document.getElementById('sanctuary-cinema-css')) {
+        var st = document.createElement('style');
+        st.id = 'sanctuary-cinema-css';
+        st.textContent = `
+          html, body {
+            background: #000 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            overflow: hidden !important;
+            width: 100vw !important;
+            height: 100vh !important;
+          }
+          ytm-mobile-topbar-renderer,
+          ytm-header-bar-renderer,
+          #header-bar,
+          .mobile-topbar-header,
+          .mobile-topbar-header-content,
+          ytm-watch-metadata,
+          ytm-slim-video-information-renderer,
+          ytm-slim-owner-renderer,
+          ytm-item-section-renderer,
+          ytm-comments-entry-point-header-renderer,
+          ytm-engagement-panel-section-list-renderer,
+          ytm-companion-slot-renderer,
+          ytm-promoted-sparkles-web-renderer,
+          ytm-mealbar-promo-renderer,
+          .watch-below-the-player,
+          .ytm-autonav-bar,
+          .ytp-chrome-top,
+          .ytp-chrome-bottom,
+          .ytp-large-play-button,
+          .ytp-cued-thumbnail-overlay,
+          .ytp-cued-thumbnail-overlay-image,
+          .ytp-pause-overlay,
+          .ytp-watermark,
+          .ytp-ce-element,
+          .ytp-show-cards-title,
+          .ytp-spinner,
+          .ytp-unmute,
+          button.ytp-unmute,
+          .player-controls-top,
+          .player-controls-bottom,
+          .ytm-bottom-sheet-layout-content-wrapper {
+            display: none !important;
+            opacity: 0 !important;
+            pointer-events: none !important;
+          }
+          #player-container-id,
+          .player-container,
+          #player,
+          #movie_player,
+          .html5-video-player {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            bottom: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            max-width: 100vw !important;
+            max-height: 100vh !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            background: #000 !important;
+            z-index: 999999 !important;
+          }
+          video {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            object-fit: contain !important;
+            background: #000 !important;
+          }
+        `;
+        (document.head || document.documentElement).appendChild(st);
+      }
+    } catch (e) {}
+  }
+  ensureCinemaCss();
 
   function findVideo() {
     return document.querySelector('video.html5-main-video') || document.querySelector('video');
   }
 
+  function applyFitToVideo() {
+    var v = findVideo();
+    if (!v) return;
+    try {
+      v.style.setProperty('object-fit', window._cinemaFitMode || 'contain', 'important');
+    } catch (e) {}
+  }
+
+  window._cinemaSetFit = function(mode) {
+    window._cinemaFitMode = mode || 'contain';
+    applyFitToVideo();
+  };
+
+  function bindVideoEvents(v) {
+    if (!v || v._sanctuaryBound) return;
+    v._sanctuaryBound = true;
+    ['play', 'pause', 'seeked', 'ended'].forEach(function(evt) {
+      v.addEventListener(evt, function() { setTimeout(sendState, 20); });
+    });
+  }
+
+  // Strictly match ONLY active pre/mid-roll ads inside the video player (never static page ad slots!)
   function isAdPlaying() {
     return !!(
-      document.querySelector('.ad-showing, .ad-interrupting') ||
-      document.querySelector('.ytp-ad-player-overlay, .ytp-ad-preview-container, ytm-ad-slot-renderer')
+      document.querySelector('#movie_player.ad-showing, #movie_player.ad-interrupting') ||
+      document.querySelector('.html5-video-player.ad-showing, .html5-video-player.ad-interrupting') ||
+      document.querySelector('#movie_player .ytp-ad-player-overlay, #movie_player .ytp-ad-preview-container')
     );
   }
 
@@ -701,13 +792,11 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
     if (!v) return false;
     var ad = isAdPlaying();
     if (ad) {
-      // Auto-skip any skippable ad immediately and race through non-skippable ad muted
       var skipSelectors = [
         '.ytp-ad-skip-button',
         '.ytp-skip-ad-button',
         '.ytp-ad-skip-button-modern',
-        '.ytp-ad-overlay-close-button',
-        'button[class*="skip"]'
+        '.ytp-ad-overlay-close-button'
       ];
       for (var i = 0; i < skipSelectors.length; i++) {
         var btn = document.querySelector(skipSelectors[i]);
@@ -722,7 +811,6 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
       } catch (e) {}
       return true;
     }
-    // Dismiss YouTube's white mute button automatically once movie is active
     var unmuteBtn = document.querySelector('.ytp-unmute, button[aria-label*="Unmute"], button[aria-label*="unmute"]');
     if (unmuteBtn) { try { unmuteBtn.click(); } catch (e) {} }
     try {
@@ -734,8 +822,11 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
   }
 
   function sendState() {
+    ensureCinemaCss();
     var v = findVideo();
     if (!v || !window.CinemaBridge) return;
+    bindVideoEvents(v);
+    applyFitToVideo();
     var adActive = handleAdsAndMute(v);
     try {
       window.CinemaBridge.postMessage(JSON.stringify({
@@ -758,14 +849,20 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
       v.muted = false;
       v.volume = 1.0;
       if (cmd === 'play') { v.play(); }
-      else if (cmd === 'pause') v.pause();
-      else if (cmd === 'seek') v.currentTime = Number(val) || 0;
-      else if (cmd === 'speed') v.playbackRate = Number(val) || 1;
-      setTimeout(sendState, 150);
+      else if (cmd === 'pause') { v.pause(); }
+      else if (cmd === 'seek') { v.currentTime = Number(val) || 0; }
+      else if (cmd === 'speed') { v.playbackRate = Number(val) || 1; }
+      else if (cmd === 'quality') {
+        var mp = document.getElementById('movie_player');
+        var q = String(val || 'hd720');
+        if (mp && mp.setPlaybackQualityRange) mp.setPlaybackQualityRange(q, q);
+        if (mp && mp.setPlaybackQuality) mp.setPlaybackQuality(q);
+      }
+      setTimeout(sendState, 80);
     } catch (e) {}
   };
 
-  setInterval(sendState, 350);
+  setInterval(sendState, 300);
 })();
 ''';
 
@@ -961,12 +1058,21 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
     });
   }
 
-  /// Exact Sync Algorithm: Receiving an action
+  /// Exact Sync Algorithm: Receiving an action (Firebase RTDB or Supabase Realtime)
   void _handleRemotePlayback(WatchPlayback playback, String? myUid) {
     if (!mounted || _isLeaving) return;
 
     // Rule 4: No echo loops — ignore own updates
-    if (playback.updatedBy == myUid) return;
+    if (playback.updatedBy == myUid || playback.updatedBy.isEmpty) return;
+
+    // Deduplicate identical packet delivered by both RTDB & Supabase Realtime
+    if (playback.actionSeq > 0 &&
+        playback.actionSeq == _lastRemoteActionSeq &&
+        playback.updatedAt <= _lastRemoteUpdatedAt) {
+      return;
+    }
+    if (playback.actionSeq > 0) _lastRemoteActionSeq = playback.actionSeq;
+    if (playback.updatedAt > 0) _lastRemoteUpdatedAt = playback.updatedAt;
 
     // Partner just sent a sync packet — definitely online!
     _partnerOfflineSince = null;
@@ -976,8 +1082,9 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
       return;
     }
 
-    // Ignore remote updates during local action lock
-    if (DateTime.now().isBefore(_ignoreRemoteUntil)) return;
+    // Bypass local cooldown if partner actually sent a newer command AFTER our last local action
+    final isNewerRemote = playback.updatedAt > (_lastSentActionAtMs + 250);
+    if (!isNewerRemote && DateTime.now().isBefore(_ignoreRemoteUntil)) return;
 
     _lastRemotePlayback = playback;
     if (_isWebViewMode && _wvAdActive) return;
@@ -990,38 +1097,31 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
       final targetMs = playback.positionMs + delay;
       final currentMs = _currentPosition.inMilliseconds;
 
-      // Only seek if difference is large (> 1500ms) to prevent video frame thrashing and crashing
-      if ((currentMs - targetMs).abs() > 1500) {
+      if ((currentMs - targetMs).abs() > 850) {
         _playerSeekTo(Duration(milliseconds: targetMs));
       }
-      if (!_currentIsPlaying) {
-        _playerPlay();
-      }
+      _playerPlay();
       setState(() {
         _syncStatus = SyncStatus.inSync;
       });
     } else {
-      // Pause action: only seek if significant difference
       final currentMs = _currentPosition.inMilliseconds;
-      if ((currentMs - playback.positionMs).abs() > 1000) {
+      if ((currentMs - playback.positionMs).abs() > 550) {
         _playerSeekTo(Duration(milliseconds: playback.positionMs));
       }
-      if (_currentIsPlaying) {
-        _playerPause();
-      }
-      if (_syncStatus == SyncStatus.partnerOffline) {
-        setState(() {
-          _syncStatus = SyncStatus.inSync;
-        });
-      }
+      _playerPause();
+      setState(() {
+        _syncStatus = SyncStatus.inSync;
+      });
     }
   }
 
-  /// Exact Sync Algorithm: Drift check every 4 seconds
+  /// Exact Sync Algorithm: Drift check every 2.5 seconds
   void _startDriftCorrectionTimer() {
     _driftCheckTimer?.cancel();
-    _driftCheckTimer = Timer.periodic(const Duration(seconds: 4), (_) {
+    _driftCheckTimer = Timer.periodic(const Duration(seconds: 2, milliseconds: 500), (_) {
       if (!mounted || !_isInitialized || _isLeaving || !_currentIsPlaying || _isFastForwarding) return;
+      if (_isWebViewMode && _wvAdActive) return;
       if (DateTime.now().isBefore(_ignoreRemoteUntil)) return;
 
       final myUid = context.read<AuthProvider>().user?.id;
@@ -1030,17 +1130,16 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
           _lastRemotePlayback!.updatedBy != myUid) {
         final nowServer = WatchTogetherService.instance.currentServerTime;
         final expectedMs =
-            _lastRemotePlayback!.positionMs + (nowServer - _lastRemotePlayback!.updatedAt);
+            _lastRemotePlayback!.positionMs + (nowServer - _lastRemotePlayback!.updatedAt).clamp(0, 10000);
         final currentMs = _currentPosition.inMilliseconds;
         final diff = (currentMs - expectedMs).abs();
 
-        // If drift exceeds 1500 milliseconds, quietly correct to expected position
-        if (diff > 1500) {
+        if (diff > 900) {
           setState(() {
             _syncStatus = SyncStatus.syncing;
           });
           _playerSeekTo(Duration(milliseconds: expectedMs));
-          Future.delayed(const Duration(milliseconds: 1200), () {
+          Future.delayed(const Duration(milliseconds: 900), () {
             if (mounted && !_isLeaving) {
               setState(() {
                 _syncStatus = SyncStatus.inSync;
@@ -1058,14 +1157,14 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
     final myUid = context.read<AuthProvider>().user?.id;
     if (myUid == null) return;
 
-    // Set 2500ms lock so local events don't trigger remote echo
-    _ignoreRemoteUntil = DateTime.now().add(const Duration(milliseconds: 2500));
+    final serverNow = WatchTogetherService.instance.currentServerTime;
+    _lastSentActionAtMs = serverNow;
+    _ignoreRemoteUntil = DateTime.now().add(const Duration(milliseconds: 1200));
 
-    // Update _lastRemotePlayback locally so local drift timer won't use partner's old position
     _lastRemotePlayback = WatchPlayback(
       isPlaying: isPlaying,
       positionMs: positionMs,
-      updatedAt: WatchTogetherService.instance.currentServerTime,
+      updatedAt: serverNow,
       updatedBy: myUid,
       speed: _currentSpeed,
     );
@@ -1211,8 +1310,17 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
       }
     });
 
+    if (_isWebViewMode) {
+      final fitCss = switch (_videoFit) {
+        BoxFit.cover => 'cover',
+        BoxFit.fill => 'fill',
+        _ => 'contain',
+      };
+      _runWebJs("window._cinemaSetFit && window._cinemaSetFit('$fitCss');");
+    }
+
     final label = switch (_aspectRatioLabel) {
-      'Zoom' => 'Zoom (Crop to Fill Screen) 🔍',
+      'Zoom' => 'Zoom (Fill Screen) 🔍',
       'Stretch' => 'Stretch (Edge-to-Edge) ↔️',
       _ => 'Fit (Original 16:9) 📐',
     };
@@ -1224,6 +1332,130 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
         duration: const Duration(milliseconds: 1200),
         behavior: SnackBarBehavior.floating,
       ),
+    );
+  }
+
+  Future<void> _switchNativeQuality(WatchStreamSource target) async {
+    final pos = _currentPosition;
+    final wasPlaying = _currentIsPlaying;
+    VideoPlayerController? nextCtrl;
+    try {
+      nextCtrl = VideoPlayerController.networkUrl(
+        Uri.parse(target.url),
+        httpHeaders: target.headers,
+      );
+      await nextCtrl.initialize().timeout(const Duration(seconds: 12));
+      await nextCtrl.seekTo(pos);
+      await nextCtrl.setVolume(1.0);
+      if (wasPlaying) await nextCtrl.play();
+
+      await _disposeCurrentController();
+      _controller = nextCtrl;
+      _hasController = true;
+      _controller.addListener(_videoPlayerListener);
+      if (mounted) {
+        setState(() {
+          _qualityLabel = target.qualityLabel;
+        });
+      }
+    } catch (e) {
+      try {
+        await nextCtrl?.dispose();
+      } catch (_) {}
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not switch to ${target.qualityLabel}')),
+        );
+      }
+    }
+  }
+
+  void _openQualityPicker() {
+    HapticFeedback.selectionClick();
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF14161D),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        final hasNativeChoices = !_isWebViewMode && _availableSources.isNotEmpty;
+        final webQualities = const [
+          ('1080p HD', 'hd1080'),
+          ('720p HD', 'hd720'),
+          ('480p', 'large'),
+          ('360p', 'medium'),
+          ('Auto', 'default'),
+        ];
+
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 18),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Video Quality',
+                  style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 10),
+                if (hasNativeChoices)
+                  ..._availableSources.map((src) {
+                    final selected = _qualityLabel == src.qualityLabel;
+                    return ListTile(
+                      dense: true,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 6),
+                      leading: Icon(
+                        selected ? Icons.check_circle_rounded : Icons.high_quality_outlined,
+                        color: selected ? AppColors.terra : Colors.white60,
+                        size: 20,
+                      ),
+                      title: Text(
+                        src.qualityLabel,
+                        style: TextStyle(
+                          color: selected ? Colors.white : Colors.white70,
+                          fontWeight: selected ? FontWeight.bold : FontWeight.w500,
+                        ),
+                      ),
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        _switchNativeQuality(src);
+                      },
+                    );
+                  })
+                else
+                  ...webQualities.map((item) {
+                    final label = item.$1;
+                    final ytKey = item.$2;
+                    final selected = _qualityLabel == label || _qualityLabel == label.split(' ').first;
+                    return ListTile(
+                      dense: true,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 6),
+                      leading: Icon(
+                        selected ? Icons.check_circle_rounded : Icons.high_quality_outlined,
+                        color: selected ? AppColors.terra : Colors.white60,
+                        size: 20,
+                      ),
+                      title: Text(
+                        label,
+                        style: TextStyle(
+                          color: selected ? Colors.white : Colors.white70,
+                          fontWeight: selected ? FontWeight.bold : FontWeight.w500,
+                        ),
+                      ),
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        setState(() => _qualityLabel = label.split(' ').first);
+                        _runWebJs("window._cinemaCmd && window._cinemaCmd('quality', '$ytKey');");
+                      },
+                    );
+                  }),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -2010,7 +2242,7 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
                 myName: myName,
                 partnerAvatarUrl: partnerAvatarUrl,
                 partnerName: partnerName,
-                isLandscape: _isLandscape,
+                isLandscape: isEffectiveLandscape,
               ),
             ],
           ),
@@ -2031,7 +2263,15 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
       children: [
         Positioned.fill(
           child: _isWebViewMode && _webController != null
-              ? WebViewWidget(controller: _webController!)
+              ? ClipRect(
+                  child: Transform.scale(
+                    scaleX: _videoFit == BoxFit.fill
+                        ? 1.24
+                        : (_videoFit == BoxFit.cover ? 1.18 : 1.0),
+                    scaleY: _videoFit == BoxFit.cover ? 1.18 : 1.0,
+                    child: WebViewWidget(controller: _webController!),
+                  ),
+                )
               : SizedBox.expand(
                   child: FittedBox(
                     fit: _videoFit,
@@ -2077,8 +2317,10 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
                 onSkipBack10: () => _skip10Seconds(false),
                 onSkipForward10: () => _skip10Seconds(true),
                 onToggleFullscreen: _toggleFullscreen,
-                onToggleAspectRatio: _isWebViewMode ? null : _toggleAspectRatio,
+                onToggleAspectRatio: _toggleAspectRatio,
                 aspectRatioLabel: _aspectRatioLabel,
+                qualityLabel: widget.videoType == 'local' ? null : _qualityLabel,
+                onSelectQuality: widget.videoType == 'local' ? null : _openQualityPicker,
                 onSpeedUpStart: _startSpeedUp,
                 onSpeedUpEnd: _stopSpeedUp,
                 onStartCall: () {

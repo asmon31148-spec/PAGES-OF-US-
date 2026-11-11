@@ -34,6 +34,8 @@ class WatchControlsOverlay extends StatefulWidget {
   final bool isWebViewMode;
   final bool isWebTouchThrough;
   final VoidCallback? onToggleWebTouchThrough;
+  final String? qualityLabel;
+  final VoidCallback? onSelectQuality;
 
   const WatchControlsOverlay({
     super.key,
@@ -61,6 +63,8 @@ class WatchControlsOverlay extends StatefulWidget {
     this.isWebViewMode = false,
     this.isWebTouchThrough = false,
     this.onToggleWebTouchThrough,
+    this.qualityLabel,
+    this.onSelectQuality,
   });
 
   @override
@@ -552,8 +556,36 @@ class WatchControlsOverlayState extends State<WatchControlsOverlay> {
                             color: Colors.white.withOpacity(0.7),
                           ),
                         ),
+                        if (widget.onSelectQuality != null && widget.qualityLabel != null) ...[
+                          const SizedBox(width: 6),
+                          GestureDetector(
+                            onTap: () {
+                              _startHideTimer();
+                              widget.onSelectQuality!();
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withOpacity(0.55),
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(color: Colors.white.withOpacity(0.24)),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.high_quality_rounded, size: 14, color: Colors.white),
+                                  const SizedBox(width: 3),
+                                  Text(
+                                    widget.qualityLabel!,
+                                    style: const TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.bold),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
                         if (widget.onToggleAspectRatio != null) ...[
-                          const SizedBox(width: 8),
+                          const SizedBox(width: 6),
                           GestureDetector(
                             onTap: () {
                               _startHideTimer();
@@ -562,9 +594,9 @@ class WatchControlsOverlayState extends State<WatchControlsOverlay> {
                             child: Container(
                               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
                               decoration: BoxDecoration(
-                                color: Colors.black.withOpacity(0.4),
+                                color: Colors.black.withOpacity(0.55),
                                 borderRadius: BorderRadius.circular(6),
-                                border: Border.all(color: Colors.white.withOpacity(0.2)),
+                                border: Border.all(color: Colors.white.withOpacity(0.24)),
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,

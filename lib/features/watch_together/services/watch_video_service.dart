@@ -9,11 +9,15 @@ class WatchStreamSource {
   final String url;
   final Map<String, String> headers;
   final String label;
+  final String qualityLabel;
+  final int resolutionHeight;
 
   const WatchStreamSource({
     required this.url,
     this.headers = const {},
     this.label = 'direct',
+    this.qualityLabel = 'Auto',
+    this.resolutionHeight = 0,
   });
 }
 
@@ -296,19 +300,51 @@ class WatchVideoService {
         final streamingData = json['streamingData'] as Map<String, dynamic>?;
         if (streamingData == null) return results;
 
-        // 1. Progressive muxed MP4 formats (fast start, exact seeking)
+        // 1. IOS HLS master manifest & parsed HD variants (1080p/720p/480p/360p) — prioritized BEFORE progressive 360p
+        final hlsUrl = streamingData['hlsManifestUrl']?.toString();
+        if (hlsUrl != null && hlsUrl.isNotEmpty) {
+          final workingHeaders = await _probePlayableHeaders(hlsUrl, headers);
+          if (workingHeaders != null) {
+            final variants = await _expandHlsQualityVariants(
+              hlsUrl,
+              workingHeaders,
+              prefix: '${label}_hls',
+            );
+            results.addAll(variants);
+            results.add(WatchStreamSource(
+              url: hlsUrl,
+              headers: workingHeaders,
+              label: '${label}_hls_auto',
+              qualityLabel: 'Auto (HD)',
+              resolutionHeight: 720,
+            ));
+          }
+        }
+
+        // 2. Progressive muxed MP4 formats sorted highest height first (fallback when HLS isn't used)
         final formats = streamingData['formats'] as List?;
         if (formats != null) {
-          for (int i = 0; i < formats.length && i < 2; i++) {
-            final f = formats[i] as Map;
+          final sortedFormats = formats
+              .whereType<Map>()
+              .toList()
+            ..sort((a, b) =>
+                ((b['height'] as num?)?.toInt() ?? 0).compareTo((a['height'] as num?)?.toInt() ?? 0));
+          for (int i = 0; i < sortedFormats.length && i < 3; i++) {
+            final f = sortedFormats[i];
             final url = f['url']?.toString();
             if (url == null || url.isEmpty) continue;
+            final h = (f['height'] as num?)?.toInt() ?? 360;
+            final qLabel = f['qualityLabel']?.toString().isNotEmpty == true
+                ? f['qualityLabel'].toString()
+                : '${h}p';
             final workingHeaders = await _probePlayableHeaders(url, headers);
             if (workingHeaders == null) continue;
             results.add(WatchStreamSource(
               url: url,
               headers: workingHeaders,
               label: '${label}_mp4_$i',
+              qualityLabel: qLabel,
+              resolutionHeight: h,
             ));
             if (proxyPort != null) {
               final proxyUrl = _registerProxyTarget(
@@ -320,21 +356,10 @@ class WatchVideoService {
                 url: proxyUrl,
                 headers: const {},
                 label: '${label}_proxy_$i',
+                qualityLabel: qLabel,
+                resolutionHeight: h,
               ));
             }
-          }
-        }
-
-        // 2. IOS HLS master manifest (HD muxed video + audio, zero ads, supported natively by ExoPlayer)
-        final hlsUrl = streamingData['hlsManifestUrl']?.toString();
-        if (hlsUrl != null && hlsUrl.isNotEmpty) {
-          final workingHeaders = await _probePlayableHeaders(hlsUrl, headers);
-          if (workingHeaders != null) {
-            results.add(WatchStreamSource(
-              url: hlsUrl,
-              headers: workingHeaders,
-              label: '${label}_hls',
-            ));
           }
         }
       } catch (_) {}
@@ -369,7 +394,9 @@ class WatchVideoService {
       ),
     ]);
 
-    return [...both[0], ...both[1]];
+    final merged = [...both[0], ...both[1]]
+      ..sort((a, b) => b.resolutionHeight.compareTo(a.resolutionHeight));
+    return merged;
   }
 
   /// Ad-free Piped public backend fallback when YouTube blocks direct InnerTube calls.
@@ -391,24 +418,99 @@ class WatchVideoService {
         final out = <WatchStreamSource>[];
         final hls = data['hls']?.toString();
         if (hls != null && hls.isNotEmpty) {
-          out.add(WatchStreamSource(url: hls, label: 'piped_hls'));
+          out.addAll(await _expandHlsQualityVariants(hls, const {}, prefix: 'piped_hls'));
+          out.add(WatchStreamSource(
+            url: hls,
+            label: 'piped_hls_auto',
+            qualityLabel: 'Auto (HD)',
+            resolutionHeight: 720,
+          ));
         }
         final streams = data['videoStreams'] as List?;
         if (streams != null) {
-          for (final s in streams) {
-            if (s is Map && s['videoOnly'] == false) {
-              final u = s['url']?.toString();
-              if (u != null && u.isNotEmpty) {
-                out.add(WatchStreamSource(url: u, label: 'piped_mp4'));
-                break;
-              }
-            }
+          final muxed = streams
+              .whereType<Map>()
+              .where((s) => s['videoOnly'] == false && (s['url']?.toString().isNotEmpty ?? false))
+              .toList()
+            ..sort((a, b) =>
+                ((b['height'] as num?)?.toInt() ?? 0).compareTo((a['height'] as num?)?.toInt() ?? 0));
+          for (int i = 0; i < muxed.length && i < 3; i++) {
+            final s = muxed[i];
+            final h = (s['height'] as num?)?.toInt() ?? 360;
+            final qLabel = s['quality']?.toString().isNotEmpty == true ? s['quality'].toString() : '${h}p';
+            out.add(WatchStreamSource(
+              url: s['url'].toString(),
+              label: 'piped_mp4_$i',
+              qualityLabel: qLabel,
+              resolutionHeight: h,
+            ));
           }
         }
         if (out.isNotEmpty) return out;
       } catch (_) {}
     }
     return [];
+  }
+
+  /// Parses #EXT-X-STREAM-INF variants from an HLS master playlist and orders highest HD first.
+  Future<List<WatchStreamSource>> _expandHlsQualityVariants(
+    String masterUrl,
+    Map<String, String> headers, {
+    required String prefix,
+  }) async {
+    final variants = <WatchStreamSource>[];
+    try {
+      final res = await http
+          .get(Uri.parse(masterUrl), headers: headers)
+          .timeout(const Duration(seconds: 4));
+      if (res.statusCode != 200 || !res.body.contains('#EXT-X-STREAM-INF')) {
+        return variants;
+      }
+      final baseUri = Uri.parse(masterUrl);
+      final lines = res.body.split(RegExp(r'\r?\n'));
+      final seenHeights = <int>{};
+      for (int i = 0; i < lines.length; i++) {
+        final line = lines[i].trim();
+        if (!line.startsWith('#EXT-X-STREAM-INF')) continue;
+        final resMatch = RegExp(r'RESOLUTION=\d+x(\d+)').firstMatch(line);
+        final height = resMatch != null ? int.tryParse(resMatch.group(1)!) ?? 0 : 0;
+        String? nextUrl;
+        for (int j = i + 1; j < lines.length; j++) {
+          final candidate = lines[j].trim();
+          if (candidate.isEmpty || candidate.startsWith('#')) continue;
+          nextUrl = baseUri.resolve(candidate).toString();
+          break;
+        }
+        if (nextUrl != null && height >= 240 && !seenHeights.contains(height)) {
+          seenHeights.add(height);
+          variants.add(WatchStreamSource(
+            url: nextUrl,
+            headers: headers,
+            label: '${prefix}_${height}p',
+            qualityLabel: '${height}p',
+            resolutionHeight: height,
+          ));
+        }
+      }
+      variants.sort((a, b) => b.resolutionHeight.compareTo(a.resolutionHeight));
+    } catch (_) {}
+    return variants;
+  }
+
+  /// Returns distinct user-selectable stream qualities ordered highest resolution first.
+  List<WatchStreamSource> extractSelectableQualities(List<WatchStreamSource> sources) {
+    final bestByQuality = <String, WatchStreamSource>{};
+    for (final s in sources) {
+      if (s.label.contains('proxy')) continue;
+      final key = s.qualityLabel;
+      final prev = bestByQuality[key];
+      if (prev == null || s.resolutionHeight > prev.resolutionHeight) {
+        bestByQuality[key] = s;
+      }
+    }
+    final list = bestByQuality.values.toList()
+      ..sort((a, b) => b.resolutionHeight.compareTo(a.resolutionHeight));
+    return list;
   }
 
   /// Fast ranked extraction. Returns ad-free native ExoPlayer streams quickly before WebView fallback.
@@ -481,7 +583,15 @@ class WatchVideoService {
         final workingHeaders = await _probePlayableHeaders(url, clientHeaders);
         if (workingHeaders == null) continue;
 
-        explodeSources.add(WatchStreamSource(url: url, headers: workingHeaders, label: 'yt_direct_$i'));
+        final resH = stream.videoResolution.height;
+        final qLbl = stream.qualityLabel.isNotEmpty ? stream.qualityLabel : '${resH}p';
+        explodeSources.add(WatchStreamSource(
+          url: url,
+          headers: workingHeaders,
+          label: 'yt_direct_$i',
+          qualityLabel: qLbl,
+          resolutionHeight: resH,
+        ));
         if (proxyPort != null) {
           final proxyUrl = _registerProxyTarget(
             '${videoId}_yt_$i',
@@ -492,7 +602,13 @@ class WatchVideoService {
             ),
             proxyPort,
           );
-          explodeSources.add(WatchStreamSource(url: proxyUrl, headers: const {}, label: 'yt_proxy_$i'));
+          explodeSources.add(WatchStreamSource(
+            url: proxyUrl,
+            headers: const {},
+            label: 'yt_proxy_$i',
+            qualityLabel: qLbl,
+            resolutionHeight: resH,
+          ));
         }
       }
     } catch (e) {
@@ -504,7 +620,8 @@ class WatchVideoService {
     }
 
     final pipedSources = await pipedFuture;
-    final combined = [...explodeSources, ...pipedSources];
+    final combined = [...explodeSources, ...pipedSources]
+      ..sort((a, b) => b.resolutionHeight.compareTo(a.resolutionHeight));
     if (combined.isNotEmpty) {
       _sourcesCache[videoId] = combined;
       _streamCacheTime[videoId] = DateTime.now();

@@ -4,6 +4,8 @@ import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../data/services/supabase_service.dart';
 import '../models/watch_room_model.dart';
 
 class WatchTogetherService {
@@ -15,6 +17,11 @@ class WatchTogetherService {
   final FirebaseDatabase _rtdb = FirebaseDatabase.instance;
   int _serverTimeOffset = 0;
   StreamSubscription? _offsetSubscription;
+  int _localActionSeq = 0;
+  RealtimeChannel? _supaRoomChannel;
+  String? _supaRoomCode;
+  StreamController<WatchPlayback>? _dualPlaybackController;
+  StreamSubscription? _rtdbPlaybackSub;
 
   // Allowed character set for 6-character room codes (no 0, O, 1, I)
   static const String _charset = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
@@ -177,14 +184,60 @@ class WatchTogetherService {
     });
   }
 
-  /// Stream playback node specifically for ultra-low latency updates
+  /// Dual-channel low-latency playback stream: merges Firebase RTDB + Supabase Realtime broadcast
   Stream<WatchPlayback> streamPlayback(String roomCode) {
-    return _rtdb.ref('watchRooms/$roomCode/playback').onValue.map((event) {
+    _rtdbPlaybackSub?.cancel();
+    _dualPlaybackController?.close();
+    _cleanupSupaRoomChannel();
+
+    final controller = StreamController<WatchPlayback>.broadcast();
+    _dualPlaybackController = controller;
+
+    // Channel 1: Firebase RTDB persistent listener
+    _rtdbPlaybackSub = _rtdb.ref('watchRooms/$roomCode/playback').onValue.listen((event) {
+      if (controller.isClosed) return;
       if (!event.snapshot.exists || event.snapshot.value == null) {
-        return const WatchPlayback();
+        controller.add(const WatchPlayback());
+        return;
       }
-      return WatchPlayback.fromMap(event.snapshot.value as Map<dynamic, dynamic>);
-    });
+      controller.add(WatchPlayback.fromMap(event.snapshot.value as Map<dynamic, dynamic>));
+    }, onError: (_) {});
+
+    // Channel 2: Supabase Realtime ultra-low-latency broadcast (resilient on mobile carriers)
+    final client = SupabaseService.client;
+    if (client != null && roomCode.isNotEmpty) {
+      try {
+        _supaRoomCode = roomCode;
+        final ch = client.channel(
+          'watch_sync_$roomCode',
+          opts: const RealtimeChannelConfig(ack: false, self: false),
+        );
+        ch.onBroadcast(
+          event: 'PLAYBACK_SYNC',
+          callback: (payload) {
+            if (controller.isClosed) return;
+            controller.add(WatchPlayback.fromMap(payload));
+          },
+        );
+        ch.subscribe();
+        _supaRoomChannel = ch;
+      } catch (e) {
+        debugPrint('Supabase WatchTogether sync channel note: $e');
+      }
+    }
+
+    return controller.stream;
+  }
+
+  void _cleanupSupaRoomChannel() {
+    final ch = _supaRoomChannel;
+    _supaRoomChannel = null;
+    _supaRoomCode = null;
+    if (ch != null) {
+      try {
+        SupabaseService.client?.removeChannel(ch);
+      } catch (_) {}
+    }
   }
 
   /// Stream last 50 chat messages
@@ -271,7 +324,7 @@ class WatchTogetherService {
     } catch (_) {}
   }
 
-  /// Screen 3: Single source of truth playback state write
+  /// Screen 3: Dual-transport playback state write (Supabase Realtime instant + RTDB durable)
   Future<void> updatePlayback({
     required String roomCode,
     required String uid,
@@ -280,6 +333,30 @@ class WatchTogetherService {
     double speed = 1.0,
     bool buffering = false,
   }) async {
+    _localActionSeq++;
+    final clientMs = currentServerTime;
+    final supaPayload = <String, dynamic>{
+      'isPlaying': isPlaying,
+      'positionMs': positionMs,
+      'updatedAt': clientMs,
+      'updatedBy': uid,
+      'speed': speed,
+      'buffering': buffering,
+      'actionSeq': _localActionSeq,
+    };
+
+    // Fire Supabase Realtime broadcast immediately (<50ms)
+    final ch = _supaRoomChannel;
+    if (ch != null && _supaRoomCode == roomCode) {
+      try {
+        unawaited(ch.sendBroadcastMessage(
+          event: 'PLAYBACK_SYNC',
+          payload: supaPayload,
+        ));
+      } catch (_) {}
+    }
+
+    // Write authoritative state to Firebase RTDB
     await _rtdb.ref('watchRooms/$roomCode/playback').update({
       'isPlaying': isPlaying,
       'positionMs': positionMs,
@@ -287,6 +364,7 @@ class WatchTogetherService {
       'updatedBy': uid,
       'speed': speed,
       'buffering': buffering,
+      'actionSeq': _localActionSeq,
     });
   }
 
@@ -355,6 +433,9 @@ class WatchTogetherService {
     required String uid,
     required bool isHost,
   }) async {
+    _rtdbPlaybackSub?.cancel();
+    _rtdbPlaybackSub = null;
+    _cleanupSupaRoomChannel();
     try {
       final cleanCode = roomCode.trim().toUpperCase();
       final roomRef = _rtdb.ref('watchRooms/$cleanCode');
