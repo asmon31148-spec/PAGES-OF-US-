@@ -3,7 +3,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pages_of_us/core/services/deleted_ids_store.dart';
 import 'package:pages_of_us/core/services/local_cache_service.dart';
 import 'package:pages_of_us/core/services/media_upload_service.dart';
+import 'package:pages_of_us/core/utils/author_identity.dart';
 import 'package:pages_of_us/core/utils/ownership_helper.dart';
+import 'package:pages_of_us/core/utils/telemetry_math.dart';
+import 'package:pages_of_us/data/models/letter_item.dart';
+import 'package:pages_of_us/data/models/milestone_item.dart';
 import 'package:pages_of_us/features/dossier/screens/obsession_dossier_screen.dart';
 
 void main() {
@@ -339,6 +343,87 @@ void main() {
       expect(velvetDarkBase.accent, isNot(equals(darkOff.accent)));
       // Velvet palette stays rich deep obsidian-crimson regardless of light/dark toggle
       expect(velvetLightBase.bg, equals(velvetDarkBase.bg));
+    });
+
+    test('AuthorIdentity & MilestoneItem resolve bare legacy UID via myLegacyUids without flipping owner to partner', () {
+      final identity = AuthorIdentity.resolve(
+        rawAuthor: legacyUid,
+        currentUserId: newUid,
+        currentUserNickname: 'Alice',
+        partnerId: partnerUid,
+        partnerNickname: 'Bob',
+        myLegacyUids: {legacyUid},
+      );
+      expect(identity.isMine, isTrue);
+      expect(identity.displayName, 'You');
+
+      final milestone = MilestoneItem.fromJson(
+        {
+          'id': 'mls_1',
+          'title': 'First Day',
+          'event_date': '2026-10-25',
+          'story': 'Together',
+          'author': legacyUid,
+        },
+        currentUserId: newUid,
+        currentUserNickname: 'Alice',
+        partnerId: partnerUid,
+        partnerNickname: 'Bob',
+        myLegacyUids: {legacyUid},
+      );
+      expect(milestone.isMine, isTrue);
+      expect(milestone.addedBy, 'You');
+
+      final partnerMilestone = MilestoneItem.fromJson(
+        {
+          'id': 'mls_2',
+          'title': 'Her Moment',
+          'event_date': '2026-10-26',
+          'story': 'Smile',
+          'author': 'Bob:::$partnerUid',
+        },
+        currentUserId: newUid,
+        currentUserNickname: 'Alice',
+        partnerId: partnerUid,
+        partnerNickname: 'Bob',
+        myLegacyUids: {legacyUid},
+      );
+      expect(partnerMilestone.isMine, isFalse);
+      expect(partnerMilestone.addedBy, 'Bob');
+    });
+
+    test('LetterItem parses JSON envelope_color cleanly without overflowing category text', () {
+      final letter = LetterItem.fromJson(
+        {
+          'id': 'let_json_1',
+          'title': 'Kuchupuchu',
+          'body': 'Miss you',
+          'author': newUid,
+          'envelope_color': '{"seal":"rose","category":"When you need a reminder"}',
+          'created_at': '2026-10-24',
+        },
+        currentUserId: newUid,
+      );
+      expect(letter.sealType, 'rose');
+      expect(letter.category, 'When you need a reminder');
+    });
+
+    test('TelemetryMath ignores corrupted step-counter overflows (> 80000) and impossible walking minutes', () {
+      final resolved = TelemetryMath.resolvePartnerActivity(
+        telemetrySteps: 2419150,
+        locationSteps: 2419150,
+        gpsJourneyKm: 1.5,
+        telemetryDistanceKm: 1.5,
+        telemetryWalkingSeconds: null,
+        locationActiveMinutes: 23040,
+        telemetryAppSeconds: 600,
+        telemetryActivity: 'stationary',
+        speedMps: 0.0,
+        savedSummaries: const [],
+        todayDateKey: '2026-11-11',
+      );
+      expect(resolved.stepsToday, isNull);
+      expect(resolved.walkingMinutesToday, 0);
     });
   });
 }

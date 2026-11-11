@@ -124,6 +124,10 @@ class DeviceTelemetry {
   }
 
   factory DeviceTelemetry.fromJson(Map<String, dynamic> json) {
+    final rawSteps = (json['stepsToday'] as num?)?.toInt();
+    final saneSteps = (rawSteps != null && rawSteps >= 0 && rawSteps <= 80000) ? rawSteps : null;
+    final rawWalkSec = (json['walkingTimeSecondsToday'] as num?)?.toInt() ?? 0;
+    final saneWalkSec = (rawWalkSec >= 0 && rawWalkSec <= 43200) ? rawWalkSec : 0;
     return DeviceTelemetry(
       batteryLevel: (json['level'] as num?)?.toInt() ?? (json['batteryLevel'] as num?)?.toInt() ?? -1,
       isCharging: json['isCharging'] == true,
@@ -136,9 +140,9 @@ class DeviceTelemetry {
       unlockCountToday: (json['unlockCountToday'] as num?)?.toInt(),
       lockCountToday: (json['lockCountToday'] as num?)?.toInt(),
       screenTimeSecondsToday: (json['screenTimeSecondsToday'] as num?)?.toInt() ?? 0,
-      walkingTimeSecondsToday: (json['walkingTimeSecondsToday'] as num?)?.toInt() ?? 0,
+      walkingTimeSecondsToday: saneWalkSec,
       appTimeSecondsToday: (json['appTimeSecondsToday'] as num?)?.toInt() ?? 0,
-      stepsToday: (json['stepsToday'] as num?)?.toInt(),
+      stepsToday: saneSteps,
       distanceKmToday: (json['distanceKmToday'] as num?)?.toDouble(),
       stepSource: json['stepSource']?.toString() ?? 'none',
       stepsUpdatedAt: _parseTimestamp(json['stepsUpdatedAtMs'], json['stepsUpdatedAt']),

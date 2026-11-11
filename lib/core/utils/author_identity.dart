@@ -40,6 +40,15 @@ class AuthorIdentity {
     return '';
   }
 
+  static String _extractUidToken(String raw) {
+    final trimmed = raw.trim();
+    if (trimmed.isEmpty) return '';
+    if (trimmed.contains(':::')) {
+      return trimmed.split(':::').last.trim();
+    }
+    return trimmed;
+  }
+
   /// Resolves strict, deterministic ownership across `author` and `author_id`.
   static AuthorIdentity resolve({
     String? rawAuthor,
@@ -48,6 +57,8 @@ class AuthorIdentity {
     String? currentUserNickname,
     String? partnerId,
     String? partnerNickname,
+    Set<String> myLegacyUids = const {},
+    Set<String> partnerLegacyUids = const {},
     bool explicitIsMine = false,
   }) {
     final a = rawAuthor?.trim() ?? '';
@@ -63,8 +74,17 @@ class AuthorIdentity {
     final embeddedAid = extractEmbeddedName(aid);
     final embeddedName = embeddedA.isNotEmpty ? embeddedA : embeddedAid;
 
-    // 1. Definitive partner UID check first so partner items are never claimed as mine.
-    if (pid.isNotEmpty && (a.contains(pid) || aid.contains(pid))) {
+    final uidA = _extractUidToken(a);
+    final uidAid = _extractUidToken(aid);
+    final itemUid = uidA.isNotEmpty ? uidA : uidAid;
+
+    // 1. Definitive partner UID (or known partner legacy UID) check first.
+    final matchesPartnerUid = pid.isNotEmpty &&
+        (itemUid == pid || a.contains(pid) || aid.contains(pid));
+    final matchesPartnerLegacy = pid.isNotEmpty &&
+        partnerLegacyUids.isNotEmpty &&
+        (partnerLegacyUids.contains(uidA) || partnerLegacyUids.contains(uidAid));
+    if (matchesPartnerUid || matchesPartnerLegacy) {
       final partnerLabel = pNick.isNotEmpty
           ? pNick
           : (embeddedName.isNotEmpty ? embeddedName : 'Partner');
@@ -75,8 +95,12 @@ class AuthorIdentity {
       );
     }
 
-    // 2. Definitive current user UID check (checks both `author` and `author_id`).
-    if (uid.isNotEmpty && (a.contains(uid) || aid.contains(uid))) {
+    // 2. Definitive current user UID (or discovered own legacy UID) check.
+    final matchesMyUid = uid.isNotEmpty &&
+        (itemUid == uid || a.contains(uid) || aid.contains(uid));
+    final matchesMyLegacy = myLegacyUids.isNotEmpty &&
+        (myLegacyUids.contains(uidA) || myLegacyUids.contains(uidAid));
+    if (matchesMyUid || matchesMyLegacy) {
       return AuthorIdentity(
         isMine: true,
         displayName: 'You',

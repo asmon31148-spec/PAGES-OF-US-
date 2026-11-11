@@ -80,6 +80,9 @@ class NotificationService {
       const abbrevMap = <String, String>{
         'IST': 'Asia/Kolkata',
         '+0530': 'Asia/Kolkata',
+        '+05:30': 'Asia/Kolkata',
+        'GMT+05:30': 'Asia/Kolkata',
+        'GMT+5:30': 'Asia/Kolkata',
         'PST': 'America/Los_Angeles',
         'PDT': 'America/Los_Angeles',
         'EST': 'America/New_York',
@@ -1034,7 +1037,19 @@ class NotificationService {
     return '${hour.toString().padLeft(2, '0')}:$minute $period';
   }
 
-  /// Schedules local exact repeating alarms on the device for daily care items
+  /// Deterministic 32-bit FNV-1a notification ID in range 70000 - 79999
+  /// so care reminders keep the same ID across isolates and restarts.
+  static int careNotificationIdFor(String itemId) {
+    int hash = 0x811c9dc5;
+    for (int i = 0; i < itemId.length; i++) {
+      hash ^= itemId.codeUnitAt(i);
+      hash = (hash * 0x01000193) & 0x7fffffff;
+    }
+    return 70000 + (hash % 9999);
+  }
+
+  /// Schedules local exact repeating alarms on the device for daily care items,
+  /// sweeping any deleted or partner-only pending alarms in 70000..79999 first.
   static Future<void> scheduleDailyCareNotifications({
     required List<DailyCareItem> items,
     required String? currentUserId,
@@ -1049,18 +1064,23 @@ class NotificationService {
       final now = tz.TZDateTime.now(tz.local);
       final todayKey = now.toIso8601String().split('T')[0];
 
+      final activeNotifIds = <int>{};
       for (final item in items) {
-        // Deterministic ID per care item in range 70000 - 79999
-        final notifId = 70000 + (item.id.hashCode.abs() % 9999);
-
-        // Cancel previous registration to avoid duplicates
+        final notifId = careNotificationIdFor(item.id);
+        final legacyHashId = 70000 + (item.id.hashCode.abs() % 9999);
+        if (legacyHashId != notifId) {
+          await _localNotifications.cancel(legacyHashId);
+        }
         await _localNotifications.cancel(notifId);
 
-        // Only schedule items targeted for this phone's owner
-        final isForCurrentUser = currentUserId == null ||
-            currentUserId.isEmpty ||
-            item.targetUserId == currentUserId ||
-            (item.targetUserId.isEmpty && item.createdById != currentUserId);
+        // Strictly schedule ONLY items targeted to this user's phone:
+        // - If creator set targetUserId = myUid -> schedule on MY phone!
+        // - If creator set targetUserId = partnerUid -> skip on MY phone (partner phone schedules it)!
+        // - Legacy preset (targetUserId empty + createdById == 'system') -> schedule unless completed.
+        final myUid = currentUserId?.trim() ?? '';
+        final isForCurrentUser = myUid.isEmpty ||
+            item.targetUserId == myUid ||
+            (item.targetUserId.isEmpty && (item.createdById == 'system' || item.createdById != myUid));
 
         if (!isForCurrentUser) continue;
 
@@ -1101,21 +1121,49 @@ class NotificationService {
           actions: _quickLoveActions,
         );
 
-        await _localNotifications.zonedSchedule(
-          notifId,
-          title,
-          body,
-          scheduledDate,
-          const NotificationDetails(android: androidDetails),
-          androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-          uiLocalNotificationDateInterpretation:
-              UILocalNotificationDateInterpretation.absoluteTime,
-          matchDateTimeComponents: DateTimeComponents.time,
-          payload: 'daily_care',
-        );
+        activeNotifIds.add(notifId);
+
+        try {
+          await _localNotifications.zonedSchedule(
+            notifId,
+            title,
+            body,
+            scheduledDate,
+            const NotificationDetails(android: androidDetails),
+            androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+            uiLocalNotificationDateInterpretation:
+                UILocalNotificationDateInterpretation.absoluteTime,
+            matchDateTimeComponents: DateTimeComponents.time,
+            payload: 'daily_care',
+          );
+        } catch (_) {
+          // Graceful fallback if OS exact-alarm toggle was revoked
+          await _localNotifications.zonedSchedule(
+            notifId,
+            title,
+            body,
+            scheduledDate,
+            const NotificationDetails(android: androidDetails),
+            androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+            uiLocalNotificationDateInterpretation:
+                UILocalNotificationDateInterpretation.absoluteTime,
+            matchDateTimeComponents: DateTimeComponents.time,
+            payload: 'daily_care',
+          );
+        }
 
         debugPrint('[NotificationService] Scheduled Daily Care "${item.title}" at ${item.scheduledTime} (ID: $notifId, Next: $scheduledDate)');
       }
+
+      // Sweep any leftover pending alarms in 70000..79999 that were deleted or no longer belong to this user
+      try {
+        final pending = await _localNotifications.pendingNotificationRequests();
+        for (final req in pending) {
+          if (req.id >= 70000 && req.id <= 79999 && !activeNotifIds.contains(req.id)) {
+            await _localNotifications.cancel(req.id);
+          }
+        }
+      } catch (_) {}
     } catch (e) {
       debugPrint('[NotificationService] Error scheduling daily care notifications: $e');
     }
@@ -1185,8 +1233,9 @@ class NotificationService {
   /// Cancel a single daily care notification if item is deleted
   static Future<void> cancelDailyCareNotification(String itemId) async {
     try {
-      final notifId = 70000 + (itemId.hashCode.abs() % 9999);
-      await _localNotifications.cancel(notifId);
+      await _localNotifications.cancel(careNotificationIdFor(itemId));
+      final legacyHashId = 70000 + (itemId.hashCode.abs() % 9999);
+      await _localNotifications.cancel(legacyHashId);
     } catch (_) {}
   }
 }

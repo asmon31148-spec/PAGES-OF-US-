@@ -531,6 +531,11 @@ class StageProvider extends ChangeNotifier {
       if (snap.exists && snap.data() != null) {
         final data = snap.data()!;
         final list = data['care_items'] as List?;
+        final cloudDeleted = (data['deleted_care_ids'] as List?)
+                ?.map((e) => e.toString())
+                .where((s) => s.isNotEmpty)
+                .toSet() ??
+            const <String>{};
         if (list != null) {
           final incoming = list
               .map((e) => DailyCareItem.fromJson(Map<String, dynamic>.from(e as Map)))
@@ -539,6 +544,8 @@ class StageProvider extends ChangeNotifier {
             incoming,
             currentUserId: userId,
             partnerName: partnerNickname,
+            cloudDeletedIds: cloudDeleted,
+            replaceMissing: true,
           );
 
           // Check if partner just scheduled a new care item or nudged me right now
@@ -1795,22 +1802,42 @@ class StageProvider extends ChangeNotifier {
     List<DailyCareItem> incoming, {
     String? currentUserId,
     String? partnerName,
+    Set<String> cloudDeletedIds = const {},
+    bool replaceMissing = false,
   }) {
+    final tombstones = DeletedIdsStore.getIds('care');
+    final allDeleted = {..._deletedCareIds, ...tombstones, ...cloudDeletedIds};
+    for (final delId in cloudDeletedIds) {
+      _deletedCareIds.add(delId);
+      DeletedIdsStore.markDeleted('care', delId);
+      NotificationService.cancelDailyCareNotification(delId);
+    }
+
+    final previousIds = _dailyCareItems.map((c) => c.id).toSet();
     final mergedMap = <String, DailyCareItem>{};
-    for (final c in _dailyCareItems) {
-      if (!_deletedCareIds.contains(c.id)) {
-        mergedMap[c.id] = c;
+    if (!replaceMissing) {
+      for (final c in _dailyCareItems) {
+        if (!allDeleted.contains(c.id)) {
+          mergedMap[c.id] = c;
+        }
       }
     }
     for (final c in incoming) {
-      if (!_deletedCareIds.contains(c.id)) {
+      if (!allDeleted.contains(c.id)) {
         mergedMap[c.id] = c;
       }
     }
+
+    for (final prevId in previousIds) {
+      if (!mergedMap.containsKey(prevId)) {
+        NotificationService.cancelDailyCareNotification(prevId);
+      }
+    }
+
     _dailyCareItems = mergedMap.values.toList();
     NotificationService.scheduleDailyCareNotifications(
       items: _dailyCareItems,
-      currentUserId: currentUserId,
+      currentUserId: currentUserId ?? _activeUserId,
       partnerName: partnerName,
     );
     notifyListeners();
@@ -1835,6 +1862,7 @@ class StageProvider extends ChangeNotifier {
         }
       } catch (_) {}
     }
+    final fsDeleted = <String>{};
     try {
       final fsSnap = await FirebaseService.firestore
           .collection('spaces')
@@ -1842,7 +1870,12 @@ class StageProvider extends ChangeNotifier {
           .collection('features')
           .doc('daily_care_schedules')
           .get();
-      final list = fsSnap.data()?['care_items'] as List?;
+      final data = fsSnap.data();
+      final delList = data?['deleted_care_ids'] as List?;
+      if (delList != null) {
+        fsDeleted.addAll(delList.map((e) => e.toString()).where((s) => s.isNotEmpty));
+      }
+      final list = data?['care_items'] as List?;
       if (list != null) {
         for (final e in list) {
           if (e is Map) {
@@ -1852,11 +1885,12 @@ class StageProvider extends ChangeNotifier {
       }
     } catch (_) {}
 
-    if (collected.isNotEmpty) {
+    if (collected.isNotEmpty || fsDeleted.isNotEmpty) {
       _mergeDailyCareItems(
         collected,
         currentUserId: currentUserId,
         partnerName: partnerName,
+        cloudDeletedIds: fsDeleted,
       );
       return;
     }
@@ -1946,17 +1980,29 @@ class StageProvider extends ChangeNotifier {
     final prev = List<DailyCareItem>.from(_dailyCareItems);
     _deletedCareIds.add(careId);
     await DeletedIdsStore.markDeleted('care', careId);
+    await NotificationService.cancelDailyCareNotification(careId);
     _dailyCareItems.removeWhere((c) => c.id == careId);
-    final ok = await _syncDailyCareToCloud(spaceId);
+    final ok = await _syncDailyCareToCloud(
+      spaceId,
+      senderId: _activeUserId,
+      lastAction: 'delete_care',
+    );
     if (!ok) {
       _dailyCareItems = prev;
       _deletedCareIds.remove(careId);
       await DeletedIdsStore.unmarkDeleted('care', careId);
+      NotificationService.scheduleDailyCareNotifications(
+        items: _dailyCareItems,
+        currentUserId: _activeUserId,
+      );
       notifyListeners();
       return false;
     }
+    await NotificationService.scheduleDailyCareNotifications(
+      items: _dailyCareItems,
+      currentUserId: _activeUserId,
+    );
     notifyListeners();
-    NotificationService.cancelDailyCareNotification(careId);
     return true;
   }
 
@@ -1995,7 +2041,7 @@ class StageProvider extends ChangeNotifier {
     String? targetUserId,
   }) async {
     final supabase = SupabaseService.client;
-    final tombstones = DeletedIdsStore.getIds('care');
+    final tombstones = {..._deletedCareIds, ...DeletedIdsStore.getIds('care')};
     if (supabase != null) {
       try {
         final remote = await supabase
@@ -2008,13 +2054,13 @@ class StageProvider extends ChangeNotifier {
           for (final raw in (remote['content'] as List)) {
             if (raw is Map) {
               final c = DailyCareItem.fromJson(Map<String, dynamic>.from(raw));
-              if (!_deletedCareIds.contains(c.id) && !tombstones.contains(c.id)) {
+              if (!tombstones.contains(c.id)) {
                 merged[c.id] = c;
               }
             }
           }
           for (final c in _dailyCareItems) {
-            if (!_deletedCareIds.contains(c.id) && !tombstones.contains(c.id)) {
+            if (!tombstones.contains(c.id)) {
               merged[c.id] = c;
             }
           }
@@ -2025,6 +2071,7 @@ class StageProvider extends ChangeNotifier {
     }
 
     final jsonList = _dailyCareItems.map((c) => c.toJson()).toList();
+    final deletedList = tombstones.take(200).toList();
     bool anyOk = false;
     if (supabase != null) {
       try {
@@ -2041,6 +2088,7 @@ class StageProvider extends ChangeNotifier {
     try {
       await FirebaseService.saveFeatureDoc(spaceId, 'daily_care_schedules', {
         'care_items': jsonList,
+        'deleted_care_ids': deletedList,
         'updatedAt': DateTime.now().toIso8601String(),
         if (senderId != null) 'senderId': senderId,
         if (lastAction != null) 'lastAction': lastAction,

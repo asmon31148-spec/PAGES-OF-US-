@@ -167,6 +167,9 @@ class DailyActivitySummary {
 class TelemetryMath {
   TelemetryMath._();
 
+  static const int maxSaneDailySteps = 80000;
+  static const int maxSaneWalkingMinutes = 720;
+
   /// Returns YYYY-MM-DD in the specified UTC offset (defaults to device local offset).
   static String localDateKeyFor(
     DateTime utcOrLocal, {
@@ -478,14 +481,20 @@ class TelemetryMath {
     required List<DailyActivitySummary> savedSummaries,
     required String todayDateKey,
   }) {
-    // Steps: strictly real hardware/Health Connect count (never invented from km * 1300)
+    // Steps: strictly real hardware/Health Connect count within realistic human daily bounds
+    final saneTelSteps = (telemetrySteps != null && telemetrySteps >= 0 && telemetrySteps <= maxSaneDailySteps)
+        ? telemetrySteps
+        : null;
+    final saneLocSteps = (locationSteps != null && locationSteps >= 0 && locationSteps <= maxSaneDailySteps)
+        ? locationSteps
+        : null;
     int? resolvedSteps;
-    if (telemetrySteps != null && telemetrySteps >= 0 && locationSteps != null && locationSteps >= 0) {
-      resolvedSteps = math.max(telemetrySteps, locationSteps);
-    } else if (telemetrySteps != null && telemetrySteps >= 0) {
-      resolvedSteps = telemetrySteps;
-    } else if (locationSteps != null && locationSteps >= 0) {
-      resolvedSteps = locationSteps;
+    if (saneTelSteps != null && saneLocSteps != null) {
+      resolvedSteps = math.max(saneTelSteps, saneLocSteps);
+    } else if (saneTelSteps != null) {
+      resolvedSteps = saneTelSteps;
+    } else if (saneLocSteps != null) {
+      resolvedSteps = saneLocSteps;
     }
 
     // Distance: combine verified GPS trail and Health Connect distance without fabricating
@@ -493,9 +502,10 @@ class TelemetryMath {
     final resolvedDistKm = gpsJourneyKm > hcKm ? gpsJourneyKm : hcKm;
 
     // Walking Time (physical walking cadence seconds) vs App Time (screen foreground seconds)
-    final walkingMin = telemetryWalkingSeconds != null && telemetryWalkingSeconds > 0
+    final rawWalkingMin = telemetryWalkingSeconds != null && telemetryWalkingSeconds > 0
         ? (telemetryWalkingSeconds / 60.0).round()
         : (locationActiveMinutes != null && locationActiveMinutes >= 0 ? locationActiveMinutes : 0);
+    final walkingMin = rawWalkingMin <= maxSaneWalkingMinutes ? rawWalkingMin : 0;
     final appMin = telemetryAppSeconds != null && telemetryAppSeconds > 0
         ? (telemetryAppSeconds / 60.0).round()
         : 0;

@@ -143,23 +143,14 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
     }
   }
 
-  // Native dark mode matrix that inverts Google Maps standard tiles into a sleek obsidian dark theme
-  // while preserving crisp white road names, shops, and building contrast with ZERO watermarks!
-  static const List<double> _darkMapMatrix = <double>[
-    -0.20, -0.65, -0.07, 0, 215,
-    -0.18, -0.60, -0.06, 0, 225,
-    -0.20, -0.65, -0.07, 0, 220,
-    0,      0,      0,    1, 0,
-  ];
-
   String _getTileUrl(MapBasemapStyle style) {
     switch (style) {
       case MapBasemapStyle.satellite:
         // Google Maps Hybrid: Ultra high-resolution satellite WITH all place names and road networks
         return 'https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}';
       case MapBasemapStyle.dark:
-        // Google Maps Dark: 100% full detail roads, shops & places with native dark styling (Zero Watermark!)
-        return 'https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}';
+        // Clean obsidian dark street tiles (zero green color-matrix distortion)
+        return 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png';
       case MapBasemapStyle.terrain:
         // Google Maps Terrain: Physical relief with complete place names & roads
         return 'https://mt{s}.google.com/vt/lyrs=p&x={x}&y={y}&z={z}';
@@ -171,6 +162,9 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
   }
 
   List<String> _getSubdomains(MapBasemapStyle style) {
+    if (style == MapBasemapStyle.dark) {
+      return const ['a', 'b', 'c', 'd'];
+    }
     return const ['0', '1', '2', '3'];
   }
 
@@ -612,12 +606,7 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
                 userAgentPackageName: 'com.pagesofus.app',
                 maxZoom: 21.0,
                 maxNativeZoom: _getMaxNativeZoom(_mapStyle),
-                tileBuilder: _mapStyle == MapBasemapStyle.dark
-                    ? (context, tileWidget, tile) => ColorFiltered(
-                          colorFilter: const ColorFilter.matrix(_darkMapMatrix),
-                          child: tileWidget,
-                        )
-                    : null,
+                tileBuilder: null,
               ),
 
               // Polyline tether between user & partner

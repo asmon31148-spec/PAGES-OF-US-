@@ -35,6 +35,8 @@ class MemoryItem {
     String? currentUserNickname,
     String? partnerId,
     String? partnerNickname,
+    Set<String> myLegacyUids = const {},
+    Set<String> partnerLegacyUids = const {},
   }) {
     final identity = AuthorIdentity.resolve(
       rawAuthor: json['author']?.toString(),
@@ -43,6 +45,8 @@ class MemoryItem {
       currentUserNickname: currentUserNickname,
       partnerId: partnerId,
       partnerNickname: partnerNickname,
+      myLegacyUids: myLegacyUids,
+      partnerLegacyUids: partnerLegacyUids,
       explicitIsMine: json['is_mine'] == true,
     );
     final authorStr = identity.rawAuthor;

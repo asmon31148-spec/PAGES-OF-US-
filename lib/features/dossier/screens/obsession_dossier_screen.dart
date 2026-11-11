@@ -124,13 +124,6 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
   bool _healthConnectPermitted = true;
   List<JourneyPoint>? _snappedTrail;
 
-  static const List<double> _darkMapMatrix = <double>[
-    -0.20, -0.65, -0.07, 0, 215,
-    -0.18, -0.60, -0.06, 0, 225,
-    -0.20, -0.65, -0.07, 0, 220,
-    0,      0,      0,    1, 0,
-  ];
-
   @override
   void initState() {
     super.initState();
@@ -1211,13 +1204,18 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
     }
 
     final usingOsm = !_isSatelliteMap && _useOsmFallback;
+    final useDarkStreet = !_isSatelliteMap && !usingOsm && isDark;
     final tileUrl = _isSatelliteMap
         ? 'https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}'
         : (usingOsm
             ? 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'
-            : 'https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}');
-    final subdomains = usingOsm ? const <String>[] : const ['0', '1', '2', '3'];
-    final maxNativeZoom = usingOsm ? 19 : 20;
+            : (useDarkStreet
+                ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png'
+                : 'https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}'));
+    final subdomains = usingOsm
+        ? const <String>[]
+        : (useDarkStreet ? const ['a', 'b', 'c', 'd'] : const ['0', '1', '2', '3']);
+    final maxNativeZoom = (usingOsm || useDarkStreet) ? 19 : 20;
 
     return Container(
       decoration: BoxDecoration(
@@ -1293,12 +1291,6 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
                                 });
                               }
                             });
-                          }
-                          if (!_isSatelliteMap && isDark) {
-                            return ColorFiltered(
-                              colorFilter: const ColorFilter.matrix(_darkMapMatrix),
-                              child: tileWidget,
-                            );
                           }
                           return tileWidget;
                         },

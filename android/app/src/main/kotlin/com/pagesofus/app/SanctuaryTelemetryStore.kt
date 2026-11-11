@@ -302,6 +302,21 @@ object SanctuaryTelemetryStore {
             val today = todayDateKey(nowMs)
             val storedDate = p.getString(KEY_STEP_DATE, "") ?: ""
             val hasBaseline = p.getBoolean(KEY_STEP_HAS_BASELINE, false)
+            var lastRaw = p.getInt(KEY_STEP_LAST_RAW, raw)
+            var todayTotal = p.getInt(KEY_STEP_TODAY, 0)
+
+            // Self-heal corrupted step counts (> 80,000 steps/day) from prior sensor baseline bug
+            if (todayTotal > 80_000) {
+                p.edit()
+                    .putString(KEY_STEP_DATE, today)
+                    .putBoolean(KEY_STEP_HAS_BASELINE, true)
+                    .putInt(KEY_STEP_LAST_RAW, raw)
+                    .putInt(KEY_STEP_TODAY, 0)
+                    .putInt(KEY_WALKING_TIME_SECONDS, 0)
+                    .putLong(KEY_STEPS_UPDATED_AT, nowMs)
+                    .apply()
+                return 0
+            }
 
             if (storedDate != today || !hasBaseline) {
                 p.edit()
@@ -314,9 +329,22 @@ object SanctuaryTelemetryStore {
                 return 0
             }
 
-            val lastRaw = p.getInt(KEY_STEP_LAST_RAW, raw)
-            val todayTotal = p.getInt(KEY_STEP_TODAY, 0)
-            val delta = if (raw >= lastRaw) (raw - lastRaw) else raw
+            // Ignore momentary sensor 0-drop power-save glitches when we already have a positive counter
+            if (raw == 0 && lastRaw > 100) {
+                return todayTotal
+            }
+
+            // If sensor counter reset below lastRaw (device reboot or OEM sensor re-zero),
+            // re-anchor baseline to raw with delta=0 rather than dumping cumulative boot steps!
+            var delta = if (raw >= lastRaw) (raw - lastRaw) else 0
+            val lastUpdatedMs = p.getLong(KEY_STEPS_UPDATED_AT, 0L)
+            val elapsedSec = if (lastUpdatedMs > 0L && nowMs > lastUpdatedMs) ((nowMs - lastUpdatedMs) / 1000L).toInt() else 10
+            val maxReasonableJump = kotlin.math.min(1500, kotlin.math.max(60, elapsedSec * 5))
+            if (delta > maxReasonableJump) {
+                // Reject anomalous hardware counter jumps (e.g. >10k lifetime boot step re-addition)
+                delta = 0
+            }
+
             val updatedTotal = if (delta > 0) todayTotal + delta else todayTotal
 
             var walkingSec = p.getInt(KEY_WALKING_TIME_SECONDS, 0)
@@ -701,8 +729,10 @@ object SanctuaryTelemetryStore {
     }
 
     private fun computeEffectiveStepsLocked(p: android.content.SharedPreferences): Int {
-        val sensorSteps = if (p.getBoolean(KEY_STEP_HAS_BASELINE, false)) p.getInt(KEY_STEP_TODAY, 0) else -1
-        val hcSteps = p.getInt(KEY_HC_STEPS_TODAY, -1)
+        val rawSensorSteps = if (p.getBoolean(KEY_STEP_HAS_BASELINE, false)) p.getInt(KEY_STEP_TODAY, 0) else -1
+        val sensorSteps = if (rawSensorSteps in 0..80_000) rawSensorSteps else -1
+        val rawHcSteps = p.getInt(KEY_HC_STEPS_TODAY, -1)
+        val hcSteps = if (rawHcSteps in 0..80_000) rawHcSteps else -1
         return when {
             hcSteps >= 0 && sensorSteps >= 0 -> kotlin.math.max(hcSteps, sensorSteps)
             hcSteps >= 0 -> hcSteps

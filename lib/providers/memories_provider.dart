@@ -462,22 +462,44 @@ class MemoriesProvider extends ChangeNotifier {
           .listen((snapshot) {
             final uid = _currentUserId ?? currentUserId;
             final pid = _currentPartnerId ?? partnerId;
+            final myNick = _currentUserNickname ?? currentUserNickname;
+            final pNick = _currentPartnerNickname ?? partnerNickname;
             final tombstones = DeletedIdsStore.getIds('milestones');
-            final incoming = snapshot.docs.where((d) => !tombstones.contains(d.id)).map((doc) {
-              final data = doc.data();
+            final rawRows = snapshot.docs.map((doc) {
+              final data = Map<String, dynamic>.from(doc.data());
               data['id'] = doc.id;
-              return MilestoneItem.fromJson(
-                data,
-                currentUserId: uid,
-                currentUserNickname: _currentUserNickname ?? currentUserNickname,
-                partnerId: pid,
-                partnerNickname: _currentPartnerNickname ?? partnerNickname,
-              );
-            }).where((m) {
-              final ownerUid = OwnershipHelper.extractOwnerUid(m.authorId);
-              return OwnershipHelper.canViewItem(ownerUid: ownerUid, myUid: uid, partnerUid: pid) ||
-                  (ownerUid.isEmpty && m.isMine);
+              data['space_id'] ??= spaceId;
+              return data;
             }).toList();
+            _learnLegacyAliases(
+              rawRows,
+              currentUserId: uid,
+              currentUserNickname: myNick,
+              partnerId: pid,
+              partnerNickname: pNick,
+              spaceId: spaceId,
+            );
+            final incoming = rawRows
+                .where((d) => !tombstones.contains(d['id']?.toString()))
+                .where((d) {
+                  final rawAuthor = (d['author'] ?? d['author_id'])?.toString();
+                  return _canViewRawAuthor(
+                    rawAuthor,
+                    partnerId: pid,
+                    partnerNickname: pNick,
+                    itemSpaceId: d['space_id']?.toString(),
+                  );
+                })
+                .map((data) => MilestoneItem.fromJson(
+                      data,
+                      currentUserId: uid,
+                      currentUserNickname: myNick,
+                      partnerId: pid,
+                      partnerNickname: pNick,
+                      myLegacyUids: _discoveredMyLegacyUids,
+                      partnerLegacyUids: _discoveredPartnerLegacyUids,
+                    ))
+                .toList();
             _mergeMilestones(incoming);
           }, onError: (err) {
             debugPrint('Firestore milestones listener err: $err');
@@ -639,6 +661,8 @@ class MemoriesProvider extends ChangeNotifier {
                 currentUserNickname: currentUserNickname ?? _currentUserNickname,
                 partnerId: effectivePid,
                 partnerNickname: effectivePNick,
+                myLegacyUids: _discoveredMyLegacyUids,
+                partnerLegacyUids: _discoveredPartnerLegacyUids,
               ))
           .toList();
 
@@ -732,6 +756,8 @@ class MemoriesProvider extends ChangeNotifier {
                 currentUserNickname: currentUserNickname ?? _currentUserNickname,
                 partnerId: effectivePid,
                 partnerNickname: effectivePNick,
+                myLegacyUids: _discoveredMyLegacyUids,
+                partnerLegacyUids: _discoveredPartnerLegacyUids,
               ))
           .toList();
       notifyListeners();
@@ -807,6 +833,8 @@ class MemoriesProvider extends ChangeNotifier {
                 currentUserNickname: currentUserNickname ?? _currentUserNickname,
                 partnerId: effectivePid,
                 partnerNickname: effectivePNick,
+                myLegacyUids: _discoveredMyLegacyUids,
+                partnerLegacyUids: _discoveredPartnerLegacyUids,
               ))
           .toList();
       // Replace authoritatively with server list minus tombstones rather than resurrecting deleted entries

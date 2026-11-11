@@ -192,24 +192,28 @@ class _LetterboxSubviewState extends State<LetterboxSubview> {
               children: [
                 Row(
                   children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
-                      decoration: BoxDecoration(
-                        color: badgeTextColor.withOpacity(isDark ? 0.22 : 0.12),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        letter.category.toUpperCase(),
-                        style: TextStyle(
-                          fontSize: 9.5,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 0.5,
-                          color: badgeTextColor,
+                    Flexible(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+                        decoration: BoxDecoration(
+                          color: badgeTextColor.withOpacity(isDark ? 0.22 : 0.12),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          letter.category.toUpperCase(),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 9.5,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.5,
+                            color: badgeTextColor,
+                          ),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 6),
-                    if (isSealed)
+                    if (isSealed) ...[
+                      const SizedBox(width: 6),
                       const Text(
                         'TIMELOCKED',
                         style: TextStyle(
@@ -218,11 +222,14 @@ class _LetterboxSubviewState extends State<LetterboxSubview> {
                           color: Colors.amber,
                         ),
                       ),
+                    ],
                   ],
                 ),
                 const SizedBox(height: 4),
                 Text(
                   letter.title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
@@ -232,6 +239,8 @@ class _LetterboxSubviewState extends State<LetterboxSubview> {
                 const SizedBox(height: 2),
                 Text(
                   'From ${letter.authorName} · ${letter.writtenDate.split("T").first}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     fontSize: 11,
                     color: isDark ? AppColors.darkSoft : AppColors.lightSoft,

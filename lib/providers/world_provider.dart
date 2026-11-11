@@ -763,16 +763,14 @@ class WorldProvider extends ChangeNotifier {
   double get partnerJourneyKmThisWeek  => _calcJourneyKm(_partnerJourneyLog, const Duration(days: 7));
   double get partnerJourneyKmThisMonth => _calcJourneyKm(_partnerJourneyLog, const Duration(days: 30));
 
-  int? get myStepsTodayOrNull => _hardwareStepsToday;
+  int? get myStepsTodayOrNull =>
+      (_hardwareStepsToday != null && _hardwareStepsToday! >= 0 && _hardwareStepsToday! <= 80000)
+          ? _hardwareStepsToday
+          : null;
 
-  int get myStepsToday => _hardwareStepsToday ?? 0;
+  int get myStepsToday => myStepsTodayOrNull ?? 0;
 
-  int get myActiveMinutesToday {
-    if (_hardwareStepsToday != null && _hardwareStepsToday! > 0) {
-      return (_hardwareStepsToday! / 105.0).round();
-    }
-    return 0;
-  }
+  int get myActiveMinutesToday => 0;
 
   /// True when actively walking (real hardware footsteps in last 25s) OR physically traveling by GPS
   bool get isMyMoving {
@@ -1485,20 +1483,13 @@ class WorldProvider extends ChangeNotifier {
         } catch (_) {}
       }
 
-      // 2. Continuous background-capable GPS stream (Android Foreground Service keeps tracking while phone is in pocket)
+      // 2. Continuous GPS stream (no irritating persistent footsteps notification)
       _positionStreamSub?.cancel();
       final LocationSettings settings = defaultTargetPlatform == TargetPlatform.android
           ? AndroidSettings(
               accuracy: LocationAccuracy.high,
               distanceFilter: 10,
               intervalDuration: const Duration(seconds: 10),
-              foregroundNotificationConfig: const ForegroundNotificationConfig(
-                notificationTitle: 'Pages of Us • Live Presence',
-                notificationText: 'Tracking your live route & footsteps for your partner',
-                notificationChannelName: 'Live Location Tether',
-                enableWakeLock: true,
-                setOngoing: true,
-              ),
             )
           : const LocationSettings(
               accuracy: LocationAccuracy.high,

@@ -33,7 +33,7 @@ import kotlinx.coroutines.launch
 
 class SanctuaryTelemetryService : Service() {
     companion object {
-        private const val CHANNEL_ID = "sanctuary_telemetry_sync"
+        private const val CHANNEL_ID = "sanctuary_telemetry_quiet"
         private const val NOTIFICATION_ID = 4108
         private const val HEARTBEAT_INTERVAL_MS = 120_000L
 
@@ -139,14 +139,17 @@ class SanctuaryTelemetryService : Service() {
     private fun ensureNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val mgr = getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager ?: return
+            try { mgr.deleteNotificationChannel("sanctuary_telemetry_sync") } catch (_: Exception) {}
             if (mgr.getNotificationChannel(CHANNEL_ID) == null) {
                 val ch = NotificationChannel(
                     CHANNEL_ID,
-                    "Sanctuary Live Sync",
+                    "Quiet Telemetry Sync",
                     NotificationManager.IMPORTANCE_MIN
                 ).apply {
-                    description = "Keeps shared partner telemetry & daily summaries accurate in the background."
+                    description = "Silent background status sync."
                     setShowBadge(false)
+                    setSound(null, null)
+                    enableVibration(false)
                 }
                 mgr.createNotificationChannel(ch)
             }
@@ -162,9 +165,13 @@ class SanctuaryTelemetryService : Service() {
 
         val builder = Notification.Builder(this, CHANNEL_ID)
             .setContentTitle("Pages of Us")
-            .setContentText("Background live sync active")
+            .setContentText("Connected quietly")
             .setSmallIcon(applicationInfo.icon)
+            .setOnlyAlertOnce(true)
             .setOngoing(true)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            builder.setForegroundServiceBehavior(Notification.FOREGROUND_SERVICE_DEFERRED)
+        }
         if (pendingIntent != null) {
             builder.setContentIntent(pendingIntent)
         }

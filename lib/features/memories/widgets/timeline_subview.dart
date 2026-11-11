@@ -19,6 +19,7 @@ import '../../../core/widgets/liquid_glass/liquid_glass_theme.dart';
 import '../../../providers/theme_provider.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../providers/memories_provider.dart';
+import '../../../providers/stage_provider.dart';
 import '../../../providers/audio_provider.dart';
 import '../../../data/models/milestone_item.dart';
 import '../../../widgets/sanctuary_voice_player.dart';
@@ -41,9 +42,27 @@ class _TimelineSubviewState extends State<TimelineSubview> {
       (p) => p.milestones,
     );
     final authProvider = context.watch<AuthProvider>();
+    final stageProvider = context.watch<StageProvider>();
     final spaceId = authProvider.effectiveSpaceId ?? '';
     final user = authProvider.user;
     final partnerNickname = authProvider.effectivePartnerNickname;
+
+    final rawPairingDate = (stageProvider.anniversaryDate != null && stageProvider.anniversaryDate!.trim().isNotEmpty)
+        ? stageProvider.anniversaryDate!.trim()
+        : (authProvider.space?.createdAt?.trim() ?? '');
+    final parsedPairingDt = rawPairingDate.isNotEmpty ? DateTime.tryParse(rawPairingDate) : null;
+    String timelineSubtitle;
+    if (parsedPairingDt != null) {
+      final startOnly = DateTime(parsedPairingDt.year, parsedPairingDt.month, parsedPairingDt.day);
+      final now = DateTime.now();
+      final todayOnly = DateTime(now.year, now.month, now.day);
+      final diffDays = todayOnly.difference(startOnly).inDays;
+      final realDays = diffDays >= 0 ? diffDays + 1 : 1;
+      final formattedStart = DateFormat('dd/MM/yyyy').format(startOnly);
+      timelineSubtitle = 'Together since $formattedStart · $realDays ${realDays == 1 ? 'day' : 'days'} (${allMilestones.length} ${allMilestones.length == 1 ? 'moment' : 'moments'})';
+    } else {
+      timelineSubtitle = '${allMilestones.length} ${allMilestones.length == 1 ? 'Moment' : 'Moments'} Kept Together';
+    }
 
     // Filter milestones by selected branch
     final List<MilestoneItem> filteredMilestones = allMilestones.where((m) {
@@ -61,29 +80,34 @@ class _TimelineSubviewState extends State<TimelineSubview> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'OUR JOURNEY TIMELINE',
-                    style: TextStyle(
-                      fontSize: 10.5,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 1.2,
-                      color: AppColors.terra,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'OUR JOURNEY TIMELINE',
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1.2,
+                        color: AppColors.terra,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    '${allMilestones.length} Days Kept Together',
-                    style: TextStyle(
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w500,
-                      color: isDark ? AppColors.darkSoft : AppColors.lightSoft,
+                    const SizedBox(height: 2),
+                    Text(
+                      timelineSubtitle,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: isDark ? AppColors.darkSoft : AppColors.lightSoft,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
+              const SizedBox(width: 8),
               LiquidGlassButton(
                 primaryColor: AppColors.sage,
                 icon: Icons.add_rounded,
@@ -342,26 +366,32 @@ class _TimelineSubviewState extends State<TimelineSubview> {
                         ),
 
                         // Author & Media Badges
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            if (milestone.hasImage) ...[
-                              Icon(Icons.photo_rounded, size: 13, color: isDark ? AppColors.darkSoft : AppColors.lightSoft),
-                              const SizedBox(width: 4),
-                            ],
-                            if (milestone.hasAudio) ...[
-                              Icon(Icons.graphic_eq_rounded, size: 14, color: isDark ? AppColors.darkSoft : AppColors.lightSoft),
-                              const SizedBox(width: 4),
-                            ],
-                            Text(
-                              keptByLabel,
-                              style: TextStyle(
-                                fontSize: 10.5,
-                                fontStyle: FontStyle.italic,
-                                color: isDark ? AppColors.darkSoft : AppColors.lightSoft,
+                        Flexible(
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (milestone.hasImage) ...[
+                                Icon(Icons.photo_rounded, size: 13, color: isDark ? AppColors.darkSoft : AppColors.lightSoft),
+                                const SizedBox(width: 4),
+                              ],
+                              if (milestone.hasAudio) ...[
+                                Icon(Icons.graphic_eq_rounded, size: 14, color: isDark ? AppColors.darkSoft : AppColors.lightSoft),
+                                const SizedBox(width: 4),
+                              ],
+                              Flexible(
+                                child: Text(
+                                  keptByLabel,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 10.5,
+                                    fontStyle: FontStyle.italic,
+                                    color: isDark ? AppColors.darkSoft : AppColors.lightSoft,
+                                  ),
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ],
                     ),

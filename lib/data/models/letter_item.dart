@@ -1,3 +1,4 @@
+import 'dart:convert';
 import '../../core/utils/author_identity.dart';
 
 class LetterItem {
@@ -37,6 +38,8 @@ class LetterItem {
     String? currentUserNickname,
     String? partnerId,
     String? partnerNickname,
+    Set<String> myLegacyUids = const {},
+    Set<String> partnerLegacyUids = const {},
   }) {
     final identity = AuthorIdentity.resolve(
       rawAuthor: json['author']?.toString(),
@@ -45,16 +48,37 @@ class LetterItem {
       currentUserNickname: currentUserNickname,
       partnerId: partnerId,
       partnerNickname: partnerNickname,
+      myLegacyUids: myLegacyUids,
+      partnerLegacyUids: partnerLegacyUids,
       explicitIsMine: json['is_mine'] == true,
     );
     final authorStr = identity.rawAuthor;
     final isMine = identity.isMine;
     final authorName = identity.displayName;
 
-    final envelope = json['envelope_color']?.toString() ?? 'green:For a quiet day';
-    final parts = envelope.split(':');
-    final seal = parts.isNotEmpty ? parts[0] : 'green';
-    final cat = parts.length > 1 ? parts.sublist(1).join(':') : 'For a quiet day';
+    final envelope = (json['envelope_color']?.toString() ?? 'green:For a quiet day').trim();
+    String seal = 'green';
+    String cat = 'For a quiet day';
+    if (envelope.startsWith('{')) {
+      try {
+        final decoded = jsonDecode(envelope);
+        if (decoded is Map) {
+          final s = decoded['seal']?.toString().trim();
+          final c = decoded['category']?.toString().trim();
+          if (s != null && s.isNotEmpty) seal = s;
+          if (c != null && c.isNotEmpty) cat = c;
+        }
+      } catch (_) {}
+    } else {
+      final parts = envelope.split(':');
+      if (parts.isNotEmpty && parts[0].trim().isNotEmpty) {
+        seal = parts[0].trim();
+      }
+      if (parts.length > 1) {
+        final joined = parts.sublist(1).join(':').trim();
+        if (joined.isNotEmpty) cat = joined;
+      }
+    }
 
     final createdStr = json['created_at']?.toString() ?? '';
     final sealedUntil = json['sealed_until']?.toString();

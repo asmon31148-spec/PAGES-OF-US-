@@ -366,11 +366,9 @@ class _MemoryStackViewState extends State<MemoryStackView> {
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(21),
-        child: Container(
-          clipBehavior: Clip.antiAlias,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
           // 1. Media Area (Photo or Video preview)
           if (memory.mediaType == 'photo' && memory.mediaUrl.isNotEmpty)
             GestureDetector(
@@ -483,8 +481,7 @@ class _MemoryStackViewState extends State<MemoryStackView> {
         ],
       ),
     ),
-  ),
-);
+  );
   }
 
   void _openLightbox(BuildContext context, String imageUrl, String title) {
