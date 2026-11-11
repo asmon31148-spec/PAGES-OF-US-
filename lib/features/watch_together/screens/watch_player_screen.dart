@@ -907,7 +907,7 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
             });
           }
         }
-      } else if (partner.online) {
+      } else if (partner == null || partner.online) {
         _partnerOfflineSince = null;
         if (_syncStatus == SyncStatus.partnerOffline) {
           setState(() {
