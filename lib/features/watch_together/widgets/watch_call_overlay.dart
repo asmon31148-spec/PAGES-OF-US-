@@ -587,11 +587,13 @@ class _WatchCallOverlayState extends State<WatchCallOverlay> {
         ? math.min(276.0, screenSize.height - 20.0)
         : math.min(312.0, screenSize.height * 0.42);
 
-    final defaultX = (screenSize.width - panelWidth - 12.0).clamp(8.0, screenSize.width - panelWidth - 8.0);
-    final defaultY = widget.isLandscape ? 12.0 : 56.0;
+    final double maxX = math.max<double>(8.0, screenSize.width - panelWidth - 8.0);
+    final double maxY = math.max<double>(8.0, screenSize.height - panelHeight - 8.0);
+    final double defaultX = (screenSize.width - panelWidth - 12.0).clamp(8.0, maxX).toDouble();
+    final double defaultY = (widget.isLandscape ? 12.0 : 56.0).clamp(8.0, maxY).toDouble();
     final pos = _expandedPosition ?? Offset(defaultX, defaultY);
-    final clampedX = pos.dx.clamp(8.0, math.max(8.0, screenSize.width - panelWidth - 8.0));
-    final clampedY = pos.dy.clamp(8.0, math.max(8.0, screenSize.height - panelHeight - 8.0));
+    final double clampedX = pos.dx.clamp(8.0, maxX).toDouble();
+    final double clampedY = pos.dy.clamp(8.0, maxY).toDouble();
 
     final double innerPipWidth = widget.isLandscape ? 50.0 : 56.0;
     final double innerPipHeight = widget.isLandscape ? 68.0 : 76.0;
