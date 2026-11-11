@@ -35,8 +35,8 @@ double calculateContrastRatio(Color foreground, Color background) {
 
 void main() {
   group('Shared Live Theme System - WCAG AA Contrast Tests', () {
-    test('Registry contains all 13 themes', () {
-      expect(ThemeRegistry.allThemes.length, 13);
+    test('Registry contains all 15 themes', () {
+      expect(ThemeRegistry.allThemes.length, 15);
     });
 
     for (final theme in ThemeRegistry.allThemes) {
