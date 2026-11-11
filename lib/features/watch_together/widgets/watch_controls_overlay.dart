@@ -31,6 +31,9 @@ class WatchControlsOverlay extends StatefulWidget {
   final bool hasUnreadMessages;
   final VoidCallback? onStartCall;
   final bool isCallActive;
+  final bool isWebViewMode;
+  final bool isWebTouchThrough;
+  final VoidCallback? onToggleWebTouchThrough;
 
   const WatchControlsOverlay({
     super.key,
@@ -55,6 +58,9 @@ class WatchControlsOverlay extends StatefulWidget {
     this.hasUnreadMessages = false,
     this.onStartCall,
     this.isCallActive = false,
+    this.isWebViewMode = false,
+    this.isWebTouchThrough = false,
+    this.onToggleWebTouchThrough,
   });
 
   @override
@@ -72,10 +78,18 @@ class WatchControlsOverlayState extends State<WatchControlsOverlay> {
     _startHideTimer();
   }
 
+  @override
+  void didUpdateWidget(covariant WatchControlsOverlay oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isPlaying && !oldWidget.isPlaying && _isVisible) {
+      _startHideTimer();
+    }
+  }
+
   void _startHideTimer() {
     _hideTimer?.cancel();
-    _hideTimer = Timer(const Duration(seconds: 3), () {
-      if (mounted && widget.isPlaying) {
+    _hideTimer = Timer(const Duration(milliseconds: 2600), () {
+      if (mounted && widget.isPlaying && _dragValue == null) {
         setState(() {
           _isVisible = false;
         });
@@ -148,14 +162,26 @@ class WatchControlsOverlayState extends State<WatchControlsOverlay> {
       onLongPressEnd: (_) => widget.onSpeedUpEnd?.call(),
       onLongPressCancel: () => widget.onSpeedUpEnd?.call(),
       child: Container(
-        color: Colors.black.withOpacity(0.45),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Colors.black.withOpacity(0.68),
+              Colors.black.withOpacity(0.18),
+              Colors.black.withOpacity(0.22),
+              Colors.black.withOpacity(0.75),
+            ],
+            stops: const [0.0, 0.25, 0.72, 1.0],
+          ),
+        ),
         child: SafeArea(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               // Top Bar
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 6.0),
                 child: Row(
                   children: [
                     // Leave Button
@@ -167,19 +193,20 @@ class WatchControlsOverlayState extends State<WatchControlsOverlay> {
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                         decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.5),
+                          color: Colors.black.withOpacity(0.55),
                           borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: Colors.white.withOpacity(0.2)),
+                          border: Border.all(color: Colors.white.withOpacity(0.18)),
                         ),
                         child: const Row(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.arrow_back_ios_new_rounded, size: 14, color: Colors.white),
+                            Icon(Icons.arrow_back_ios_new_rounded, size: 13, color: Colors.white),
                             SizedBox(width: 4),
                             Text(
                               'Leave',
                               style: TextStyle(
                                 fontSize: 11,
-                                fontWeight: FontWeight.bold,
+                                fontWeight: FontWeight.w600,
                                 color: Colors.white,
                               ),
                             ),
@@ -188,7 +215,7 @@ class WatchControlsOverlayState extends State<WatchControlsOverlay> {
                       ),
                     ),
 
-                    const SizedBox(width: 10),
+                    const SizedBox(width: 8),
 
                     // Title
                     Expanded(
@@ -197,19 +224,42 @@ class WatchControlsOverlayState extends State<WatchControlsOverlay> {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
-                          fontSize: 13,
+                          fontSize: 12.5,
                           fontWeight: FontWeight.w600,
                           color: Colors.white,
                         ),
                       ),
                     ),
 
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 6),
 
                     // Sync Status Chip
                     _buildSyncStatusChip(),
 
-                    const SizedBox(width: 8),
+                    if (widget.isWebViewMode && widget.onToggleWebTouchThrough != null) ...[
+                      const SizedBox(width: 6),
+                      GestureDetector(
+                        onTap: () {
+                          _startHideTimer();
+                          widget.onToggleWebTouchThrough!();
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.all(6.5),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.55),
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white.withOpacity(0.2)),
+                          ),
+                          child: const Icon(
+                            Icons.touch_app_rounded,
+                            size: 14,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ],
+
+                    const SizedBox(width: 6),
 
                     // Video Call / In-Call Indicator
                     if (widget.isCallActive) ...[
@@ -359,20 +409,21 @@ class WatchControlsOverlayState extends State<WatchControlsOverlay> {
                           widget.onSkipBack10();
                         },
                         child: Container(
-                          padding: const EdgeInsets.all(12),
+                          padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
-                            color: Colors.black.withOpacity(0.4),
+                            color: Colors.black.withOpacity(0.48),
                             shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white.withOpacity(0.18)),
                           ),
                           child: const Icon(
                             Icons.replay_10_rounded,
-                            size: 34,
+                            size: 26,
                             color: Colors.white,
                           ),
                         ),
                       ),
 
-                      const SizedBox(width: 32),
+                      const SizedBox(width: 24),
 
                       // Play / Pause
                       GestureDetector(
@@ -381,27 +432,31 @@ class WatchControlsOverlayState extends State<WatchControlsOverlay> {
                           widget.onTogglePlay();
                         },
                         child: Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: const BoxDecoration(
-                            color: AppColors.terra,
+                          padding: const EdgeInsets.all(13),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.62),
                             shape: BoxShape.circle,
-                            boxShadow: [
+                            border: Border.all(
+                              color: AppColors.terra.withOpacity(0.9),
+                              width: 1.8,
+                            ),
+                            boxShadow: const [
                               BoxShadow(
-                                color: Colors.black38,
-                                blurRadius: 10,
+                                color: Colors.black45,
+                                blurRadius: 12,
                                 offset: Offset(0, 4),
                               ),
                             ],
                           ),
                           child: Icon(
                             widget.isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
-                            size: 44,
+                            size: 34,
                             color: Colors.white,
                           ),
                         ),
                       ),
 
-                      const SizedBox(width: 32),
+                      const SizedBox(width: 24),
 
                       // +10s
                       GestureDetector(
@@ -410,14 +465,15 @@ class WatchControlsOverlayState extends State<WatchControlsOverlay> {
                           widget.onSkipForward10();
                         },
                         child: Container(
-                          padding: const EdgeInsets.all(12),
+                          padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
-                            color: Colors.black.withOpacity(0.4),
+                            color: Colors.black.withOpacity(0.48),
                             shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white.withOpacity(0.18)),
                           ),
                           child: const Icon(
                             Icons.forward_10_rounded,
-                            size: 34,
+                            size: 26,
                             color: Colors.white,
                           ),
                         ),
@@ -584,15 +640,15 @@ class WatchControlsOverlayState extends State<WatchControlsOverlay> {
     switch (widget.syncStatus) {
       case SyncStatus.inSync:
         dotColor = const Color(0xFF10B981); // Emerald green
-        label = 'In sync';
+        label = 'Synced';
         break;
       case SyncStatus.syncing:
         dotColor = const Color(0xFFF59E0B); // Amber orange
-        label = 'Syncing...';
+        label = 'Syncing';
         break;
       case SyncStatus.partnerOffline:
         dotColor = const Color(0xFFEF4444); // Red
-        label = 'Partner offline';
+        label = 'Offline';
         break;
     }
 

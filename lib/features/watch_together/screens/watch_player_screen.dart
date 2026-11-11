@@ -11,6 +11,7 @@ import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:firebase_database/firebase_database.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/author_identity.dart';
 import '../../../providers/theme_provider.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../providers/memories_provider.dart';
@@ -62,6 +63,7 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
   Duration _wvDuration = Duration.zero;
   double _wvSpeed = 1.0;
   bool _wvTouchThrough = false;
+  bool _wvAdActive = false;
   bool _triedMobileWebFallback = false;
 
   // Stream Subscriptions
@@ -72,7 +74,9 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
 
   // Sync state
   WatchPlayback? _lastRemotePlayback;
+  WatchPlayback? _pendingRemotePlayback;
   DateTime _ignoreRemoteUntil = DateTime.now();
+  DateTime? _partnerOfflineSince;
   Timer? _driftCheckTimer;
   SyncStatus _syncStatus = SyncStatus.inSync;
 
@@ -209,7 +213,10 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
       // 3. Connect real-time playback and room listeners
       _setupSyncListeners();
 
-      // 4. Start periodic drift correction timer (every 4 seconds)
+      // 4. Immediately catch up to current room playback state (fixes slow-join desync)
+      await _catchUpInitialPlayback(myUid);
+
+      // 5. Start periodic drift correction timer (every 4 seconds)
       _startDriftCorrectionTimer();
     } catch (e) {
       debugPrint('Video init error: $e');
@@ -381,6 +388,50 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
     throw Exception('No video stream URL or local file provided.');
   }
 
+  Future<void> _catchUpInitialPlayback(String? myUid) async {
+    if (!mounted || _isLeaving) return;
+    if (_pendingRemotePlayback != null) {
+      final p = _pendingRemotePlayback!;
+      _pendingRemotePlayback = null;
+      _handleRemotePlayback(p, myUid);
+      return;
+    }
+    try {
+      final snap = await FirebaseDatabase.instance
+          .ref('watchRooms/${widget.roomCode}/playback')
+          .get()
+          .timeout(const Duration(seconds: 4));
+      if (snap.exists && snap.value is Map && mounted && !_isLeaving) {
+        final pb = WatchPlayback.fromMap(snap.value as Map<dynamic, dynamic>);
+        _handleRemotePlayback(pb, myUid);
+      }
+    } catch (_) {}
+  }
+
+  static bool _isBlockedAdOrExternalUrl(String rawUrl) {
+    final lower = rawUrl.toLowerCase();
+    if (lower.startsWith('intent:') || lower.startsWith('youtube:') || lower.startsWith('vnd.youtube:')) {
+      return true;
+    }
+    const blockedHosts = [
+      'doubleclick.net',
+      'googlesyndication.com',
+      'googleadservices.com',
+      'adservice.google.',
+      'pagead2.googlesyndication.com',
+      'adtrafficquality.google',
+      'taboola.com',
+      'outbrain.com',
+    ];
+    for (final h in blockedHosts) {
+      if (lower.contains(h)) return true;
+    }
+    if (lower.contains('/pagead/') || lower.contains('/ptracking') || lower.contains('/api/stats/ads')) {
+      return true;
+    }
+    return false;
+  }
+
   WebViewController _createBaseWebViewController({String? htmlVideoFallbackId}) {
     const chromeUa =
         'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36';
@@ -390,6 +441,16 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setBackgroundColor(Colors.black)
       ..setUserAgent(chromeUa)
+      ..setNavigationDelegate(
+        NavigationDelegate(
+          onNavigationRequest: (NavigationRequest req) {
+            if (_isBlockedAdOrExternalUrl(req.url)) {
+              return NavigationDecision.prevent;
+            }
+            return NavigationDecision.navigate;
+          },
+        ),
+      )
       ..addJavaScriptChannel(
         'CinemaBridge',
         onMessageReceived: (JavaScriptMessage msg) {
@@ -416,6 +477,11 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
         return;
       }
       if (type == 'state') {
+        final adActive = data['adActive'] == true;
+        final wasAdActive = _wvAdActive;
+        _wvAdActive = adActive;
+        if (adActive) return; // Never pollute shared timeline or UI state with an ad
+
         final playing = data['playing'] == true;
         final posMs = (data['posMs'] as num?)?.toInt() ?? 0;
         final durMs = (data['durMs'] as num?)?.toInt() ?? 0;
@@ -427,6 +493,13 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
           if (durMs >= 0) _wvDuration = Duration(milliseconds: durMs);
           _wvSpeed = rate;
         });
+
+        // As soon as a pre-roll ad finishes, immediately jump back in sync with partner
+        if (wasAdActive && !adActive && _lastRemotePlayback != null) {
+          final myUid = context.read<AuthProvider>().user?.id;
+          _handleRemotePlayback(_lastRemotePlayback!, myUid);
+        }
+
         if (ended && !_hasShownMovieEnded && durMs > 10000) {
           _hasShownMovieEnded = true;
           WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -465,6 +538,7 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
         var rate = player.getPlaybackRate ? player.getPlaybackRate() : 1;
         window.CinemaBridge.postMessage(JSON.stringify({
           type: 'state',
+          adActive: false,
           playing: st === 1,
           ended: st === 0,
           posMs: Math.round(pos * 1000),
@@ -482,12 +556,15 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
           playsinline: 1,
           rel: 0,
           modestbranding: 1,
-          controls: 1,
+          controls: 0,
+          disablekb: 1,
+          fs: 0,
+          iv_load_policy: 3,
           enablejsapi: 1,
           origin: 'https://www.youtube.com'
         },
         events: {
-          onReady: function() { ready = true; sendState(); },
+          onReady: function() { ready = true; try { player.unMute(); player.setVolume(100); } catch(e) {} sendState(); },
           onStateChange: function() { sendState(); },
           onError: function(ev) {
             if (window.CinemaBridge) {
@@ -500,6 +577,7 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
     window._cinemaCmd = function(cmd, val) {
       if (!ready || !player) return;
       try {
+        try { player.unMute(); player.setVolume(100); } catch(e) {}
         if (cmd === 'play') player.playVideo();
         else if (cmd === 'pause') player.pauseVideo();
         else if (cmd === 'seek') player.seekTo(Number(val) || 0, true);
@@ -507,7 +585,7 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
         setTimeout(sendState, 150);
       } catch (e) {}
     };
-    setInterval(sendState, 700);
+    setInterval(sendState, 600);
   </script>
 </body>
 </html>
@@ -521,44 +599,173 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
       _wvPosition = Duration.zero;
       _wvDuration = Duration.zero;
       _wvSpeed = 1.0;
+      _wvAdActive = false;
       _isInitialized = true;
       _initError = null;
     });
   }
 
-  static const String _html5VideoBridgeJs = '''
+  static const String _html5VideoBridgeJs = r'''
 (function() {
   if (window._cinemaHooked) return;
   window._cinemaHooked = true;
+
+  // 1. Pure Fullscreen Cinema Isolation CSS: hides YouTube chrome, Open App, Subscribe, Comments & Mute overlay
+  try {
+    if (!document.getElementById('sanctuary-cinema-css')) {
+      var st = document.createElement('style');
+      st.id = 'sanctuary-cinema-css';
+      st.textContent = `
+        html, body {
+          background: #000 !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          overflow: hidden !important;
+          width: 100vw !important;
+          height: 100vh !important;
+        }
+        ytm-mobile-topbar-renderer,
+        ytm-header-bar-renderer,
+        #header-bar,
+        .mobile-topbar-header,
+        .mobile-topbar-header-content,
+        ytm-watch-metadata,
+        ytm-slim-video-information-renderer,
+        ytm-slim-owner-renderer,
+        ytm-item-section-renderer,
+        ytm-comments-entry-point-header-renderer,
+        ytm-engagement-panel-section-list-renderer,
+        ytm-companion-slot-renderer,
+        ytm-promoted-sparkles-web-renderer,
+        ytm-mealbar-promo-renderer,
+        .watch-below-the-player,
+        .ytm-autonav-bar,
+        .ytp-chrome-top,
+        .ytp-chrome-bottom,
+        .ytp-pause-overlay,
+        .ytp-watermark,
+        .ytp-unmute,
+        button.ytp-unmute,
+        .player-controls-top,
+        .player-controls-bottom,
+        .ytm-bottom-sheet-layout-content-wrapper {
+          display: none !important;
+          opacity: 0 !important;
+          pointer-events: none !important;
+        }
+        #player-container-id,
+        .player-container,
+        #player,
+        #movie_player,
+        .html5-video-player {
+          position: fixed !important;
+          top: 0 !important;
+          left: 0 !important;
+          right: 0 !important;
+          bottom: 0 !important;
+          width: 100vw !important;
+          height: 100vh !important;
+          max-width: 100vw !important;
+          max-height: 100vh !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          background: #000 !important;
+          z-index: 999999 !important;
+        }
+        video {
+          position: fixed !important;
+          top: 0 !important;
+          left: 0 !important;
+          width: 100vw !important;
+          height: 100vh !important;
+          object-fit: contain !important;
+          background: #000 !important;
+        }
+      `;
+      (document.head || document.documentElement).appendChild(st);
+    }
+  } catch (e) {}
+
   function findVideo() {
-    return document.querySelector('video');
+    return document.querySelector('video.html5-main-video') || document.querySelector('video');
   }
+
+  function isAdPlaying() {
+    return !!(
+      document.querySelector('.ad-showing, .ad-interrupting') ||
+      document.querySelector('.ytp-ad-player-overlay, .ytp-ad-preview-container, ytm-ad-slot-renderer')
+    );
+  }
+
+  function handleAdsAndMute(v) {
+    if (!v) return false;
+    var ad = isAdPlaying();
+    if (ad) {
+      // Auto-skip any skippable ad immediately and race through non-skippable ad muted
+      var skipSelectors = [
+        '.ytp-ad-skip-button',
+        '.ytp-skip-ad-button',
+        '.ytp-ad-skip-button-modern',
+        '.ytp-ad-overlay-close-button',
+        'button[class*="skip"]'
+      ];
+      for (var i = 0; i < skipSelectors.length; i++) {
+        var btn = document.querySelector(skipSelectors[i]);
+        if (btn) { try { btn.click(); } catch (e) {} }
+      }
+      try {
+        v.muted = true;
+        v.playbackRate = 16;
+        if (isFinite(v.duration) && v.duration > 0.5 && v.currentTime < v.duration - 0.35) {
+          v.currentTime = v.duration - 0.2;
+        }
+      } catch (e) {}
+      return true;
+    }
+    // Dismiss YouTube's white mute button automatically once movie is active
+    var unmuteBtn = document.querySelector('.ytp-unmute, button[aria-label*="Unmute"], button[aria-label*="unmute"]');
+    if (unmuteBtn) { try { unmuteBtn.click(); } catch (e) {} }
+    try {
+      if (v.muted) v.muted = false;
+      if (v.volume < 0.99) v.volume = 1.0;
+      if (v.playbackRate > 4) v.playbackRate = 1.0;
+    } catch (e) {}
+    return false;
+  }
+
   function sendState() {
     var v = findVideo();
     if (!v || !window.CinemaBridge) return;
+    var adActive = handleAdsAndMute(v);
     try {
       window.CinemaBridge.postMessage(JSON.stringify({
         type: 'state',
+        adActive: adActive,
         playing: !v.paused && !v.ended,
-        ended: !!v.ended,
-        posMs: Math.round((v.currentTime || 0) * 1000),
-        durMs: Math.round((isFinite(v.duration) ? v.duration : 0) * 1000),
+        ended: !adActive && !!v.ended,
+        posMs: adActive ? 0 : Math.round((v.currentTime || 0) * 1000),
+        durMs: adActive ? 0 : Math.round((isFinite(v.duration) ? v.duration : 0) * 1000),
         rate: v.playbackRate || 1
       }));
     } catch (e) {}
   }
+
   window._cinemaCmd = function(cmd, val) {
     var v = findVideo();
     if (!v) return;
+    if (isAdPlaying()) { handleAdsAndMute(v); return; }
     try {
-      if (cmd === 'play') { v.muted = false; v.play(); }
+      v.muted = false;
+      v.volume = 1.0;
+      if (cmd === 'play') { v.play(); }
       else if (cmd === 'pause') v.pause();
       else if (cmd === 'seek') v.currentTime = Number(val) || 0;
       else if (cmd === 'speed') v.playbackRate = Number(val) || 1;
       setTimeout(sendState, 150);
     } catch (e) {}
   };
-  setInterval(sendState, 700);
+
+  setInterval(sendState, 350);
 })();
 ''';
 
@@ -567,6 +774,12 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
     final ctrl = _createBaseWebViewController();
     ctrl.setNavigationDelegate(
       NavigationDelegate(
+        onNavigationRequest: (NavigationRequest req) {
+          if (_isBlockedAdOrExternalUrl(req.url)) {
+            return NavigationDecision.prevent;
+          }
+          return NavigationDecision.navigate;
+        },
         onPageFinished: (_) {
           ctrl.runJavaScript(_html5VideoBridgeJs);
         },
@@ -581,6 +794,7 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
       _wvPosition = Duration.zero;
       _wvDuration = Duration.zero;
       _wvSpeed = 1.0;
+      _wvAdActive = false;
       _isInitialized = true;
       _initError = null;
     });
@@ -676,21 +890,30 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
       final isCallActive = WatchCallService.instance.callStatus.value == WatchCallStatus.connected ||
           WatchCallService.instance.callStatus.value == WatchCallStatus.calling;
 
-      if (isCallActive) {
-        // If actively in a call, partner is 100% online
+      if (isCallActive || _partnerOfflineSince == null) {
+        if (partner == null || partner.online || isCallActive) {
+          _partnerOfflineSince = null;
+          if (_syncStatus == SyncStatus.partnerOffline) {
+            setState(() {
+              _syncStatus = SyncStatus.inSync;
+            });
+          }
+        } else {
+          // Grace period: only mark Partner offline if offline continuously for > 6 seconds
+          _partnerOfflineSince ??= DateTime.now();
+          if (DateTime.now().difference(_partnerOfflineSince!).inSeconds >= 6) {
+            setState(() {
+              _syncStatus = SyncStatus.partnerOffline;
+            });
+          }
+        }
+      } else if (partner.online) {
+        _partnerOfflineSince = null;
         if (_syncStatus == SyncStatus.partnerOffline) {
           setState(() {
             _syncStatus = SyncStatus.inSync;
           });
         }
-      } else if (partner != null && !partner.online) {
-        setState(() {
-          _syncStatus = SyncStatus.partnerOffline;
-        });
-      } else if (_syncStatus == SyncStatus.partnerOffline) {
-        setState(() {
-          _syncStatus = SyncStatus.inSync;
-        });
       }
     });
 
@@ -704,6 +927,12 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
       if (messages.length > _chatMessages.length) {
         final newMsgs = messages.sublist(_chatMessages.length);
         for (final m in newMsgs) {
+          if (m.uid != myUid) {
+            _partnerOfflineSince = null;
+            if (_syncStatus == SyncStatus.partnerOffline) {
+              _syncStatus = SyncStatus.inSync;
+            }
+          }
           if (m.type == 'reaction') {
             _reactionsKey.currentState?.triggerReaction(m.text);
           } else if (m.type == 'text' && m.uid != myUid) {
@@ -734,15 +963,24 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
 
   /// Exact Sync Algorithm: Receiving an action
   void _handleRemotePlayback(WatchPlayback playback, String? myUid) {
-    if (!mounted || !_isInitialized || _isLeaving) return;
+    if (!mounted || _isLeaving) return;
 
     // Rule 4: No echo loops — ignore own updates
     if (playback.updatedBy == myUid) return;
 
-    // Ignore remote updates during local action lock (800ms debounce)
+    // Partner just sent a sync packet — definitely online!
+    _partnerOfflineSince = null;
+
+    if (!_isInitialized) {
+      _pendingRemotePlayback = playback;
+      return;
+    }
+
+    // Ignore remote updates during local action lock
     if (DateTime.now().isBefore(_ignoreRemoteUntil)) return;
 
     _lastRemotePlayback = playback;
+    if (_isWebViewMode && _wvAdActive) return;
 
     // Calculate latency using server time offset
     final nowServer = WatchTogetherService.instance.currentServerTime;
@@ -770,6 +1008,11 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
       }
       if (_currentIsPlaying) {
         _playerPause();
+      }
+      if (_syncStatus == SyncStatus.partnerOffline) {
+        setState(() {
+          _syncStatus = SyncStatus.inSync;
+        });
       }
     }
   }
@@ -1106,7 +1349,10 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
       title: '🎟️ ${widget.movieTitle}',
       caption: caption,
       mediaUrl: posterUrl,
-      author: user.nickname,
+      author: AuthorIdentity.formatAuthorToken(
+        userId: user.id,
+        userNickname: user.nickname,
+      ),
       currentUserId: user.id,
       partnerNickname: authProv.partner?.nickname,
     );
@@ -1576,6 +1822,9 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
       );
     }
 
+    final isEffectiveLandscape =
+        _isLandscape || MediaQuery.of(context).orientation == Orientation.landscape;
+
     return PopScope(
       canPop: _isLeaving,
       onPopInvoked: (didPop) {
@@ -1586,112 +1835,134 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
       child: Scaffold(
         backgroundColor: Colors.black,
         body: SafeArea(
-          top: !_isLandscape,
-          bottom: !_isLandscape,
+          top: !isEffectiveLandscape,
+          bottom: !isEffectiveLandscape,
           child: Stack(
             children: [
               // Main Layout (Portrait vs Landscape)
-              if (!_isLandscape)
-                // Portrait: Video ~40% on top, Chat below
+              if (!isEffectiveLandscape)
+                // Portrait: Clean 16:9 Cinema Stage + Live Chat below (or centered full width if chat is collapsed)
                 Column(
                   children: [
-                    // Video Section
-                    SizedBox(
-                      height: MediaQuery.of(context).size.height * 0.38,
-                      child: _buildVideoStage(myUid: myUid, myName: myName, partnerAvatarUrl: partnerAvatarUrl),
-                    ),
+                    if (_isChatVisible)
+                      ConstrainedBox(
+                        constraints: BoxConstraints(
+                          maxHeight: MediaQuery.of(context).size.height * 0.42,
+                        ),
+                        child: AspectRatio(
+                          aspectRatio: 16 / 9,
+                          child: _buildVideoStage(
+                            myUid: myUid,
+                            myName: myName,
+                            partnerAvatarUrl: partnerAvatarUrl,
+                            isEffectiveLandscape: false,
+                          ),
+                        ),
+                      )
+                    else
+                      Expanded(
+                        child: Center(
+                          child: AspectRatio(
+                            aspectRatio: 16 / 9,
+                            child: _buildVideoStage(
+                              myUid: myUid,
+                              myName: myName,
+                              partnerAvatarUrl: partnerAvatarUrl,
+                              isEffectiveLandscape: false,
+                            ),
+                          ),
+                        ),
+                      ),
 
                     // Chat Section below video in Portrait
-                    Expanded(
-                      child: _isChatVisible
-                          ? WatchChatView(
-                              messages: _chatMessages,
-                              currentUid: myUid,
-                              totalCount: _totalMessageCount,
-                              partnerAvatarUrl: partnerAvatarUrl,
-                              userAvatarUrl: myAvatarUrl,
-                              isLandscape: false,
-                              onSendMessage: (text) {
-                                WatchTogetherService.instance.sendChatMessage(
-                                  roomCode: widget.roomCode,
-                                  uid: myUid,
-                                  name: myName,
-                                  text: text,
-                                  avatarUrl: myAvatarUrl,
-                                );
-                              },
-                              onSendReaction: (emoji) {
-                                _reactionsKey.currentState?.triggerReaction(emoji);
-                                WatchTogetherService.instance.sendReaction(
-                                  roomCode: widget.roomCode,
-                                  uid: myUid,
-                                  name: myName,
-                                  emoji: emoji,
-                                );
-                              },
-                              onToggleCollapse: () {
-                                setState(() {
-                                  _isChatVisible = false;
-                                });
-                              },
-                            )
-                          : Center(
-                              child: TextButton.icon(
-                                onPressed: () {
-                                  setState(() {
-                                    _isChatVisible = true;
-                                    _hasUnreadMessages = false;
-                                    _quickToastMessage = null;
-                                  });
-                                },
-                                icon: Stack(
-                                  clipBehavior: Clip.none,
-                                  children: [
-                                    const Icon(Icons.chat_bubble_outline_rounded,
-                                        color: AppColors.terra),
-                                    if (_hasUnreadMessages)
-                                      Positioned(
-                                        top: -2,
-                                        right: -2,
-                                        child: Container(
-                                          width: 8,
-                                          height: 8,
-                                          decoration: const BoxDecoration(
-                                            color: Colors.redAccent,
-                                            shape: BoxShape.circle,
-                                          ),
-                                        ),
-                                      ),
-                                  ],
-                                ),
-                                label: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const Text('Show Live Chat',
-                                        style: TextStyle(color: AppColors.terra)),
-                                    if (_hasUnreadMessages) ...[
-                                      const SizedBox(width: 6),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                                        decoration: BoxDecoration(
-                                          color: Colors.redAccent,
-                                          borderRadius: BorderRadius.circular(10),
-                                        ),
-                                        child: const Text(
-                                          'New',
-                                          style: TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ],
-                                ),
-                              ),
+                    if (_isChatVisible)
+                      Expanded(
+                        child: WatchChatView(
+                          messages: _chatMessages,
+                          currentUid: myUid,
+                          totalCount: _totalMessageCount,
+                          partnerAvatarUrl: partnerAvatarUrl,
+                          userAvatarUrl: myAvatarUrl,
+                          isLandscape: false,
+                          onSendMessage: (text) {
+                            WatchTogetherService.instance.sendChatMessage(
+                              roomCode: widget.roomCode,
+                              uid: myUid,
+                              name: myName,
+                              text: text,
+                              avatarUrl: myAvatarUrl,
+                            );
+                          },
+                          onSendReaction: (emoji) {
+                            _reactionsKey.currentState?.triggerReaction(emoji);
+                            WatchTogetherService.instance.sendReaction(
+                              roomCode: widget.roomCode,
+                              uid: myUid,
+                              name: myName,
+                              emoji: emoji,
+                            );
+                          },
+                          onToggleCollapse: () {
+                            setState(() {
+                              _isChatVisible = false;
+                            });
+                          },
+                        ),
+                      )
+                    else
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 16),
+                        child: GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              _isChatVisible = true;
+                              _hasUnreadMessages = false;
+                              _quickToastMessage = null;
+                            });
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.10),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: Colors.white.withOpacity(0.18)),
                             ),
-                    ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.chat_bubble_outline_rounded, size: 14, color: AppColors.terra),
+                                const SizedBox(width: 6),
+                                const Text(
+                                  'Show Live Chat',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                if (_hasUnreadMessages) ...[
+                                  const SizedBox(width: 6),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                                    decoration: BoxDecoration(
+                                      color: Colors.redAccent,
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: const Text(
+                                      'New',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
                   ],
                 )
               else
@@ -1700,7 +1971,12 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
                   fit: StackFit.expand,
                   children: [
                     Positioned.fill(
-                      child: _buildVideoStage(myUid: myUid, myName: myName, partnerAvatarUrl: partnerAvatarUrl),
+                      child: _buildVideoStage(
+                        myUid: myUid,
+                        myName: myName,
+                        partnerAvatarUrl: partnerAvatarUrl,
+                        isEffectiveLandscape: true,
+                      ),
                     ),
                     // Translucent Overlay Chat in Landscape (Right 28% of screen)
                     if (_isChatVisible)
@@ -1765,6 +2041,7 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
     required String myUid,
     required String myName,
     required String partnerAvatarUrl,
+    required bool isEffectiveLandscape,
   }) {
     return Stack(
       alignment: Alignment.center,
@@ -1806,9 +2083,12 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
                 duration: _currentDuration,
                 syncStatus: _syncStatus,
                 movieTitle: widget.movieTitle,
-                isFullscreen: _isLandscape,
+                isFullscreen: isEffectiveLandscape,
                 isChatVisible: _isChatVisible,
                 hasUnreadMessages: _hasUnreadMessages,
+                isWebViewMode: _isWebViewMode,
+                isWebTouchThrough: _wvTouchThrough,
+                onToggleWebTouchThrough: () => setState(() => _wvTouchThrough = !_wvTouchThrough),
                 onTogglePlay: _togglePlayPause,
                 onSeek: _seek,
                 onSkipBack10: () => _skip10Seconds(false),
@@ -1843,32 +2123,28 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
               );
             },
           ),
-        // In WebView Cinema mode, give a small pill to toggle direct page touch vs Watch Together overlay
-        if (_isWebViewMode)
+        // Compact top-right return pill shown ONLY while user temporarily turned on direct WebView touch
+        if (_isWebViewMode && _wvTouchThrough)
           Positioned(
-            bottom: 10,
+            top: 10,
             right: 10,
             child: GestureDetector(
-              onTap: () => setState(() => _wvTouchThrough = !_wvTouchThrough),
+              onTap: () => setState(() => _wvTouchThrough = false),
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                 decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.72),
+                  color: Colors.black.withOpacity(0.75),
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(color: Colors.white24),
                 ),
-                child: Row(
+                child: const Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(
-                      _wvTouchThrough ? Icons.tune_rounded : Icons.touch_app_rounded,
-                      size: 13,
-                      color: Colors.white,
-                    ),
-                    const SizedBox(width: 5),
+                    Icon(Icons.tune_rounded, size: 13, color: Colors.white),
+                    SizedBox(width: 5),
                     Text(
-                      _wvTouchThrough ? 'Sync Controls' : 'Tap Video',
-                      style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600, color: Colors.white),
+                      'Sync Controls',
+                      style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600, color: Colors.white),
                     ),
                   ],
                 ),
