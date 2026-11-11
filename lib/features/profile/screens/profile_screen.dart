@@ -347,14 +347,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       height: 96,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        border: Border.all(color: AppColors.sage, width: 2.5),
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppColors.sage.withOpacity(0.25),
-                            blurRadius: 16,
-                            spreadRadius: 2,
-                          ),
-                        ],
+                        border: Border.all(color: AppColors.sage, width: 2.0),
                       ),
                       child: ClipOval(
                         child: _isUploadingAvatar
@@ -389,13 +382,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         decoration: BoxDecoration(
                           color: AppColors.sage,
                           shape: BoxShape.circle,
-                          border: Border.all(color: bg, width: 2),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.15),
-                              blurRadius: 6,
-                            ),
-                          ],
+                          border: Border.all(color: bg, width: 1.5),
                         ),
                         child: const Icon(
                           Icons.camera_alt_rounded,
@@ -553,11 +540,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           Container(
                             width: 38,
                             height: 38,
-                            decoration: const BoxDecoration(
+                            decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              gradient: LinearGradient(
-                                colors: [AppColors.rose, AppColors.terra],
-                              ),
+                              color: AppColors.sage.withValues(alpha: 0.16),
+                              border: Border.all(color: AppColors.sage.withValues(alpha: 0.45), width: 1.0),
                             ),
                             child: ClipOval(
                               child: (partner.avatarUrl != null &&
@@ -695,13 +681,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 child: Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: isDark
-                          ? [AppColors.darkSurface, AppColors.forest.withOpacity(0.5)]
-                          : [AppColors.lightSurface, AppColors.sage.withOpacity(0.12)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
+                    color: isDark
+                        ? AppColors.darkSurface
+                        : AppColors.lightSurface,
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
                       color: AppColors.sage.withOpacity(0.4),
@@ -795,8 +777,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             height: 44,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              gradient: LinearGradient(
-                                colors: theme.currentPalette.gradientColors.take(2).toList(),
+                              color: theme.currentPalette.accentColor.withValues(alpha: 0.18),
+                              border: Border.all(
+                                color: theme.currentPalette.accentColor.withValues(alpha: 0.45),
+                                width: 1.0,
                               ),
                             ),
                             child: Center(
@@ -934,12 +918,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildAvatarFallback(String initial) {
     return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [AppColors.sage, AppColors.rose],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+      decoration: BoxDecoration(
+        color: AppColors.sage.withValues(alpha: 0.2),
       ),
       child: Center(
         child: Text(

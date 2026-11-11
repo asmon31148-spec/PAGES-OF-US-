@@ -101,15 +101,14 @@ class _TimelineSubviewState extends State<TimelineSubview> {
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
           padding: const EdgeInsets.all(1.0),
           decoration: BoxDecoration(
+            color: LiquidGlassTheme.flatSurface(isDark),
             borderRadius: BorderRadius.circular(18),
-            gradient: LiquidGlassTheme.specularBorder(isDark),
-            boxShadow: LiquidGlassTheme.cardShadow(isDark),
+            border: LiquidGlassTheme.crispBorder(isDark),
           ),
           child: Container(
             padding: const EdgeInsets.all(3.5),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(17),
-              gradient: LiquidGlassTheme.cardGloss(isDark),
             ),
             child: Row(
               children: [
@@ -209,18 +208,9 @@ class _TimelineSubviewState extends State<TimelineSubview> {
             borderRadius: BorderRadius.circular(13),
             border: isSelected
                 ? Border.all(
-                    color: isDark ? Colors.white.withOpacity(0.3) : Colors.black.withOpacity(0.06),
-                    width: 0.8,
+                    color: isDark ? Colors.white.withValues(alpha: 0.25) : Colors.black.withValues(alpha: 0.10),
+                    width: 1.0,
                   )
-                : null,
-            boxShadow: isSelected
-                ? [
-                    BoxShadow(
-                      color: isDark ? Colors.black.withOpacity(0.3) : Colors.black.withOpacity(0.06),
-                      blurRadius: 6,
-                      offset: const Offset(0, 2),
-                    ),
-                  ]
                 : null,
           ),
           alignment: Alignment.center,
@@ -298,15 +288,8 @@ class _TimelineSubviewState extends State<TimelineSubview> {
                       shape: BoxShape.circle,
                       border: Border.all(
                         color: branchColor,
-                        width: 2,
+                        width: 1.5,
                       ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: branchColor.withOpacity(0.2),
-                          blurRadius: 6,
-                          spreadRadius: 1,
-                        ),
-                      ],
                     ),
                     alignment: Alignment.center,
                     child: Text(
@@ -751,8 +734,15 @@ class _TimelineSubviewState extends State<TimelineSubview> {
                         );
 
                         if (confirm == true && context.mounted) {
-                          Navigator.pop(ctx);
-                          context.read<MemoriesProvider>().deleteMilestone(spaceId, milestone.id);
+                          final ok = await context.read<MemoriesProvider>().deleteMilestone(spaceId, milestone.id);
+                          if (context.mounted) {
+                            Navigator.pop(ctx);
+                            if (!ok) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Could not delete: only the creator can delete or server unavailable.')),
+                              );
+                            }
+                          }
                         }
                       },
                     )

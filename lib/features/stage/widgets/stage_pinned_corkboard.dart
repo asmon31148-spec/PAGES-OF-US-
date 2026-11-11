@@ -192,13 +192,6 @@ class _StagePinnedCorkboardState extends State<StagePinnedCorkboard> {
                           color: isDark ? AppColors.sage.withOpacity(0.35) : Colors.white.withOpacity(0.80),
                           width: 1.0,
                         ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppColors.sage.withOpacity(isDark ? 0.06 : 0.10),
-                            blurRadius: 10,
-                            offset: const Offset(0, 3),
-                          ),
-                        ],
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -306,13 +299,6 @@ class _StagePinnedCorkboardState extends State<StagePinnedCorkboard> {
                           color: isDark ? AppColors.terra.withOpacity(0.35) : Colors.white.withOpacity(0.80),
                           width: 1.0,
                         ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppColors.terra.withOpacity(isDark ? 0.06 : 0.10),
-                            blurRadius: 10,
-                            offset: const Offset(0, 3),
-                          ),
-                        ],
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -388,16 +374,14 @@ class _StagePinnedCorkboardState extends State<StagePinnedCorkboard> {
       builder: (ctx) {
         return ClipRRect(
           borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-            child: Container(
+          child: Container(
               constraints: BoxConstraints(
                 maxHeight: MediaQuery.of(context).size.height * 0.75,
               ),
               decoration: BoxDecoration(
                 color: isDark
-                    ? const Color(0xFF13151B).withOpacity(0.92)
-                    : Colors.white.withOpacity(0.95),
+                    ? const Color(0xFF13151B).withValues(alpha: 0.96)
+                    : Colors.white.withValues(alpha: 0.96),
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
                 border: Border(
                   top: BorderSide(
@@ -531,7 +515,6 @@ class _StagePinnedCorkboardState extends State<StagePinnedCorkboard> {
                 ],
               ),
             ),
-          ),
         );
       },
     );

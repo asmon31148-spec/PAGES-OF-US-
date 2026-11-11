@@ -42,42 +42,23 @@ class CustomBottomNav extends StatelessWidget {
       },
     ];
 
-    final barTopTint = isDark
-        ? palette.gradientColors.first.withOpacity(0.22)
-        : palette.accentColor.withOpacity(0.06);
     final barBase = isDark
-        ? const Color(0xFF101218).withOpacity(0.95)
+        ? const Color(0xFF101218).withValues(alpha: 0.96)
         : (themeProvider.isEyeComfort
-            ? const Color(0xFFFFFBF5).withOpacity(0.97)
-            : Colors.white.withOpacity(0.96));
+            ? const Color(0xFFFFFBF5).withValues(alpha: 0.97)
+            : Colors.white.withValues(alpha: 0.96));
 
     return Container(
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            Color.alphaBlend(barTopTint, barBase),
-            barBase,
-          ],
-        ),
+        color: barBase,
         border: Border(
           top: BorderSide(
             color: isDark
-                ? palette.specularBorderColor.withOpacity(0.22)
-                : Colors.black.withOpacity(0.07),
-            width: 0.9,
+                ? Colors.white.withValues(alpha: 0.14)
+                : Colors.black.withValues(alpha: 0.08),
+            width: 1.0,
           ),
         ),
-        boxShadow: [
-          BoxShadow(
-            color: isDark
-                ? Colors.black.withOpacity(0.35)
-                : Colors.black.withOpacity(0.06),
-            blurRadius: 14,
-            offset: const Offset(0, -3),
-          ),
-        ],
       ),
       child: SafeArea(
         top: false,

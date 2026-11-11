@@ -153,13 +153,6 @@ class _LetterBookScreenState extends State<LetterBookScreen> {
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           color: _getSealColor(letters[_currentIndex].sealType),
-                          boxShadow: [
-                            BoxShadow(
-                              color: _getSealColor(letters[_currentIndex].sealType).withOpacity(0.4),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
                         ),
                         alignment: Alignment.center,
                         child: const Text('✦', style: TextStyle(color: Colors.white, fontSize: 14)),
@@ -334,15 +327,8 @@ class _LetterBookScreenState extends State<LetterBookScreen> {
           color: cardBg,
           borderRadius: BorderRadius.circular(26),
           border: Border.all(
-            color: isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.06),
+            color: isDark ? Colors.white.withValues(alpha: 0.14) : Colors.black.withValues(alpha: 0.10),
           ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(isDark ? 0.35 : 0.06),
-              blurRadius: 22,
-              offset: const Offset(0, 8),
-            ),
-          ],
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(26),
@@ -503,15 +489,8 @@ class _LetterBookScreenState extends State<LetterBookScreen> {
           borderRadius: BorderRadius.circular(26),
           border: Border.all(
             color: Colors.amber.withOpacity(0.3),
-            width: 1.5,
+            width: 1.0,
           ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.amber.withOpacity(0.08),
-              blurRadius: 24,
-              offset: const Offset(0, 6),
-            ),
-          ],
         ),
         child: Center(
           child: Column(

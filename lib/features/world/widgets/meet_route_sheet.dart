@@ -241,13 +241,6 @@ class _MeetRouteSheetState extends State<MeetRouteSheet> {
           decoration: BoxDecoration(
             color: bgColor,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.35),
-                blurRadius: 24,
-                offset: const Offset(0, -6),
-              ),
-            ],
           ),
           child: Column(
             children: [
@@ -412,15 +405,8 @@ class _MeetRouteSheetState extends State<MeetRouteSheet> {
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(20),
-                gradient: LinearGradient(
-                  colors: [
-                    AppColors.terra.withOpacity(0.18),
-                    AppColors.rose.withOpacity(0.10),
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                border: Border.all(color: AppColors.terra.withOpacity(0.35)),
+                color: AppColors.terra.withValues(alpha: 0.14),
+                border: Border.all(color: AppColors.terra.withValues(alpha: 0.35), width: 1.0),
               ),
               child: Row(
                 children: [
@@ -982,9 +968,6 @@ class _MeetRouteSheetState extends State<MeetRouteSheet> {
               decoration: BoxDecoration(
                 color: AppColors.terra,
                 borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 8),
-                ],
               ),
               child: const Row(
                 mainAxisSize: MainAxisSize.min,

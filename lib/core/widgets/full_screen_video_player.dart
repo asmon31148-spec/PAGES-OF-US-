@@ -231,18 +231,9 @@ class _FullScreenVideoPlayerState extends State<FullScreenVideoPlayer> {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            // 1. Ambient Background Glow
+            // 1. Clean Dark Cinema Canvas
             Container(
-              decoration: const BoxDecoration(
-                gradient: RadialGradient(
-                  center: Alignment.center,
-                  radius: 1.0,
-                  colors: [
-                    Color(0xFF231628),
-                    Colors.black,
-                  ],
-                ),
-              ),
+              color: const Color(0xFF0E1016),
             ),
 
             // 2. Video Player Surface
@@ -452,13 +443,7 @@ class _FullScreenVideoPlayerState extends State<FullScreenVideoPlayer> {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: const Color(0xFFD4AF37),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFFD4AF37).withOpacity(0.55),
-                  blurRadius: 20,
-                  spreadRadius: 2,
-                ),
-              ],
+              border: Border.all(color: Colors.white.withValues(alpha: 0.25), width: 1.0),
             ),
             child: Icon(
               _controller.value.isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,

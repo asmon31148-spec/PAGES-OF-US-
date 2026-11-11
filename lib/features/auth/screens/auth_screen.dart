@@ -184,13 +184,7 @@ class _AuthScreenState extends State<AuthScreen> {
                   height: 80,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(22),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFFFECB92).withOpacity(0.5),
-                        blurRadius: 20,
-                        spreadRadius: 3,
-                      ),
-                    ],
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.25), width: 1.0),
                   ),
                   clipBehavior: Clip.antiAlias,
                   child: Image.asset('assets/icon.png', fit: BoxFit.cover),

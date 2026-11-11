@@ -148,18 +148,16 @@ class StagePresenceView extends StatelessWidget {
       builder: (ctx) {
         return ClipRRect(
           borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-            child: Container(
+          child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
               decoration: BoxDecoration(
                 color: isDark
-                    ? const Color(0xFF16181F).withOpacity(0.92)
-                    : Colors.white.withOpacity(0.92),
+                    ? const Color(0xFF16181F).withValues(alpha: 0.96)
+                    : Colors.white.withValues(alpha: 0.96),
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
                 border: Border.all(
                   color: isDark ? Colors.white12 : Colors.black12,
-                  width: 1,
+                  width: 1.0,
                 ),
               ),
               child: Column(
@@ -170,11 +168,7 @@ class StagePresenceView extends StatelessWidget {
                     height: 56,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      gradient: LinearGradient(
-                        colors: isGentle
-                            ? [const Color(0xFF818CF8), const Color(0xFF6366F1)]
-                            : [const Color(0xFFFBBF24), const Color(0xFFF97316)],
-                      ),
+                      color: isGentle ? const Color(0xFF6366F1) : const Color(0xFFE07A5F),
                     ),
                     child: Center(
                       child: Icon(
@@ -228,7 +222,6 @@ class StagePresenceView extends StatelessWidget {
                 ],
               ),
             ),
-          ),
         );
       },
     );
@@ -275,30 +268,11 @@ class StagePresenceView extends StatelessWidget {
               top: 36,
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 300),
-                height: isPulsing ? 2.5 : 1.0,
+                height: isPulsing ? 2.0 : 1.0,
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: isPulsing
-                        ? [
-                            AppColors.sageLight.withOpacity(0.5),
-                            AppColors.terra.withOpacity(0.9),
-                            AppColors.rose.withOpacity(0.5),
-                          ]
-                        : [
-                            (isDark ? Colors.white10 : Colors.black12),
-                            AppColors.terra.withOpacity(0.2),
-                            (isDark ? Colors.white10 : Colors.black12),
-                          ],
-                  ),
-                  boxShadow: isPulsing
-                      ? [
-                          BoxShadow(
-                            color: AppColors.terra.withOpacity(0.6),
-                            blurRadius: 8,
-                            spreadRadius: 1,
-                          ),
-                        ]
-                      : null,
+                  color: isPulsing
+                      ? AppColors.terra.withValues(alpha: 0.75)
+                      : (isDark ? Colors.white12 : Colors.black12),
                 ),
               ),
             ),
@@ -322,16 +296,9 @@ class StagePresenceView extends StatelessWidget {
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             border: Border.all(
-                              color: (myMood?.glowColor ?? AppColors.sageLight).withOpacity(0.85),
+                              color: (myMood?.glowColor ?? AppColors.sageLight).withValues(alpha: 0.85),
                               width: 2.0,
                             ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: (myMood?.glowColor ?? AppColors.sageLight).withOpacity(0.20),
-                                blurRadius: 6,
-                                spreadRadius: 0,
-                              ),
-                            ],
                           ),
                         ),
                         // Avatar Image or Initial
@@ -473,22 +440,9 @@ class StagePresenceView extends StatelessWidget {
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
                                 border: Border.all(
-                                  color: (partnerMood?.glowColor ?? AppColors.rose).withOpacity(0.85),
+                                  color: (partnerMood?.glowColor ?? AppColors.rose).withValues(alpha: 0.85),
                                   width: 2.0,
                                 ),
-                                boxShadow: [
-                                  if (skyGlow != Colors.transparent)
-                                    BoxShadow(
-                                      color: skyGlow.withOpacity(0.25),
-                                      blurRadius: 10,
-                                      spreadRadius: 1,
-                                    ),
-                                  BoxShadow(
-                                    color: (partnerMood?.glowColor ?? AppColors.rose).withOpacity(0.20),
-                                    blurRadius: 6,
-                                    spreadRadius: 0,
-                                  ),
-                                ],
                               ),
                             ),
                             CircleAvatar(
@@ -774,20 +728,11 @@ class _StagePulseBeaconState extends State<StagePulseBeacon>
                     height: 58,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: (widget.isHeartbeatActive ? const Color(0xFFE07A5F) : AppColors.terra).withOpacity(
-                              (0.55 * (1.0 - (progress * 0.5))).clamp(0.0, 1.0)),
-                          blurRadius: 22,
-                          spreadRadius: 4,
-                        ),
-                        BoxShadow(
-                          color: const Color(0xFFE89A8A).withOpacity(
-                              (0.35 * (1.0 - (progress * 0.5))).clamp(0.0, 1.0)),
-                          blurRadius: 36,
-                          spreadRadius: 8,
-                        ),
-                      ],
+                      border: Border.all(
+                        color: (widget.isHeartbeatActive ? const Color(0xFFE07A5F) : AppColors.terra)
+                            .withValues(alpha: (0.65 * (1.0 - (progress * 0.5))).clamp(0.0, 1.0)),
+                        width: 1.5,
+                      ),
                     ),
                   ),
 
@@ -801,40 +746,20 @@ class _StagePulseBeaconState extends State<StagePulseBeacon>
                       height: 52,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: isPulsing
-                              ? [
-                                  (widget.isHeartbeatActive ? const Color(0xFFE07A5F) : AppColors.terra).withOpacity(0.35),
-                                  const Color(0xFFE89A8A).withOpacity(0.25),
-                                ]
-                              : [
-                                  isDark
-                                      ? Colors.white.withOpacity(0.12)
-                                      : Colors.white.withOpacity(0.75),
-                                  isDark
-                                      ? Colors.white.withOpacity(0.04)
-                                      : Colors.white.withOpacity(0.58),
-                                ],
-                        ),
+                        color: isPulsing
+                            ? (widget.isHeartbeatActive ? const Color(0xFFE07A5F) : AppColors.terra)
+                                .withValues(alpha: 0.22)
+                            : (isDark
+                                ? Colors.white.withValues(alpha: 0.08)
+                                : Colors.white.withValues(alpha: 0.78)),
                         border: Border.all(
                           color: isPulsing
                               ? (widget.isHeartbeatActive ? const Color(0xFFE07A5F) : AppColors.terra)
                               : (isDark
-                                  ? Colors.white.withOpacity(0.20)
-                                  : Colors.white.withOpacity(0.80)),
-                          width: isPulsing ? 2.0 : 1.0,
+                                  ? Colors.white.withValues(alpha: 0.20)
+                                  : Colors.black.withValues(alpha: 0.12)),
+                          width: isPulsing ? 1.5 : 1.0,
                         ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: isDark
-                                ? Colors.black.withOpacity(0.25)
-                                : const Color(0xFFB89578).withOpacity(0.12),
-                            blurRadius: 10,
-                            offset: const Offset(0, 3),
-                          ),
-                        ],
                       ),
                       alignment: Alignment.center,
                       child: widget.isHeartbeatActive
@@ -844,17 +769,10 @@ class _StagePulseBeaconState extends State<StagePulseBeacon>
                               color: Color(0xFFE07A5F),
                             )
                           : (isPulsing
-                              ? ShaderMask(
-                                  shaderCallback: (bounds) => const LinearGradient(
-                                    colors: [Color(0xFFFFB4A2), Color(0xFFE07A5F)],
-                                    begin: Alignment.topCenter,
-                                    end: Alignment.bottomCenter,
-                                  ).createShader(bounds),
-                                  child: const Icon(
-                                    Icons.auto_awesome_rounded,
-                                    size: 24,
-                                    color: Colors.white,
-                                  ),
+                              ? const Icon(
+                                  Icons.auto_awesome_rounded,
+                                  size: 24,
+                                  color: Color(0xFFE07A5F),
                                 )
                               : Icon(
                                   Icons.auto_awesome_rounded,

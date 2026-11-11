@@ -572,13 +572,7 @@ class _AddMemoryDialogState extends State<AddMemoryDialog> {
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         color: _isRecording ? Colors.redAccent : AppColors.sage,
-                        boxShadow: [
-                          BoxShadow(
-                            color: (_isRecording ? Colors.redAccent : AppColors.sage).withOpacity(0.3),
-                            blurRadius: 16,
-                            spreadRadius: 4,
-                          ),
-                        ],
+                        border: Border.all(color: Colors.white.withValues(alpha: 0.25), width: 1.0),
                       ),
                       child: Icon(
                         _isRecording ? Icons.stop : Icons.mic,

@@ -34,35 +34,17 @@ class MoodAuraModal extends StatelessWidget {
 
     return ClipRRect(
       borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-        child: Container(
+      child: Container(
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                palette.gradientColors.first.withOpacity(isDark ? 0.38 : 0.35),
-                (isDark ? const Color(0xFF14171E) : Colors.white).withOpacity(isDark ? 0.90 : 0.94),
-              ],
-            ),
+            color: (isDark ? const Color(0xFF14171E) : Colors.white).withValues(alpha: 0.96),
             borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
             border: Border(
               top: BorderSide(
-                color: palette.specularBorderColor.withOpacity(isDark ? 0.35 : 0.55),
-                width: 1.2,
+                color: isDark ? Colors.white.withValues(alpha: 0.14) : Colors.black.withValues(alpha: 0.08),
+                width: 1.0,
               ),
             ),
-            boxShadow: [
-              BoxShadow(
-                color: isDark
-                    ? Colors.black.withOpacity(0.40)
-                    : palette.accentColor.withOpacity(0.12),
-                blurRadius: 24,
-                offset: const Offset(0, -6),
-              ),
-            ],
           ),
           child: SafeArea(
             top: false,
@@ -87,37 +69,16 @@ class MoodAuraModal extends StatelessWidget {
                   margin: const EdgeInsets.only(bottom: 18),
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: isGentle
-                          ? [
-                              const Color(0xFF4338CA).withOpacity(0.35),
-                              const Color(0xFF312E81).withOpacity(0.45),
-                            ]
-                          : [
-                              (isDark ? const Color(0xFF1E2230) : const Color(0xFFF1F3FB))
-                                  .withOpacity(0.85),
-                              (isDark ? const Color(0xFF191C28) : const Color(0xFFE8EBF8))
-                                  .withOpacity(0.85),
-                            ],
-                    ),
+                    color: isGentle
+                        ? const Color(0xFF3F3B7B).withValues(alpha: 0.36)
+                        : (isDark ? const Color(0xFF1C202C) : const Color(0xFFF3F4FA)),
                     borderRadius: BorderRadius.circular(18),
                     border: Border.all(
                       color: isGentle
-                          ? const Color(0xFF818CF8).withOpacity(0.75)
+                          ? const Color(0xFF818CF8).withValues(alpha: 0.7)
                           : (isDark ? Colors.white12 : Colors.black12),
                       width: isGentle ? 1.5 : 1.0,
                     ),
-                    boxShadow: isGentle
-                        ? [
-                            BoxShadow(
-                              color: const Color(0xFF6366F1).withOpacity(0.25),
-                              blurRadius: 16,
-                              spreadRadius: 1,
-                            ),
-                          ]
-                        : null,
                   ),
                   child: Row(
                     children: [
@@ -267,14 +228,6 @@ class MoodAuraModal extends StatelessWidget {
                                 : (isDark ? Colors.white12 : Colors.black12),
                             width: isSelected ? 2 : 1,
                           ),
-                          boxShadow: isSelected
-                              ? [
-                                  BoxShadow(
-                                    color: aura.glowColor.withOpacity(0.35),
-                                    blurRadius: 10,
-                                  ),
-                                ]
-                              : null,
                         ),
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
@@ -319,7 +272,6 @@ class MoodAuraModal extends StatelessWidget {
             ),
           ),
         ),
-      ),
     );
   }
 }

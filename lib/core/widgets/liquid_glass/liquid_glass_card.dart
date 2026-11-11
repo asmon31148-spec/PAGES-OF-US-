@@ -1,14 +1,10 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../../providers/theme_provider.dart';
 import 'liquid_glass_theme.dart';
 
-/// Authentic Apple iOS 26 Liquid Glass Card
-/// High-performance GPU-optimized implementation:
-/// Uses 1px specular rim gradient, top-down gloss refraction, and warm ambient drop shadow.
-/// Translucent inner glass (55-70% in light mode) lets the living background shine through.
+/// Clean, sharp flat-glass card: semi-transparent surface + crisp 1px border (no blur or shadows).
 class LiquidGlassCard extends StatelessWidget {
   final Widget child;
   final double radius;
@@ -24,7 +20,7 @@ class LiquidGlassCard extends StatelessWidget {
   const LiquidGlassCard({
     super.key,
     required this.child,
-    this.radius = 22.0,
+    this.radius = 20.0,
     this.padding,
     this.margin,
     this.width,
@@ -32,7 +28,7 @@ class LiquidGlassCard extends StatelessWidget {
     this.tint,
     this.onTap,
     this.enableBlur = false,
-    this.blurSigma = LiquidGlassTheme.blurCard,
+    this.blurSigma = 0.0,
   });
 
   @override
@@ -41,37 +37,17 @@ class LiquidGlassCard extends StatelessWidget {
     final isDark = themeProvider.isDark;
     final palette = themeProvider.currentPalette;
 
-    final borderRadius = BorderRadius.circular(radius);
-    final innerRadius = BorderRadius.circular((radius - 1.0).clamp(0.0, 999.0));
-
-    Widget innerContent = Container(
-      padding: padding ?? const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        borderRadius: innerRadius,
-        gradient: LiquidGlassTheme.cardGloss(isDark, tint: tint, palette: palette),
-      ),
-      child: child,
-    );
-
-    Widget card = Container(
+    final card = Container(
       width: width,
       height: height,
       margin: margin,
+      padding: padding ?? const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        borderRadius: borderRadius,
-        gradient: LiquidGlassTheme.specularBorder(isDark, palette),
-        boxShadow: LiquidGlassTheme.cardShadow(isDark),
+        color: LiquidGlassTheme.flatSurface(isDark, tint: tint, palette: palette),
+        borderRadius: BorderRadius.circular(radius),
+        border: LiquidGlassTheme.crispBorder(isDark, palette: palette),
       ),
-      padding: const EdgeInsets.all(1.0), // 1px specular rim light reflection
-      child: ClipRRect(
-        borderRadius: innerRadius,
-        child: enableBlur && blurSigma > 0
-            ? BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: blurSigma, sigmaY: blurSigma),
-                child: innerContent,
-              )
-            : innerContent,
-      ),
+      child: child,
     );
 
     if (onTap != null) {

@@ -145,7 +145,6 @@ class _DatePlannerCardState extends State<DatePlannerCard> {
             color: isDark ? Colors.white.withOpacity(0.12) : Colors.white.withOpacity(0.70),
             width: 1.0,
           ),
-          boxShadow: LiquidGlassTheme.cardShadow(isDark),
         ),
         child: Row(
           children: [
@@ -197,7 +196,6 @@ class _DatePlannerCardState extends State<DatePlannerCard> {
           color: isDark ? Colors.white.withOpacity(0.16) : Colors.white.withOpacity(0.78),
           width: 1.0,
         ),
-        boxShadow: LiquidGlassTheme.cardShadow(isDark),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -886,11 +884,9 @@ class _DatePlannerCardState extends State<DatePlannerCard> {
       builder: (ctx) {
         return ClipRRect(
           borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-            child: Container(
+          child: Container(
               decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF13151B).withOpacity(0.94) : Colors.white.withOpacity(0.95),
+                color: isDark ? const Color(0xFF13151B).withValues(alpha: 0.96) : Colors.white.withValues(alpha: 0.96),
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
                 border: Border(
                   top: BorderSide(
@@ -1165,8 +1161,7 @@ class _DatePlannerCardState extends State<DatePlannerCard> {
                 ],
               ),
             ),
-          ),
-        );
+          );
       },
     );
   }

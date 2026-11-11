@@ -436,15 +436,8 @@ class _StageMemoryHeroCardState extends State<StageMemoryHeroCard> {
           color: isDark ? const Color(0xFF161F1A) : const Color(0xFFEBE6DC),
           border: Border.all(
             color: item.tagColor.withOpacity(0.40),
-            width: 1.1,
+            width: 1.0,
           ),
-          boxShadow: [
-            BoxShadow(
-              color: item.tagColor.withOpacity(0.16),
-              blurRadius: 16,
-              offset: const Offset(0, 4),
-            ),
-          ],
         ),
         child: Stack(
           fit: StackFit.expand,
@@ -463,14 +456,7 @@ class _StageMemoryHeroCardState extends State<StageMemoryHeroCard> {
               Container(
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(17),
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.black.withOpacity(0.25),
-                      Colors.black.withOpacity(0.72),
-                    ],
-                  ),
+                  color: Colors.black.withValues(alpha: 0.45),
                 ),
               ),
             ] else ...[
@@ -543,13 +529,6 @@ class _StageMemoryHeroCardState extends State<StageMemoryHeroCard> {
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           color: item.tagColor,
-                          boxShadow: [
-                            BoxShadow(
-                              color: item.tagColor.withOpacity(0.45),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
                         ),
                         child: const Icon(
                           Icons.arrow_forward_rounded,
@@ -636,53 +615,17 @@ class _StageMemoryHeroCardState extends State<StageMemoryHeroCard> {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          // 1. Rich Thematic Gradient
+          // 1. Clean Thematic Card Fill
           Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: gradientColors,
-              ),
-            ),
+            color: gradientColors.first,
           ),
 
-          // 2. Ambient Radial Lighting Flare from Top-Right
-          Positioned(
-            right: -30,
-            top: -30,
-            child: Container(
-              width: 190,
-              height: 190,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    item.tagColor.withOpacity(0.30),
-                    item.tagColor.withOpacity(0.0),
-                  ],
-                ),
-              ),
-            ),
-          ),
-
-          // 3. Category-specific artistic graphic
+          // 2. Category-specific artistic graphic
           graphic,
 
-          // 4. Directional shadow vignette to guarantee text legibility
+          // 3. Crisp contrast scrim for typography
           Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.centerLeft,
-                end: Alignment.centerRight,
-                stops: const [0.0, 0.65, 1.0],
-                colors: [
-                  Colors.black.withOpacity(0.50),
-                  Colors.black.withOpacity(0.18),
-                  Colors.transparent,
-                ],
-              ),
-            ),
+            color: Colors.black.withValues(alpha: 0.30),
           ),
         ],
       ),
@@ -704,16 +647,8 @@ class _StageMemoryHeroCardState extends State<StageMemoryHeroCard> {
               width: 3.5,
               height: barHeights[i],
               decoration: BoxDecoration(
-                color: accentColor.withOpacity(0.30 + (barHeights[i] / 96.0) * 0.65),
+                color: accentColor.withValues(alpha: 0.30 + (barHeights[i] / 96.0) * 0.65),
                 borderRadius: BorderRadius.circular(3),
-                boxShadow: [
-                  if (barHeights[i] > 50)
-                    BoxShadow(
-                      color: accentColor.withOpacity(0.45),
-                      blurRadius: 6,
-                      spreadRadius: 0.5,
-                    ),
-                ],
               ),
             ),
             if (i < barHeights.length - 1) const SizedBox(width: 3.5),
@@ -765,13 +700,6 @@ class _StageMemoryHeroCardState extends State<StageMemoryHeroCard> {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: accentColor,
-              boxShadow: [
-                BoxShadow(
-                  color: accentColor.withOpacity(0.65),
-                  blurRadius: 10,
-                  spreadRadius: 2,
-                ),
-              ],
             ),
           ),
           // Watermark compass

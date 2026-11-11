@@ -163,17 +163,7 @@ class WatchControlsOverlayState extends State<WatchControlsOverlay> {
       onLongPressCancel: () => widget.onSpeedUpEnd?.call(),
       child: Container(
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Colors.black.withOpacity(0.68),
-              Colors.black.withOpacity(0.18),
-              Colors.black.withOpacity(0.22),
-              Colors.black.withOpacity(0.75),
-            ],
-            stops: const [0.0, 0.25, 0.72, 1.0],
-          ),
+          color: Colors.black.withOpacity(0.32),
         ),
         child: SafeArea(
           child: Column(
@@ -378,13 +368,6 @@ class WatchControlsOverlayState extends State<WatchControlsOverlay> {
                                   color: Colors.redAccent,
                                   shape: BoxShape.circle,
                                   border: Border.all(color: Colors.black, width: 1.5),
-                                  boxShadow: const [
-                                    BoxShadow(
-                                      color: Colors.redAccent,
-                                      blurRadius: 4,
-                                      spreadRadius: 1,
-                                    ),
-                                  ],
                                 ),
                               ),
                             ),
@@ -440,13 +423,6 @@ class WatchControlsOverlayState extends State<WatchControlsOverlay> {
                               color: AppColors.terra.withOpacity(0.9),
                               width: 1.8,
                             ),
-                            boxShadow: const [
-                              BoxShadow(
-                                color: Colors.black45,
-                                blurRadius: 12,
-                                offset: Offset(0, 4),
-                              ),
-                            ],
                           ),
                           child: Icon(
                             widget.isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
@@ -496,9 +472,6 @@ class WatchControlsOverlayState extends State<WatchControlsOverlay> {
                             color: Colors.black.withOpacity(0.65),
                             borderRadius: BorderRadius.circular(20),
                             border: Border.all(color: Colors.white.withOpacity(0.2)),
-                            boxShadow: const [
-                              BoxShadow(color: Colors.black45, blurRadius: 8),
-                            ],
                           ),
                           child: const Row(
                             mainAxisSize: MainAxisSize.min,

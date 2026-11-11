@@ -48,13 +48,7 @@ class _SplashScreenState extends State<SplashScreen> {
                 height: 170,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(28),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.12),
-                      blurRadius: 24,
-                      offset: const Offset(0, 10),
-                    ),
-                  ],
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.16), width: 1.0),
                 ),
                 clipBehavior: Clip.antiAlias,
                 child: Image.asset(

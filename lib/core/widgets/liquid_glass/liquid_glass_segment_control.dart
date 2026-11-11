@@ -19,93 +19,63 @@ class LiquidGlassSegmentControl extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = context.watch<ThemeProvider>().isDark;
+    final themeProv = context.watch<ThemeProvider>();
+    final isDark = themeProv.isDark;
+    final palette = themeProv.currentPalette;
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(22),
-        gradient: LiquidGlassTheme.specularBorder(isDark),
-        boxShadow: LiquidGlassTheme.cardShadow(isDark),
+        color: LiquidGlassTheme.flatSurface(isDark, palette: palette),
+        borderRadius: BorderRadius.circular(18),
+        border: LiquidGlassTheme.crispBorder(isDark, palette: palette),
       ),
-      padding: const EdgeInsets.all(1.0),
-      child: Container(
-        padding: const EdgeInsets.all(4),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(21),
-          gradient: LiquidGlassTheme.cardGloss(isDark),
-        ),
-        child: Row(
-          children: List.generate(segments.length, (index) {
-            final isSelected = selectedIndex == index;
-            return Expanded(
-              child: GestureDetector(
-                onTap: () {
-                  HapticFeedback.selectionClick();
-                  onSegmentSelected(index);
-                },
-                behavior: HitTestBehavior.opaque,
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 220),
-                  curve: Curves.easeOutCubic,
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16),
-                    gradient: isSelected
-                        ? (isDark
-                            ? LinearGradient(
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                                colors: [
-                                  Colors.white.withOpacity(0.24),
-                                  Colors.white.withOpacity(0.10),
-                                ],
-                              )
-                            : LinearGradient(
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                                colors: [
-                                  Colors.white,
-                                  Colors.white.withOpacity(0.90),
-                                ],
-                              ))
-                        : null,
-                    border: isSelected
-                        ? Border.all(
-                            color: isDark
-                                ? Colors.white.withOpacity(0.35)
-                                : Colors.black.withOpacity(0.06),
-                            width: 1,
-                          )
-                        : null,
-                    boxShadow: isSelected
-                        ? [
-                            BoxShadow(
-                              color: isDark
-                                  ? Colors.black.withOpacity(0.35)
-                                  : Colors.black.withOpacity(0.08),
-                              blurRadius: 10,
-                              offset: const Offset(0, 3),
-                            ),
-                          ]
-                        : null,
-                  ),
-                  alignment: Alignment.center,
-                  child: Text(
-                    segments[index],
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                      color: isSelected
-                          ? (isDark ? Colors.white : AppColors.lightInk)
-                          : (isDark ? Colors.white60 : AppColors.lightSoft),
-                    ),
+      child: Row(
+        children: List.generate(segments.length, (index) {
+          final isSelected = selectedIndex == index;
+          return Expanded(
+            child: GestureDetector(
+              onTap: () {
+                HapticFeedback.selectionClick();
+                onSegmentSelected(index);
+              },
+              behavior: HitTestBehavior.opaque,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                curve: Curves.easeOutCubic,
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(14),
+                  color: isSelected
+                      ? (isDark
+                          ? Colors.white.withValues(alpha: 0.14)
+                          : Colors.white)
+                      : Colors.transparent,
+                  border: isSelected
+                      ? Border.all(
+                          color: isDark
+                              ? Colors.white.withValues(alpha: 0.24)
+                              : Colors.black.withValues(alpha: 0.10),
+                          width: 1.0,
+                        )
+                      : null,
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  segments[index],
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                    color: isSelected
+                        ? (isDark ? Colors.white : AppColors.lightInk)
+                        : (isDark ? Colors.white60 : AppColors.lightSoft),
                   ),
                 ),
               ),
-            );
-          }),
-        ),
+            ),
+          );
+        }),
       ),
     );
   }

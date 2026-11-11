@@ -411,7 +411,6 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
                           color: isDark ? Colors.white.withOpacity(0.16) : Colors.white.withOpacity(0.78),
                           width: 1.0,
                         ),
-                        boxShadow: LiquidGlassTheme.cardShadow(isDark),
                       ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -585,15 +584,6 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
             : Border.all(
                 color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
               ),
-        boxShadow: isFullScreen
-            ? null
-            : [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.08),
-                  blurRadius: 16,
-                  offset: const Offset(0, 4),
-                ),
-              ],
       ),
       clipBehavior: Clip.antiAlias,
       child: Stack(
@@ -678,9 +668,6 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
                         decoration: BoxDecoration(
                           color: isDark ? AppColors.darkSurface : Colors.white,
                           shape: BoxShape.circle,
-                          boxShadow: const [
-                            BoxShadow(color: Colors.black26, blurRadius: 4),
-                          ],
                           border: Border.all(color: AppColors.sage, width: 2),
                         ),
                         alignment: Alignment.center,
@@ -784,9 +771,6 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
                         border: Border.all(
                           color: isDark ? Colors.white12 : Colors.black12,
                         ),
-                        boxShadow: const [
-                          BoxShadow(color: Colors.black12, blurRadius: 4),
-                        ],
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
@@ -829,9 +813,6 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
                       border: Border.all(
                         color: isDark ? Colors.white12 : Colors.black12,
                       ),
-                      boxShadow: const [
-                        BoxShadow(color: Colors.black26, blurRadius: 4),
-                      ],
                     ),
                     child: Text(
                       _getStyleLabel(_mapStyle),
@@ -1042,9 +1023,6 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
             color: (isDark ? const Color(0xFF191823) : Colors.white).withOpacity(0.96),
             borderRadius: BorderRadius.circular(10),
             border: Border.all(color: AppColors.terra, width: 1.2),
-            boxShadow: const [
-              BoxShadow(color: Colors.black26, blurRadius: 6, offset: Offset(0, 2)),
-            ],
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -1086,13 +1064,6 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
           decoration: BoxDecoration(
             color: AppColors.terra,
             shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.terra.withOpacity(0.5),
-                blurRadius: 8,
-                offset: const Offset(0, 3),
-              ),
-            ],
             border: Border.all(color: Colors.white, width: 2),
           ),
           child: const Icon(
@@ -1138,13 +1109,6 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
                 shape: BoxShape.circle,
                 color: color,
                 border: Border.all(color: Colors.white, width: 2),
-                boxShadow: [
-                  BoxShadow(
-                    color: color.withOpacity(0.45),
-                    blurRadius: 6,
-                    spreadRadius: 1,
-                  ),
-                ],
               ),
               alignment: Alignment.center,
               child: avatarUrl != null && avatarUrl.isNotEmpty
@@ -1186,7 +1150,6 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
             color: isDark ? const Color(0xFF1E1D2A) : Colors.white,
             borderRadius: BorderRadius.circular(6),
             border: Border.all(color: isDark ? Colors.white12 : Colors.black12),
-            boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 2)],
           ),
           child: Text(
             customLabel?.isNotEmpty == true ? customLabel! : name,
@@ -1274,7 +1237,6 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
           color: isDark ? Colors.white.withOpacity(0.16) : Colors.white.withOpacity(0.78),
           width: 1.0,
         ),
-        boxShadow: LiquidGlassTheme.cardShadow(isDark),
       ),
       child: Row(
         children: [
@@ -1570,31 +1532,14 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: isDark
-              ? [
-                  AppColors.terra.withOpacity(0.18),
-                  const Color(0xFF141722).withOpacity(0.92),
-                ]
-              : [
-                  AppColors.terra.withOpacity(0.08),
-                  Colors.white.withOpacity(0.95),
-                ],
-        ),
+        color: isDark
+            ? const Color(0xFF171A26).withOpacity(0.92)
+            : Colors.white.withOpacity(0.95),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: isDark ? AppColors.terra.withOpacity(0.40) : AppColors.terra.withOpacity(0.25),
           width: 1.2,
         ),
-        boxShadow: [
-          BoxShadow(
-            color: isDark ? Colors.black.withOpacity(0.35) : const Color(0x1A2B2D38),
-            blurRadius: 14,
-            offset: const Offset(0, 4),
-          ),
-        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1974,9 +1919,6 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
                 decoration: BoxDecoration(
                   color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
                   borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-                  boxShadow: const [
-                    BoxShadow(color: Colors.black38, blurRadius: 20),
-                  ],
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -2257,7 +2199,6 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
           color: isDark ? Colors.white.withOpacity(0.12) : Colors.white.withOpacity(0.75),
           width: 1.0,
         ),
-        boxShadow: LiquidGlassTheme.cardShadow(isDark),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2370,9 +2311,16 @@ class _WorldScreenState extends State<WorldScreen> with TickerProviderStateMixin
                           color: isDark ? AppColors.darkSoft : AppColors.lightSoft,
                           padding: EdgeInsets.zero,
                           constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
-                          onPressed: () {
+                          onPressed: () async {
                             HapticFeedback.lightImpact();
-                            worldProvider.removeFromBucketList(spaceId: spaceId, placeId: item.id);
+                            final ok = await worldProvider.removeFromBucketList(spaceId: spaceId, placeId: item.id);
+                            if (!ok && context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Could not remove bucket item (only the owner can delete, or check connection).'),
+                                ),
+                              );
+                            }
                           },
                         ),
                       ],

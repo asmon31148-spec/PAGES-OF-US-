@@ -171,19 +171,9 @@ class _MemoryStackViewState extends State<MemoryStackView> {
             margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [AppColors.slate, AppColors.forest],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
+              color: isDark ? AppColors.forest : AppColors.slate,
               borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.15),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
+              border: Border.all(color: Colors.white.withValues(alpha: 0.18), width: 1.0),
             ),
             child: Row(
               children: [
@@ -297,24 +287,9 @@ class _MemoryStackViewState extends State<MemoryStackView> {
           border: Border.all(
             color: isSelected
                 ? AppColors.terra
-                : (isDark ? Colors.white.withOpacity(0.18) : Colors.white.withOpacity(0.75)),
-            width: 0.8,
+                : (isDark ? Colors.white.withValues(alpha: 0.16) : Colors.black.withValues(alpha: 0.12)),
+            width: 1.0,
           ),
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: AppColors.terra.withOpacity(0.35),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ]
-              : [
-                  BoxShadow(
-                    color: isDark ? Colors.black.withOpacity(0.2) : const Color(0xFFB89578).withOpacity(0.10),
-                    blurRadius: 6,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
         ),
         child: Text(
           label,
@@ -385,18 +360,13 @@ class _MemoryStackViewState extends State<MemoryStackView> {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(26),
-        gradient: LiquidGlassTheme.specularBorder(isDark),
-        boxShadow: LiquidGlassTheme.cardShadow(isDark),
+        color: LiquidGlassTheme.flatSurface(isDark),
+        borderRadius: BorderRadius.circular(22),
+        border: LiquidGlassTheme.crispBorder(isDark),
       ),
-      padding: const EdgeInsets.all(1.0),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(25),
+        borderRadius: BorderRadius.circular(21),
         child: Container(
-          decoration: BoxDecoration(
-            gradient: LiquidGlassTheme.cardGloss(isDark),
-            borderRadius: BorderRadius.circular(25),
-          ),
           clipBehavior: Clip.antiAlias,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -460,7 +430,14 @@ class _MemoryStackViewState extends State<MemoryStackView> {
                         size: 18,
                         color: isDark ? AppColors.darkSoft : AppColors.lightSoft,
                       ),
-                      onPressed: () => memoriesProvider.deleteMemory(widget.spaceId, memory.id),
+                      onPressed: () async {
+                        final ok = await memoriesProvider.deleteMemory(widget.spaceId, memory.id);
+                        if (!ok && context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Only the creator can delete this memory or server failed.')),
+                          );
+                        }
+                      },
                     ),
                   ],
                 ),
@@ -561,20 +538,17 @@ class _MemoryStackViewState extends State<MemoryStackView> {
             fit: StackFit.expand,
             alignment: Alignment.center,
             children: [
-              // 1. Ambient Blurred Backdrop: Fills space with gorgeous colored lighting
+              // 1. Clean Dark Media Backdrop
               if (thumbnailUrl.isNotEmpty)
                 Positioned.fill(
-                  child: ImageFiltered(
-                    imageFilter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-                    child: CachedNetworkImage(
-                      imageUrl: thumbnailUrl,
-                      memCacheWidth: 200,
-                      fit: BoxFit.cover,
-                      color: Colors.black.withOpacity(0.4),
-                      colorBlendMode: BlendMode.darken,
-                      placeholder: (_, __) => _buildFilmFallback(memory, isDark),
-                      errorWidget: (_, __, ___) => _buildFilmFallback(memory, isDark),
-                    ),
+                  child: CachedNetworkImage(
+                    imageUrl: thumbnailUrl,
+                    memCacheWidth: 200,
+                    fit: BoxFit.cover,
+                    color: Colors.black.withValues(alpha: 0.55),
+                    colorBlendMode: BlendMode.darken,
+                    placeholder: (_, __) => _buildFilmFallback(memory, isDark),
+                    errorWidget: (_, __, ___) => _buildFilmFallback(memory, isDark),
                   ),
                 )
               else
@@ -594,16 +568,7 @@ class _MemoryStackViewState extends State<MemoryStackView> {
 
               // Soft vignette overlay
               Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.black.withOpacity(0.1),
-                      Colors.black.withOpacity(0.35),
-                    ],
-                  ),
-                ),
+                color: Colors.black.withValues(alpha: 0.28),
               ),
 
               // 3. Luxury Centered Play Button
@@ -616,15 +581,8 @@ class _MemoryStackViewState extends State<MemoryStackView> {
                     color: Colors.black.withOpacity(0.55),
                     border: Border.all(
                       color: Colors.white.withOpacity(0.5),
-                      width: 1.4,
+                      width: 1.0,
                     ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.4),
-                        blurRadius: 16,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
                   ),
                   child: const Center(
                     child: Icon(
@@ -699,15 +657,7 @@ class _MemoryStackViewState extends State<MemoryStackView> {
         : memory.mediaUrl;
 
     return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: isDark
-              ? [const Color(0xFF241926), const Color(0xFF16121D)]
-              : [const Color(0xFFFFF0EC), const Color(0xFFFBE0D8)],
-        ),
-      ),
+      color: isDark ? const Color(0xFF1A151D) : const Color(0xFFF6EFEA),
       child: Stack(
         fit: StackFit.expand,
         children: [
@@ -747,13 +697,7 @@ class _MemoryStackViewState extends State<MemoryStackView> {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: AppColors.terra,
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.terra.withOpacity(isPlaying ? 0.5 : 0.25),
-                      blurRadius: isPlaying ? 16 : 8,
-                      spreadRadius: isPlaying ? 2 : 0,
-                    ),
-                  ],
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.2), width: 1.0),
                 ),
                 child: Icon(
                   isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
@@ -806,15 +750,7 @@ class _MemoryStackViewState extends State<MemoryStackView> {
 
   Widget _buildFilmFallback(MemoryItem memory, bool isDark) {
     return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: isDark
-              ? [const Color(0xFF10201B), const Color(0xFF1F382B), const Color(0xFF0D1612)]
-              : [const Color(0xFF2C3E35), const Color(0xFF1A2620), const Color(0xFF3B2F25)],
-        ),
-      ),
+      color: isDark ? const Color(0xFF131D19) : const Color(0xFF223029),
       child: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,

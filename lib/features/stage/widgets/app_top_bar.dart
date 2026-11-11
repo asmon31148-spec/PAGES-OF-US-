@@ -126,25 +126,24 @@ class AppTopBar extends StatelessWidget {
                     ),
                     margin: const EdgeInsets.only(right: 6),
                     decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          const Color(0xFFF43F5E).withOpacity(isDark ? 0.24 : 0.14),
-                          const Color(0xFF9F1239).withOpacity(isDark ? 0.14 : 0.06),
-                        ],
-                      ),
+                      color: isDark
+                          ? Colors.white.withValues(alpha: 0.08)
+                          : Colors.black.withValues(alpha: 0.05),
                       borderRadius: BorderRadius.circular(15),
                       border: Border.all(
-                        color: const Color(0xFFF43F5E).withOpacity(isDark ? 0.55 : 0.45),
-                        width: 1,
+                        color: isDark
+                            ? Colors.white.withValues(alpha: 0.16)
+                            : Colors.black.withValues(alpha: 0.12),
+                        width: 1.0,
                       ),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.visibility_rounded,
                           size: 13.5,
-                          color: Color(0xFFE11D48),
+                          color: isDark ? AppColors.darkInk : AppColors.sageDark,
                         ),
                         if (hasPartner && partnerBattery != null) ...[
                           Builder(
@@ -152,10 +151,10 @@ class AppTopBar extends StatelessWidget {
                               final bat = partnerBattery!;
                               final isLow = bat.level <= 15 && !bat.isCharging;
                               final accent = bat.isCharging
-                                  ? const Color(0xFF10B981)
+                                  ? AppColors.sage
                                   : (isLow
-                                      ? const Color(0xFFEF4444)
-                                      : (isDark ? const Color(0xFFFDE8EE) : const Color(0xFF9F1239)));
+                                      ? const Color(0xFFCC6B5A)
+                                      : (isDark ? AppColors.darkInk : AppColors.lightInk));
                               return Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
@@ -210,35 +209,18 @@ class AppTopBar extends StatelessWidget {
                     width: isAudioPlaying ? null : 32,
                     margin: const EdgeInsets.only(right: 6),
                     decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: isAudioPlaying
-                            ? [
-                                AppColors.terra.withOpacity(0.35),
-                                AppColors.terra.withOpacity(0.12),
-                              ]
-                            : [
-                                Colors.white.withOpacity(isDark ? 0.08 : 0.45),
-                                Colors.white.withOpacity(isDark ? 0.03 : 0.20),
-                              ],
-                      ),
+                      color: isAudioPlaying
+                          ? AppColors.sage.withValues(alpha: 0.18)
+                          : (isDark
+                              ? Colors.white.withValues(alpha: 0.08)
+                              : Colors.black.withValues(alpha: 0.05)),
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
                         color: isAudioPlaying
-                            ? AppColors.terra.withOpacity(0.7)
-                            : (isDark ? Colors.white.withOpacity(0.20) : Colors.black.withOpacity(0.12)),
-                        width: 1,
+                            ? AppColors.sage.withValues(alpha: 0.65)
+                            : (isDark ? Colors.white.withValues(alpha: 0.18) : Colors.black.withValues(alpha: 0.10)),
+                        width: 1.0,
                       ),
-                      boxShadow: isAudioPlaying
-                          ? [
-                              BoxShadow(
-                                color: AppColors.terra.withOpacity(0.35),
-                                blurRadius: 8,
-                                offset: const Offset(0, 2),
-                              ),
-                            ]
-                          : null,
                     ),
                     alignment: Alignment.center,
                     child: Row(
@@ -283,16 +265,15 @@ class AppTopBar extends StatelessWidget {
                     height: 32,
                     margin: const EdgeInsets.only(right: 6),
                     decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          Colors.white.withOpacity(0.12),
-                          Colors.white.withOpacity(0.04),
-                        ],
-                      ),
+                      color: isDark
+                          ? Colors.white.withValues(alpha: 0.08)
+                          : Colors.black.withValues(alpha: 0.05),
                       shape: BoxShape.circle,
                       border: Border.all(
-                        color: Colors.white.withOpacity(0.22),
-                        width: 1,
+                        color: isDark
+                            ? Colors.white.withValues(alpha: 0.18)
+                            : Colors.black.withValues(alpha: 0.10),
+                        width: 1.0,
                       ),
                     ),
                     alignment: Alignment.center,
@@ -314,12 +295,9 @@ class AppTopBar extends StatelessWidget {
                   padding: const EdgeInsets.all(1.5),
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    gradient: LinearGradient(
-                      colors: forceDark
-                          ? [AppColors.romanceRoseGold, AppColors.romanceWine]
-                          : [AppColors.sageLight, AppColors.rose],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
+                    border: Border.all(
+                      color: forceDark ? AppColors.romanceRoseGold : AppColors.sage,
+                      width: 1.0,
                     ),
                   ),
                   child: CircleAvatar(

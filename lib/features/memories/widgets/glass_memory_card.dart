@@ -86,19 +86,13 @@ class GlassMemoryCard extends StatelessWidget {
     Widget content = Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(radius),
-        gradient: LiquidGlassTheme.faintGlassEdge(isDark),
-        boxShadow: [
-          BoxShadow(
-            color: isDark ? Colors.black.withOpacity(0.24) : const Color(0xFFB89578).withOpacity(0.12),
-            blurRadius: 14,
-            spreadRadius: -2,
-            offset: const Offset(0, 5),
-          ),
-        ],
+        border: Border.all(
+          color: isDark ? Colors.white.withValues(alpha: 0.14) : Colors.black.withValues(alpha: 0.10),
+          width: 1.0,
+        ),
       ),
-      padding: const EdgeInsets.all(0.5), // Ultra-fine 0.5px specular edge
       child: ClipRRect(
-        borderRadius: BorderRadius.circular((radius - 0.5).clamp(0.0, 999.0)),
+        borderRadius: BorderRadius.circular((radius - 1.0).clamp(0.0, 999.0)),
         child: Stack(
           fit: StackFit.expand,
           children: [
@@ -146,12 +140,6 @@ class GlassMemoryCard extends StatelessWidget {
                         shape: BoxShape.circle,
                         color: Colors.black.withOpacity(0.52),
                         border: Border.all(color: Colors.white.withOpacity(0.60), width: 1.0),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.35),
-                            blurRadius: 10,
-                          ),
-                        ],
                       ),
                       child: const Center(
                         child: Icon(Icons.play_arrow_rounded, color: Colors.white, size: 26),
@@ -171,15 +159,7 @@ class GlassMemoryCard extends StatelessWidget {
                   final isThisBuffering = service.activeId == memory.id && service.isBuffering;
 
                   return Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: isDark
-                            ? [const Color(0xFF261D1A), const Color(0xFF141722)]
-                            : [const Color(0xFFFFF5EE), const Color(0xFFF7F2FA)],
-                      ),
-                    ),
+                    color: isDark ? const Color(0xFF1A171C) : const Color(0xFFF6F2EE),
                     alignment: Alignment.center,
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -191,13 +171,7 @@ class GlassMemoryCard extends StatelessWidget {
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             color: AppColors.terra,
-                            boxShadow: [
-                              BoxShadow(
-                                color: AppColors.terra.withOpacity(isThisPlaying ? 0.50 : 0.25),
-                                blurRadius: isThisPlaying ? 16 : 8,
-                                spreadRadius: isThisPlaying ? 2 : 0,
-                              ),
-                            ],
+                            border: Border.all(color: Colors.white.withValues(alpha: 0.2), width: 1.0),
                           ),
                           child: Center(
                             child: isThisBuffering
@@ -242,18 +216,11 @@ class GlassMemoryCard extends StatelessWidget {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        Colors.black.withOpacity(0.20),
-                        Colors.black.withOpacity(0.72),
-                      ],
-                    ),
+                    color: Colors.black.withValues(alpha: 0.62),
                     border: Border(
                       top: BorderSide(
-                        color: Colors.white.withOpacity(0.18),
-                        width: 0.5,
+                        color: Colors.white.withValues(alpha: 0.16),
+                        width: 1.0,
                       ),
                     ),
                   ),
@@ -273,9 +240,6 @@ class GlassMemoryCard extends StatelessWidget {
                                   fontWeight: FontWeight.w700,
                                   color: Colors.white,
                                   letterSpacing: 0.1,
-                                  shadows: [
-                                    Shadow(color: Colors.black45, blurRadius: 4, offset: Offset(0, 1)),
-                                  ],
                                 ),
                               ),
                             ),

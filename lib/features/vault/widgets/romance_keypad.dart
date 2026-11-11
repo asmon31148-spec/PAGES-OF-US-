@@ -102,15 +102,6 @@ class RomanceKeypad extends StatelessWidget {
                       : (isFilled ? AppColors.romanceRoseGold : AppColors.romanceBorder),
                   width: 1.5,
                 ),
-                boxShadow: isFilled
-                    ? [
-                        BoxShadow(
-                          color: AppColors.romanceRoseGold.withOpacity(0.5),
-                          blurRadius: 8,
-                          spreadRadius: 1,
-                        )
-                      ]
-                    : null,
               ),
             );
           }),
@@ -179,14 +170,7 @@ class RomanceKeypad extends StatelessWidget {
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           color: AppColors.romanceCard,
-          border: Border.all(color: AppColors.romanceBorder, width: 0.8),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.3),
-              blurRadius: 8,
-              offset: const Offset(0, 3),
-            ),
-          ],
+          border: Border.all(color: AppColors.romanceBorder, width: 1.0),
         ),
         alignment: Alignment.center,
         child: Text(

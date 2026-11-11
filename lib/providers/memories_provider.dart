@@ -8,10 +8,14 @@ import '../data/models/memory_item.dart';
 import '../data/models/letter_item.dart';
 import '../data/models/milestone_item.dart';
 import '../core/utils/author_identity.dart';
+import '../core/utils/ownership_helper.dart';
 import '../data/services/supabase_service.dart';
 import '../data/services/firebase_service.dart';
 import '../core/services/notification_service.dart';
 import '../core/services/audio_cache_service.dart';
+import '../core/services/deleted_ids_store.dart';
+import '../core/services/device_status_service.dart';
+import '../core/services/media_upload_service.dart';
 import 'audio_provider.dart';
 import 'auth_provider.dart';
 import '../core/services/voice_playback_service.dart';
@@ -318,24 +322,30 @@ class MemoriesProvider extends ChangeNotifier {
     // Firestore Dual-Sync Realtime Listener for Milestones
     try {
       _firestoreMilestonesSub?.cancel();
-      final isSharedCoupleSpace = _isSharedSpace(spaceId: spaceId, partnerId: partnerId);
       _firestoreMilestonesSub = FirebaseService.firestore
           .collection('spaces')
           .doc(spaceId)
           .collection('milestones')
           .snapshots()
           .listen((snapshot) {
-            final incoming = snapshot.docs.map((doc) {
+            final uid = _currentUserId ?? currentUserId;
+            final pid = _currentPartnerId ?? partnerId;
+            final tombstones = DeletedIdsStore.getIds('milestones');
+            final incoming = snapshot.docs.where((d) => !tombstones.contains(d.id)).map((doc) {
               final data = doc.data();
               data['id'] = doc.id;
               return MilestoneItem.fromJson(
                 data,
-                currentUserId: _currentUserId ?? currentUserId,
+                currentUserId: uid,
                 currentUserNickname: _currentUserNickname ?? currentUserNickname,
-                partnerId: _currentPartnerId ?? partnerId,
+                partnerId: pid,
                 partnerNickname: _currentPartnerNickname ?? partnerNickname,
               );
-            }).where((m) => isSharedCoupleSpace || m.isMine).toList();
+            }).where((m) {
+              final ownerUid = OwnershipHelper.extractOwnerUid(m.authorId);
+              return OwnershipHelper.canViewItem(ownerUid: ownerUid, myUid: uid, partnerUid: pid) ||
+                  (ownerUid.isEmpty && m.isMine);
+            }).toList();
             _mergeMilestones(incoming);
           }, onError: (err) {
             debugPrint('Firestore milestones listener err: $err');
@@ -408,13 +418,15 @@ class MemoriesProvider extends ChangeNotifier {
       if (raw is! Map) continue;
       final rowId = raw['id']?.toString();
       final rowSpace = raw['space_id']?.toString();
-      final author = raw['author']?.toString() ?? '';
-      final belongsToCouple =
-          author.contains(currentUserId) || author.contains(partnerId);
+      final ownerUid = OwnershipHelper.extractOwnerUid(
+        (raw['author'] ?? raw['author_id'])?.toString(),
+      );
+      // Only migrate rows strictly owned by currentUserId into the active shared space;
+      // never overwrite or mutate partner/foreign ownership or unrelated rows.
       if (rowId != null &&
           rowId.isNotEmpty &&
           rowSpace != spaceId &&
-          belongsToCouple) {
+          OwnershipHelper.isOwner(ownerUid: ownerUid, myUid: currentUserId)) {
         unawaited(_healSingleRowSpaceId(supabase, table, rowId, spaceId));
       }
     }
@@ -442,7 +454,6 @@ class MemoriesProvider extends ChangeNotifier {
       final supabase = SupabaseService.client;
       if (supabase == null) return;
 
-      final isSharedCoupleSpace = _isSharedSpace(spaceId: spaceId, partnerId: partnerId);
       final orFilter = _buildCoupleOrFilter(
         spaceId: spaceId,
         currentUserId: currentUserId,
@@ -468,15 +479,26 @@ class MemoriesProvider extends ChangeNotifier {
         partnerId: partnerId,
       );
 
+      final tombstones = DeletedIdsStore.getIds('memories');
+      final effectivePid = partnerId ?? _currentPartnerId;
       _memories = rows
+          .where((r) => r is Map && !tombstones.contains(r['id']?.toString()))
           .map((row) => MemoryItem.fromJson(
                 row as Map<String, dynamic>,
                 currentUserId: currentUserId,
                 currentUserNickname: currentUserNickname ?? _currentUserNickname,
-                partnerId: partnerId ?? _currentPartnerId,
+                partnerId: effectivePid,
                 partnerNickname: partnerNickname ?? _currentPartnerNickname,
               ))
-          .where((m) => isSharedCoupleSpace || m.isMine)
+          .where((m) {
+            final ownerUid = OwnershipHelper.extractOwnerUid(m.author);
+            return OwnershipHelper.canViewItem(
+                  ownerUid: ownerUid,
+                  myUid: currentUserId,
+                  partnerUid: effectivePid,
+                ) ||
+                (ownerUid.isEmpty && m.isMine);
+          })
           .toList();
 
       // Background prefetch for instant 0ms voice whisper playback
@@ -497,7 +519,9 @@ class MemoriesProvider extends ChangeNotifier {
       }
 
       notifyListeners();
-    } catch (_) {}
+    } catch (e) {
+      await DeviceStatusService.recordSyncError('fetch_memories', e.toString());
+    }
   }
 
   Future<void> fetchLetters({
@@ -511,7 +535,6 @@ class MemoriesProvider extends ChangeNotifier {
       final supabase = SupabaseService.client;
       if (supabase == null) return;
 
-      final isSharedCoupleSpace = _isSharedSpace(spaceId: spaceId, partnerId: partnerId);
       final orFilter = _buildCoupleOrFilter(
         spaceId: spaceId,
         currentUserId: currentUserId,
@@ -537,18 +560,31 @@ class MemoriesProvider extends ChangeNotifier {
         partnerId: partnerId,
       );
 
+      final tombstones = DeletedIdsStore.getIds('letters');
+      final effectivePid = partnerId ?? _currentPartnerId;
       _letters = rows
+          .where((r) => r is Map && !tombstones.contains(r['id']?.toString()))
           .map((row) => LetterItem.fromJson(
                 row as Map<String, dynamic>,
                 currentUserId: currentUserId,
                 currentUserNickname: currentUserNickname ?? _currentUserNickname,
-                partnerId: partnerId ?? _currentPartnerId,
+                partnerId: effectivePid,
                 partnerNickname: partnerNickname ?? _currentPartnerNickname,
               ))
-          .where((l) => isSharedCoupleSpace || l.isMine)
+          .where((l) {
+            final ownerUid = OwnershipHelper.extractOwnerUid(l.author);
+            return OwnershipHelper.canViewItem(
+                  ownerUid: ownerUid,
+                  myUid: currentUserId,
+                  partnerUid: effectivePid,
+                ) ||
+                (ownerUid.isEmpty && l.isMine);
+          })
           .toList();
       notifyListeners();
-    } catch (_) {}
+    } catch (e) {
+      await DeviceStatusService.recordSyncError('fetch_letters', e.toString());
+    }
   }
 
   Future<void> fetchMilestones({
@@ -562,7 +598,6 @@ class MemoriesProvider extends ChangeNotifier {
       final supabase = SupabaseService.client;
       if (supabase == null) return;
 
-      final isSharedCoupleSpace = _isSharedSpace(spaceId: spaceId, partnerId: partnerId);
       final orFilter = _buildCoupleOrFilter(
         spaceId: spaceId,
         currentUserId: currentUserId,
@@ -588,36 +623,58 @@ class MemoriesProvider extends ChangeNotifier {
         partnerId: partnerId,
       );
 
+      final tombstones = DeletedIdsStore.getIds('milestones');
+      final effectivePid = partnerId ?? _currentPartnerId;
       final list = rows
+          .where((r) => r is Map && !tombstones.contains(r['id']?.toString()))
           .map((row) => MilestoneItem.fromJson(
                 row as Map<String, dynamic>,
                 currentUserId: currentUserId,
                 currentUserNickname: currentUserNickname ?? _currentUserNickname,
-                partnerId: partnerId ?? _currentPartnerId,
+                partnerId: effectivePid,
                 partnerNickname: partnerNickname ?? _currentPartnerNickname,
               ))
-          .where((m) => isSharedCoupleSpace || m.isMine)
+          .where((m) {
+            final ownerUid = OwnershipHelper.extractOwnerUid(m.authorId);
+            return OwnershipHelper.canViewItem(
+                  ownerUid: ownerUid,
+                  myUid: currentUserId,
+                  partnerUid: effectivePid,
+                ) ||
+                (ownerUid.isEmpty && m.isMine);
+          })
           .toList();
-      _mergeMilestones(list);
-    } catch (_) {}
+      // Replace authoritatively with server list minus tombstones rather than resurrecting deleted entries
+      _milestones = list..sort((a, b) => b.rawDate.compareTo(a.rawDate));
+      notifyListeners();
+    } catch (e) {
+      await DeviceStatusService.recordSyncError('fetch_milestones', e.toString());
+    }
   }
 
   void _mergeMilestones(List<MilestoneItem> incoming) {
-    final isSharedCoupleSpace =
-        (_currentPartnerId != null && _currentPartnerId!.isNotEmpty) ||
-        (_currentSpaceId != null && !_currentSpaceId!.startsWith('solo_'));
+    final tombstones = DeletedIdsStore.getIds('milestones');
+    final uid = _currentUserId ?? '';
+    final pid = _currentPartnerId;
+    final filtered = incoming.where((m) {
+      if (tombstones.contains(m.id)) return false;
+      final ownerUid = OwnershipHelper.extractOwnerUid(m.authorId);
+      return OwnershipHelper.canViewItem(ownerUid: ownerUid, myUid: uid, partnerUid: pid) ||
+          (ownerUid.isEmpty && m.isMine);
+    }).toList();
 
-    final filtered = incoming
-        .where((m) => isSharedCoupleSpace || m.isMine)
-        .toList();
-
-    final Map<String, MilestoneItem> map = {for (final m in _milestones) m.id: m};
+    final Map<String, MilestoneItem> map = {
+      for (final m in _milestones)
+        if (!tombstones.contains(m.id)) m.id: m,
+    };
     for (final item in filtered) {
       map[item.id] = item;
     }
-    _milestones = map.values
-        .where((m) => isSharedCoupleSpace || m.isMine)
-        .toList()
+    _milestones = map.values.where((m) {
+      final ownerUid = OwnershipHelper.extractOwnerUid(m.authorId);
+      return OwnershipHelper.canViewItem(ownerUid: ownerUid, myUid: uid, partnerUid: pid) ||
+          (ownerUid.isEmpty && m.isMine);
+    }).toList()
       ..sort((a, b) => b.rawDate.compareTo(a.rawDate));
     notifyListeners();
   }
@@ -705,16 +762,39 @@ class MemoriesProvider extends ChangeNotifier {
     } catch (_) {}
   }
 
-  Future<void> deleteMemory(String spaceId, String memoryId) async {
-    _memories.removeWhere((m) => m.id == memoryId);
-    notifyListeners();
+  Future<bool> deleteMemory(String spaceId, String memoryId) async {
+    final idx = _memories.indexWhere((m) => m.id == memoryId);
+    final target = idx != -1 ? _memories[idx] : null;
+    if (target != null && _currentUserId != null && _currentUserId!.isNotEmpty) {
+      final ownerUid = OwnershipHelper.extractOwnerUid(target.author);
+      if (ownerUid.isNotEmpty &&
+          !OwnershipHelper.canDeleteItem(ownerUid: ownerUid, myUid: _currentUserId!)) {
+        return false;
+      }
+    }
 
     try {
       final supabase = SupabaseService.client;
       if (supabase != null) {
         await supabase.from('memories').delete().eq('id', memoryId);
       }
-    } catch (_) {}
+      if (target != null) {
+        await MediaUploadService.deleteRemoteFiles([target.mediaUrl, target.voiceUrl]);
+        if (target.voiceUrl != null && target.voiceUrl!.isNotEmpty) {
+          await AudioCacheService.deleteCached(target.voiceUrl!);
+        }
+        if (target.mediaUrl.isNotEmpty) {
+          await AudioCacheService.deleteCached(target.mediaUrl);
+        }
+      }
+      await DeletedIdsStore.markDeleted('memories', memoryId);
+      _memories.removeWhere((m) => m.id == memoryId);
+      notifyListeners();
+      return true;
+    } catch (e) {
+      await DeviceStatusService.recordSyncError('delete_memory', e.toString());
+      return false;
+    }
   }
 
   Future<void> sendLetter({
@@ -799,16 +879,30 @@ class MemoriesProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> deleteLetter(String spaceId, String letterId) async {
-    _letters.removeWhere((l) => l.id == letterId);
-    notifyListeners();
+  Future<bool> deleteLetter(String spaceId, String letterId) async {
+    final idx = _letters.indexWhere((l) => l.id == letterId);
+    final target = idx != -1 ? _letters[idx] : null;
+    if (target != null && _currentUserId != null && _currentUserId!.isNotEmpty) {
+      final ownerUid = OwnershipHelper.extractOwnerUid(target.author);
+      if (ownerUid.isNotEmpty &&
+          !OwnershipHelper.canDeleteItem(ownerUid: ownerUid, myUid: _currentUserId!)) {
+        return false;
+      }
+    }
 
     try {
       final supabase = SupabaseService.client;
       if (supabase != null) {
         await supabase.from('letters').delete().eq('id', letterId);
       }
-    } catch (_) {}
+      await DeletedIdsStore.markDeleted('letters', letterId);
+      _letters.removeWhere((l) => l.id == letterId);
+      notifyListeners();
+      return true;
+    } catch (e) {
+      await DeviceStatusService.recordSyncError('delete_letter', e.toString());
+      return false;
+    }
   }
 
   Future<void> addMilestone({
@@ -869,26 +963,45 @@ class MemoriesProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> deleteMilestone(String spaceId, String milestoneId) async {
-    _milestones.removeWhere((m) => m.id == milestoneId);
-    notifyListeners();
+  Future<bool> deleteMilestone(String spaceId, String milestoneId) async {
+    final idx = _milestones.indexWhere((m) => m.id == milestoneId);
+    final target = idx != -1 ? _milestones[idx] : null;
+    if (target != null && _currentUserId != null && _currentUserId!.isNotEmpty) {
+      final ownerUid = OwnershipHelper.extractOwnerUid(target.authorId);
+      if (ownerUid.isNotEmpty &&
+          !OwnershipHelper.canDeleteItem(ownerUid: ownerUid, myUid: _currentUserId!)) {
+        return false;
+      }
+    }
 
-    // 1. Delete from Supabase
     try {
       final supabase = SupabaseService.client;
       if (supabase != null) {
         await supabase.from('milestones').delete().eq('id', milestoneId);
       }
-    } catch (_) {}
-
-    // 2. Delete from Firebase Firestore
-    try {
-      await FirebaseService.firestore
-          .collection('spaces')
-          .doc(spaceId)
-          .collection('milestones')
-          .doc(milestoneId)
-          .delete();
-    } catch (_) {}
+      try {
+        await FirebaseService.firestore
+            .collection('spaces')
+            .doc(spaceId)
+            .collection('milestones')
+            .doc(milestoneId)
+            .delete();
+      } catch (e) {
+        await DeviceStatusService.recordSyncError('delete_milestone_fs', e.toString());
+      }
+      if (target != null) {
+        await MediaUploadService.deleteRemoteFiles([target.imageUrl, target.audioUrl]);
+        if (target.audioUrl != null && target.audioUrl!.isNotEmpty) {
+          await AudioCacheService.deleteCached(target.audioUrl!);
+        }
+      }
+      await DeletedIdsStore.markDeleted('milestones', milestoneId);
+      _milestones.removeWhere((m) => m.id == milestoneId);
+      notifyListeners();
+      return true;
+    } catch (e) {
+      await DeviceStatusService.recordSyncError('delete_milestone', e.toString());
+      return false;
+    }
   }
 }

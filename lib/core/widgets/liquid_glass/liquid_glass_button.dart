@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../theme/app_colors.dart';
-import 'liquid_glass_theme.dart';
 
-/// Luminous Apple Liquid Glass Button / Pill with specular rim light & glowing elevation
-/// Optimized for 120 FPS performance (zero GPU BackdropFilter lag)
+/// Clean, high-contrast action pill with crisp 1px border (zero gradient bleed or glow shadow).
 class LiquidGlassButton extends StatelessWidget {
   final VoidCallback onPressed;
   final Widget child;
@@ -22,14 +20,11 @@ class LiquidGlassButton extends StatelessWidget {
     this.label,
     this.primaryColor = AppColors.terra,
     this.padding = const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-    this.radius = 28.0,
+    this.radius = 24.0,
   });
 
   @override
   Widget build(BuildContext context) {
-    final borderRadius = BorderRadius.circular(radius);
-    final innerRadius = BorderRadius.circular((radius - 1.2).clamp(0.0, 999.0));
-
     return GestureDetector(
       onTap: () {
         HapticFeedback.mediumImpact();
@@ -37,54 +32,35 @@ class LiquidGlassButton extends StatelessWidget {
       },
       behavior: HitTestBehavior.opaque,
       child: Container(
+        padding: padding,
         decoration: BoxDecoration(
-          borderRadius: borderRadius,
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Colors.white.withOpacity(0.70),
-              Colors.white.withOpacity(0.25),
-              primaryColor.withOpacity(0.40),
-            ],
+          color: primaryColor,
+          borderRadius: BorderRadius.circular(radius),
+          border: Border.all(
+            color: Colors.white.withValues(alpha: 0.22),
+            width: 1.0,
           ),
-          boxShadow: LiquidGlassTheme.glowShadow(primaryColor),
         ),
-        padding: const EdgeInsets.all(1.2), // Specular rim reflection
-        child: Container(
-          padding: padding,
-          decoration: BoxDecoration(
-            borderRadius: innerRadius,
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                primaryColor.withOpacity(0.95),
-                primaryColor.withOpacity(0.85),
-              ],
-            ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              if (icon != null) ...[
-                Icon(icon, size: 19, color: Colors.white),
-                if (label != null) const SizedBox(width: 8),
-              ],
-              if (label != null)
-                Text(
-                  label!,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: -0.2,
-                    color: Colors.white,
-                  ),
-                ),
-              if (label == null && icon == null) child,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            if (icon != null) ...[
+              Icon(icon, size: 19, color: Colors.white),
+              if (label != null) const SizedBox(width: 8),
             ],
-          ),
+            if (label != null)
+              Text(
+                label!,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -0.2,
+                  color: Colors.white,
+                ),
+              ),
+            if (label == null && icon == null) child,
+          ],
         ),
       ),
     );

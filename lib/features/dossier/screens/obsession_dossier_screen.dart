@@ -8,11 +8,13 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/services/device_status_service.dart';
+import '../../../core/utils/telemetry_math.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../providers/stage_provider.dart';
 import '../../../providers/world_provider.dart';
 import '../../../providers/theme_provider.dart';
 import '../../../data/models/secret_whisper.dart';
+import 'telemetry_debug_screen.dart';
 
 class _DossierPalette {
   final Color bg;
@@ -94,6 +96,9 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
   bool _sendingWhisper = false;
   bool _refreshing = false;
   bool _isSatelliteMap = false;
+  bool _batteryOptExempt = true;
+  bool _healthConnectPermitted = true;
+  List<JourneyPoint>? _snappedTrail;
 
   static const List<double> _darkMapMatrix = <double>[
     -0.20, -0.65, -0.07, 0, 215,
@@ -107,10 +112,34 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
-        context.read<StageProvider>().refreshPartnerTelemetryNow();
-        context.read<WorldProvider>().refreshPartnerJourneyTrail();
+        _loadPermissionsAndSnapTrail();
       }
     });
+  }
+
+  Future<void> _loadPermissionsAndSnapTrail() async {
+    final stage = context.read<StageProvider>();
+    final world = context.read<WorldProvider>();
+    await Future.wait([
+      stage.refreshPartnerTelemetryNow(),
+      world.refreshPartnerJourneyTrail(),
+    ]);
+    final exempt = await DeviceStatusService.isIgnoringBatteryOptimizations();
+    final hc = await DeviceStatusService.hasHealthConnectPermissions();
+    final snapped = await world.getRoadSnappedPartnerTrail();
+    if (!mounted) return;
+    setState(() {
+      _batteryOptExempt = exempt;
+      _healthConnectPermitted = hc;
+      _snappedTrail = snapped;
+    });
+  }
+
+  void _openDebugScreen() {
+    HapticFeedback.mediumImpact();
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const TelemetryDebugScreen()),
+    );
   }
 
   @override
@@ -157,10 +186,7 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
   Future<void> _handleRefresh() async {
     setState(() => _refreshing = true);
     HapticFeedback.lightImpact();
-    await Future.wait([
-      context.read<StageProvider>().refreshPartnerTelemetryNow(),
-      context.read<WorldProvider>().refreshPartnerJourneyTrail(),
-    ]);
+    await _loadPermissionsAndSnapTrail();
     if (mounted) setState(() => _refreshing = false);
   }
 
@@ -220,13 +246,7 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
           decoration: BoxDecoration(
             color: pal.card,
             borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: pal.accent.withOpacity(0.4), width: 1.2),
-            boxShadow: [
-              BoxShadow(
-                color: pal.accent.withOpacity(0.22),
-                blurRadius: 24,
-              ),
-            ],
+            border: Border.all(color: pal.accent.withValues(alpha: 0.4), width: 1.0),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -337,23 +357,26 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
           icon: Icon(Icons.arrow_back_ios_new_rounded, color: pal.primaryInk, size: 19),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Eyes On You',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w800,
-                color: pal.primaryInk,
-                letterSpacing: -0.2,
+        title: GestureDetector(
+          onLongPress: _openDebugScreen,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Eyes On You',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: pal.primaryInk,
+                  letterSpacing: -0.2,
+                ),
               ),
-            ),
-            Text(
-              partner != null ? 'Live Dossier • $partnerName' : 'Pair to activate radar',
-              style: TextStyle(fontSize: 11, color: pal.mutedInk),
-            ),
-          ],
+              Text(
+                partner != null ? 'Live Dossier • $partnerName' : 'Pair to activate radar',
+                style: TextStyle(fontSize: 11, color: pal.mutedInk),
+              ),
+            ],
+          ),
         ),
         actions: [
           GestureDetector(
@@ -471,7 +494,9 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
                 const SizedBox(height: 8),
                 _buildBreadcrumbTrailMap(
                   pLoc: pLoc,
-                  journeyPoints: journeyPoints,
+                  journeyPoints: (_snappedTrail != null && _snappedTrail!.length >= 2)
+                      ? _snappedTrail!
+                      : journeyPoints,
                   pinnedPlaces: world.pinnedPlaces,
                   partnerName: partnerName,
                   isDark: themeProv.isDark,
@@ -543,30 +568,29 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [pal.heroStart, pal.card],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: pal.softBorder),
+        color: pal.card,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: pal.softBorder, width: 1.0),
       ),
       child: Column(
         children: [
           Row(
             children: [
-              CircleAvatar(
-                radius: 26,
-                backgroundColor: pal.accent.withOpacity(0.18),
-                backgroundImage: partner?.avatarUrl != null
-                    ? CachedNetworkImageProvider(partner!.avatarUrl!)
-                    : null,
-                child: partner?.avatarUrl == null
-                    ? Text(
-                        partnerName.isNotEmpty ? partnerName[0].toUpperCase() : 'P',
-                        style: TextStyle(color: pal.primaryInk, fontWeight: FontWeight.bold, fontSize: 18),
-                      )
-                    : null,
+              GestureDetector(
+                onLongPress: _openDebugScreen,
+                child: CircleAvatar(
+                  radius: 26,
+                  backgroundColor: pal.accent.withValues(alpha: 0.14),
+                  backgroundImage: partner?.avatarUrl != null
+                      ? CachedNetworkImageProvider(partner!.avatarUrl!)
+                      : null,
+                  child: partner?.avatarUrl == null
+                      ? Text(
+                          partnerName.isNotEmpty ? partnerName[0].toUpperCase() : 'P',
+                          style: TextStyle(color: pal.primaryInk, fontWeight: FontWeight.bold, fontSize: 18),
+                        )
+                      : null,
+                ),
               ),
               const SizedBox(width: 14),
               Expanded(
@@ -653,6 +677,67 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
               ],
             ),
           ),
+          if (!_batteryOptExempt || !_healthConnectPermitted) ...[
+            const SizedBox(height: 10),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: pal.subtleFill,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: pal.softBorder, width: 1.0),
+              ),
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 6,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  Text(
+                    'Keep live stats accurate:',
+                    style: TextStyle(fontSize: 11.5, color: pal.mutedInk, fontWeight: FontWeight.w600),
+                  ),
+                  if (!_batteryOptExempt)
+                    InkWell(
+                      onTap: () async {
+                        await DeviceStatusService.requestIgnoreBatteryOptimizations();
+                        await _loadPermissionsAndSnapTrail();
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: pal.softAmber.withValues(alpha: 0.14),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: pal.softAmber.withValues(alpha: 0.5), width: 1.0),
+                        ),
+                        child: Text(
+                          'Disable Battery Opt',
+                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: pal.primaryInk),
+                        ),
+                      ),
+                    ),
+                  if (!_healthConnectPermitted)
+                    InkWell(
+                      onTap: () async {
+                        await DeviceStatusService.requestHealthConnectPermissions();
+                        await _loadPermissionsAndSnapTrail();
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: pal.softGreen.withValues(alpha: 0.14),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: pal.softGreen.withValues(alpha: 0.5), width: 1.0),
+                        ),
+                        child: Text(
+                          'Connect Health Steps',
+                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: pal.primaryInk),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -670,11 +755,15 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
             ? 'Unlocked & Active'
             : (telemetry.isScreenOn ? 'Lockscreen On' : 'Screen Off'));
 
+    final screenMins = telemetry != null ? (telemetry.screenTimeSecondsToday / 60).round() : 0;
     final unlockSub = telemetry == null
         ? 'Needs partner app active'
-        : 'Last unlocked: ${_formatExactAndRelative(telemetry.lastUnlockedAt)}'
-          '${telemetry.unlockCountToday != null ? ' • ${telemetry.unlockCountToday} unlocks today' : ''}';
+        : 'Unlocked: ${_formatExactAndRelative(telemetry.lastUnlockedAt)}'
+          ' • Locked: ${_formatExactAndRelative(telemetry.lastLockedAt)}\n'
+          '${telemetry.unlockCountToday ?? 0} unlocks • ${telemetry.lockCountToday ?? 0} locks • Screen ${screenMins}m today';
 
+    final netAge = TelemetryMath.formatAgeLabel(telemetry?.networkUpdatedAt);
+    final netStale = TelemetryMath.isTimestampStale(telemetry?.networkUpdatedAt);
     final netLabel = telemetry == null
         ? 'Awaiting signal'
         : switch (telemetry.networkType) {
@@ -684,10 +773,25 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
             'online' => 'Online',
             _ => 'Unknown',
           };
+    final netSub = telemetry == null
+        ? 'Awaiting status'
+        : (netStale ? 'Last updated $netAge' : 'Updated $netAge');
 
+    final batAge = TelemetryMath.formatAgeLabel(telemetry?.batteryUpdatedAt);
+    final batStale = TelemetryMath.isTimestampStale(telemetry?.batteryUpdatedAt);
     final batLabel = telemetry != null && telemetry.batteryLevel >= 0
         ? '${telemetry.batteryLevel}%${telemetry.isCharging ? ' ⚡ Charging' : ''}'
-        : 'Awaiting signal';
+        : 'Unknown';
+    final batSub = telemetry == null
+        ? 'Awaiting signal'
+        : (batStale
+            ? 'Last updated $batAge'
+            : '${telemetry.isCharging ? 'Plugged in' : 'Hardware level'} • $batAge');
+
+    final moveLabel = movementState ?? 'Awaiting GPS speed';
+    final gpsAccSub = pLoc?.accuracy != null
+        ? 'GPS accuracy ±${pLoc!.accuracy!.round()} meters'
+        : 'Waiting for GPS fix';
 
     final musicLabel = telemetry?.nowPlayingTitle?.isNotEmpty == true
         ? telemetry!.nowPlayingTitle!
@@ -696,10 +800,7 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
         ? 'By ${telemetry!.nowPlayingArtist!} • Playing in Sanctuary'
         : 'Sanctuary Music Player';
 
-    final moveLabel = movementState ?? 'Awaiting GPS speed';
-    final gpsAccSub = pLoc?.accuracy != null
-        ? 'GPS accuracy ±${pLoc!.accuracy!.round()} meters'
-        : 'Waiting for GPS fix';
+    final recentEvents = telemetry?.recentScreenEvents ?? const <ScreenEvent>[];
 
     return Column(
       children: [
@@ -707,7 +808,7 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
           icon: telemetry?.isDeviceUnlocked == true
               ? Icons.lock_open_rounded
               : Icons.lock_outline_rounded,
-          title: 'PHONE STATE & UNLOCK ACTIVITY',
+          title: 'PHONE STATE, UNLOCKS & LOCKS',
           value: screenLabel,
           subtitle: unlockSub,
           accent: telemetry?.isDeviceUnlocked == true ? pal.softGreen : pal.accent,
@@ -725,8 +826,8 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
                     : Icons.signal_cellular_alt_rounded,
                 title: 'NETWORK',
                 value: netLabel,
-                subtitle: 'Live OS connection',
-                accent: pal.softBlue,
+                subtitle: netSub,
+                accent: netStale ? pal.softAmber : pal.softBlue,
                 pal: pal,
               ),
             ),
@@ -738,8 +839,10 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
                     : Icons.battery_std_rounded,
                 title: 'BATTERY',
                 value: batLabel,
-                subtitle: telemetry?.isCharging == true ? 'Plugged in' : 'Hardware level',
-                accent: telemetry?.isCharging == true ? pal.softGreen : pal.softAmber,
+                subtitle: batSub,
+                accent: batStale
+                    ? pal.softAmber
+                    : (telemetry?.isCharging == true ? pal.softGreen : pal.softBlue),
                 pal: pal,
               ),
             ),
@@ -755,6 +858,47 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
           pal: pal,
           fullWidth: true,
         ),
+        if (recentEvents.isNotEmpty) ...[
+          const SizedBox(height: 10),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: pal.card,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: pal.softBorder, width: 1.0),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'RECENT UNLOCK / LOCK LOG',
+                  style: TextStyle(
+                    fontSize: 10.5,
+                    letterSpacing: 0.7,
+                    fontWeight: FontWeight.w700,
+                    color: pal.mutedInk,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                ...recentEvents.reversed.take(4).map((ev) {
+                  final dt = DateTime.fromMillisecondsSinceEpoch(ev.timestampMs);
+                  final timeStr = _formatExactAndRelative(dt);
+                  final durStr = ev.durationSeconds != null && ev.durationSeconds! > 0
+                      ? ' (${ev.durationSeconds}s)'
+                      : '';
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 3),
+                    child: Text(
+                      '${ev.type == 'unlock' ? '🔓 Unlocked' : '🔒 Locked'} at $timeStr$durStr',
+                      style: TextStyle(fontSize: 11.5, color: pal.primaryInk),
+                    ),
+                  );
+                }),
+              ],
+            ),
+          ),
+        ],
         const SizedBox(height: 10),
         _metricTile(
           icon: Icons.headphones_rounded,
@@ -777,13 +921,16 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
     required int stayPointCount,
     required _DossierPalette pal,
   }) {
-    final todayKm = world.effectivePartnerJourneyKm;
-    final weekKm = world.partnerJourneyKmThisWeek;
-    final monthKm = world.partnerJourneyKmThisMonth;
-    final locSteps = world.effectivePartnerSteps;
-    final telemetrySteps = stage.partnerTelemetry?.stepsToday ?? 0;
-    final steps = telemetrySteps > locSteps ? telemetrySteps : locSteps;
-    final activeMins = world.effectivePartnerActiveMinutes;
+    final metrics = world.resolvePartnerMetrics(
+      telemetry: stage.partnerTelemetry,
+      savedSummaries: stage.partnerDailySummaries,
+    );
+    final todayKm = metrics.distanceKmToday;
+    final weekKm = metrics.weekTrailKm;
+    final monthKm = metrics.monthTrailKm;
+    final stepsText = metrics.stepsToday != null ? '${metrics.stepsToday}' : 'Unknown';
+    final walkMins = metrics.walkingMinutesToday;
+    final appMins = metrics.appMinutesToday;
     final origin = world.effectivePartnerDeparturePlace;
     final mood = stage.partnerMood;
 
@@ -792,7 +939,7 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
       decoration: BoxDecoration(
         color: pal.card,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: pal.softBorder),
+        border: Border.all(color: pal.softBorder, width: 1.0),
       ),
       child: Column(
         children: [
@@ -803,11 +950,11 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: _statBox('STEPS TODAY', '$steps', pal.softGreen, pal),
+                child: _statBox('STEPS TODAY', stepsText, pal.softGreen, pal),
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: _statBox('ACTIVE TIME', '$activeMins min', pal.softAmber, pal),
+                child: _statBox('WALKING TIME', '$walkMins min', pal.softAmber, pal),
               ),
             ],
           ),
@@ -823,10 +970,26 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: _statBox('STOPS TODAY', '$stayPointCount', pal.softBlush, pal),
+                child: _statBox('APP TIME', '${appMins}m • $stayPointCount stops', pal.softBlush, pal),
               ),
             ],
           ),
+          if (metrics.discrepancy != null && metrics.discrepancy!.hasDiscrepancy) ...[
+            const SizedBox(height: 8),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: pal.subtleFill,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: pal.softBorder, width: 1.0),
+              ),
+              child: Text(
+                metrics.discrepancy!.note,
+                style: TextStyle(fontSize: 11, color: pal.mutedInk),
+              ),
+            ),
+          ],
           const SizedBox(height: 12),
           Divider(color: pal.softBorder, height: 1),
           const SizedBox(height: 10),
@@ -1039,7 +1202,8 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
                         urlTemplate: tileUrl,
                         subdomains: const ['0', '1', '2', '3'],
                         userAgentPackageName: 'com.pagesofus.app',
-                        maxZoom: 20,
+                        maxZoom: 21,
+                        maxNativeZoom: 19,
                         tileBuilder: (!_isSatelliteMap && isDark)
                             ? (context, tileWidget, tile) => ColorFiltered(
                                   colorFilter: const ColorFilter.matrix(_darkMapMatrix),
@@ -1084,10 +1248,7 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
                                 decoration: BoxDecoration(
                                   color: pal.accent,
                                   shape: BoxShape.circle,
-                                  border: Border.all(color: Colors.white, width: 2.2),
-                                  boxShadow: [
-                                    BoxShadow(color: pal.accent.withOpacity(0.45), blurRadius: 12),
-                                  ],
+                                  border: Border.all(color: Colors.white, width: 2.0),
                                 ),
                                 alignment: Alignment.center,
                                 child: Text(

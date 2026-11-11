@@ -230,8 +230,10 @@ class ThemeModal extends StatelessWidget {
                             height: 38,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              gradient: LinearGradient(
-                                colors: themePalette.gradientColors.take(2).toList(),
+                              color: themePalette.accentColor.withValues(alpha: 0.22),
+                              border: Border.all(
+                                color: themePalette.accentColor.withValues(alpha: 0.5),
+                                width: 1.0,
                               ),
                             ),
                             alignment: Alignment.center,
@@ -304,14 +306,11 @@ class ThemeModal extends StatelessWidget {
                 ? (isDark ? Colors.white.withOpacity(0.20) : Colors.white)
                 : Colors.transparent,
             borderRadius: BorderRadius.circular(12),
-            boxShadow: isSelected
-                ? [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.06),
-                      blurRadius: 4,
-                      offset: const Offset(0, 2),
-                    ),
-                  ]
+            border: isSelected
+                ? Border.all(
+                    color: isDark ? Colors.white.withValues(alpha: 0.2) : Colors.black.withValues(alpha: 0.08),
+                    width: 1.0,
+                  )
                 : null,
           ),
           alignment: Alignment.center,

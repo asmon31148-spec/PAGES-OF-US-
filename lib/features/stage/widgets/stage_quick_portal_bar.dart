@@ -200,39 +200,17 @@ class StageQuickPortalBar extends StatelessWidget {
             height: 56,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: isActive
-                    ? [
-                        AppColors.terra.withOpacity(0.35),
-                        AppColors.terra.withOpacity(0.12),
-                      ]
-                    : (isDark
-                        ? [
-                            Colors.white.withOpacity(0.14),
-                            Colors.white.withOpacity(0.04),
-                          ]
-                        : [
-                            Colors.white.withOpacity(0.85),
-                            Colors.white.withOpacity(0.70),
-                          ]),
-              ),
+              color: isActive
+                  ? AppColors.terra.withValues(alpha: 0.22)
+                  : (isDark
+                      ? Colors.white.withValues(alpha: 0.08)
+                      : Colors.white.withValues(alpha: 0.85)),
               border: Border.all(
                 color: isActive
-                    ? AppColors.terra.withOpacity(0.7)
-                    : (isDark ? Colors.white.withOpacity(0.24) : Colors.white.withOpacity(0.90)),
+                    ? AppColors.terra.withValues(alpha: 0.7)
+                    : (isDark ? Colors.white.withValues(alpha: 0.20) : Colors.black.withValues(alpha: 0.10)),
                 width: 1.0,
               ),
-              boxShadow: [
-                BoxShadow(
-                  color: isActive
-                      ? AppColors.terra.withOpacity(0.35)
-                      : (isDark ? Colors.black.withOpacity(0.25) : const Color(0xFFB89578).withOpacity(0.12)),
-                  blurRadius: 10,
-                  offset: const Offset(0, 3),
-                ),
-              ],
             ),
             alignment: Alignment.center,
             child: Icon(
@@ -286,13 +264,11 @@ class StageQuickPortalBar extends StatelessWidget {
           builder: (modalContext, setModalState) {
             return ClipRRect(
               borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-                child: Container(
+              child: Container(
                   decoration: BoxDecoration(
                     color: isDark
-                        ? const Color(0xFF13151B).withOpacity(0.92)
-                        : Colors.white.withOpacity(0.94),
+                        ? const Color(0xFF13151B).withValues(alpha: 0.96)
+                        : Colors.white.withValues(alpha: 0.96),
                     borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
                     border: Border(
                       top: BorderSide(
@@ -515,7 +491,6 @@ class StageQuickPortalBar extends StatelessWidget {
                     ),
                   ),
                 ),
-              ),
             );
           },
         );

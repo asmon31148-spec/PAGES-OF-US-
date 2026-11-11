@@ -153,16 +153,9 @@ class _SanctuaryVoicePlayerState extends State<SanctuaryVoicePlayer> {
               color: cardBg,
               borderRadius: BorderRadius.circular(22),
               border: Border.all(
-                color: isPlaying ? terraColor.withOpacity(0.55) : borderColor,
+                color: isPlaying ? terraColor.withValues(alpha: 0.65) : borderColor,
                 width: 1.0,
               ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(widget.isDark ? 0.25 : 0.05),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
@@ -177,13 +170,7 @@ class _SanctuaryVoicePlayerState extends State<SanctuaryVoicePlayer> {
                   decoration: BoxDecoration(
                     color: terraColor,
                     shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: terraColor.withOpacity(isPlaying ? 0.45 : 0.25),
-                        blurRadius: isPlaying ? 10 : 4,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.2), width: 1.0),
                   ),
                   child: Center(
                     child: isBuffering

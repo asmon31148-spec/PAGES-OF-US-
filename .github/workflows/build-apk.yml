@@ -93,8 +93,17 @@ jobs:
 
       - name: Analyze Project
         run: |
-          flutter analyze > analyze_log.txt 2>&1 || true
+          flutter analyze --no-fatal-infos --no-fatal-warnings > analyze_log.txt 2>&1
+          EXIT_CODE=$?
           cat analyze_log.txt
+          exit $EXIT_CODE
+
+      - name: Run Automated Unit Tests
+        run: |
+          flutter test > test_log.txt 2>&1
+          EXIT_CODE=$?
+          cat test_log.txt
+          exit $EXIT_CODE
 
       - name: Build Release APK
         run: |

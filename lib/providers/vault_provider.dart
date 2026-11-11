@@ -4,7 +4,11 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:cloud_firestore/cloud_firestore.dart' hide Source;
 import '../data/models/vault_item.dart';
 import '../data/services/supabase_service.dart';
+import '../core/services/deleted_ids_store.dart';
+import '../core/services/device_status_service.dart';
+import '../core/services/media_upload_service.dart';
 import '../core/services/notification_service.dart';
+import '../core/utils/ownership_helper.dart';
 import 'auth_provider.dart';
 
 class VaultProvider extends ChangeNotifier {
@@ -68,16 +72,19 @@ class VaultProvider extends ChangeNotifier {
       (_activeSpaceId != null && !_activeSpaceId!.startsWith('solo_'));
 
   bool _isAllowedVault(VaultItem v, String currentUserId, String spaceId) {
+    final persistedTombstones = DeletedIdsStore.getIds('vaults');
     if (v.id == 'vault_midnight_seed' ||
         v.title.toLowerCase().trim() == 'the midnight letters' ||
-        _deletedVaultIds.contains(v.id)) {
+        _deletedVaultIds.contains(v.id) ||
+        persistedTombstones.contains(v.id)) {
       return false;
     }
-    if ((_partnerId != null && _partnerId!.isNotEmpty) ||
-        !spaceId.startsWith('solo_')) {
-      return true;
-    }
-    return v.creatorId == currentUserId;
+    final ownerUid = OwnershipHelper.extractOwnerUid(v.creatorId);
+    return OwnershipHelper.canViewItem(
+      ownerUid: ownerUid,
+      myUid: currentUserId,
+      partnerUid: _partnerId,
+    );
   }
 
   List<VaultItem> getFilteredVaults(String currentUserId) {
@@ -437,10 +444,46 @@ class VaultProvider extends ChangeNotifier {
     }
   }
 
-  /// Real permanent hard delete from both Firestore and Supabase databases
-  Future<void> deleteVault(String vaultId, String spaceId) async {
+  /// Real permanent hard delete from both Firestore and Supabase databases + storage files
+  Future<bool> deleteVault(String vaultId, String spaceId) async {
+    final idx = _vaults.indexWhere((v) => v.id == vaultId);
+    final target = idx != -1 ? _vaults[idx] : null;
+    final myUid = _currentUserId ?? '';
+    if (target != null && myUid.isNotEmpty) {
+      final ownerUid = OwnershipHelper.extractOwnerUid(target.creatorId);
+      if (ownerUid.isNotEmpty &&
+          !OwnershipHelper.canDeleteItem(ownerUid: ownerUid, myUid: myUid)) {
+        return false;
+      }
+    }
+
+    // Mark tombstone & compute remaining list WITHOUT removing locally until server confirms
     _deletedVaultIds.add(vaultId);
+    await DeletedIdsStore.markDeleted('vaults', vaultId);
+
+    final previousVaults = List<VaultItem>.from(_vaults);
     _vaults.removeWhere((v) => v.id == vaultId);
+
+    final ok = await _syncVaultsToCloud(spaceId);
+    if (!ok) {
+      _vaults = previousVaults;
+      _deletedVaultIds.remove(vaultId);
+      await DeletedIdsStore.unmarkDeleted('vaults', vaultId);
+      notifyListeners();
+      return false;
+    }
+
+    if (target != null) {
+      await MediaUploadService.deleteRemoteFiles([
+        target.coverImageUrl,
+        target.videoUrl,
+        target.voiceNoteUrl,
+        ...target.photoUrls,
+        if (target.backgroundSong != null && target.backgroundSong!.startsWith('http'))
+          target.backgroundSong,
+      ]);
+    }
+
     _unlockedVaultIds.remove(vaultId);
     await NotificationService.cancelScheduledVaultNotification(vaultId);
 
@@ -449,12 +492,10 @@ class VaultProvider extends ChangeNotifier {
       await stopVaultMusic();
     }
     notifyListeners();
-
-    // Sync permanently to Cloud
-    await _syncVaultsToCloud(spaceId);
+    return true;
   }
 
-  Future<void> _syncVaultsToCloud(String spaceId) async {
+  Future<bool> _syncVaultsToCloud(String spaceId) async {
     final vaultDocId = 'vaults_$spaceId';
     final supabase = SupabaseService.client;
 
@@ -485,14 +526,17 @@ class VaultProvider extends ChangeNotifier {
           _vaults = mergedById.values.toList();
           notifyListeners();
         }
-      } catch (_) {}
+      } catch (e) {
+        await DeviceStatusService.recordSyncError('vault_remote_merge', e.toString());
+      }
     }
 
     final jsonList = _vaults.map((v) => v.toJson()).toList();
+    bool anyServerOk = false;
 
     // 1. Supabase permanent hard update / save
-    try {
-      if (supabase != null) {
+    if (supabase != null) {
+      try {
         await supabase.from('app_content').upsert({
           'id': vaultDocId,
           'content': jsonList,
@@ -511,8 +555,11 @@ class VaultProvider extends ChangeNotifier {
             'updated_at': DateTime.now().toIso8601String(),
           });
         }
+        anyServerOk = true;
+      } catch (e) {
+        await DeviceStatusService.recordSyncError('vault_supabase_upsert', e.toString());
       }
-    } catch (_) {}
+    }
 
     // 2. Firestore permanent sync
     try {
@@ -524,8 +571,11 @@ class VaultProvider extends ChangeNotifier {
           .set({
         'vaults': jsonList,
         'updatedAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
-    } catch (_) {}
+      });
+      anyServerOk = true;
+    } catch (e) {
+      await DeviceStatusService.recordSyncError('vault_firestore_set', e.toString());
+    }
 
     // 3. Supabase Realtime broadcast (0-50ms instant sync to partner)
     try {
@@ -535,6 +585,8 @@ class VaultProvider extends ChangeNotifier {
         payload: {'vaults': jsonList},
       );
     } catch (_) {}
+
+    return anyServerOk;
   }
 
   @override

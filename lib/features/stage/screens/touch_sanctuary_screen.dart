@@ -182,21 +182,10 @@ class _TouchSanctuaryScreenState extends State<TouchSanctuaryScreen>
         body: Stack(
           fit: StackFit.expand,
           children: [
-            // Deep Cosmic Nebula Ambient Background
+            // Clean Matte Dark Sanctuary Backdrop
             Positioned.fill(
               child: Container(
-                decoration: BoxDecoration(
-                  gradient: RadialGradient(
-                    center: const Alignment(0, -0.3),
-                    radius: 1.3,
-                    colors: [
-                      _getAmbientModeColor().withOpacity(0.18),
-                      const Color(0xFF0C0A15),
-                      const Color(0xFF07060B),
-                    ],
-                    stops: const [0.0, 0.55, 1.0],
-                  ),
-                ),
+                color: const Color(0xFF0A0B10),
               ),
             ),
 
@@ -310,14 +299,7 @@ class _TouchSanctuaryScreenState extends State<TouchSanctuaryScreen>
       decoration: BoxDecoration(
         color: const Color(0xFF14121E).withOpacity(0.92),
         borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: Colors.white.withOpacity(0.08)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.4),
-            blurRadius: 20,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        border: Border.all(color: Colors.white.withValues(alpha: 0.14), width: 1.0),
       ),
       child: Row(
         children: [
@@ -416,15 +398,6 @@ class _TouchSanctuaryScreenState extends State<TouchSanctuaryScreen>
         decoration: BoxDecoration(
           color: isSelected ? activeColor : Colors.transparent,
           borderRadius: BorderRadius.circular(17),
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: activeColor.withOpacity(0.4),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ]
-              : null,
         ),
         alignment: Alignment.center,
         child: Row(
@@ -467,14 +440,6 @@ class _TouchSanctuaryScreenState extends State<TouchSanctuaryScreen>
                 : Colors.white.withOpacity(0.12),
             width: isPartnerTouching ? 1.5 : 1.0,
           ),
-          boxShadow: isPartnerTouching
-              ? [
-                  BoxShadow(
-                    color: const Color(0xFF10B981).withOpacity(0.5),
-                    blurRadius: 10,
-                  ),
-                ]
-              : null,
         ),
         child: Stack(
           alignment: Alignment.center,
@@ -499,15 +464,6 @@ class _TouchSanctuaryScreenState extends State<TouchSanctuaryScreen>
                       ? const Color(0xFF10B981)
                       : const Color(0xFF38BDF8),
                   border: Border.all(color: const Color(0xFF14121E), width: 1.5),
-                  boxShadow: [
-                    BoxShadow(
-                      color: (isPartnerTouching
-                              ? const Color(0xFF10B981)
-                              : const Color(0xFF38BDF8))
-                          .withOpacity(0.8),
-                      blurRadius: 4,
-                    ),
-                  ],
                 ),
               ),
             ),
@@ -622,23 +578,11 @@ class _TouchSanctuaryScreenState extends State<TouchSanctuaryScreen>
                         height: 68,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          gradient: RadialGradient(
-                            colors: [
-                              const Color(0xFFFF4B72).withOpacity(0.22),
-                              const Color(0xFFFF4B72).withOpacity(0.04),
-                            ],
-                          ),
+                          color: const Color(0xFFFF4B72).withValues(alpha: 0.14),
                           border: Border.all(
-                            color: const Color(0xFFFF4B72).withOpacity(0.35),
+                            color: const Color(0xFFFF4B72).withValues(alpha: 0.45),
                             width: 1.5,
                           ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(0xFFFF4B72).withOpacity(0.25 * _pulseController.value),
-                              blurRadius: 24,
-                              spreadRadius: 2,
-                            ),
-                          ],
                         ),
                         child: Transform.scale(
                           scale: 1.0 + (_pulseController.value * 0.08),
@@ -715,15 +659,8 @@ class _TouchSanctuaryScreenState extends State<TouchSanctuaryScreen>
                 ? const Color(0xFFFF2D55)
                 : (isPartnerTouching
                     ? const Color(0xFF00E5FF).withOpacity(0.5)
-                    : Colors.white.withOpacity(0.1)),
+                    : Colors.white.withValues(alpha: 0.12)),
           ),
-          boxShadow: [
-            BoxShadow(
-              color: glowColor.withOpacity(0.3),
-              blurRadius: 16,
-              offset: const Offset(0, 4),
-            ),
-          ],
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -922,14 +859,7 @@ class _TouchSanctuaryScreenState extends State<TouchSanctuaryScreen>
       decoration: BoxDecoration(
         color: const Color(0xFF14121E).withOpacity(0.94),
         borderRadius: BorderRadius.circular(26),
-        border: Border.all(color: Colors.white.withOpacity(0.12)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.4),
-            blurRadius: 18,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        border: Border.all(color: Colors.white.withValues(alpha: 0.14), width: 1.0),
       ),
       child: Row(
         children: [
@@ -1295,14 +1225,6 @@ class _TouchSanctuaryScreenState extends State<TouchSanctuaryScreen>
             color: isSelected ? Colors.white : Colors.white24,
             width: isSelected ? 2.5 : 1.0,
           ),
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: color.withOpacity(0.8),
-                    blurRadius: 8,
-                  ),
-                ]
-              : null,
         ),
       ),
     );
@@ -1440,14 +1362,7 @@ class _TouchSanctuaryScreenState extends State<TouchSanctuaryScreen>
       decoration: BoxDecoration(
         color: const Color(0xFF14121E).withOpacity(0.88),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: accent.withOpacity(0.35), width: 1.2),
-        boxShadow: [
-          BoxShadow(
-            color: accent.withOpacity(0.18),
-            blurRadius: 16,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        border: Border.all(color: accent.withValues(alpha: 0.40), width: 1.0),
       ),
       child: Row(
         children: [
@@ -1579,16 +1494,9 @@ class _FullScreenThumbKissPainter extends CustomPainter {
       ..color = baseColor.withOpacity(ringAlpha * 0.45);
     canvas.drawCircle(center, ringRadius, ringPaint);
 
-    // C. Luminous Shimmer Core
+    // C. Clean Luminous Core
     final corePaint = Paint()
-      ..shader = RadialGradient(
-        colors: [
-          Colors.white,
-          baseColor,
-          baseColor.withOpacity(0.1),
-        ],
-        stops: const [0.0, 0.5, 1.0],
-      ).createShader(Rect.fromCircle(center: center, radius: 14.0));
+      ..color = baseColor.withValues(alpha: 0.92);
     canvas.drawCircle(center, 14.0, corePaint);
 
     // D. Center Touch Anchor Dot

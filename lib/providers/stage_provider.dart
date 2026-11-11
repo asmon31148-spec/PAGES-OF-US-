@@ -11,10 +11,14 @@ import '../data/models/drawing_stroke.dart';
 import '../data/models/secret_whisper.dart';
 import '../data/services/firebase_service.dart';
 import '../data/services/supabase_service.dart';
+import '../core/constants/app_constants.dart';
+import '../core/services/deleted_ids_store.dart';
 import '../core/services/local_cache_service.dart';
 import '../core/services/widget_sync_service.dart';
 import '../core/services/notification_service.dart';
 import '../core/services/device_status_service.dart';
+import '../core/utils/ownership_helper.dart';
+import '../core/utils/telemetry_math.dart';
 import 'auth_provider.dart';
 
 class TouchPoint {
@@ -76,12 +80,22 @@ class StageProvider extends ChangeNotifier {
   // Live Partner Hardware Telemetry & Secret Whispers (100% real readings)
   DeviceBatteryStatus? _partnerBattery;
   DeviceTelemetry? _partnerTelemetry;
+  DeviceTelemetry? _myTelemetry;
+  List<DailyActivitySummary> _partnerDailySummaries = [];
+  List<DailyActivitySummary> _myDailySummaries = [];
+  String? _lastTelemetrySyncError;
   bool _isTelemetrySharingEnabled = true;
   Timer? _batterySyncTimer;
   List<SecretWhisper> _secretWhispers = [];
 
   DeviceBatteryStatus? get partnerBattery => _partnerBattery;
   DeviceTelemetry? get partnerTelemetry => _partnerTelemetry;
+  DeviceTelemetry? get myTelemetry => _myTelemetry;
+  List<DailyActivitySummary> get partnerDailySummaries =>
+      List.unmodifiable(_partnerDailySummaries);
+  List<DailyActivitySummary> get myDailySummaries =>
+      List.unmodifiable(_myDailySummaries);
+  String? get lastTelemetrySyncError => _lastTelemetrySyncError;
   bool get isTelemetrySharingEnabled => _isTelemetrySharingEnabled;
   List<SecretWhisper> get secretWhispers => List.unmodifiable(_secretWhispers);
 
@@ -170,6 +184,10 @@ class StageProvider extends ChangeNotifier {
     _batterySyncTimer = null;
     _partnerBattery = null;
     _partnerTelemetry = null;
+    _myTelemetry = null;
+    _partnerDailySummaries = [];
+    _myDailySummaries = [];
+    _lastTelemetrySyncError = null;
     _secretWhispers = [];
     _anniversarySub = null;
     _moodSub = null;
@@ -324,6 +342,25 @@ class StageProvider extends ChangeNotifier {
         notifyListeners();
       }
     });
+
+    // Configure native Android foreground service for background telemetry & midnight summaries
+    final cachedName = LocalCacheService.getCachedUser()?['name']?.toString() ?? '';
+    DeviceStatusService.configureTelemetryUpload(
+      supabaseUrl: AppConstants.supabaseUrl,
+      supabaseKey: AppConstants.supabaseAnonKey,
+      accessToken: SupabaseService.client?.auth.currentSession?.accessToken,
+      spaceId: spaceId,
+      myUserId: userId,
+      myName: cachedName,
+    );
+
+    if (partnerId == null || partnerId.isEmpty) {
+      // Disconnected/unpaired: hide partner data while preserving own items intact
+      _pinnedNotes.removeWhere((k, _) => k != userId);
+      _partnerDailySummaries = [];
+    } else {
+      loadDailyActivitySummaries(spaceId: spaceId, userId: userId, partnerId: partnerId);
+    }
 
     DeviceStatusService.onNowPlayingChanged = () {
       if (_activeSpaceId == spaceId && _activeUserId == userId) {
@@ -1206,11 +1243,11 @@ class StageProvider extends ChangeNotifier {
     if (key == 'updatedAt' || key == 'updated_at' || key == 'notes') {
       return false;
     }
-    if ((partnerId != null && partnerId.isNotEmpty) ||
-        !spaceId.startsWith('solo_')) {
-      return true;
-    }
-    return key == userId;
+    return OwnershipHelper.canViewItem(
+      ownerUid: OwnershipHelper.extractOwnerUid(key),
+      myUid: userId,
+      partnerUid: partnerId,
+    );
   }
 
   void _mergeRawPinnedNotes(
@@ -1500,14 +1537,15 @@ class StageProvider extends ChangeNotifier {
   ];
 
   void _mergeGoals(List<CoupleGoalItem> incoming) {
+    final tombstones = DeletedIdsStore.getIds('goals');
     final mergedMap = <String, CoupleGoalItem>{};
     for (final g in _goals) {
-      if (!_deletedGoalIds.contains(g.id)) {
+      if (!_deletedGoalIds.contains(g.id) && !tombstones.contains(g.id)) {
         mergedMap[g.id] = g;
       }
     }
     for (final g in incoming) {
-      if (!_deletedGoalIds.contains(g.id)) {
+      if (!_deletedGoalIds.contains(g.id) && !tombstones.contains(g.id)) {
         final existing = mergedMap[g.id];
         // Prefer completed version if either side marked it complete
         if (existing != null && existing.isCompleted && !g.isCompleted) {
@@ -1590,15 +1628,26 @@ class StageProvider extends ChangeNotifier {
     _syncGoalsToCloud(spaceId);
   }
 
-  Future<void> deleteGoal(String spaceId, String goalId) async {
+  Future<bool> deleteGoal(String spaceId, String goalId) async {
+    final prev = List<CoupleGoalItem>.from(_goals);
     _deletedGoalIds.add(goalId);
+    await DeletedIdsStore.markDeleted('goals', goalId);
     _goals.removeWhere((g) => g.id == goalId);
+    final ok = await _syncGoalsToCloud(spaceId);
+    if (!ok) {
+      _goals = prev;
+      _deletedGoalIds.remove(goalId);
+      await DeletedIdsStore.unmarkDeleted('goals', goalId);
+      notifyListeners();
+      return false;
+    }
     notifyListeners();
-    _syncGoalsToCloud(spaceId);
+    return true;
   }
 
-  Future<void> _syncGoalsToCloud(String spaceId) async {
+  Future<bool> _syncGoalsToCloud(String spaceId) async {
     final supabase = SupabaseService.client;
+    final tombstones = DeletedIdsStore.getIds('goals');
     if (supabase != null) {
       try {
         final remote = await supabase
@@ -1611,13 +1660,13 @@ class StageProvider extends ChangeNotifier {
           for (final raw in (remote['content'] as List)) {
             if (raw is Map) {
               final g = CoupleGoalItem.fromJson(Map<String, dynamic>.from(raw));
-              if (!_deletedGoalIds.contains(g.id)) {
+              if (!_deletedGoalIds.contains(g.id) && !tombstones.contains(g.id)) {
                 merged[g.id] = g;
               }
             }
           }
           for (final g in _goals) {
-            if (!_deletedGoalIds.contains(g.id)) {
+            if (!_deletedGoalIds.contains(g.id) && !tombstones.contains(g.id)) {
               merged[g.id] = g;
             }
           }
@@ -1628,6 +1677,7 @@ class StageProvider extends ChangeNotifier {
     }
 
     final jsonList = _goals.map((g) => g.toJson()).toList();
+    bool anyOk = false;
     if (supabase != null) {
       try {
         await supabase.from('app_content').upsert({
@@ -1635,14 +1685,21 @@ class StageProvider extends ChangeNotifier {
           'content': jsonList,
           'updated_at': DateTime.now().toIso8601String(),
         });
-      } catch (_) {}
+        anyOk = true;
+      } catch (e) {
+        await DeviceStatusService.recordSyncError('sync_goals_supabase', e.toString());
+      }
     }
     try {
       await FirebaseService.saveFeatureDoc(spaceId, 'couple_goals', {
         'goals': jsonList,
         'updatedAt': DateTime.now().toIso8601String(),
       });
-    } catch (_) {}
+      anyOk = true;
+    } catch (e) {
+      await DeviceStatusService.recordSyncError('sync_goals_firestore', e.toString());
+    }
+    return anyOk;
   }
 
   static final List<DailyCareItem> defaultPresetCareItems = [
@@ -1843,12 +1900,33 @@ class StageProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> deleteCareItem(String spaceId, String careId) async {
+  Future<bool> deleteCareItem(String spaceId, String careId) async {
+    final idx = _dailyCareItems.indexWhere((c) => c.id == careId);
+    final target = idx != -1 ? _dailyCareItems[idx] : null;
+    if (target != null &&
+        _activeUserId != null &&
+        _activeUserId!.isNotEmpty &&
+        target.createdById.isNotEmpty &&
+        target.createdById != 'system' &&
+        !OwnershipHelper.canDeleteItem(ownerUid: target.createdById, myUid: _activeUserId!)) {
+      return false;
+    }
+
+    final prev = List<DailyCareItem>.from(_dailyCareItems);
     _deletedCareIds.add(careId);
+    await DeletedIdsStore.markDeleted('care', careId);
     _dailyCareItems.removeWhere((c) => c.id == careId);
+    final ok = await _syncDailyCareToCloud(spaceId);
+    if (!ok) {
+      _dailyCareItems = prev;
+      _deletedCareIds.remove(careId);
+      await DeletedIdsStore.unmarkDeleted('care', careId);
+      notifyListeners();
+      return false;
+    }
     notifyListeners();
-    _syncDailyCareToCloud(spaceId);
     NotificationService.cancelDailyCareNotification(careId);
+    return true;
   }
 
   Future<void> sendCareNudge(
@@ -1877,7 +1955,7 @@ class StageProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> _syncDailyCareToCloud(
+  Future<bool> _syncDailyCareToCloud(
     String spaceId, {
     String? senderId,
     String? lastAction,
@@ -1886,6 +1964,7 @@ class StageProvider extends ChangeNotifier {
     String? targetUserId,
   }) async {
     final supabase = SupabaseService.client;
+    final tombstones = DeletedIdsStore.getIds('care');
     if (supabase != null) {
       try {
         final remote = await supabase
@@ -1898,13 +1977,13 @@ class StageProvider extends ChangeNotifier {
           for (final raw in (remote['content'] as List)) {
             if (raw is Map) {
               final c = DailyCareItem.fromJson(Map<String, dynamic>.from(raw));
-              if (!_deletedCareIds.contains(c.id)) {
+              if (!_deletedCareIds.contains(c.id) && !tombstones.contains(c.id)) {
                 merged[c.id] = c;
               }
             }
           }
           for (final c in _dailyCareItems) {
-            if (!_deletedCareIds.contains(c.id)) {
+            if (!_deletedCareIds.contains(c.id) && !tombstones.contains(c.id)) {
               merged[c.id] = c;
             }
           }
@@ -1915,6 +1994,7 @@ class StageProvider extends ChangeNotifier {
     }
 
     final jsonList = _dailyCareItems.map((c) => c.toJson()).toList();
+    bool anyOk = false;
     if (supabase != null) {
       try {
         await supabase.from('app_content').upsert({
@@ -1922,7 +2002,10 @@ class StageProvider extends ChangeNotifier {
           'content': jsonList,
           'updated_at': DateTime.now().toIso8601String(),
         });
-      } catch (_) {}
+        anyOk = true;
+      } catch (e) {
+        await DeviceStatusService.recordSyncError('sync_care_supabase', e.toString());
+      }
     }
     try {
       await FirebaseService.saveFeatureDoc(spaceId, 'daily_care_schedules', {
@@ -1934,7 +2017,11 @@ class StageProvider extends ChangeNotifier {
         if (lastItemTime != null) 'lastItemTime': lastItemTime,
         if (targetUserId != null) 'targetUserId': targetUserId,
       });
-    } catch (_) {}
+      anyOk = true;
+    } catch (e) {
+      await DeviceStatusService.recordSyncError('sync_care_firestore', e.toString());
+    }
+    return anyOk;
   }
 
   Future<void> setTelemetrySharingEnabled(bool enabled) async {
@@ -1943,6 +2030,39 @@ class StageProvider extends ChangeNotifier {
     notifyListeners();
     if (_activeSpaceId != null && _activeUserId != null) {
       await _syncMyTelemetry(_activeSpaceId!, _activeUserId!);
+    }
+  }
+
+  Future<void> loadDailyActivitySummaries({
+    required String spaceId,
+    required String userId,
+    String? partnerId,
+  }) async {
+    try {
+      final myRows = await SupabaseService.getAppContentByPrefix(
+        'daily_summary_${spaceId}_${userId}_',
+        limit: 35,
+      );
+      _myDailySummaries = myRows
+          .map(DailyActivitySummary.fromJson)
+          .where((s) => s.dateKey.isNotEmpty)
+          .toList()
+        ..sort((a, b) => b.dateKey.compareTo(a.dateKey));
+
+      if (partnerId != null && partnerId.isNotEmpty) {
+        final pRows = await SupabaseService.getAppContentByPrefix(
+          'daily_summary_${spaceId}_${partnerId}_',
+          limit: 35,
+        );
+        _partnerDailySummaries = pRows
+            .map(DailyActivitySummary.fromJson)
+            .where((s) => s.dateKey.isNotEmpty)
+            .toList()
+          ..sort((a, b) => b.dateKey.compareTo(a.dateKey));
+      }
+      notifyListeners();
+    } catch (e) {
+      await DeviceStatusService.recordSyncError('load_daily_summaries', e.toString());
     }
   }
 
@@ -1963,6 +2083,11 @@ class StageProvider extends ChangeNotifier {
         }
         notifyListeners();
       }
+      await loadDailyActivitySummaries(
+        spaceId: _activeSpaceId!,
+        userId: _activeUserId!,
+        partnerId: _activePartnerId,
+      );
     }
   }
 
@@ -1980,17 +2105,42 @@ class StageProvider extends ChangeNotifier {
       return;
     }
 
+    // Flush any midnight-archived summary before syncing today's live state
+    final archived = await DeviceStatusService.consumePendingDailySummary(
+      userId: userId,
+      spaceId: spaceId,
+    );
+    if (archived != null && archived.dateKey.isNotEmpty) {
+      final archivedOk = await SupabaseService.upsertAppContent(
+        'daily_summary_${spaceId}_${userId}_${archived.dateKey}',
+        archived.toJson(),
+      );
+      if (!archivedOk) {
+        _lastTelemetrySyncError = 'Failed to save archived summary (${archived.dateKey})';
+      }
+    }
+
+    // Refresh Health Connect aggregate if user granted permission (best effort)
+    await DeviceStatusService.getHealthConnectToday();
+
     final telemetry = await DeviceStatusService.getFullTelemetry(
       nowPlayingTitle: DeviceStatusService.currentNowPlayingTitle,
       nowPlayingArtist: DeviceStatusService.currentNowPlayingArtist,
     );
     if (telemetry == null) return;
+    _myTelemetry = telemetry;
 
     final payload = {
       ...telemetry.toJson(),
       'senderId': userId,
     };
-    await SupabaseService.upsertAppContent('telemetry_${spaceId}_$userId', payload);
+    final ok = await SupabaseService.upsertAppContent('telemetry_${spaceId}_$userId', payload);
+    if (!ok) {
+      _lastTelemetrySyncError = 'Telemetry cloud upsert failed at ${DateTime.now().toIso8601String()}';
+    } else {
+      _lastTelemetrySyncError = null;
+    }
+
     await SupabaseService.broadcastEvent(
       spaceId: spaceId,
       eventType: 'DEVICE_TELEMETRY',
@@ -2005,6 +2155,7 @@ class StageProvider extends ChangeNotifier {
         'senderId': userId,
       });
     }
+    notifyListeners();
   }
 
   Future<void> sendSecretWhisper({

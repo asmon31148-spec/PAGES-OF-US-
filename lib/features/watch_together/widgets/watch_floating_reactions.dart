@@ -158,9 +158,6 @@ class _AnimatedReactionState extends State<_AnimatedReaction>
                     widget.emoji,
                     style: const TextStyle(
                       fontSize: 36,
-                      shadows: [
-                        Shadow(color: Colors.black45, blurRadius: 10, offset: Offset(0, 3)),
-                      ],
                     ),
                   ),
                 ),

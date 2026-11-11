@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/telemetry_math.dart';
+import '../../../providers/stage_provider.dart';
 import '../../../providers/world_provider.dart';
 import '../../../data/models/stay_point_model.dart';
 import 'paper_plane_painter.dart';
@@ -75,6 +77,7 @@ class _JourneyStatsCardState extends State<JourneyStatsCard>
   @override
   Widget build(BuildContext context) {
     final world = context.watch<WorldProvider>();
+    final stage = context.watch<StageProvider>();
     final partnerLoc = world.partnerLocation;
     final myLoc = world.myLocation;
 
@@ -89,20 +92,32 @@ class _JourneyStatsCardState extends State<JourneyStatsCard>
     final currentTargetName = effectiveShowPartner ? partnerName : userName;
     final currentAvatarUrl = effectiveShowPartner ? widget.partnerAvatarUrl : widget.userAvatarUrl;
 
-    // Distance, steps & active minutes
-    final double km = effectiveShowPartner
-        ? world.effectivePartnerJourneyKm
-        : world.myJourneyKmToday;
+    // Unified distance, real steps & walking time shared with Eyes On You
+    final ResolvedActivityMetrics resolved = effectiveShowPartner
+        ? world.resolvePartnerMetrics(
+            telemetry: stage.partnerTelemetry,
+            savedSummaries: stage.partnerDailySummaries,
+          )
+        : TelemetryMath.resolvePartnerActivity(
+            telemetrySteps: stage.myTelemetry?.stepsToday,
+            locationSteps: world.myStepsTodayOrNull,
+            gpsJourneyKm: world.myJourneyKmToday,
+            telemetryDistanceKm: stage.myTelemetry?.distanceKmToday,
+            telemetryWalkingSeconds: stage.myTelemetry?.walkingTimeSecondsToday,
+            locationActiveMinutes: world.myActiveMinutesToday,
+            telemetryAppSeconds: stage.myTelemetry?.appTimeSecondsToday,
+            telemetryActivity: stage.myTelemetry?.movementActivity,
+            speedMps: myLoc?.speedMps,
+            savedSummaries: stage.myDailySummaries,
+            todayDateKey: stage.myTelemetry?.dateKey ??
+                TelemetryMath.localDateKeyFor(DateTime.now()),
+          );
 
-    final int steps = effectiveShowPartner
-        ? world.effectivePartnerSteps
-        : world.myStepsToday;
+    final double km = resolved.distanceKmToday;
+    final int? steps = resolved.stepsToday;
+    final int activeMinutes = resolved.walkingMinutesToday;
 
-    final int activeMinutes = effectiveShowPartner
-        ? world.effectivePartnerActiveMinutes
-        : world.myActiveMinutesToday;
-
-    // A person is actively traveling if currently moving (> 3 km/h or recent displacement)
+    // A person is actively traveling if currently moving
     final bool isMovingNow = effectiveShowPartner ? world.isPartnerMoving : world.isMyMoving;
     final bool isStationary = !isMovingNow;
 
@@ -137,11 +152,13 @@ class _JourneyStatsCardState extends State<JourneyStatsCard>
             ? '${(km * 1000).round()} m'
             : '${km.toStringAsFixed(2)} km';
 
-    final stepsLabel = steps <= 0
-        ? '0'
-        : steps > 999
-            ? '${(steps / 1000).toStringAsFixed(1)}k'
-            : '$steps';
+    final stepsLabel = steps == null
+        ? 'Unknown'
+        : steps <= 0
+            ? '0'
+            : steps > 999
+                ? '${(steps / 1000).toStringAsFixed(1)}k'
+                : '$steps';
 
     final activeLabel = activeMinutes < 1
         ? 'Resting'
@@ -154,14 +171,7 @@ class _JourneyStatsCardState extends State<JourneyStatsCard>
       decoration: BoxDecoration(
         color: surfaceColor,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: borderColor),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 12,
-            offset: const Offset(0, 3),
-          ),
-        ],
+        border: Border.all(color: borderColor, width: 1.0),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

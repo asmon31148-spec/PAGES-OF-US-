@@ -208,16 +208,12 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
       context: context,
       backgroundColor: Colors.transparent,
       builder: (ctx) {
-        return ClipRRect(
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-            child: Container(
+        return Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
                 color: isDark
-                    ? const Color(0xFF14171E).withOpacity(0.92)
-                    : Colors.white.withOpacity(0.92),
+                    ? const Color(0xFF151820).withValues(alpha: 0.96)
+                    : Colors.white.withValues(alpha: 0.96),
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
                 border: Border(
                   top: BorderSide(
@@ -360,9 +356,7 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
                   ),
                 ],
               ),
-            ),
-          ),
-        );
+            );
       },
     );
   }
@@ -508,13 +502,6 @@ class _BlindPromptStudioModalState extends State<BlindPromptStudioModal>
                   indicator: BoxDecoration(
                     color: accentColor,
                     borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: accentColor.withOpacity(0.35),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
                   ),
                   labelColor: Colors.white,
                   unselectedLabelColor:

@@ -184,11 +184,7 @@ class _SupportBotScreenState extends State<SupportBotScreen> {
                         height: 34,
                         decoration: const BoxDecoration(
                           shape: BoxShape.circle,
-                          gradient: LinearGradient(
-                            colors: [AppColors.sage, AppColors.forest],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
+                          color: AppColors.sage,
                         ),
                         child: const Center(
                           child: Text('🌿', style: TextStyle(fontSize: 16)),

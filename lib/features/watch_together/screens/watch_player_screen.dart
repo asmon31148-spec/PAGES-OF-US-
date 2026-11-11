@@ -1387,9 +1387,6 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
               color: AppColors.darkSurface,
               borderRadius: BorderRadius.circular(24),
               border: Border.all(color: AppColors.terra.withOpacity(0.4), width: 1.5),
-              boxShadow: const [
-                BoxShadow(color: Colors.black54, blurRadius: 20, offset: Offset(0, 10)),
-              ],
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -1593,13 +1590,6 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
           color: Colors.black.withOpacity(0.85),
           borderRadius: BorderRadius.circular(24),
           border: Border.all(color: AppColors.terra.withOpacity(0.85), width: 1.5),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.terra.withOpacity(0.4),
-              blurRadius: 18,
-              spreadRadius: 2,
-            ),
-          ],
         ),
         child: const Row(
           mainAxisSize: MainAxisSize.min,
@@ -1644,13 +1634,6 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
             color: Colors.black.withOpacity(0.88),
             borderRadius: BorderRadius.circular(20),
             border: Border.all(color: AppColors.terra.withOpacity(0.7), width: 1.3),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.5),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
-              ),
-            ],
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,

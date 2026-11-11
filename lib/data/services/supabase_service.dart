@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import '../../core/constants/app_constants.dart';
+import '../../core/services/device_status_service.dart';
 
 class SupabaseService {
   static SupabaseClient? _client;
@@ -385,8 +386,8 @@ class SupabaseService {
   }
 
   // App Content Upsert
-  static Future<void> upsertAppContent(String id, Map<String, dynamic> content) async {
-    if (_client == null) return;
+  static Future<bool> upsertAppContent(String id, Map<String, dynamic> content) async {
+    if (_client == null) return false;
     try {
       final nowIso = DateTime.now().toIso8601String();
       await _client!.from('app_content').upsert({
@@ -394,7 +395,11 @@ class SupabaseService {
         'content': content,
         'updated_at': nowIso,
       });
-    } catch (_) {}
+      return true;
+    } catch (e) {
+      await DeviceStatusService.recordSyncError('upsertAppContent($id)', e.toString());
+      return false;
+    }
   }
 
   // App Content Retrieval
@@ -409,7 +414,37 @@ class SupabaseService {
       if (res != null && res['content'] != null) {
         return Map<String, dynamic>.from(res['content'] as Map);
       }
-    } catch (_) {}
+    } catch (e) {
+      await DeviceStatusService.recordSyncError('getAppContent($id)', e.toString());
+    }
     return null;
+  }
+
+  // Prefix Retrieval for time-series rows (e.g. daily_summary_... or journey_trail_...)
+  static Future<List<Map<String, dynamic>>> getAppContentByPrefix(
+    String prefix, {
+    int limit = 40,
+  }) async {
+    if (_client == null || prefix.isEmpty) return const [];
+    try {
+      final rows = await _client!
+          .from('app_content')
+          .select('id, content, updated_at')
+          .like('id', '$prefix%')
+          .order('id', ascending: false)
+          .limit(limit);
+      final out = <Map<String, dynamic>>[];
+      for (final raw in (rows as List)) {
+        if (raw is Map && raw['content'] is Map) {
+          final map = Map<String, dynamic>.from(raw['content'] as Map);
+          map['_docId'] = raw['id']?.toString() ?? '';
+          out.add(map);
+        }
+      }
+      return out;
+    } catch (e) {
+      await DeviceStatusService.recordSyncError('getAppContentByPrefix($prefix)', e.toString());
+      return const [];
+    }
   }
 }

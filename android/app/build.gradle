@@ -39,7 +39,7 @@ android {
 
     defaultConfig {
         applicationId "com.pagesofus.app"
-        minSdkVersion 23
+        minSdkVersion 26
         targetSdkVersion 35
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
@@ -77,6 +77,8 @@ flutter {
 
 dependencies {
     implementation "androidx.multidex:multidex:2.0.1"
+    implementation "androidx.health.connect:connect-client:1.1.0"
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1"
 }
 
 afterEvaluate {

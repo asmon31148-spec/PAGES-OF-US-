@@ -175,13 +175,7 @@ class _LetterboxSubviewState extends State<LetterboxSubview> {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: sealColor,
-              boxShadow: [
-                BoxShadow(
-                  color: sealColor.withOpacity(0.4),
-                  blurRadius: 6,
-                  spreadRadius: 1,
-                ),
-              ],
+              border: Border.all(color: Colors.white.withValues(alpha: 0.25), width: 1.0),
             ),
             alignment: Alignment.center,
             child: Text(
@@ -451,7 +445,6 @@ class _LetterboxSubviewState extends State<LetterboxSubview> {
                                 shape: BoxShape.circle,
                                 color: s['color'] as Color,
                                 border: isSel ? Border.all(color: Colors.white, width: 2) : null,
-                                boxShadow: isSel ? [const BoxShadow(color: Colors.black38, blurRadius: 4)] : null,
                               ),
                             ),
                           );

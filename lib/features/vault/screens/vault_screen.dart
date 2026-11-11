@@ -122,31 +122,15 @@ class _VaultScreenState extends State<VaultScreen> {
       isScrollControlled: true,
       builder: (ctx) => ClipRRect(
         borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-          child: Container(
+        child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  const Color(0xFF1E1A29).withOpacity(0.92),
-                  const Color(0xFF0F0D15).withOpacity(0.95),
-                ],
-              ),
+              color: const Color(0xFF16141F),
               borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
               border: Border.all(
-                color: Colors.white.withOpacity(0.22),
+                color: Colors.white.withValues(alpha: 0.16),
                 width: 1.0,
               ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.5),
-                  blurRadius: 30,
-                  offset: const Offset(0, -5),
-                ),
-              ],
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -155,7 +139,7 @@ class _VaultScreenState extends State<VaultScreen> {
                   width: 44,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.35),
+                    color: Colors.white.withValues(alpha: 0.35),
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -165,24 +149,11 @@ class _VaultScreenState extends State<VaultScreen> {
                   height: 64,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        const Color(0xFFD4AF37).withOpacity(0.35),
-                        const Color(0xFFD4AF37).withOpacity(0.10),
-                      ],
-                    ),
+                    color: const Color(0xFFD4AF37).withValues(alpha: 0.16),
                     border: Border.all(
-                      color: const Color(0xFFD4AF37).withOpacity(0.6),
-                      width: 1.2,
+                      color: const Color(0xFFD4AF37).withValues(alpha: 0.55),
+                      width: 1.0,
                     ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFFD4AF37).withOpacity(0.3),
-                        blurRadius: 18,
-                      ),
-                    ],
                   ),
                   child: const Icon(Icons.hourglass_top_rounded, color: Color(0xFFD4AF37), size: 32),
                 ),
@@ -223,16 +194,7 @@ class _VaultScreenState extends State<VaultScreen> {
                   child: Container(
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(25),
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFFE5C058), Color(0xFFC49A28)],
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFFD4AF37).withOpacity(0.35),
-                          blurRadius: 14,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
+                      color: const Color(0xFFD4AF37),
                     ),
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
@@ -254,7 +216,6 @@ class _VaultScreenState extends State<VaultScreen> {
                 const SizedBox(height: 10),
               ],
             ),
-          ),
         ),
       ),
     );
@@ -269,34 +230,18 @@ class _VaultScreenState extends State<VaultScreen> {
       barrierColor: Colors.black.withOpacity(0.65),
       builder: (ctx) => StatefulBuilder(
         builder: (context, setDialogState) {
-          return BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-            child: Dialog(
+          return Dialog(
               backgroundColor: Colors.transparent,
               insetPadding: const EdgeInsets.symmetric(horizontal: 24),
               child: Container(
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      const Color(0xFF221C2F).withOpacity(0.92),
-                      const Color(0xFF13101B).withOpacity(0.95),
-                    ],
-                  ),
+                  color: const Color(0xFF171421),
                   borderRadius: BorderRadius.circular(26),
                   border: Border.all(
-                    color: Colors.white.withOpacity(0.24),
+                    color: Colors.white.withValues(alpha: 0.18),
                     width: 1.0,
                   ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.55),
-                      blurRadius: 30,
-                      offset: const Offset(0, 10),
-                    ),
-                  ],
                 ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -306,17 +251,10 @@ class _VaultScreenState extends State<VaultScreen> {
                       height: 58,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            const Color(0xFFD4AF37).withOpacity(0.32),
-                            const Color(0xFFD4AF37).withOpacity(0.08),
-                          ],
-                        ),
+                        color: const Color(0xFFD4AF37).withValues(alpha: 0.16),
                         border: Border.all(
-                          color: const Color(0xFFD4AF37).withOpacity(0.6),
-                          width: 1.2,
+                          color: const Color(0xFFD4AF37).withValues(alpha: 0.55),
+                          width: 1.0,
                         ),
                       ),
                       child: const Icon(Icons.lock_outline_rounded, color: Color(0xFFD4AF37), size: 30),
@@ -378,16 +316,7 @@ class _VaultScreenState extends State<VaultScreen> {
                           child: Container(
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(18),
-                              gradient: const LinearGradient(
-                                colors: [Color(0xFFE5C058), Color(0xFFC49A28)],
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: const Color(0xFFD4AF37).withOpacity(0.35),
-                                  blurRadius: 12,
-                                  offset: const Offset(0, 3),
-                                ),
-                              ],
+                              color: const Color(0xFFD4AF37),
                             ),
                             child: ElevatedButton(
                               style: ElevatedButton.styleFrom(
@@ -418,7 +347,6 @@ class _VaultScreenState extends State<VaultScreen> {
                   ],
                 ),
               ),
-            ),
           );
         },
       ),
@@ -555,48 +483,17 @@ class _VaultScreenState extends State<VaultScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(GlassTokens.radiusPill),
-          gradient: isActive
-              ? LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    accentColor.withOpacity(isDark ? 0.35 : 0.22),
-                    accentColor.withOpacity(isDark ? 0.14 : 0.08),
-                  ],
-                )
-              : LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: isDark
-                      ? [
-                          Colors.white.withOpacity(0.10),
-                          Colors.white.withOpacity(0.04),
-                        ]
-                      : [
-                          Colors.white.withOpacity(0.70),
-                          Colors.white.withOpacity(0.40),
-                        ],
-                ),
+          color: isActive
+              ? accentColor.withValues(alpha: isDark ? 0.24 : 0.16)
+              : (isDark
+                  ? Colors.white.withValues(alpha: 0.06)
+                  : Colors.black.withValues(alpha: 0.04)),
           border: Border.all(
             color: isActive
-                ? accentColor.withOpacity(0.70)
-                : (isDark ? Colors.white.withOpacity(0.20) : Colors.white.withOpacity(0.60)),
-            width: isActive ? 1.2 : 0.8,
+                ? accentColor.withValues(alpha: 0.65)
+                : (isDark ? Colors.white.withValues(alpha: 0.16) : Colors.black.withValues(alpha: 0.10)),
+            width: 1.0,
           ),
-          boxShadow: [
-            if (isActive)
-              BoxShadow(
-                color: accentColor.withOpacity(0.25),
-                blurRadius: 12,
-                offset: const Offset(0, 3),
-              )
-            else
-              BoxShadow(
-                color: isDark ? Colors.black.withOpacity(0.18) : const Color(0xFF8C7355).withOpacity(0.08),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-          ],
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -635,34 +532,18 @@ class _VaultScreenState extends State<VaultScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       barrierColor: Colors.black.withOpacity(0.65),
-      builder: (ctx) => BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-        child: Dialog(
+      builder: (ctx) => Dialog(
           backgroundColor: Colors.transparent,
           insetPadding: const EdgeInsets.symmetric(horizontal: 24),
           child: Container(
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  const Color(0xFF221C2F).withOpacity(0.92),
-                  const Color(0xFF13101B).withOpacity(0.95),
-                ],
-              ),
+              color: const Color(0xFF171421),
               borderRadius: BorderRadius.circular(26),
               border: Border.all(
-                color: Colors.white.withOpacity(0.24),
+                color: Colors.white.withValues(alpha: 0.18),
                 width: 1.0,
               ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.55),
-                  blurRadius: 30,
-                  offset: const Offset(0, 10),
-                ),
-              ],
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -703,16 +584,7 @@ class _VaultScreenState extends State<VaultScreen> {
                       child: Container(
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(16),
-                          gradient: const LinearGradient(
-                            colors: [Color(0xFFEF5350), Color(0xFFC62828)],
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(0xFFEF5350).withOpacity(0.35),
-                              blurRadius: 10,
-                              offset: const Offset(0, 3),
-                            ),
-                          ],
+                          color: const Color(0xFFD65A58),
                         ),
                         child: ElevatedButton(
                           style: ElevatedButton.styleFrom(
@@ -731,16 +603,17 @@ class _VaultScreenState extends State<VaultScreen> {
               ],
             ),
           ),
-        ),
       ),
     );
 
     if (confirmed == true && mounted) {
-      await context.read<VaultProvider>().deleteVault(vault.id, spaceId);
+      final ok = await context.read<VaultProvider>().deleteVault(vault.id, spaceId);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('"${vault.title}" deleted.'),
+            content: Text(ok
+                ? '"${vault.title}" deleted.'
+                : 'Only the creator can delete this vault or server unavailable.'),
             backgroundColor: const Color(0xFF1F1B2C),
           ),
         );
@@ -789,32 +662,15 @@ class _VaultScreenState extends State<VaultScreen> {
       child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(22),
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: isDark
-                ? [
-                    Colors.white.withOpacity(0.16),
-                    Colors.white.withOpacity(0.04),
-                  ]
-                : [
-                    Colors.white.withOpacity(0.85),
-                    Colors.white.withOpacity(0.55),
-                  ],
-          ),
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.08)
+              : Colors.white.withValues(alpha: 0.86),
           border: Border.all(
             color: isLocked
-                ? (const Color(0xFFD4AF37).withOpacity(0.45))
-                : (isDark ? Colors.white.withOpacity(0.24) : Colors.white.withOpacity(0.80)),
+                ? (const Color(0xFFD4AF37).withValues(alpha: 0.45))
+                : (isDark ? Colors.white.withValues(alpha: 0.16) : Colors.black.withValues(alpha: 0.10)),
             width: 1.0,
           ),
-          boxShadow: [
-            BoxShadow(
-              color: isDark ? Colors.black.withOpacity(0.32) : const Color(0xFF8C7355).withOpacity(0.10),
-              blurRadius: 16,
-              offset: const Offset(0, 6),
-            ),
-          ],
         ),
         clipBehavior: Clip.antiAlias,
         child: Stack(
@@ -840,28 +696,18 @@ class _VaultScreenState extends State<VaultScreen> {
             else
               _buildEmblemFallback(vault),
 
-            // 2. Liquid Glass Dark Scrim
+            // 2. Clean Dark Contrast Scrim
             Positioned(
               left: 0,
               right: 0,
               bottom: 0,
               height: 110,
               child: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.transparent,
-                      Colors.black.withOpacity(0.45),
-                      Colors.black.withOpacity(0.85),
-                    ],
-                  ),
-                ),
+                color: Colors.black.withValues(alpha: 0.52),
               ),
             ),
 
-            // 3. Frosted Glass Bottom Ribbon (Title & Metadata)
+            // 3. Flat Glass Bottom Ribbon (Title & Metadata)
             Positioned(
               left: 10,
               right: 10,
@@ -869,18 +715,11 @@ class _VaultScreenState extends State<VaultScreen> {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      Colors.white.withOpacity(0.18),
-                      Colors.white.withOpacity(0.06),
-                    ],
-                  ),
+                  color: Colors.black.withValues(alpha: 0.50),
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(
-                    color: Colors.white.withOpacity(0.24),
-                    width: 0.8,
+                    color: Colors.white.withValues(alpha: 0.22),
+                    width: 1.0,
                   ),
                 ),
                 child: Column(
@@ -922,18 +761,12 @@ class _VaultScreenState extends State<VaultScreen> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.65),
+                    color: Colors.black.withValues(alpha: 0.65),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: const Color(0xFFD4AF37).withOpacity(0.55),
-                      width: 0.9,
+                      color: const Color(0xFFD4AF37).withValues(alpha: 0.55),
+                      width: 1.0,
                     ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFFD4AF37).withOpacity(0.18),
-                        blurRadius: 8,
-                      ),
-                    ],
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -961,40 +794,18 @@ class _VaultScreenState extends State<VaultScreen> {
 
   Widget _buildEmblemFallback(VaultItem vault) {
     return Container(
-      decoration: BoxDecoration(
-        gradient: RadialGradient(
-          center: const Alignment(0, -0.2),
-          radius: 0.9,
-          colors: [
-            Color(vault.colorValue).withOpacity(0.85),
-            const Color(0xFF0D0B12),
-          ],
-        ),
-      ),
+      color: Color(vault.colorValue).withValues(alpha: 0.78),
       child: Center(
         child: Container(
           width: 72,
           height: 72,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Colors.white.withOpacity(0.20),
-                Colors.white.withOpacity(0.05),
-              ],
-            ),
+            color: Colors.white.withValues(alpha: 0.14),
             border: Border.all(
-              color: Colors.white.withOpacity(0.30),
+              color: Colors.white.withValues(alpha: 0.30),
               width: 1.0,
             ),
-            boxShadow: [
-              BoxShadow(
-                color: Color(vault.colorValue).withOpacity(0.4),
-                blurRadius: 20,
-              ),
-            ],
           ),
           child: Center(
             child: VaultEmblem(shape: vault.emblemShape, size: 44),
@@ -1004,7 +815,7 @@ class _VaultScreenState extends State<VaultScreen> {
     );
   }
 
-  // --- Liquid Glass "+ New vault" Action Card ---
+  // --- Clean Flat Glass "+ New vault" Action Card ---
 
   Widget _buildNewVaultDashedCard({required bool isDark, required Color accentColor}) {
     return GestureDetector(
@@ -1015,30 +826,13 @@ class _VaultScreenState extends State<VaultScreen> {
       child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(22),
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: isDark
-                ? [
-                    Colors.white.withOpacity(0.12),
-                    Colors.white.withOpacity(0.04),
-                  ]
-                : [
-                    Colors.white.withOpacity(0.80),
-                    Colors.white.withOpacity(0.45),
-                  ],
-          ),
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.08)
+              : Colors.white.withValues(alpha: 0.85),
           border: Border.all(
-            color: accentColor.withOpacity(0.45),
-            width: 1.2,
+            color: accentColor.withValues(alpha: 0.45),
+            width: 1.0,
           ),
-          boxShadow: [
-            BoxShadow(
-              color: isDark ? Colors.black.withOpacity(0.25) : const Color(0xFF8C7355).withOpacity(0.08),
-              blurRadius: 14,
-              offset: const Offset(0, 5),
-            ),
-          ],
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -1048,24 +842,11 @@ class _VaultScreenState extends State<VaultScreen> {
               height: 48,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    accentColor.withOpacity(0.30),
-                    accentColor.withOpacity(0.08),
-                  ],
-                ),
+                color: accentColor.withValues(alpha: 0.16),
                 border: Border.all(
-                  color: accentColor.withOpacity(0.65),
-                  width: 1.2,
+                  color: accentColor.withValues(alpha: 0.60),
+                  width: 1.0,
                 ),
-                boxShadow: [
-                  BoxShadow(
-                    color: accentColor.withOpacity(0.25),
-                    blurRadius: 14,
-                  ),
-                ],
               ),
               child: Icon(Icons.add_rounded, color: accentColor, size: 26),
             ),

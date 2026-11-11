@@ -240,4 +240,102 @@ class MediaUploadService {
         return 'application/octet-stream';
     }
   }
+
+  /// Extracts a Supabase Storage object path inside [mediaBucketName] from a public or signed URL.
+  static String? extractSupabaseStoragePath(String url) {
+    final uri = Uri.tryParse(url.trim());
+    if (uri == null) return null;
+    final segments = uri.pathSegments;
+    final bucketIdx = segments.indexOf(mediaBucketName);
+    if (bucketIdx == -1 || bucketIdx + 1 >= segments.length) return null;
+    return segments.sublist(bucketIdx + 1).join('/');
+  }
+
+  /// Extracts ImageKit relative file path from an `ik.imagekit.io/<id>/...` URL.
+  static String? extractImageKitFileName(String url) {
+    final trimmed = url.trim();
+    if (!trimmed.startsWith(imageKitEndpoint)) return null;
+    final rest = trimmed.substring(imageKitEndpoint.length).replaceFirst(RegExp(r'^/+'), '');
+    if (rest.isEmpty) return null;
+    final clean = rest.split('?').first;
+    return p.basename(clean);
+  }
+
+  /// Permanently deletes a remote media file from Supabase Storage or ImageKit (and local file if local path).
+  static Future<bool> deleteRemoteFile(String? url) async {
+    final trimmed = url?.trim() ?? '';
+    if (trimmed.isEmpty) return true;
+
+    // 0. Local filesystem path
+    if (!trimmed.startsWith('http://') && !trimmed.startsWith('https://')) {
+      try {
+        final localPath = trimmed.startsWith('file://') ? trimmed.substring(7) : trimmed;
+        final f = File(localPath);
+        if (await f.exists()) {
+          await f.delete();
+        }
+      } catch (_) {}
+      return true;
+    }
+
+    // 1. Supabase Storage
+    final supaPath = extractSupabaseStoragePath(trimmed);
+    if (supaPath != null) {
+      try {
+        final client = SupabaseService.client;
+        if (client != null) {
+          await client.storage.from(mediaBucketName).remove([supaPath]);
+          return true;
+        }
+      } catch (_) {
+        return false;
+      }
+    }
+
+    // 2. ImageKit Storage
+    final ikName = extractImageKitFileName(trimmed);
+    if (ikName != null && _ikSecret.isNotEmpty) {
+      try {
+        final authHeader = 'Basic ${base64Encode(utf8.encode('$_ikSecret:'))}';
+        final searchUri = Uri.https('api.imagekit.io', '/v1/files', {
+          'searchQuery': 'name="$ikName"',
+          'limit': '5',
+        });
+        final listResp = await http
+            .get(searchUri, headers: {'Authorization': authHeader})
+            .timeout(const Duration(seconds: 10));
+        if (listResp.statusCode == 200) {
+          final decoded = jsonDecode(listResp.body);
+          if (decoded is List) {
+            for (final item in decoded) {
+              if (item is Map && item['fileId'] != null) {
+                final fileId = item['fileId'].toString();
+                await http
+                    .delete(
+                      Uri.parse('https://api.imagekit.io/v1/files/$fileId'),
+                      headers: {'Authorization': authHeader},
+                    )
+                    .timeout(const Duration(seconds: 10));
+              }
+            }
+          }
+          return true;
+        }
+      } catch (_) {
+        return false;
+      }
+    }
+
+    // 3. Cloudinary unsigned uploads cannot be securely destroyed without API secret on-device.
+    // Returning true so DB deletion is never blocked on unsigned Cloudinary URLs.
+    return true;
+  }
+
+  static Future<void> deleteRemoteFiles(Iterable<String?> urls) async {
+    for (final url in urls) {
+      if (url != null && url.trim().isNotEmpty) {
+        await deleteRemoteFile(url);
+      }
+    }
+  }
 }

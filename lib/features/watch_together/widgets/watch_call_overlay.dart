@@ -170,14 +170,6 @@ class _WatchCallOverlayState extends State<WatchCallOverlay> {
             color: const Color(0xFF18181B).withOpacity(0.97),
             borderRadius: BorderRadius.circular(24),
             border: Border.all(color: const Color(0xFF10B981), width: 2),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFF10B981).withOpacity(0.35),
-                blurRadius: 24,
-                spreadRadius: 2,
-              ),
-              const BoxShadow(color: Colors.black87, blurRadius: 20, offset: Offset(0, 8)),
-            ],
           ),
           child: Row(
             children: [
@@ -256,16 +248,9 @@ class _WatchCallOverlayState extends State<WatchCallOverlay> {
                 },
                 child: Container(
                   padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF10B981), // Emerald green
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF10B981), // Emerald green
                     shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFF10B981).withOpacity(0.5),
-                        blurRadius: 12,
-                        spreadRadius: 2,
-                      ),
-                    ],
                   ),
                   child: const Icon(Icons.videocam_rounded, color: Colors.white, size: 22),
                 ),
@@ -288,9 +273,6 @@ class _WatchCallOverlayState extends State<WatchCallOverlay> {
           color: Colors.black.withOpacity(0.85),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: AppColors.terra.withOpacity(0.6), width: 1.2),
-          boxShadow: const [
-            BoxShadow(color: Colors.black54, blurRadius: 10, offset: Offset(0, 4)),
-          ],
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -356,13 +338,6 @@ class _WatchCallOverlayState extends State<WatchCallOverlay> {
               color: Colors.white.withOpacity(0.35),
               width: 1.5,
             ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.65),
-                blurRadius: 16,
-                offset: const Offset(0, 6),
-              ),
-            ],
           ),
           clipBehavior: Clip.antiAlias,
           child: Stack(
@@ -394,9 +369,6 @@ class _WatchCallOverlayState extends State<WatchCallOverlay> {
                     color: Colors.black87,
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(color: Colors.white.withOpacity(0.6), width: 1),
-                    boxShadow: [
-                      BoxShadow(color: Colors.black.withOpacity(0.4), blurRadius: 4),
-                    ],
                   ),
                   clipBehavior: Clip.antiAlias,
                   child: ValueListenableBuilder<bool>(
@@ -518,14 +490,7 @@ class _WatchCallOverlayState extends State<WatchCallOverlay> {
                   child: Container(
                     height: 32,
                     decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.bottomCenter,
-                        end: Alignment.topCenter,
-                        colors: [
-                          Colors.black.withOpacity(0.85),
-                          Colors.transparent,
-                        ],
-                      ),
+                      color: Colors.black.withOpacity(0.65),
                     ),
                     padding: const EdgeInsets.symmetric(horizontal: 8),
                     child: Row(
@@ -617,9 +582,6 @@ class _WatchCallOverlayState extends State<WatchCallOverlay> {
             color: const Color(0xFF141414).withOpacity(0.96),
             borderRadius: BorderRadius.circular(20),
             border: Border.all(color: AppColors.terra.withOpacity(0.65), width: 1.5),
-            boxShadow: const [
-              BoxShadow(color: Colors.black87, blurRadius: 22, offset: Offset(-4, 0)),
-            ],
           ),
           clipBehavior: Clip.antiAlias,
           child: Column(
@@ -743,9 +705,6 @@ class _WatchCallOverlayState extends State<WatchCallOverlay> {
                             color: Colors.black87,
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(color: Colors.white.withOpacity(0.7), width: 1.5),
-                            boxShadow: [
-                              BoxShadow(color: Colors.black.withOpacity(0.6), blurRadius: 8),
-                            ],
                           ),
                           clipBehavior: Clip.antiAlias,
                           child: Stack(
@@ -892,9 +851,6 @@ class _WatchCallOverlayState extends State<WatchCallOverlay> {
             color: const Color(0xFF141414).withOpacity(0.96),
             borderRadius: BorderRadius.circular(20),
             border: Border.all(color: AppColors.terra.withOpacity(0.65), width: 1.5),
-            boxShadow: const [
-              BoxShadow(color: Colors.black87, blurRadius: 20, offset: Offset(0, 8)),
-            ],
           ),
           clipBehavior: Clip.antiAlias,
           child: Column(

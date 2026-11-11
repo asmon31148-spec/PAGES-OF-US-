@@ -209,8 +209,10 @@ class ThemePickerScreen extends StatelessWidget {
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                gradient: LinearGradient(
-                  colors: themeProvider.currentPalette.gradientColors.take(2).toList(),
+                color: themeProvider.currentPalette.accentColor.withValues(alpha: 0.18),
+                border: Border.all(
+                  color: themeProvider.currentPalette.accentColor.withValues(alpha: 0.45),
+                  width: 1.0,
                 ),
               ),
               child: Text(
@@ -305,16 +307,15 @@ class ThemePickerScreen extends StatelessWidget {
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(14),
                   color: isSelected
-                      ? (isDark ? Colors.white.withOpacity(0.20) : Colors.white)
+                      ? (isDark ? Colors.white.withValues(alpha: 0.16) : Colors.white)
                       : Colors.transparent,
-                  boxShadow: isSelected
-                      ? [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.08),
-                            blurRadius: 6,
-                            offset: const Offset(0, 2),
-                          ),
-                        ]
+                  border: isSelected
+                      ? Border.all(
+                          color: isDark
+                              ? Colors.white.withValues(alpha: 0.25)
+                              : Colors.black.withValues(alpha: 0.12),
+                          width: 1.0,
+                        )
                       : null,
                 ),
                 alignment: Alignment.center,
@@ -353,53 +354,25 @@ class ThemePickerScreen extends StatelessWidget {
           borderRadius: BorderRadius.circular(22),
           border: Border.all(
             color: isSelected ? palette.accentColor : (isDark ? Colors.white.withOpacity(0.14) : Colors.black.withOpacity(0.06)),
-            width: isSelected ? 2.2 : 1.0,
+            width: isSelected ? 2.0 : 1.0,
           ),
-          boxShadow: [
-            BoxShadow(
-              color: isSelected ? palette.accentColor.withOpacity(0.25) : Colors.black.withOpacity(0.06),
-              blurRadius: isSelected ? 12 : 6,
-              offset: const Offset(0, 3),
-            ),
-          ],
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(20),
           child: Stack(
             fit: StackFit.expand,
             children: [
-              // 1. Mini Living Gradient Mesh Preview
+              // 1. Clean Canvas Preview with Swatch Accent Band
               Container(
-                decoration: BoxDecoration(
-                  color: themePalette.canvasBackground,
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      gradientColors.first.withOpacity(isDark ? 0.65 : 0.45),
-                      if (gradientColors.length > 1)
-                        gradientColors[1].withOpacity(isDark ? 0.55 : 0.35)
-                      else
-                        themePalette.canvasBackground,
-                      gradientColors.last.withOpacity(isDark ? 0.70 : 0.50),
-                    ],
-                  ),
-                ),
+                color: themePalette.canvasBackground,
               ),
-
-              // 2. Liquid Glass Frost Overlay
-              Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.transparent,
-                      (isDark ? Colors.black : Colors.white).withOpacity(0.70),
-                      (isDark ? Colors.black : Colors.white).withOpacity(0.92),
-                    ],
-                    stops: const [0.25, 0.65, 1.0],
-                  ),
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                height: 44,
+                child: Container(
+                  color: themePalette.accentColor.withValues(alpha: isDark ? 0.26 : 0.18),
                 ),
               ),
 

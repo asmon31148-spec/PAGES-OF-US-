@@ -14,9 +14,12 @@ import '../data/models/geofence_event.dart';
 import '../data/models/stay_point_model.dart';
 import '../data/services/firebase_service.dart';
 import '../data/services/supabase_service.dart';
+import '../core/services/deleted_ids_store.dart';
 import '../core/services/device_status_service.dart';
 import '../core/services/weather_service.dart';
 import '../core/services/notification_service.dart';
+import '../core/utils/ownership_helper.dart';
+import '../core/utils/telemetry_math.dart';
 import 'auth_provider.dart';
 
 // ── Journey tracking data model ────────────────────────────────────────────────
@@ -647,7 +650,7 @@ class WorldProvider extends ChangeNotifier {
     if (_partnerJourneyLog.isNotEmpty) {
       final last = _partnerJourneyLog.last;
       final distM = calculateDistanceKm(last.lat, last.lng, point.lat, point.lng) * 1000;
-      if (distM < 22.0) return;
+      if (distM < 12.0) return;
     }
     _partnerJourneyLog.add(point);
 
@@ -757,16 +760,15 @@ class WorldProvider extends ChangeNotifier {
   double get partnerJourneyKmThisWeek  => _calcJourneyKm(_partnerJourneyLog, const Duration(days: 7));
   double get partnerJourneyKmThisMonth => _calcJourneyKm(_partnerJourneyLog, const Duration(days: 30));
 
-  int get myStepsToday =>
-      _hardwareStepsToday ?? (myWalkingKmToday * 1300).round();
+  int? get myStepsTodayOrNull => _hardwareStepsToday;
+
+  int get myStepsToday => _hardwareStepsToday ?? 0;
 
   int get myActiveMinutesToday {
-    final gpsMinutes = (myWalkingKmToday / 4.5 * 60).round();
     if (_hardwareStepsToday != null && _hardwareStepsToday! > 0) {
-      final stepMinutes = (_hardwareStepsToday! / 105.0).round();
-      return stepMinutes > gpsMinutes ? stepMinutes : gpsMinutes;
+      return (_hardwareStepsToday! / 105.0).round();
     }
-    return gpsMinutes;
+    return 0;
   }
 
   /// True when actively walking (real hardware footsteps in last 25s) OR physically traveling by GPS
@@ -812,18 +814,117 @@ class WorldProvider extends ChangeNotifier {
     return partnerJourneyKmToday;
   }
 
-  int get effectivePartnerSteps {
+  int? get effectivePartnerStepsOrNull {
     if (_partnerId != null && _locations[_partnerId]?.stepsToday != null) {
       return _locations[_partnerId]!.stepsToday!;
     }
-    return (effectivePartnerJourneyKm * 1300).round();
+    return null;
   }
+
+  int get effectivePartnerSteps => effectivePartnerStepsOrNull ?? 0;
 
   int get effectivePartnerActiveMinutes {
     if (_partnerId != null && _locations[_partnerId]?.activeMinutesToday != null) {
       return _locations[_partnerId]!.activeMinutesToday!;
     }
-    return (effectivePartnerJourneyKm / 4.5 * 60).round();
+    return 0;
+  }
+
+  /// Unified shared resolver used by both World & Eyes On You
+  /// so both screens render the exact same real numbers and trail totals.
+  ResolvedActivityMetrics resolvePartnerMetrics({
+    DeviceTelemetry? telemetry,
+    List<DailyActivitySummary> savedSummaries = const [],
+  }) {
+    final pLoc = partnerLocation;
+    final tzMinutes = telemetry?.timeZoneOffsetMinutes ??
+        pLoc?.timeZoneOffsetMinutes ??
+        DateTime.now().timeZoneOffset.inMinutes;
+    final partnerTodayKey = (telemetry != null && telemetry.dateKey.isNotEmpty)
+        ? telemetry.dateKey
+        : TelemetryMath.localDateKeyFor(DateTime.now(), timeZoneOffsetMinutes: tzMinutes);
+
+    final resolved = TelemetryMath.resolvePartnerActivity(
+      telemetrySteps: telemetry?.stepsToday,
+      locationSteps: pLoc?.stepsToday,
+      gpsJourneyKm: effectivePartnerJourneyKm,
+      telemetryDistanceKm: telemetry?.distanceKmToday,
+      telemetryWalkingSeconds: telemetry?.walkingTimeSecondsToday,
+      locationActiveMinutes: pLoc?.activeMinutesToday,
+      telemetryAppSeconds: telemetry?.appTimeSecondsToday,
+      telemetryActivity: telemetry?.movementActivity,
+      speedMps: pLoc?.speedMps,
+      savedSummaries: savedSummaries,
+      todayDateKey: partnerTodayKey,
+    );
+    return resolved;
+  }
+
+  final Map<String, List<JourneyPoint>> _roadSnapCache = {};
+
+  /// Snaps multi-point moving GPS coordinates along actual roads via OSRM
+  /// so map route polylines follow real streets instead of cutting diagonals through buildings.
+  Future<List<JourneyPoint>> getRoadSnappedPartnerTrail({int maxWaypoints = 25}) async {
+    final pts = partnerJourneyToday;
+    if (pts.length < 2) return pts;
+
+    // Only query OSRM when points cover actual travel (> 80m span)
+    final sampled = pts.length <= maxWaypoints
+        ? pts
+        : [
+            for (int i = 0; i < maxWaypoints - 1; i++)
+              pts[(i * (pts.length - 1) / (maxWaypoints - 1)).round()],
+            pts.last,
+          ];
+
+    final cacheKey = sampled
+        .map((p) => '${p.lat.toStringAsFixed(4)},${p.lng.toStringAsFixed(4)}')
+        .join(';');
+    final cached = _roadSnapCache[cacheKey];
+    if (cached != null) return cached;
+
+    try {
+      final totalSpanKm = calculateDistanceKm(
+        sampled.first.lat,
+        sampled.first.lng,
+        sampled.last.lat,
+        sampled.last.lng,
+      );
+      final hasMovement = effectivePartnerJourneyKm > 0.08 || totalSpanKm > 0.08;
+      if (!hasMovement) return pts;
+
+      final coords = sampled.map((p) => '${p.lng},${p.lat}').join(';');
+      final avgSpeed = sampled.map((p) => p.speedMps).reduce((a, b) => a + b) / sampled.length;
+      final profile = avgSpeed >= 4.2 ? 'driving' : 'foot';
+      final url = Uri.parse(
+        'https://router.project-osrm.org/route/v1/$profile/$coords?overview=full&geometries=geojson',
+      );
+      final resp = await http.get(url).timeout(const Duration(seconds: 6));
+      if (resp.statusCode == 200) {
+        final json = jsonDecode(resp.body);
+        if (json is Map && json['routes'] is List && (json['routes'] as List).isNotEmpty) {
+          final geom = json['routes'][0]['geometry'];
+          if (geom is Map && geom['coordinates'] is List) {
+            final snapped = <JourneyPoint>[];
+            final rawCoords = geom['coordinates'] as List;
+            for (final c in rawCoords) {
+              if (c is List && c.length >= 2) {
+                snapped.add(JourneyPoint(
+                  lat: (c[1] as num).toDouble(),
+                  lng: (c[0] as num).toDouble(),
+                  timestamp: sampled.first.timestamp,
+                ));
+              }
+            }
+            if (snapped.length >= 2) {
+              _roadSnapCache[cacheKey] = snapped;
+              return snapped;
+            }
+          }
+        }
+      }
+    } catch (_) {}
+    return pts;
   }
 
   String get effectivePartnerDeparturePlace {
@@ -876,8 +977,8 @@ class WorldProvider extends ChangeNotifier {
         final todayPoints = _myJourneyLog
             .where((p) => p.timestamp.isAfter(_startOfToday))
             .toList();
-        final capped = todayPoints.length > 100
-            ? todayPoints.sublist(todayPoints.length - 100)
+        final capped = todayPoints.length > 500
+            ? todayPoints.sublist(todayPoints.length - 500)
             : todayPoints;
         await SupabaseService.upsertAppContent('journey_today_${spaceId}_$uid', {
           'points': capped.map((p) => p.toJson()).toList(),
@@ -1144,11 +1245,13 @@ class WorldProvider extends ChangeNotifier {
           .maybeSingle();
 
       if (bucketRes != null && bucketRes['content'] != null && bucketRes['content'] is Map) {
+        final tombstones = DeletedIdsStore.getIds('bucket_list');
         final content = Map<String, dynamic>.from(bucketRes['content'] as Map);
         final list = content['items'] as List<dynamic>?;
         if (list != null) {
           _bucketList = list
               .map((e) => BucketPlace.fromJson(Map<String, dynamic>.from(e as Map)))
+              .where((b) => !tombstones.contains(b.id))
               .toList();
           notifyListeners();
         }
@@ -1157,10 +1260,12 @@ class WorldProvider extends ChangeNotifier {
 
     // Realtime listener for partner's Bucket List changes
     SupabaseService.setBucketListListener((data) {
+      final tombstones = DeletedIdsStore.getIds('bucket_list');
       final list = data['items'] as List<dynamic>?;
       if (list != null) {
         _bucketList = list
             .map((e) => BucketPlace.fromJson(Map<String, dynamic>.from(e as Map)))
+            .where((b) => !tombstones.contains(b.id))
             .toList();
         notifyListeners();
       }
@@ -2152,20 +2257,27 @@ class WorldProvider extends ChangeNotifier {
   }
 
   // ── Shared Date Bucket List ────────────────────────────────────────────────
-  Future<void> _persistBucketList(String spaceId) async {
-    if (spaceId.isEmpty) return;
-    final itemsJson = _bucketList.map((e) => e.toJson()).toList();
+  Future<bool> _persistBucketList(String spaceId) async {
+    if (spaceId.isEmpty) return false;
+    final tombstones = DeletedIdsStore.getIds('bucket_list');
+    final cleanList = _bucketList.where((b) => !tombstones.contains(b.id)).toList();
+    final itemsJson = cleanList.map((e) => e.toJson()).toList();
     try {
-      await SupabaseService.upsertAppContent('bucket_list_$spaceId', {
+      final ok = await SupabaseService.upsertAppContent('bucket_list_$spaceId', {
         'items': itemsJson,
         'updated_at': DateTime.now().toIso8601String(),
       });
+      if (!ok) return false;
       await SupabaseService.broadcastEvent(
         spaceId: spaceId,
         eventType: 'BUCKET_LIST_UPDATE',
         payload: {'items': itemsJson},
       );
-    } catch (_) {}
+      return true;
+    } catch (e) {
+      await DeviceStatusService.recordSyncError('persist_bucket_list', e.toString());
+      return false;
+    }
   }
 
   Future<void> addToBucketList({
@@ -2222,13 +2334,31 @@ class WorldProvider extends ChangeNotifier {
     await _persistBucketList(spaceId);
   }
 
-  Future<void> removeFromBucketList({
+  Future<bool> removeFromBucketList({
     required String spaceId,
     required String placeId,
   }) async {
+    final idx = _bucketList.indexWhere((b) => b.id == placeId);
+    final target = idx != -1 ? _bucketList[idx] : null;
+    if (target != null &&
+        _currentUserId != null &&
+        _currentUserId!.isNotEmpty &&
+        target.addedById.isNotEmpty &&
+        !OwnershipHelper.canDeleteItem(ownerUid: target.addedById, myUid: _currentUserId!)) {
+      return false;
+    }
+    final prev = List<BucketPlace>.from(_bucketList);
+    await DeletedIdsStore.markDeleted('bucket_list', placeId);
     _bucketList.removeWhere((b) => b.id == placeId);
+    final ok = await _persistBucketList(spaceId);
+    if (!ok) {
+      _bucketList = prev;
+      await DeletedIdsStore.unmarkDeleted('bucket_list', placeId);
+      notifyListeners();
+      return false;
+    }
     notifyListeners();
-    await _persistBucketList(spaceId);
+    return true;
   }
 
   Future<List<Map<String, dynamic>>> searchPlaces(String query) async {

@@ -270,17 +270,11 @@ class _DailyCareScreenState extends State<DailyCareScreen> with SingleTickerProv
       margin: const EdgeInsets.fromLTRB(16, 12, 16, 8),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: isDark
-              ? const [Color(0xFF1B261F), Color(0xFF131D17)]
-              : const [Color(0xFFE8F2EB), Color(0xFFDCEADF)],
-        ),
+        color: isDark ? const Color(0xFF1A221D) : const Color(0xFFEAF2EC),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: AppColors.sage.withOpacity(isDark ? 0.35 : 0.45),
-          width: 1.2,
+          color: AppColors.sage.withValues(alpha: isDark ? 0.35 : 0.45),
+          width: 1.0,
         ),
       ),
       child: Column(
@@ -510,16 +504,8 @@ class _DailyCareScreenState extends State<DailyCareScreen> with SingleTickerProv
           color: isDone
               ? AppColors.sage.withOpacity(0.4)
               : (isDark ? Colors.white.withOpacity(0.12) : Colors.black.withOpacity(0.06)),
-          width: 1.2,
+          width: 1.0,
         ),
-        boxShadow: [
-          if (isDone)
-            BoxShadow(
-              color: AppColors.sage.withOpacity(0.08),
-              blurRadius: 10,
-              offset: const Offset(0, 2),
-            ),
-        ],
       ),
       child: Padding(
         padding: const EdgeInsets.all(14),
@@ -876,9 +862,16 @@ class _DailyCareScreenState extends State<DailyCareScreen> with SingleTickerProv
           ),
           TextButton(
             style: TextButton.styleFrom(foregroundColor: Colors.redAccent),
-            onPressed: () {
-              Navigator.pop(ctx);
-              context.read<StageProvider>().deleteCareItem(spaceId, item.id);
+            onPressed: () async {
+              final ok = await context.read<StageProvider>().deleteCareItem(spaceId, item.id);
+              if (context.mounted) {
+                Navigator.pop(ctx);
+                if (!ok) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Only the creator can delete this care item or server unavailable.')),
+                  );
+                }
+              }
             },
             child: const Text('Delete'),
           ),

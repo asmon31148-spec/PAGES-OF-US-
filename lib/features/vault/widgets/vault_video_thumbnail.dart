@@ -40,18 +40,9 @@ class _VaultVideoThumbnailState extends State<VaultVideoThumbnail> {
               else
                 _buildFallbackBackground(),
 
-              // Soft vignette overlay
+              // Flat vignette overlay
               Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.black.withOpacity(0.15),
-                      Colors.black.withOpacity(0.4),
-                    ],
-                  ),
-                ),
+                color: Colors.black.withOpacity(0.26),
               ),
 
               // Sleek, Luxury Play Button (Properly centered, never stretched)
@@ -66,13 +57,6 @@ class _VaultVideoThumbnailState extends State<VaultVideoThumbnail> {
                       color: Colors.white.withOpacity(0.4),
                       width: 1.2,
                     ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.45),
-                        blurRadius: 14,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
                   ),
                   child: const Center(
                     child: Icon(
@@ -122,17 +106,7 @@ class _VaultVideoThumbnailState extends State<VaultVideoThumbnail> {
 
   Widget _buildFallbackBackground() {
     return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Color(0xFF1E1624),
-            Color(0xFF2C192E),
-            Color(0xFF130E17),
-          ],
-        ),
-      ),
+      color: const Color(0xFF1A141E),
       child: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,

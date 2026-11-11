@@ -153,15 +153,8 @@ class _GoalTrackerScreenState extends State<GoalTrackerScreen> {
                     color: isDark ? Colors.white.withOpacity(0.08) : Colors.white.withOpacity(0.85),
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
-                      color: isDark ? Colors.white.withOpacity(0.12) : Colors.black.withOpacity(0.06),
+                      color: isDark ? Colors.white.withValues(alpha: 0.14) : Colors.black.withValues(alpha: 0.08),
                     ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(isDark ? 0.2 : 0.04),
-                        blurRadius: 10,
-                        offset: const Offset(0, 3),
-                      ),
-                    ],
                   ),
                   child: Row(
                     children: [
@@ -234,15 +227,8 @@ class _GoalTrackerScreenState extends State<GoalTrackerScreen> {
                             color: goal.isCompleted
                                 ? AppColors.sage.withOpacity(0.5)
                                 : (isDark ? Colors.white.withOpacity(0.12) : Colors.black.withOpacity(0.06)),
-                            width: goal.isCompleted ? 1.5 : 1,
+                            width: goal.isCompleted ? 1.5 : 1.0,
                           ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(isDark ? 0.2 : 0.03),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
                         ),
                         child: Row(
                           children: [
@@ -324,9 +310,14 @@ class _GoalTrackerScreenState extends State<GoalTrackerScreen> {
                                 size: 18,
                                 color: isDark ? AppColors.darkSoft : AppColors.lightSoft,
                               ),
-                              onPressed: () {
+                              onPressed: () async {
                                 HapticFeedback.lightImpact();
-                                stageProvider.deleteGoal(spaceId, goal.id);
+                                final ok = await stageProvider.deleteGoal(spaceId, goal.id);
+                                if (!ok && context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Could not delete goal on server.')),
+                                  );
+                                }
                               },
                             ),
                           ],

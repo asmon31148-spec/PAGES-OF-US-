@@ -11,6 +11,7 @@ import 'core/theme/app_theme.dart';
 import 'core/theme/app_colors.dart';
 import 'core/services/local_cache_service.dart';
 import 'core/services/audio_handler.dart';
+import 'core/services/device_status_service.dart';
 import 'core/services/notification_service.dart';
 import 'core/services/music_download_service.dart';
 import 'data/services/supabase_service.dart';
@@ -196,6 +197,7 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold> with Wi
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    DeviceStatusService.recordAppLifecycleForeground(true);
 
     // Toast when partner changes shared theme in real-time
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -263,6 +265,7 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold> with Wi
   void dispose() {
     _notifSub?.cancel();
     _themeSub?.cancel();
+    DeviceStatusService.recordAppLifecycleForeground(false);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -270,6 +273,7 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold> with Wi
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed && mounted) {
+      DeviceStatusService.recordAppLifecycleForeground(true);
       final auth = context.read<AuthProvider>();
       if (auth.user != null) {
         auth.refreshUserData(auth.user!.id);
@@ -278,7 +282,8 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold> with Wi
       context.read<MemoriesProvider>().refreshAll();
       context.read<VaultProvider>().refreshVaults();
       context.read<StageProvider>().refreshSharedStageData();
-    } else if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive || state == AppLifecycleState.detached) {
+    } else if (state == AppLifecycleState.paused || state == AppLifecycleState.detached) {
+      DeviceStatusService.recordAppLifecycleForeground(false);
       if (mounted) {
         context.read<WorldProvider>().flushPersistenceNow();
         final audioProvider = context.read<AudioProvider>();

@@ -169,15 +169,8 @@ class _StageAtmosphereCardState extends State<StageAtmosphereCard> {
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
                 color: isDark ? Colors.white.withOpacity(0.16) : Colors.white.withOpacity(0.75),
-                width: 0.8,
+                width: 1.0,
               ),
-              boxShadow: [
-                BoxShadow(
-                  color: isDark ? Colors.black.withOpacity(0.2) : const Color(0xFFB89578).withOpacity(0.10),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
             ),
             alignment: Alignment.center,
             child: Text(
@@ -272,15 +265,8 @@ class _StageAtmosphereCardState extends State<StageAtmosphereCard> {
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
                 color: isDark ? Colors.white.withOpacity(0.16) : Colors.white.withOpacity(0.75),
-                width: 0.8,
+                width: 1.0,
               ),
-              boxShadow: [
-                BoxShadow(
-                  color: isDark ? Colors.black.withOpacity(0.2) : const Color(0xFFB89578).withOpacity(0.10),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,

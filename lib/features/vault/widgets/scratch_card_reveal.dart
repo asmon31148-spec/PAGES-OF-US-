@@ -49,14 +49,7 @@ class _ScratchCardRevealState extends State<ScratchCardReveal> {
       decoration: BoxDecoration(
         color: AppColors.romanceCard,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.romanceRoseGold.withOpacity(0.4), width: 1.2),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.romanceWine.withOpacity(0.25),
-            blurRadius: 16,
-            spreadRadius: 2,
-          ),
-        ],
+        border: Border.all(color: AppColors.romanceRoseGold.withValues(alpha: 0.4), width: 1.0),
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(20),
@@ -164,18 +157,9 @@ class _ScratchFoilPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     canvas.saveLayer(Rect.fromLTWH(0, 0, size.width, size.height), Paint());
 
-    // 1. Draw Golden Metallic Foil
+    // 1. Clean Warm Metallic Foil
     final foilPaint = Paint()
-      ..shader = const LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [
-          Color(0xFFE5A93B),
-          Color(0xFF9E651D),
-          Color(0xFFF7D279),
-          Color(0xFF884D11),
-        ],
-      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
+      ..color = const Color(0xFFB5863A);
     canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), foilPaint);
 
     // Decorative Foil Pattern

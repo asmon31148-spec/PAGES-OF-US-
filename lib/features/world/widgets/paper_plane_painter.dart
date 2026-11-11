@@ -90,7 +90,6 @@ class PaperPlanePainter extends CustomPainter {
         style: TextStyle(
           fontSize: planeSize,
           color: planeColor,
-          shadows: [Shadow(color: planeColor.withOpacity(0.5), blurRadius: 6)],
         ),
       ),
       textDirection: TextDirection.ltr,

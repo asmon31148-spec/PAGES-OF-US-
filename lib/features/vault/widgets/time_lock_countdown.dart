@@ -55,14 +55,7 @@ class _TimeLockCountdownWidgetState extends State<TimeLockCountdownWidget> {
       decoration: BoxDecoration(
         color: AppColors.romanceCard,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.romanceRoseGold.withOpacity(0.35), width: 1.2),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.romanceWine.withOpacity(0.3),
-            blurRadius: 24,
-            spreadRadius: 2,
-          ),
-        ],
+        border: Border.all(color: AppColors.romanceRoseGold.withValues(alpha: 0.35), width: 1.0),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
