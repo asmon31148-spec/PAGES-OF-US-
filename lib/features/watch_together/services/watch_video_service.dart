@@ -262,64 +262,156 @@ class WatchVideoService {
     return null;
   }
 
-  /// Fast direct InnerTube ANDROID_VR lookup (~0.5s) bypassing heavy watch-page parsing when allowed.
-  Future<List<WatchStreamSource>> _tryFastInnerTubeVr(String videoId, int? proxyPort) async {
+  /// Fast direct InnerTube lookup (IOS HLS + ANDROID_VR progressive) returning ad-free streams.
+  Future<List<WatchStreamSource>> _tryFastInnerTubeStreams(String videoId, int? proxyPort) async {
+    const iosUa = 'com.google.ios.youtube/19.45.4 (iPhone16,2; U; CPU iOS 18_1_0 like Mac OS X)';
     const vrUa =
         'com.google.android.apps.youtube.vr.oculus/1.56.21 (Linux; U; Android 12L; eureka-user Build/SQ3A.220605.009.A1)';
-    const vrHeaders = {'User-Agent': vrUa};
-    try {
-      final res = await http
-          .post(
-            Uri.parse('https://www.youtube.com/youtubei/v1/player'),
-            headers: const {
-              'Content-Type': 'application/json',
-              'User-Agent': vrUa,
-            },
-            body: jsonEncode({
-              'videoId': videoId,
-              'context': {
-                'client': {
-                  'clientName': 'ANDROID_VR',
-                  'clientVersion': '1.56.21',
-                  'androidSdkVersion': 32,
-                  'hl': 'en',
-                  'gl': 'IN',
-                },
+
+    Future<List<WatchStreamSource>> queryClient({
+      required String label,
+      required Map<String, dynamic> clientPayload,
+      required Map<String, String> headers,
+    }) async {
+      final results = <WatchStreamSource>[];
+      try {
+        final res = await http
+            .post(
+              Uri.parse('https://www.youtube.com/youtubei/v1/player'),
+              headers: {
+                'Content-Type': 'application/json',
+                ...headers,
               },
-            }),
-          )
-          .timeout(const Duration(seconds: 4));
+              body: jsonEncode({
+                'videoId': videoId,
+                'context': {'client': clientPayload},
+              }),
+            )
+            .timeout(const Duration(seconds: 5));
 
-      if (res.statusCode != 200) return [];
-      final json = jsonDecode(res.body) as Map<String, dynamic>;
-      if (json['playabilityStatus']?['status'] != 'OK') return [];
-      final formats = json['streamingData']?['formats'] as List?;
-      if (formats == null || formats.isEmpty) return [];
+        if (res.statusCode != 200) return results;
+        final json = jsonDecode(res.body) as Map<String, dynamic>;
+        if (json['playabilityStatus']?['status'] != 'OK') return results;
 
-      final out = <WatchStreamSource>[];
-      for (int i = 0; i < formats.length && i < 2; i++) {
-        final f = formats[i] as Map;
-        final url = f['url']?.toString();
-        if (url == null || url.isEmpty) continue;
-        final workingHeaders = await _probePlayableHeaders(url, vrHeaders);
-        if (workingHeaders == null) continue;
-        out.add(WatchStreamSource(url: url, headers: workingHeaders, label: 'fastVr_direct_$i'));
-        if (proxyPort != null) {
-          final proxyUrl = _registerProxyTarget(
-            '${videoId}_fastVr_$i',
-            _ProxyTarget(url: url, headers: workingHeaders, contentType: 'video/mp4'),
-            proxyPort,
-          );
-          out.add(WatchStreamSource(url: proxyUrl, headers: const {}, label: 'fastVr_proxy_$i'));
+        final streamingData = json['streamingData'] as Map<String, dynamic>?;
+        if (streamingData == null) return results;
+
+        // 1. Progressive muxed MP4 formats (fast start, exact seeking)
+        final formats = streamingData['formats'] as List?;
+        if (formats != null) {
+          for (int i = 0; i < formats.length && i < 2; i++) {
+            final f = formats[i] as Map;
+            final url = f['url']?.toString();
+            if (url == null || url.isEmpty) continue;
+            final workingHeaders = await _probePlayableHeaders(url, headers);
+            if (workingHeaders == null) continue;
+            results.add(WatchStreamSource(
+              url: url,
+              headers: workingHeaders,
+              label: '${label}_mp4_$i',
+            ));
+            if (proxyPort != null) {
+              final proxyUrl = _registerProxyTarget(
+                '${videoId}_${label}_mp4_$i',
+                _ProxyTarget(url: url, headers: workingHeaders, contentType: 'video/mp4'),
+                proxyPort,
+              );
+              results.add(WatchStreamSource(
+                url: proxyUrl,
+                headers: const {},
+                label: '${label}_proxy_$i',
+              ));
+            }
+          }
         }
-      }
-      return out;
-    } catch (_) {
-      return [];
+
+        // 2. IOS HLS master manifest (HD muxed video + audio, zero ads, supported natively by ExoPlayer)
+        final hlsUrl = streamingData['hlsManifestUrl']?.toString();
+        if (hlsUrl != null && hlsUrl.isNotEmpty) {
+          final workingHeaders = await _probePlayableHeaders(hlsUrl, headers);
+          if (workingHeaders != null) {
+            results.add(WatchStreamSource(
+              url: hlsUrl,
+              headers: workingHeaders,
+              label: '${label}_hls',
+            ));
+          }
+        }
+      } catch (_) {}
+      return results;
     }
+
+    final both = await Future.wait([
+      queryClient(
+        label: 'ios',
+        headers: const {'User-Agent': iosUa},
+        clientPayload: const {
+          'clientName': 'IOS',
+          'clientVersion': '19.45.4',
+          'deviceMake': 'Apple',
+          'deviceModel': 'iPhone16,2',
+          'osName': 'iPhone',
+          'osVersion': '18.1.0',
+          'hl': 'en',
+          'gl': 'US',
+        },
+      ),
+      queryClient(
+        label: 'vr',
+        headers: const {'User-Agent': vrUa},
+        clientPayload: const {
+          'clientName': 'ANDROID_VR',
+          'clientVersion': '1.56.21',
+          'androidSdkVersion': 32,
+          'hl': 'en',
+          'gl': 'US',
+        },
+      ),
+    ]);
+
+    return [...both[0], ...both[1]];
   }
 
-  /// Fast ranked extraction (< 6s total). If blocked/bot-gated, returns empty quickly for WebView fallback.
+  /// Ad-free Piped public backend fallback when YouTube blocks direct InnerTube calls.
+  Future<List<WatchStreamSource>> _tryPipedFallbackStreams(String videoId) async {
+    const pipedHosts = [
+      'https://pipedapi.kavin.rocks',
+      'https://pipedapi.adminforge.de',
+      'https://api.piped.private.coffee',
+    ];
+    for (final host in pipedHosts) {
+      try {
+        final res = await http
+            .get(Uri.parse('$host/streams/$videoId'))
+            .timeout(const Duration(seconds: 4));
+        if (res.statusCode != 200) continue;
+        final data = jsonDecode(res.body);
+        if (data is! Map) continue;
+
+        final out = <WatchStreamSource>[];
+        final hls = data['hls']?.toString();
+        if (hls != null && hls.isNotEmpty) {
+          out.add(WatchStreamSource(url: hls, label: 'piped_hls'));
+        }
+        final streams = data['videoStreams'] as List?;
+        if (streams != null) {
+          for (final s in streams) {
+            if (s is Map && s['videoOnly'] == false) {
+              final u = s['url']?.toString();
+              if (u != null && u.isNotEmpty) {
+                out.add(WatchStreamSource(url: u, label: 'piped_mp4'));
+                break;
+              }
+            }
+          }
+        }
+        if (out.isNotEmpty) return out;
+      } catch (_) {}
+    }
+    return [];
+  }
+
+  /// Fast ranked extraction. Returns ad-free native ExoPlayer streams quickly before WebView fallback.
   Future<List<WatchStreamSource>> getPlayableYouTubeSources(
     String videoId, {
     bool forceRefresh = false,
@@ -341,25 +433,26 @@ class WatchVideoService {
 
     final proxyPort = await _ensureProxyRunning();
 
-    // 1. Sub-second direct InnerTube ANDROID_VR check
-    final fastSources = await _tryFastInnerTubeVr(videoId, proxyPort);
+    // 1. Direct InnerTube (IOS HLS + ANDROID_VR progressive)
+    final fastSources = await _tryFastInnerTubeStreams(videoId, proxyPort);
     if (fastSources.isNotEmpty) {
       _sourcesCache[videoId] = fastSources;
       _streamCacheTime[videoId] = DateTime.now();
       return fastSources;
     }
 
-    // 2. Single merged YoutubeExplode fallback capped strictly at 6 seconds (never hangs)
-    final sources = <WatchStreamSource>[];
+    // 2. Piped public ad-free stream mirror + YoutubeExplode race (capped strictly at 6s)
+    final pipedFuture = _tryPipedFallbackStreams(videoId);
+    final explodeSources = <WatchStreamSource>[];
     final seenUrls = <String>{};
     try {
       final manifest = await _client.videos.streamsClient.getManifest(
         videoId,
         ytClients: [
+          YoutubeApiClient.ios,
           YoutubeApiClient.androidVr,
           YoutubeApiClient.tv,
           YoutubeApiClient.safari,
-          YoutubeApiClient.ios,
         ],
       ).timeout(const Duration(seconds: 6));
 
@@ -388,7 +481,7 @@ class WatchVideoService {
         final workingHeaders = await _probePlayableHeaders(url, clientHeaders);
         if (workingHeaders == null) continue;
 
-        sources.add(WatchStreamSource(url: url, headers: workingHeaders, label: 'yt_direct_$i'));
+        explodeSources.add(WatchStreamSource(url: url, headers: workingHeaders, label: 'yt_direct_$i'));
         if (proxyPort != null) {
           final proxyUrl = _registerProxyTarget(
             '${videoId}_yt_$i',
@@ -399,7 +492,7 @@ class WatchVideoService {
             ),
             proxyPort,
           );
-          sources.add(WatchStreamSource(url: proxyUrl, headers: const {}, label: 'yt_proxy_$i'));
+          explodeSources.add(WatchStreamSource(url: proxyUrl, headers: const {}, label: 'yt_proxy_$i'));
         }
       }
     } catch (e) {
@@ -410,11 +503,13 @@ class WatchVideoService {
       _yt = null;
     }
 
-    if (sources.isNotEmpty) {
-      _sourcesCache[videoId] = sources;
+    final pipedSources = await pipedFuture;
+    final combined = [...explodeSources, ...pipedSources];
+    if (combined.isNotEmpty) {
+      _sourcesCache[videoId] = combined;
       _streamCacheTime[videoId] = DateTime.now();
     }
-    return sources;
+    return combined;
   }
 
   /// Resolves arbitrary Web Video Links: direct MP4/M3U8, Google Drive, Dropbox, or HTML video pages.
