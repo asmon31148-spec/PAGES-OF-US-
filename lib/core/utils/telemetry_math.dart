@@ -466,6 +466,32 @@ class TelemetryMath {
     return '${diff.inDays}d ago';
   }
 
+  static bool isLocationFromToday(
+    DateTime? updatedAt, {
+    required String todayDateKey,
+    int? timeZoneOffsetMinutes,
+  }) {
+    if (updatedAt == null) return false;
+    return localDateKeyFor(updatedAt, timeZoneOffsetMinutes: timeZoneOffsetMinutes) == todayDateKey;
+  }
+
+  static bool isTelemetryFromToday({
+    required String dateKey,
+    required DateTime? updatedAt,
+    required String todayDateKey,
+    int? timeZoneOffsetMinutes,
+  }) {
+    final cleanKey = dateKey.trim();
+    if (cleanKey.isNotEmpty) {
+      return cleanKey == todayDateKey;
+    }
+    return isLocationFromToday(
+      updatedAt,
+      todayDateKey: todayDateKey,
+      timeZoneOffsetMinutes: timeZoneOffsetMinutes,
+    );
+  }
+
   /// Single unified activity resolution shared by World & Eyes On You
   /// so both screens always display identical steps, distance, walking time, and trails.
   static ResolvedActivityMetrics resolvePartnerActivity({
@@ -480,13 +506,24 @@ class TelemetryMath {
     required double? speedMps,
     required List<DailyActivitySummary> savedSummaries,
     required String todayDateKey,
+    bool isTelemetryToday = true,
+    bool isLocationToday = true,
   }) {
+    // Only count steps, distance, and walking time that genuinely belong to TODAY
+    final effTelSteps = isTelemetryToday ? telemetrySteps : null;
+    final effLocSteps = isLocationToday ? locationSteps : null;
+    final effGpsKm = isLocationToday ? gpsJourneyKm : 0.0;
+    final effTelDistKm = isTelemetryToday ? telemetryDistanceKm : null;
+    final effTelWalkSec = isTelemetryToday ? telemetryWalkingSeconds : null;
+    final effLocActiveMin = isLocationToday ? locationActiveMinutes : null;
+    final effTelAppSec = isTelemetryToday ? telemetryAppSeconds : null;
+
     // Steps: strictly real hardware/Health Connect count within realistic human daily bounds
-    final saneTelSteps = (telemetrySteps != null && telemetrySteps >= 0 && telemetrySteps <= maxSaneDailySteps)
-        ? telemetrySteps
+    final saneTelSteps = (effTelSteps != null && effTelSteps >= 0 && effTelSteps <= maxSaneDailySteps)
+        ? effTelSteps
         : null;
-    final saneLocSteps = (locationSteps != null && locationSteps >= 0 && locationSteps <= maxSaneDailySteps)
-        ? locationSteps
+    final saneLocSteps = (effLocSteps != null && effLocSteps >= 0 && effLocSteps <= maxSaneDailySteps)
+        ? effLocSteps
         : null;
     int? resolvedSteps;
     if (saneTelSteps != null && saneLocSteps != null) {
@@ -498,16 +535,16 @@ class TelemetryMath {
     }
 
     // Distance: combine verified GPS trail and Health Connect distance without fabricating
-    final hcKm = (telemetryDistanceKm != null && telemetryDistanceKm >= 0.0) ? telemetryDistanceKm : 0.0;
-    final resolvedDistKm = gpsJourneyKm > hcKm ? gpsJourneyKm : hcKm;
+    final hcKm = (effTelDistKm != null && effTelDistKm >= 0.0) ? effTelDistKm : 0.0;
+    final resolvedDistKm = effGpsKm > hcKm ? effGpsKm : hcKm;
 
     // Walking Time (physical walking cadence seconds) vs App Time (screen foreground seconds)
-    final rawWalkingMin = telemetryWalkingSeconds != null && telemetryWalkingSeconds > 0
-        ? (telemetryWalkingSeconds / 60.0).round()
-        : (locationActiveMinutes != null && locationActiveMinutes >= 0 ? locationActiveMinutes : 0);
+    final rawWalkingMin = effTelWalkSec != null && effTelWalkSec > 0
+        ? (effTelWalkSec / 60.0).round()
+        : (effLocActiveMin != null && effLocActiveMin >= 0 ? effLocActiveMin : 0);
     final walkingMin = rawWalkingMin <= maxSaneWalkingMinutes ? rawWalkingMin : 0;
-    final appMin = telemetryAppSeconds != null && telemetryAppSeconds > 0
-        ? (telemetryAppSeconds / 60.0).round()
+    final appMin = effTelAppSec != null && effTelAppSec > 0
+        ? (effTelAppSec / 60.0).round()
         : 0;
 
     // Classify current movement state

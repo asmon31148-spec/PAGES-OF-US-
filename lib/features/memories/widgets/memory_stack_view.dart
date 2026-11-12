@@ -252,12 +252,14 @@ class _MemoryStackViewState extends State<MemoryStackView> {
             itemCount: memories.length,
             itemBuilder: (context, index) {
               final memory = memories[index];
-              return _buildMemoryCard(
-                context,
-                memory,
-                memoriesProvider,
-                audioProvider,
-                isDark,
+              return RepaintBoundary(
+                child: _buildMemoryCard(
+                  context,
+                  memory,
+                  memoriesProvider,
+                  audioProvider,
+                  isDark,
+                ),
               );
             },
           ),

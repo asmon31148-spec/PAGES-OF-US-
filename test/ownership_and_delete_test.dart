@@ -1,11 +1,14 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pages_of_us/core/services/deleted_ids_store.dart';
 import 'package:pages_of_us/core/services/local_cache_service.dart';
 import 'package:pages_of_us/core/services/media_upload_service.dart';
+import 'package:pages_of_us/core/theme/theme_registry.dart';
 import 'package:pages_of_us/core/utils/author_identity.dart';
 import 'package:pages_of_us/core/utils/ownership_helper.dart';
 import 'package:pages_of_us/core/utils/telemetry_math.dart';
+import 'package:pages_of_us/core/widgets/liquid_glass/shared_living_theme_background.dart';
 import 'package:pages_of_us/data/models/letter_item.dart';
 import 'package:pages_of_us/data/models/milestone_item.dart';
 import 'package:pages_of_us/features/dossier/screens/obsession_dossier_screen.dart';
@@ -464,6 +467,58 @@ void main() {
         ),
         isFalse,
       );
+    });
+
+    test('midnight rollover clears stale yesterday steps, distance, and walking minutes cleanly', () {
+      final staleCheck = TelemetryMath.isTelemetryFromToday(
+        dateKey: '2026-11-11',
+        updatedAt: DateTime.parse('2026-11-11T18:00:00Z'),
+        todayDateKey: '2026-11-12',
+      );
+      expect(staleCheck, isFalse);
+
+      final resolved = TelemetryMath.resolvePartnerActivity(
+        telemetrySteps: 12500,
+        locationSteps: 12500,
+        gpsJourneyKm: 6.4,
+        telemetryDistanceKm: 6.4,
+        telemetryWalkingSeconds: 2400,
+        locationActiveMinutes: 40,
+        telemetryAppSeconds: 1800,
+        telemetryActivity: 'stationary',
+        speedMps: 0.0,
+        savedSummaries: const [],
+        todayDateKey: '2026-11-12',
+        isTelemetryToday: false,
+        isLocationToday: false,
+      );
+
+      expect(resolved.stepsToday, isNull);
+      expect(resolved.distanceKmToday, 0.0);
+      expect(resolved.walkingMinutesToday, 0);
+      expect(resolved.appMinutesToday, 0);
+    });
+
+    test('SharedLivingThemeBackground produces distinct non-identical gradients per theme in light & dark mode', () {
+      final chaiDark = SharedLivingThemeBackground.buildAtmosphereDecoration(
+        ThemeRegistry.sunsetChai.palette(true),
+        true,
+      ).gradient as LinearGradient;
+      final rainDark = SharedLivingThemeBackground.buildAtmosphereDecoration(
+        ThemeRegistry.midnightRain.palette(true),
+        true,
+      ).gradient as LinearGradient;
+      final chaiLight = SharedLivingThemeBackground.buildAtmosphereDecoration(
+        ThemeRegistry.sunsetChai.palette(false),
+        false,
+      ).gradient as LinearGradient;
+      final rainLight = SharedLivingThemeBackground.buildAtmosphereDecoration(
+        ThemeRegistry.midnightRain.palette(false),
+        false,
+      ).gradient as LinearGradient;
+
+      expect(chaiDark.colors.first, isNot(equals(rainDark.colors.first)));
+      expect(chaiLight.colors.first, isNot(equals(rainLight.colors.first)));
     });
   });
 }

@@ -111,7 +111,33 @@ class WorldProvider extends ChangeNotifier {
   DateTime? _lastStepActivityAt;
   DateTime? _stepBurstWindowStart;
   int _stepBurstCount = 0;
+  String _lastActiveDateKey = TelemetryMath.localDateKeyFor(DateTime.now());
+  DateTime? _lastStepUiNotifyAt;
   String get _journeyPrefKey => _currentUserId != null ? 'journey_log_my_${_currentUserId!}' : 'journey_log_my_v2';
+
+  void _checkMidnightRollover() {
+    final todayKey = TelemetryMath.localDateKeyFor(DateTime.now());
+    if (todayKey == _lastActiveDateKey) return;
+    _lastActiveDateKey = todayKey;
+
+    final start = _startOfToday;
+    _myStayPoints.removeWhere((p) => p.departureTime != null && p.departureTime!.isBefore(start));
+    _partnerStayPoints.removeWhere((p) => p.departureTime != null && p.departureTime!.isBefore(start));
+    _firstPlaceNameToday = null;
+    _partnerFirstPlaceToday = null;
+    _lastBroadcastSteps = null;
+
+    if (_currentUserId != null && _locations[_currentUserId] != null) {
+      _locations[_currentUserId!] = _locations[_currentUserId!]!.copyWith(
+        journeyKmToday: 0.0,
+        stepsToday: 0,
+        activeMinutesToday: 0,
+        stayPoints: _myStayPoints.map((e) => e.toJson()).toList(),
+        updatedAt: DateTime.now().toUtc().toIso8601String(),
+      );
+    }
+    notifyListeners();
+  }
 
   Map<String, UserLocationData> get locations => Map.unmodifiable(_locations);
   List<PinnedPlace> get pinnedPlaces => List.unmodifiable(_pinnedPlaces);
@@ -299,6 +325,15 @@ class WorldProvider extends ChangeNotifier {
   }
 
   void _pushHardwareStepsUpdate() {
+    _checkMidnightRollover();
+    final now = DateTime.now();
+    final stepDelta = _lastBroadcastSteps == null ? 999 : (myStepsToday - _lastBroadcastSteps!).abs();
+    final elapsedOk = _lastStepUiNotifyAt == null || now.difference(_lastStepUiNotifyAt!).inSeconds >= 3;
+    if (!elapsedOk && stepDelta < 5) {
+      return;
+    }
+    _lastStepUiNotifyAt = now;
+
     if (_currentUserId == null || _spaceId == null) {
       notifyListeners();
       return;
@@ -306,7 +341,7 @@ class WorldProvider extends ChangeNotifier {
     final existing = _locations[_currentUserId];
     if (existing != null) {
       final stepActive = _lastStepActivityAt != null &&
-          DateTime.now().difference(_lastStepActivityAt!).inSeconds <= 25;
+          now.difference(_lastStepActivityAt!).inSeconds <= 25;
       final nextSpeed = stepActive && (existing.speedMps ?? 0.0) < 1.1 ? 1.2 : existing.speedMps;
       if (existing.stepsToday != myStepsToday || (stepActive && (existing.speedMps ?? 0.0) < 1.1)) {
         final updated = existing.copyWith(
@@ -360,9 +395,31 @@ class WorldProvider extends ChangeNotifier {
     return _myStayPoints.where((p) => (p.departureTime ?? DateTime.now()).isAfter(start)).toList();
   }
 
+  bool _isPartnerLocationToday(UserLocationData? pLoc) {
+    if (pLoc == null) return false;
+    final todayKey = TelemetryMath.localDateKeyFor(
+      DateTime.now(),
+      timeZoneOffsetMinutes: pLoc.timeZoneOffsetMinutes,
+    );
+    return TelemetryMath.isLocationFromToday(
+      DateTime.tryParse(pLoc.updatedAt),
+      todayDateKey: todayKey,
+      timeZoneOffsetMinutes: pLoc.timeZoneOffsetMinutes,
+    );
+  }
+
   List<StayPoint> get partnerStayPointsToday {
+    final pLoc = partnerLocation;
+    if (pLoc != null && !_isPartnerLocationToday(pLoc)) {
+      return const [];
+    }
     final start = _startOfToday;
-    return _partnerStayPoints.where((p) => (p.departureTime ?? DateTime.now()).isAfter(start)).toList();
+    return _partnerStayPoints.where((p) {
+      if (p.departureTime != null) {
+        return p.departureTime!.isAfter(start);
+      }
+      return p.arrivalTime.isAfter(start);
+    }).toList();
   }
 
   double? _candidateLat;
@@ -809,15 +866,18 @@ class WorldProvider extends ChangeNotifier {
   }
 
   double get effectivePartnerJourneyKm {
-    if (_partnerId != null && _locations[_partnerId]?.journeyKmToday != null) {
-      return _locations[_partnerId]!.journeyKmToday!;
+    final pLoc = partnerLocation;
+    if (pLoc != null) {
+      if (!_isPartnerLocationToday(pLoc)) return 0.0;
+      if (pLoc.journeyKmToday != null) return pLoc.journeyKmToday!;
     }
     return partnerJourneyKmToday;
   }
 
   int? get effectivePartnerStepsOrNull {
-    if (_partnerId != null && _locations[_partnerId]?.stepsToday != null) {
-      return _locations[_partnerId]!.stepsToday!;
+    final pLoc = partnerLocation;
+    if (pLoc != null && _isPartnerLocationToday(pLoc) && pLoc.stepsToday != null) {
+      return pLoc.stepsToday!;
     }
     return null;
   }
@@ -825,8 +885,9 @@ class WorldProvider extends ChangeNotifier {
   int get effectivePartnerSteps => effectivePartnerStepsOrNull ?? 0;
 
   int get effectivePartnerActiveMinutes {
-    if (_partnerId != null && _locations[_partnerId]?.activeMinutesToday != null) {
-      return _locations[_partnerId]!.activeMinutesToday!;
+    final pLoc = partnerLocation;
+    if (pLoc != null && _isPartnerLocationToday(pLoc) && pLoc.activeMinutesToday != null) {
+      return pLoc.activeMinutesToday!;
     }
     return 0;
   }
@@ -841,9 +902,23 @@ class WorldProvider extends ChangeNotifier {
     final tzMinutes = telemetry?.timeZoneOffsetMinutes ??
         pLoc?.timeZoneOffsetMinutes ??
         DateTime.now().timeZoneOffset.inMinutes;
-    final partnerTodayKey = (telemetry != null && telemetry.dateKey.isNotEmpty)
-        ? telemetry.dateKey
-        : TelemetryMath.localDateKeyFor(DateTime.now(), timeZoneOffsetMinutes: tzMinutes);
+    final partnerTodayKey = TelemetryMath.localDateKeyFor(
+      DateTime.now(),
+      timeZoneOffsetMinutes: tzMinutes,
+    );
+    final isTelToday = telemetry != null &&
+        TelemetryMath.isTelemetryFromToday(
+          dateKey: telemetry.dateKey,
+          updatedAt: DateTime.tryParse(telemetry.updatedAt),
+          todayDateKey: partnerTodayKey,
+          timeZoneOffsetMinutes: tzMinutes,
+        );
+    final isLocToday = pLoc != null &&
+        TelemetryMath.isLocationFromToday(
+          DateTime.tryParse(pLoc.updatedAt),
+          todayDateKey: partnerTodayKey,
+          timeZoneOffsetMinutes: tzMinutes,
+        );
 
     final resolved = TelemetryMath.resolvePartnerActivity(
       telemetrySteps: telemetry?.stepsToday,
@@ -857,6 +932,8 @@ class WorldProvider extends ChangeNotifier {
       speedMps: pLoc?.speedMps,
       savedSummaries: savedSummaries,
       todayDateKey: partnerTodayKey,
+      isTelemetryToday: isTelToday,
+      isLocationToday: isLocToday,
     );
     return resolved;
   }
@@ -996,16 +1073,15 @@ class WorldProvider extends ChangeNotifier {
     try {
       final data = await SupabaseService.getAppContent('journey_today_${spaceId}_$pId');
       if (data != null && data['points'] is List) {
+        final start = _startOfToday;
         final loaded = (data['points'] as List)
             .map((e) => JourneyPoint.fromJson(Map<String, dynamic>.from(e as Map)))
-            .where((p) => p.timestamp.isAfter(DateTime.now().subtract(const Duration(hours: 24))))
+            .where((p) => p.timestamp.isAfter(start))
             .toList();
-        if (loaded.isNotEmpty) {
-          _partnerJourneyLog
-            ..clear()
-            ..addAll(loaded);
-          notifyListeners();
-        }
+        _partnerJourneyLog
+          ..clear()
+          ..addAll(loaded);
+        notifyListeners();
       }
     } catch (_) {}
   }
@@ -1534,6 +1610,7 @@ class WorldProvider extends ChangeNotifier {
   /// Flushes hardware pedometer & fresh GPS immediately when app returns to foreground.
   Future<void> syncHardwareStepsAndLocationNow() async {
     if (_currentUserId == null || _spaceId == null) return;
+    _checkMidnightRollover();
     try {
       if (defaultTargetPlatform == TargetPlatform.android) {
         await DeviceStatusService.syncStepSensor();

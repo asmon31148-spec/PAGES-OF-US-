@@ -30,11 +30,14 @@ class ThemePalette {
     required this.specularBorderOpacity,
   });
 
-  /// Flat, calm semi-transparent surface color for sharp crisp cards.
-  Color flatSurfaceColor(bool isDark) =>
-      cardBackground.withValues(alpha: isDark ? 0.88 : 0.94);
+  /// Flat, calm semi-transparent surface color tinted subtly by the active theme.
+  Color flatSurfaceColor(bool isDark) {
+    final tint = gradientColors.isNotEmpty ? gradientColors.first : accentColor;
+    final blended = Color.alphaBlend(tint.withValues(alpha: isDark ? 0.08 : 0.05), cardBackground);
+    return blended.withValues(alpha: isDark ? 0.88 : 0.94);
+  }
 
-  /// Clean 1px hairline border color without gradient sheen or glow.
+  /// Clean 1px hairline border color tuned to the active theme's accent.
   Color crispBorderColor(bool isDark) =>
-      dividerColor.withValues(alpha: isDark ? 0.85 : 0.90);
+      Color.alphaBlend(accentColor.withValues(alpha: isDark ? 0.26 : 0.20), dividerColor);
 }

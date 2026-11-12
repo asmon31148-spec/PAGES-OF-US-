@@ -4,7 +4,8 @@ import '../../../providers/theme_provider.dart';
 import '../../theme/models/app_theme_data.dart';
 import '../../theme/models/theme_palette.dart';
 
-/// Clean, calm, distraction-free background surface without blurred color blobs or gradient bleeds.
+/// Crisp, GPU-light living theme atmosphere using each theme's real palette gradient
+/// without expensive blur filters or 60fps animation tickers.
 class SharedLivingThemeBackground extends StatelessWidget {
   final Widget child;
   final bool isPaused;
@@ -15,23 +16,73 @@ class SharedLivingThemeBackground extends StatelessWidget {
     this.isPaused = false,
   });
 
+  static BoxDecoration buildAtmosphereDecoration(ThemePalette palette, bool isDark) {
+    final c0 = palette.gradientColors.isNotEmpty ? palette.gradientColors[0] : palette.accentColor;
+    final c1 = palette.gradientColors.length > 1 ? palette.gradientColors[1] : c0;
+    final c2 = palette.gradientColors.length > 2 ? palette.gradientColors[2] : c1;
+
+    final topColor = Color.alphaBlend(c0.withValues(alpha: isDark ? 0.30 : 0.22), palette.canvasBackground);
+    final midColor = Color.alphaBlend(c1.withValues(alpha: isDark ? 0.18 : 0.14), palette.canvasBackground);
+    final bottomColor = Color.alphaBlend(c2.withValues(alpha: isDark ? 0.24 : 0.18), palette.canvasBackground);
+
+    return BoxDecoration(
+      gradient: LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [topColor, midColor, palette.canvasBackground, bottomColor],
+        stops: const [0.0, 0.35, 0.68, 1.0],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final themeProvider = context.watch<ThemeProvider>();
     final palette = themeProvider.currentPalette;
     final isDark = themeProvider.isDark;
+    final c0 = palette.gradientColors.isNotEmpty ? palette.gradientColors[0] : palette.accentColor;
+    final c2 = palette.gradientColors.length > 2 ? palette.gradientColors[2] : c0;
 
     return Stack(
       fit: StackFit.expand,
       children: [
-        AnimatedContainer(
-          duration: const Duration(milliseconds: 240),
-          curve: Curves.easeOut,
-          color: palette.canvasBackground,
+        RepaintBoundary(
+          child: DecoratedBox(
+            decoration: buildAtmosphereDecoration(palette, isDark),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: RadialGradient(
+                      center: const Alignment(-0.75, -0.78),
+                      radius: 1.05,
+                      colors: [
+                        c0.withValues(alpha: isDark ? 0.22 : 0.18),
+                        Colors.transparent,
+                      ],
+                    ),
+                  ),
+                ),
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: RadialGradient(
+                      center: const Alignment(0.80, 0.72),
+                      radius: 1.0,
+                      colors: [
+                        c2.withValues(alpha: isDark ? 0.18 : 0.15),
+                        Colors.transparent,
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
         if (themeProvider.isEyeComfort)
           IgnorePointer(
-            child: Container(
+            child: ColoredBox(
               color: isDark
                   ? const Color(0xFF1F160E).withValues(alpha: 0.16)
                   : const Color(0xFFFBF3E6).withValues(alpha: 0.24),
@@ -58,7 +109,21 @@ class LivingAtmospherePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    canvas.drawRect(Offset.zero & size, Paint()..color = palette.canvasBackground);
+    final rect = Offset.zero & size;
+    final c0 = palette.gradientColors.isNotEmpty ? palette.gradientColors[0] : palette.accentColor;
+    final c1 = palette.gradientColors.length > 1 ? palette.gradientColors[1] : c0;
+    final c2 = palette.gradientColors.length > 2 ? palette.gradientColors[2] : c1;
+    final paint = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [
+          Color.alphaBlend(c0.withValues(alpha: isDark ? 0.45 : 0.36), palette.canvasBackground),
+          Color.alphaBlend(c1.withValues(alpha: isDark ? 0.30 : 0.24), palette.canvasBackground),
+          Color.alphaBlend(c2.withValues(alpha: isDark ? 0.38 : 0.28), palette.canvasBackground),
+        ],
+      ).createShader(rect);
+    canvas.drawRect(rect, paint);
   }
 
   @override
@@ -78,7 +143,21 @@ class StaticAtmospherePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    canvas.drawRect(Offset.zero & size, Paint()..color = palette.canvasBackground);
+    final rect = Offset.zero & size;
+    final c0 = palette.gradientColors.isNotEmpty ? palette.gradientColors[0] : palette.accentColor;
+    final c1 = palette.gradientColors.length > 1 ? palette.gradientColors[1] : c0;
+    final c2 = palette.gradientColors.length > 2 ? palette.gradientColors[2] : c1;
+    final paint = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [
+          Color.alphaBlend(c0.withValues(alpha: isDark ? 0.48 : 0.38), palette.canvasBackground),
+          Color.alphaBlend(c1.withValues(alpha: isDark ? 0.32 : 0.26), palette.canvasBackground),
+          Color.alphaBlend(c2.withValues(alpha: isDark ? 0.40 : 0.30), palette.canvasBackground),
+        ],
+      ).createShader(rect);
+    canvas.drawRect(rect, paint);
   }
 
   @override

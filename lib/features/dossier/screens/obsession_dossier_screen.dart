@@ -774,12 +774,28 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
             ? 'Unlocked & Active'
             : (telemetry.isScreenOn ? 'Lockscreen On' : 'Screen Off'));
 
-    final screenMins = telemetry != null ? (telemetry.screenTimeSecondsToday / 60).round() : 0;
+    final todayKey = TelemetryMath.localDateKeyFor(
+      DateTime.now(),
+      timeZoneOffsetMinutes: telemetry?.timeZoneOffsetMinutes,
+    );
+    final isTelemetryToday = telemetry != null &&
+        TelemetryMath.isTelemetryFromToday(
+          dateKey: telemetry.dateKey,
+          updatedAt: DateTime.tryParse(telemetry.updatedAt),
+          todayDateKey: todayKey,
+          timeZoneOffsetMinutes: telemetry.timeZoneOffsetMinutes,
+        );
+
+    final screenMins = (isTelemetryToday && telemetry != null)
+        ? (telemetry.screenTimeSecondsToday / 60).round()
+        : 0;
+    final unlockCount = isTelemetryToday ? (telemetry?.unlockCountToday ?? 0) : 0;
+    final lockCount = isTelemetryToday ? (telemetry?.lockCountToday ?? 0) : 0;
     final unlockSub = telemetry == null
         ? 'Needs partner app active'
         : 'Unlocked: ${_formatExactAndRelative(telemetry.lastUnlockedAt)}'
           ' • Locked: ${_formatExactAndRelative(telemetry.lastLockedAt)}\n'
-          '${telemetry.unlockCountToday ?? 0} unlocks • ${telemetry.lockCountToday ?? 0} locks • Screen ${screenMins}m today';
+          '$unlockCount unlocks • $lockCount locks • Screen ${screenMins}m today${isTelemetryToday ? '' : ' (awaiting today\'s sync)'}';
 
     final netAge = TelemetryMath.formatAgeLabel(telemetry?.networkUpdatedAt);
     final netStale = TelemetryMath.isTimestampStale(telemetry?.networkUpdatedAt);
@@ -819,7 +835,9 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
         ? 'By ${telemetry!.nowPlayingArtist!} • Playing in Sanctuary'
         : 'Sanctuary Music Player';
 
-    final recentEvents = telemetry?.recentScreenEvents ?? const <ScreenEvent>[];
+    final recentEvents = isTelemetryToday
+        ? (telemetry?.recentScreenEvents ?? const <ScreenEvent>[])
+        : const <ScreenEvent>[];
 
     return Column(
       children: [

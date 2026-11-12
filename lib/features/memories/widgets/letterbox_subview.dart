@@ -109,7 +109,9 @@ class _LetterboxSubviewState extends State<LetterboxSubview> {
             itemCount: letters.length,
             itemBuilder: (context, index) {
               final letter = letters[index];
-              return _buildEnvelopeCard(context, letter, isDark, spaceId, letters, index);
+              return RepaintBoundary(
+                child: _buildEnvelopeCard(context, letter, isDark, spaceId, letters, index),
+              );
             },
           ),
       ],

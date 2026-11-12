@@ -389,19 +389,27 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold> with Wi
     );
 
     final screens = [
-      StageScreen(
-        onGoToMemories: () => setState(() {
-          _currentIndex = 2;
-          _loadedTabs.add(2);
-        }),
-        onSelectTab: (index) => setState(() {
-          _currentIndex = index;
-          _loadedTabs.add(index);
-        }),
+      RepaintBoundary(
+        child: StageScreen(
+          onGoToMemories: () => setState(() {
+            _currentIndex = 2;
+            _loadedTabs.add(2);
+          }),
+          onSelectTab: (index) => setState(() {
+            _currentIndex = index;
+            _loadedTabs.add(index);
+          }),
+        ),
       ),
-      _loadedTabs.contains(1) ? const WorldScreen() : const SizedBox.shrink(),
-      _loadedTabs.contains(2) ? const MemoriesScreen() : const SizedBox.shrink(),
-      _loadedTabs.contains(3) ? const VaultScreen() : const SizedBox.shrink(),
+      RepaintBoundary(
+        child: _loadedTabs.contains(1) ? const WorldScreen() : const SizedBox.shrink(),
+      ),
+      RepaintBoundary(
+        child: _loadedTabs.contains(2) ? const MemoriesScreen() : const SizedBox.shrink(),
+      ),
+      RepaintBoundary(
+        child: _loadedTabs.contains(3) ? const VaultScreen() : const SizedBox.shrink(),
+      ),
     ];
 
     return PopScope(

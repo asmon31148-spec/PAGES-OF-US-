@@ -200,14 +200,16 @@ class _TimelineSubviewState extends State<TimelineSubview> {
               final isFirst = index == 0;
               final isLast = index == filteredMilestones.length - 1;
 
-              return _buildTimelineBranchNode(
-                context,
-                milestone: milestone,
-                isFirst: isFirst,
-                isLast: isLast,
-                isDark: isDark,
-                spaceId: spaceId,
-                partnerNickname: partnerNickname,
+              return RepaintBoundary(
+                child: _buildTimelineBranchNode(
+                  context,
+                  milestone: milestone,
+                  isFirst: isFirst,
+                  isLast: isLast,
+                  isDark: isDark,
+                  spaceId: spaceId,
+                  partnerNickname: partnerNickname,
+                ),
               );
             },
           ),
