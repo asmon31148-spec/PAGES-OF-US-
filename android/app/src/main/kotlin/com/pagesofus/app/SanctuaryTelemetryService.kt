@@ -1,17 +1,13 @@
 package com.pagesofus.app
 
 import android.Manifest
-import android.app.Notification
-import android.app.NotificationChannel
 import android.app.NotificationManager
-import android.app.PendingIntent
 import android.app.Service
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
-import android.content.pm.ServiceInfo
 import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
@@ -39,18 +35,26 @@ class SanctuaryTelemetryService : Service() {
 
         fun start(context: Context) {
             val appCtx = context.applicationContext
+            clearLegacyForegroundNotification(appCtx)
             val intent = Intent(appCtx, SanctuaryTelemetryService::class.java)
             try {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    appCtx.startForegroundService(intent)
-                } else {
-                    appCtx.startService(intent)
-                }
+                // Run as a regular silent service (no foreground notification)
+                appCtx.startService(intent)
             } catch (_: Exception) {
-                try {
-                    appCtx.startService(intent)
-                } catch (_: Exception) {}
+                // Background start restrictions on Android 8+ may block startService from boot receiver;
+                // MainActivity.onResume / Dart sync will start it silently when app is active.
             }
+        }
+
+        private fun clearLegacyForegroundNotification(context: Context) {
+            try {
+                val mgr = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager ?: return
+                mgr.cancel(NOTIFICATION_ID)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    try { mgr.deleteNotificationChannel("sanctuary_telemetry_sync") } catch (_: Exception) {}
+                    try { mgr.deleteNotificationChannel(CHANNEL_ID) } catch (_: Exception) {}
+                }
+            } catch (_: Exception) {}
         }
     }
 
@@ -74,7 +78,7 @@ class SanctuaryTelemetryService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        startForegroundSafely()
+        clearLegacyForegroundNotification(this)
         SanctuaryTelemetryStore.ensureDayAndArchiveIfNeeded(this)
         if (SanctuaryTelemetryStore.isCurrentlyUnlocked(this)) {
             SanctuaryTelemetryStore.recordUserPresentUnlock(this, incrementCount = false)
@@ -90,7 +94,7 @@ class SanctuaryTelemetryService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        startForegroundSafely()
+        clearLegacyForegroundNotification(this)
         registerStepSensor()
         return START_STICKY
     }
@@ -115,68 +119,6 @@ class SanctuaryTelemetryService : Service() {
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
-
-    private fun startForegroundSafely() {
-        ensureNotificationChannel()
-        val notification = buildNotification()
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                startForeground(
-                    NOTIFICATION_ID,
-                    notification,
-                    ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
-                )
-            } else {
-                startForeground(NOTIFICATION_ID, notification)
-            }
-        } catch (_: Exception) {
-            try {
-                startForeground(NOTIFICATION_ID, notification)
-            } catch (_: Exception) {}
-        }
-    }
-
-    private fun ensureNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val mgr = getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager ?: return
-            try { mgr.deleteNotificationChannel("sanctuary_telemetry_sync") } catch (_: Exception) {}
-            if (mgr.getNotificationChannel(CHANNEL_ID) == null) {
-                val ch = NotificationChannel(
-                    CHANNEL_ID,
-                    "Quiet Telemetry Sync",
-                    NotificationManager.IMPORTANCE_MIN
-                ).apply {
-                    description = "Silent background status sync."
-                    setShowBadge(false)
-                    setSound(null, null)
-                    enableVibration(false)
-                }
-                mgr.createNotificationChannel(ch)
-            }
-        }
-    }
-
-    private fun buildNotification(): Notification {
-        val launchIntent = packageManager.getLaunchIntentForPackage(packageName)
-        val pendingFlags = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        val pendingIntent = if (launchIntent != null) {
-            PendingIntent.getActivity(this, 0, launchIntent, pendingFlags)
-        } else null
-
-        val builder = Notification.Builder(this, CHANNEL_ID)
-            .setContentTitle("Pages of Us")
-            .setContentText("Connected quietly")
-            .setSmallIcon(applicationInfo.icon)
-            .setOnlyAlertOnce(true)
-            .setOngoing(true)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            builder.setForegroundServiceBehavior(Notification.FOREGROUND_SERVICE_DEFERRED)
-        }
-        if (pendingIntent != null) {
-            builder.setContentIntent(pendingIntent)
-        }
-        return builder.build()
-    }
 
     private fun registerReceivers() {
         if (stateReceiver != null) return
