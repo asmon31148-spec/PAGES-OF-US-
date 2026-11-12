@@ -65,6 +65,8 @@ class WatchCallService {
   final ValueNotifier<bool> isCameraOff = ValueNotifier(false);
   final ValueNotifier<bool> isPartnerCameraOff = ValueNotifier(false);
   final ValueNotifier<bool> isPartnerMicMuted = ValueNotifier(false);
+  final ValueNotifier<int> remoteStreamVersion = ValueNotifier(0);
+  final ValueNotifier<int> localStreamVersion = ValueNotifier(0);
   final ValueNotifier<String> callerNameNotifier = ValueNotifier('');
   final ValueNotifier<String> callerUidNotifier = ValueNotifier('');
 
@@ -79,6 +81,8 @@ class WatchCallService {
 
   final List<RTCIceCandidate> _queuedRemoteCandidates = [];
   bool _isRemoteDescriptionSet = false;
+  bool _isApplyingRemoteAnswer = false;
+  bool _isAnsweringCall = false;
 
   final Map<String, dynamic> _iceConfig = {
     'iceServers': [
@@ -135,10 +139,14 @@ class WatchCallService {
           }
         }
       } else if (state == 'connected') {
-        if (callStatus.value == WatchCallStatus.calling && callerUid == myUid) {
-          // Callee answered! Set remote description from answer
+        if (callStatus.value == WatchCallStatus.calling &&
+            callerUid == myUid &&
+            !_isRemoteDescriptionSet &&
+            !_isApplyingRemoteAnswer) {
+          // Callee answered! Set remote description from answer exactly once.
           final answerMap = data['answer'] as Map<dynamic, dynamic>?;
           if (answerMap != null && _peerConnection != null) {
+            _isApplyingRemoteAnswer = true;
             final sdp = answerMap['sdp']?.toString() ?? '';
             final type = answerMap['type']?.toString() ?? 'answer';
             () async {
@@ -152,6 +160,8 @@ class WatchCallService {
                 callStatus.value = WatchCallStatus.connected;
               } catch (e) {
                 debugPrint('Error setting remote description on caller: $e');
+              } finally {
+                _isApplyingRemoteAnswer = false;
               }
             }();
           }
@@ -221,6 +231,7 @@ class WatchCallService {
       }
 
       localRenderer.srcObject = _localStream;
+      localStreamVersion.value++;
       isCameraOff.value = false;
       isMicMuted.value = false;
       return true;
@@ -242,6 +253,27 @@ class WatchCallService {
     return modified;
   }
 
+  /// Attaches an incoming remote track (stream-backed or track-only in unified-plan)
+  /// and notifies the UI immediately so remote video never stays stuck on placeholder.
+  Future<void> _attachRemoteTrack(RTCTrackEvent event) async {
+    try {
+      if (event.streams.isNotEmpty) {
+        _remoteStream = event.streams[0];
+      } else {
+        _remoteStream ??= await createLocalMediaStream('remote_${DateTime.now().millisecondsSinceEpoch}');
+        await _remoteStream!.addTrack(event.track);
+      }
+      remoteRenderer.srcObject = _remoteStream;
+      remoteStreamVersion.value++;
+      try {
+        await Helper.setSpeakerphoneOn(true);
+      } catch (_) {}
+      callStatus.value = WatchCallStatus.connected;
+    } catch (e) {
+      debugPrint('Error attaching remote track: $e');
+    }
+  }
+
   /// Start a video call (Offer creation)
   Future<void> startCall({required String roomCode, required String myUid, required String myName}) async {
     try {
@@ -250,6 +282,7 @@ class WatchCallService {
       _myName = myName;
       _queuedRemoteCandidates.clear();
       _isRemoteDescriptionSet = false;
+      _isApplyingRemoteAnswer = false;
 
       final mediaReady = await _openUserMedia();
       if (!mediaReady) return;
@@ -269,16 +302,9 @@ class WatchCallService {
         _peerConnection?.addTrack(track, _localStream!);
       });
 
-      // 3. Listen for remote stream
+      // 3. Listen for remote stream / tracks
       _peerConnection?.onTrack = (RTCTrackEvent event) {
-        if (event.streams.isNotEmpty) {
-          _remoteStream = event.streams[0];
-          remoteRenderer.srcObject = _remoteStream;
-          try {
-            Helper.setSpeakerphoneOn(true);
-          } catch (_) {}
-          callStatus.value = WatchCallStatus.connected;
-        }
+        _attachRemoteTrack(event);
       };
 
       // 4. Send ICE Candidates to RTDB under callerCandidates
@@ -297,9 +323,9 @@ class WatchCallService {
         'offerToReceiveVideo': 1,
       });
       final optimizedSdp = _optimizeSdp(offer.sdp ?? '');
-      await _peerConnection!.setLocalDescription(RTCSessionDescription(optimizedSdp, offer.type));
 
-      // 6. Write Offer to Firebase RTDB with unique session ID
+      // 6. Write Offer to Firebase RTDB BEFORE setLocalDescription so ICE candidates
+      // emitted immediately during local description setup are never wiped by .set().
       await _rtdb.ref('watchRooms/$_currentRoomCode/call').set({
         'callSessionId': DateTime.now().millisecondsSinceEpoch.toString(),
         'state': 'calling',
@@ -311,6 +337,8 @@ class WatchCallService {
           'type': offer.type,
         },
       });
+
+      await _peerConnection!.setLocalDescription(RTCSessionDescription(optimizedSdp, offer.type));
 
       // 7. Publish initial local status
       _updateTrackStatusInDb();
@@ -325,12 +353,15 @@ class WatchCallService {
 
   /// Answer an incoming video call (Answer creation)
   Future<void> answerCall({required String roomCode, required String myUid, required String myName}) async {
+    if (_isAnsweringCall) return;
+    _isAnsweringCall = true;
     try {
       _currentRoomCode = roomCode.trim().toUpperCase();
       _myUid = myUid;
       _myName = myName;
       _queuedRemoteCandidates.clear();
       _isRemoteDescriptionSet = false;
+      _isApplyingRemoteAnswer = false;
 
       final mediaReady = await _openUserMedia();
       if (!mediaReady) {
@@ -354,13 +385,9 @@ class WatchCallService {
         _peerConnection?.addTrack(track, _localStream!);
       });
 
-      // 4. Listen for remote stream
+      // 4. Listen for remote stream / tracks
       _peerConnection?.onTrack = (RTCTrackEvent event) {
-        if (event.streams.isNotEmpty) {
-          _remoteStream = event.streams[0];
-          remoteRenderer.srcObject = _remoteStream;
-          callStatus.value = WatchCallStatus.connected;
-        }
+        _attachRemoteTrack(event);
       };
 
       // 5. Send Callee ICE Candidates to RTDB under calleeCandidates
@@ -414,6 +441,8 @@ class WatchCallService {
     } catch (e) {
       debugPrint('Error in answerCall: $e');
       await declineCall();
+    } finally {
+      _isAnsweringCall = false;
     }
   }
 
@@ -537,6 +566,10 @@ class WatchCallService {
     _candidateSub = null;
     _queuedRemoteCandidates.clear();
     _isRemoteDescriptionSet = false;
+    _isApplyingRemoteAnswer = false;
+    _isAnsweringCall = false;
+    remoteStreamVersion.value++;
+    localStreamVersion.value++;
 
     try {
       _localStream?.getTracks().forEach((track) {

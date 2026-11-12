@@ -78,6 +78,8 @@ class AudioProvider extends ChangeNotifier {
   bool _isListenTogetherActive = false;
   String _listenController = 'both'; // 'both' or 'me'
   String _syncSpaceId = '';
+  String _syncUserId = '';
+  String? _lastHandledSyncEventId;
   RealtimeChannel? _syncChannel;
   bool _ignoreIncomingSync = false;
 
@@ -467,6 +469,7 @@ class AudioProvider extends ChangeNotifier {
           _songPlayer.state == PlayerState.stopped ||
           _songPlayer.state == PlayerState.completed) {
         await _playCurrentSongWithCrossfade();
+        _broadcastSync('PLAY', _songPosition.inSeconds);
       } else {
         await _songPlayer.resume();
         _syncNotificationState();
@@ -1494,9 +1497,12 @@ class AudioProvider extends ChangeNotifier {
   void startListenTogether(String spaceId, {String? userId, String? nickname}) {
     _isListenTogetherActive = true;
     _syncSpaceId = spaceId;
+    _syncUserId = userId ?? '';
+    _lastHandledSyncEventId = null;
     notifyListeners();
 
     try {
+      _syncChannel?.unsubscribe();
       final supabase = Supabase.instance.client;
       _syncChannel = supabase.channel('music_sync_$spaceId');
 
@@ -1514,7 +1520,26 @@ class AudioProvider extends ChangeNotifier {
 
       void handleSyncPayload(Map<String, dynamic> payload) async {
         if (_ignoreIncomingSync) return;
+        final senderId = payload['senderId']?.toString() ?? '';
+        if (_syncUserId.isNotEmpty && senderId.isNotEmpty && senderId == _syncUserId) {
+          return;
+        }
+        final eventId = payload['eventId']?.toString();
+        if (eventId != null && eventId.isNotEmpty) {
+          if (eventId == _lastHandledSyncEventId) return;
+          _lastHandledSyncEventId = eventId;
+        }
+
         final type = payload['type'] as String?;
+
+        // Partner just joined Listen Together and asked for current playback state
+        if (type == 'SYNC_REQUEST') {
+          if (_songs.isNotEmpty && currentSong.id != 'empty' && _isSongPlaying) {
+            _broadcastSync('PLAY', _songPosition.inSeconds);
+          }
+          return;
+        }
+
         final songId = payload['songId'] as String?;
         final youtubeId = payload['youtubeId'] as String?;
         final title = payload['title'] as String?;
@@ -1616,16 +1641,43 @@ class AudioProvider extends ChangeNotifier {
           matchIdx = 0;
         }
 
-        if (matchIdx != -1 && matchIdx != _currentSongIndex) {
+        final bool switchedTrack = matchIdx != -1 && matchIdx != _currentSongIndex;
+        if (switchedTrack) {
           _currentSongIndex = matchIdx;
           _songDuration = Duration(seconds: _songs[matchIdx].durationSeconds);
         }
 
-        if (type == 'PLAY') {
-          await _playCurrentSongWithCrossfade();
+        if (type == 'SELECT' || type == 'PLAY') {
+          if (type == 'PLAY' && !switchedTrack && _songPlayer.state == PlayerState.paused) {
+            if (positionSec != null && (_songPosition.inSeconds - positionSec).abs() > 2) {
+              final target = Duration(seconds: positionSec);
+              _songPosition = target;
+              songPositionNotifier.value = target;
+              await _songPlayer.seek(target);
+            }
+            _isSongPlaying = true;
+            await _songPlayer.resume();
+            _syncNotificationState();
+          } else {
+            final startPos = Duration(seconds: positionSec ?? 0);
+            _songPosition = startPos;
+            songPositionNotifier.value = startPos;
+            _isSongPlaying = true;
+            await _playCurrentSongWithCrossfade();
+            if (positionSec != null && positionSec > 2) {
+              await _songPlayer.seek(startPos);
+            }
+          }
         } else if (type == 'PAUSE') {
           _isSongPlaying = false;
+          _syncNotificationState();
           await _songPlayer.pause();
+          if (positionSec != null && (_songPosition.inSeconds - positionSec).abs() > 2) {
+            final target = Duration(seconds: positionSec);
+            _songPosition = target;
+            songPositionNotifier.value = target;
+            await _songPlayer.seek(target);
+          }
         } else if (type == 'SEEK' && positionSec != null) {
           final target = Duration(seconds: positionSec);
           _songPosition = target;
@@ -1643,7 +1695,11 @@ class AudioProvider extends ChangeNotifier {
         event: 'playback_sync',
         callback: (payload) => handleSyncPayload(Map<String, dynamic>.from(payload)),
       );
-      _syncChannel!.subscribe();
+      _syncChannel!.subscribe((status, error) {
+        if (status == RealtimeSubscribeStatus.subscribed) {
+          _broadcastSync('SYNC_REQUEST', _songPosition.inSeconds);
+        }
+      });
     } catch (_) {}
   }
 
@@ -1665,6 +1721,8 @@ class AudioProvider extends ChangeNotifier {
       _ignoreIncomingSync = true;
       final payload = {
         'type': type,
+        'senderId': _syncUserId,
+        'eventId': '${_syncUserId}_${DateTime.now().microsecondsSinceEpoch}',
         'songIndex': _currentSongIndex,
         'positionSec': positionSec,
         'songId': currentSong.id,

@@ -347,10 +347,14 @@ class _WatchCallOverlayState extends State<WatchCallOverlay> {
             children: [
               // 1. Main Partner Video Feed
               Positioned.fill(
-                child: ValueListenableBuilder<bool>(
-                  valueListenable: _callService.isPartnerCameraOff,
-                  builder: (context, isCameraOff, _) {
-                    if (isCameraOff || _callService.remoteRenderer.srcObject == null) {
+                child: AnimatedBuilder(
+                  animation: Listenable.merge([
+                    _callService.isPartnerCameraOff,
+                    _callService.remoteStreamVersion,
+                  ]),
+                  builder: (context, _) {
+                    if (_callService.isPartnerCameraOff.value ||
+                        _callService.remoteRenderer.srcObject == null) {
                       return _buildPartnerAvatarPlaceholder(compact: true);
                     }
                     return RTCVideoView(
@@ -375,10 +379,14 @@ class _WatchCallOverlayState extends State<WatchCallOverlay> {
                         borderRadius: BorderRadius.circular(8),
                         child: ColoredBox(
                           color: Colors.black,
-                          child: ValueListenableBuilder<bool>(
-                            valueListenable: _callService.isCameraOff,
-                            builder: (context, isCameraOff, _) {
-                              if (isCameraOff || _callService.localRenderer.srcObject == null) {
+                          child: AnimatedBuilder(
+                            animation: Listenable.merge([
+                              _callService.isCameraOff,
+                              _callService.localStreamVersion,
+                            ]),
+                            builder: (context, _) {
+                              if (_callService.isCameraOff.value ||
+                                  _callService.localRenderer.srcObject == null) {
                                 return const Center(
                                   child: Icon(Icons.videocam_off_rounded, size: 14, color: Colors.white54),
                                 );
@@ -695,11 +703,19 @@ class _WatchCallOverlayState extends State<WatchCallOverlay> {
                   fit: StackFit.expand,
                   children: [
                     ClipRect(
-                      child: ValueListenableBuilder<bool>(
-                        valueListenable: _isSwappedInMaximized
-                            ? _callService.isCameraOff
-                            : _callService.isPartnerCameraOff,
-                        builder: (context, isOff, _) {
+                      child: AnimatedBuilder(
+                        animation: Listenable.merge([
+                          _isSwappedInMaximized
+                              ? _callService.isCameraOff
+                              : _callService.isPartnerCameraOff,
+                          _isSwappedInMaximized
+                              ? _callService.localStreamVersion
+                              : _callService.remoteStreamVersion,
+                        ]),
+                        builder: (context, _) {
+                          final isOff = _isSwappedInMaximized
+                              ? _callService.isCameraOff.value
+                              : _callService.isPartnerCameraOff.value;
                           final renderer = _isSwappedInMaximized
                               ? _callService.localRenderer
                               : _callService.remoteRenderer;
@@ -741,11 +757,19 @@ class _WatchCallOverlayState extends State<WatchCallOverlay> {
                               borderRadius: BorderRadius.circular(10),
                               child: ColoredBox(
                                 color: Colors.black,
-                                child: ValueListenableBuilder<bool>(
-                                  valueListenable: _isSwappedInMaximized
-                                      ? _callService.isPartnerCameraOff
-                                      : _callService.isCameraOff,
-                                  builder: (context, isOff, _) {
+                                child: AnimatedBuilder(
+                                  animation: Listenable.merge([
+                                    _isSwappedInMaximized
+                                        ? _callService.isPartnerCameraOff
+                                        : _callService.isCameraOff,
+                                    _isSwappedInMaximized
+                                        ? _callService.remoteStreamVersion
+                                        : _callService.localStreamVersion,
+                                  ]),
+                                  builder: (context, _) {
+                                    final isOff = _isSwappedInMaximized
+                                        ? _callService.isPartnerCameraOff.value
+                                        : _callService.isCameraOff.value;
                                     final pipRenderer = _isSwappedInMaximized
                                         ? _callService.remoteRenderer
                                         : _callService.localRenderer;
