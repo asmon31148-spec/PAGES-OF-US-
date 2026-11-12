@@ -684,8 +684,8 @@ class AudioProvider extends ChangeNotifier {
           try {
             final searchResults = await YoutubeMusicService.instance.search('${song.title} ${song.artist}'.trim());
             if (searchResults.isNotEmpty) {
-              freshUrl = searchResults.first.audioUrl;
-              if (freshUrl.isEmpty) {
+              freshUrl = searchResults.first.audioStreamUrl;
+              if (freshUrl == null || freshUrl.isEmpty) {
                 freshUrl = await YoutubeMusicService.instance.getAudioStreamUrl(searchResults.first.id);
               }
             }
