@@ -56,13 +56,15 @@ class _UpdateDialogState extends State<UpdateDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return Dialog(
-      backgroundColor: const Color(0xFF1E202B), // Deep slate matching Echo Music
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(28),
-      ),
-      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-      child: ConstrainedBox(
+    return PopScope(
+      canPop: !_isDownloading,
+      child: Dialog(
+        backgroundColor: const Color(0xFF1E202B), // Deep slate matching Echo Music
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(28),
+        ),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+        child: ConstrainedBox(
         constraints: BoxConstraints(
           maxHeight: MediaQuery.of(context).size.height * 0.85,
         ),
@@ -243,8 +245,9 @@ class _UpdateDialogState extends State<UpdateDialog> {
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildFormattedChangelog(String rawChangelog) {
     final lines = rawChangelog.split('\n');

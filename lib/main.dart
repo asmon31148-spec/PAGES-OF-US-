@@ -370,7 +370,7 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold> with Wi
                 partnerId: effectivePartnerId,
                 partnerNickname: effectivePartnerName,
               );
-          context.read<AudioProvider>().initMusicSync(effectiveSpaceId);
+          context.read<AudioProvider>().initMusicSync(effectiveSpaceId, userId: user.id);
           context.read<ThemeProvider>().initThemeSync(
                 effectiveSpaceId,
                 user.id,

@@ -244,7 +244,7 @@ class UpdateService {
 
     showDialog(
       context: context,
-      barrierDismissible: true,
+      barrierDismissible: false,
       builder: (_) => UpdateDialog(updateInfo: update),
     );
   }

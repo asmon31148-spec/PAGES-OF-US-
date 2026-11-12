@@ -1089,15 +1089,15 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
     _lastRemotePlayback = playback;
     if (_isWebViewMode && _wvAdActive) return;
 
-    // Calculate latency using server time offset
+    // Calculate latency using server time offset (capped to max 1500ms to eliminate artificial 4s lead/lag)
     final nowServer = WatchTogetherService.instance.currentServerTime;
-    final delay = (nowServer - playback.updatedAt).clamp(0, 5000);
+    final delay = (nowServer - playback.updatedAt).clamp(0, 1500);
 
     if (playback.isPlaying) {
       final targetMs = playback.positionMs + delay;
       final currentMs = _currentPosition.inMilliseconds;
 
-      if ((currentMs - targetMs).abs() > 850) {
+      if ((currentMs - targetMs).abs() > 400) {
         _playerSeekTo(Duration(milliseconds: targetMs));
       }
       _playerPlay();
@@ -1106,7 +1106,7 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
       });
     } else {
       final currentMs = _currentPosition.inMilliseconds;
-      if ((currentMs - playback.positionMs).abs() > 550) {
+      if ((currentMs - playback.positionMs).abs() > 250) {
         _playerSeekTo(Duration(milliseconds: playback.positionMs));
       }
       _playerPause();
@@ -1116,10 +1116,10 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
     }
   }
 
-  /// Exact Sync Algorithm: Drift check every 2.5 seconds
+  /// Exact Sync Algorithm: Drift check every 1.5 seconds for instant tight sync
   void _startDriftCorrectionTimer() {
     _driftCheckTimer?.cancel();
-    _driftCheckTimer = Timer.periodic(const Duration(seconds: 2, milliseconds: 500), (_) {
+    _driftCheckTimer = Timer.periodic(const Duration(milliseconds: 1500), (_) {
       if (!mounted || !_isInitialized || _isLeaving || !_currentIsPlaying || _isFastForwarding) return;
       if (_isWebViewMode && _wvAdActive) return;
       if (DateTime.now().isBefore(_ignoreRemoteUntil)) return;
@@ -1130,16 +1130,16 @@ class _WatchPlayerScreenState extends State<WatchPlayerScreen> with WidgetsBindi
           _lastRemotePlayback!.updatedBy != myUid) {
         final nowServer = WatchTogetherService.instance.currentServerTime;
         final expectedMs =
-            _lastRemotePlayback!.positionMs + (nowServer - _lastRemotePlayback!.updatedAt).clamp(0, 10000);
+            _lastRemotePlayback!.positionMs + (nowServer - _lastRemotePlayback!.updatedAt).clamp(0, 2500);
         final currentMs = _currentPosition.inMilliseconds;
         final diff = (currentMs - expectedMs).abs();
 
-        if (diff > 900) {
+        if (diff > 500) {
           setState(() {
             _syncStatus = SyncStatus.syncing;
           });
           _playerSeekTo(Duration(milliseconds: expectedMs));
-          Future.delayed(const Duration(milliseconds: 900), () {
+          Future.delayed(const Duration(milliseconds: 500), () {
             if (mounted && !_isLeaving) {
               setState(() {
                 _syncStatus = SyncStatus.inSync;

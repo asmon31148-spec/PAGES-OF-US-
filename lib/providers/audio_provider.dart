@@ -678,7 +678,19 @@ class AudioProvider extends ChangeNotifier {
         notifyListeners();
 
         final trackId = song.youtubeId ?? song.id;
-        final freshUrl = await YoutubeMusicService.instance.getAudioStreamUrl(trackId);
+        String? freshUrl = await YoutubeMusicService.instance.getAudioStreamUrl(trackId);
+
+        if ((freshUrl == null || freshUrl.isEmpty) && song.title.isNotEmpty) {
+          try {
+            final searchResults = await YoutubeMusicService.instance.search('${song.title} ${song.artist}'.trim());
+            if (searchResults.isNotEmpty) {
+              freshUrl = searchResults.first.audioUrl;
+              if (freshUrl.isEmpty) {
+                freshUrl = await YoutubeMusicService.instance.getAudioStreamUrl(searchResults.first.id);
+              }
+            }
+          } catch (_) {}
+        }
 
         if (sessionId != _playSessionId) return;
 
@@ -925,9 +937,12 @@ class AudioProvider extends ChangeNotifier {
     }
   }
 
-  void initMusicSync(String spaceId) {
+  void initMusicSync(String spaceId, {String? userId}) {
     if (spaceId.isEmpty) return;
     _syncSpaceId = spaceId;
+    if (userId != null && userId.isNotEmpty) {
+      _syncUserId = userId;
+    }
 
     // 1. Fast fetch from Supabase app_content for playlists, songs, and favorites
     try {
@@ -993,6 +1008,9 @@ class AudioProvider extends ChangeNotifier {
       },
       onMusicUpdate: (data) {
         _applySongsPayload(data);
+      },
+      onMusicPlayback: (payload) {
+        handlePlaybackSyncPayload(payload);
       },
     );
 
@@ -1497,7 +1515,9 @@ class AudioProvider extends ChangeNotifier {
   void startListenTogether(String spaceId, {String? userId, String? nickname}) {
     _isListenTogetherActive = true;
     _syncSpaceId = spaceId;
-    _syncUserId = userId ?? '';
+    if (userId != null && userId.isNotEmpty) {
+      _syncUserId = userId;
+    }
     _lastHandledSyncEventId = null;
     notifyListeners();
 
@@ -1518,182 +1538,13 @@ class AudioProvider extends ChangeNotifier {
         },
       );
 
-      void handleSyncPayload(Map<String, dynamic> payload) async {
-        if (_ignoreIncomingSync) return;
-        final senderId = payload['senderId']?.toString() ?? '';
-        if (_syncUserId.isNotEmpty && senderId.isNotEmpty && senderId == _syncUserId) {
-          return;
-        }
-        final eventId = payload['eventId']?.toString();
-        if (eventId != null && eventId.isNotEmpty) {
-          if (eventId == _lastHandledSyncEventId) return;
-          _lastHandledSyncEventId = eventId;
-        }
-
-        final type = payload['type'] as String?;
-
-        // Partner just joined Listen Together and asked for current playback state
-        if (type == 'SYNC_REQUEST') {
-          if (_songs.isNotEmpty && currentSong.id != 'empty' && _isSongPlaying) {
-            _broadcastSync('PLAY', _songPosition.inSeconds);
-          }
-          return;
-        }
-
-        final songId = payload['songId'] as String?;
-        final youtubeId = payload['youtubeId'] as String?;
-        final title = payload['title'] as String?;
-        final artist = payload['artist'] as String?;
-        final remoteAudioUrl = payload['audioUrl'] as String?;
-        final durationSec = payload['durationSeconds'] as int? ?? 180;
-        final thumb = payload['thumbnailUrl'] as String?;
-        final positionSec = payload['positionSec'] as int?;
-
-        // Handle Partner Shared Queue Insertion
-        if (type == 'QUEUE_ADD') {
-          final qSong = SongItem(
-            id: songId ?? 'sync_${DateTime.now().millisecondsSinceEpoch}',
-            youtubeId: youtubeId,
-            title: title ?? 'Queued Track',
-            artist: artist ?? 'Partner Queue',
-            durationSeconds: durationSec,
-            audioUrl: remoteAudioUrl ?? '',
-            coverColor: const Color(0xFFD97706),
-            isLocal: false,
-            addedBy: 'Partner Queue',
-            thumbnailUrl: thumb,
-          );
-          final existing = _songs.indexWhere((s) => s.id == qSong.id || (s.youtubeId != null && s.youtubeId == qSong.youtubeId));
-          if (existing != -1) {
-            _songs.removeAt(existing);
-          }
-          final insertIdx = (_currentSongIndex + 1).clamp(0, _songs.length);
-          _songs.insert(insertIdx, qSong);
-          notifyListeners();
-          return;
-        }
-
-        // Handle Partner Shared Queue Removal
-        if (type == 'QUEUE_REMOVE') {
-          if (songId != null || youtubeId != null) {
-            final idx = _songs.indexWhere((s) =>
-                (songId != null && s.id == songId) ||
-                (youtubeId != null && s.youtubeId == youtubeId));
-            if (idx != -1 && idx != _currentSongIndex) {
-              if (idx < _currentSongIndex) {
-                _currentSongIndex = (_currentSongIndex - 1).clamp(0, _songs.length - 1);
-              }
-              _songs.removeAt(idx);
-              notifyListeners();
-            }
-          }
-          return;
-        }
-
-        // Handle Partner Shared Queue Clear
-        if (type == 'QUEUE_CLEAR') {
-          if (_songs.length > _currentSongIndex + 1) {
-            _songs.removeRange(_currentSongIndex + 1, _songs.length);
-            notifyListeners();
-          }
-          return;
-        }
-
-        // 1. Locate matching song in current partner's playlist
-        int matchIdx = -1;
-        if (songId != null) {
-          matchIdx = _songs.indexWhere((s) => s.id == songId || (s.youtubeId != null && s.youtubeId == songId));
-        }
-        if (matchIdx == -1 && youtubeId != null) {
-          matchIdx = _songs.indexWhere((s) => s.id == youtubeId || s.youtubeId == youtubeId);
-        }
-        if (matchIdx == -1 && title != null) {
-          matchIdx = _songs.indexWhere((s) => s.title.toLowerCase() == title.toLowerCase());
-        }
-
-        // If not found in playlist, dynamically add it
-        if (matchIdx == -1 && title != null) {
-          String resolvedUrl = remoteAudioUrl ?? '';
-          bool resolvedIsLocal = false;
-
-          // Check if partner already has it downloaded locally
-          if (youtubeId != null) {
-            final local = MusicDownloadService.instance.getLocalFilePath(youtubeId);
-            if (local != null && File(local).existsSync()) {
-              resolvedUrl = local;
-              resolvedIsLocal = true;
-            }
-          }
-
-          final syncedSong = SongItem(
-            id: songId ?? 'sync_${DateTime.now().millisecondsSinceEpoch}',
-            youtubeId: youtubeId,
-            title: title,
-            artist: artist ?? 'Partner Queue',
-            durationSeconds: durationSec,
-            audioUrl: resolvedUrl,
-            coverColor: const Color(0xFFD97706),
-            isLocal: resolvedIsLocal,
-            addedBy: 'Partner',
-            thumbnailUrl: thumb,
-          );
-          _songs.insert(0, syncedSong);
-          matchIdx = 0;
-        }
-
-        final bool switchedTrack = matchIdx != -1 && matchIdx != _currentSongIndex;
-        if (switchedTrack) {
-          _currentSongIndex = matchIdx;
-          _songDuration = Duration(seconds: _songs[matchIdx].durationSeconds);
-        }
-
-        if (type == 'SELECT' || type == 'PLAY') {
-          if (type == 'PLAY' && !switchedTrack && _songPlayer.state == PlayerState.paused) {
-            if (positionSec != null && (_songPosition.inSeconds - positionSec).abs() > 2) {
-              final target = Duration(seconds: positionSec);
-              _songPosition = target;
-              songPositionNotifier.value = target;
-              await _songPlayer.seek(target);
-            }
-            _isSongPlaying = true;
-            await _songPlayer.resume();
-            _syncNotificationState();
-          } else {
-            final startPos = Duration(seconds: positionSec ?? 0);
-            _songPosition = startPos;
-            songPositionNotifier.value = startPos;
-            _isSongPlaying = true;
-            await _playCurrentSongWithCrossfade();
-            if (positionSec != null && positionSec > 2) {
-              await _songPlayer.seek(startPos);
-            }
-          }
-        } else if (type == 'PAUSE') {
-          _isSongPlaying = false;
-          _syncNotificationState();
-          await _songPlayer.pause();
-          if (positionSec != null && (_songPosition.inSeconds - positionSec).abs() > 2) {
-            final target = Duration(seconds: positionSec);
-            _songPosition = target;
-            songPositionNotifier.value = target;
-            await _songPlayer.seek(target);
-          }
-        } else if (type == 'SEEK' && positionSec != null) {
-          final target = Duration(seconds: positionSec);
-          _songPosition = target;
-          songPositionNotifier.value = target;
-          await _songPlayer.seek(target);
-        }
-        notifyListeners();
-      }
-
       _syncChannel!.onBroadcast(
         event: 'playback_update',
-        callback: (payload) => handleSyncPayload(Map<String, dynamic>.from(payload)),
+        callback: (payload) => handlePlaybackSyncPayload(Map<String, dynamic>.from(payload)),
       );
       _syncChannel!.onBroadcast(
         event: 'playback_sync',
-        callback: (payload) => handleSyncPayload(Map<String, dynamic>.from(payload)),
+        callback: (payload) => handlePlaybackSyncPayload(Map<String, dynamic>.from(payload)),
       );
       _syncChannel!.subscribe((status, error) {
         if (status == RealtimeSubscribeStatus.subscribed) {
@@ -1701,6 +1552,174 @@ class AudioProvider extends ChangeNotifier {
         }
       });
     } catch (_) {}
+  }
+
+  Future<void> handlePlaybackSyncPayload(Map<String, dynamic> payload) async {
+    final senderId = payload['senderId']?.toString() ?? '';
+    if (_syncUserId.isNotEmpty && senderId.isNotEmpty && senderId == _syncUserId) {
+      return;
+    }
+    final eventId = payload['eventId']?.toString();
+    if (eventId != null && eventId.isNotEmpty) {
+      if (eventId == _lastHandledSyncEventId) return;
+      _lastHandledSyncEventId = eventId;
+    }
+
+    final type = payload['type'] as String?;
+
+    // Partner just joined Listen Together and asked for current playback state
+    if (type == 'SYNC_REQUEST') {
+      if (_songs.isNotEmpty && currentSong.id != 'empty' && _isSongPlaying) {
+        _broadcastSync('PLAY', _songPosition.inSeconds);
+      }
+      return;
+    }
+
+    final songId = payload['songId'] as String?;
+    final youtubeId = payload['youtubeId'] as String?;
+    final title = payload['title'] as String?;
+    final artist = payload['artist'] as String?;
+    final remoteAudioUrl = payload['audioUrl'] as String?;
+    final durationSec = payload['durationSeconds'] as int? ?? 180;
+    final thumb = payload['thumbnailUrl'] as String?;
+    final positionSec = payload['positionSec'] as int?;
+
+    // Handle Partner Shared Queue Insertion
+    if (type == 'QUEUE_ADD') {
+      final qSong = SongItem(
+        id: songId ?? 'sync_${DateTime.now().millisecondsSinceEpoch}',
+        youtubeId: youtubeId,
+        title: title ?? 'Queued Track',
+        artist: artist ?? 'Partner Queue',
+        durationSeconds: durationSec,
+        audioUrl: remoteAudioUrl ?? '',
+        coverColor: const Color(0xFFD97706),
+        isLocal: false,
+        addedBy: 'Partner Queue',
+        thumbnailUrl: thumb,
+      );
+      final existing = _songs.indexWhere((s) => s.id == qSong.id || (s.youtubeId != null && s.youtubeId == qSong.youtubeId));
+      if (existing != -1) {
+        _songs.removeAt(existing);
+      }
+      final insertIdx = (_currentSongIndex + 1).clamp(0, _songs.length);
+      _songs.insert(insertIdx, qSong);
+      notifyListeners();
+      return;
+    }
+
+    // Handle Partner Shared Queue Removal
+    if (type == 'QUEUE_REMOVE') {
+      if (songId != null || youtubeId != null) {
+        final idx = _songs.indexWhere((s) =>
+            (songId != null && s.id == songId) ||
+            (youtubeId != null && s.youtubeId == youtubeId));
+        if (idx != -1 && idx != _currentSongIndex) {
+          if (idx < _currentSongIndex) {
+            _currentSongIndex = (_currentSongIndex - 1).clamp(0, _songs.length - 1);
+          }
+          _songs.removeAt(idx);
+          notifyListeners();
+        }
+      }
+      return;
+    }
+
+    // Handle Partner Shared Queue Clear
+    if (type == 'QUEUE_CLEAR') {
+      if (_songs.length > _currentSongIndex + 1) {
+        _songs.removeRange(_currentSongIndex + 1, _songs.length);
+        notifyListeners();
+      }
+      return;
+    }
+
+    // 1. Locate matching song in current partner's playlist
+    int matchIdx = -1;
+    if (songId != null) {
+      matchIdx = _songs.indexWhere((s) => s.id == songId || (s.youtubeId != null && s.youtubeId == songId));
+    }
+    if (matchIdx == -1 && youtubeId != null) {
+      matchIdx = _songs.indexWhere((s) => s.id == youtubeId || s.youtubeId == youtubeId);
+    }
+    if (matchIdx == -1 && title != null) {
+      matchIdx = _songs.indexWhere((s) => s.title.toLowerCase() == title.toLowerCase());
+    }
+
+    // If not found in playlist, dynamically add it
+    if (matchIdx == -1 && title != null) {
+      String resolvedUrl = remoteAudioUrl ?? '';
+      bool resolvedIsLocal = false;
+
+      // Check if partner already has it downloaded locally
+      if (youtubeId != null) {
+        final local = MusicDownloadService.instance.getLocalFilePath(youtubeId);
+        if (local != null && File(local).existsSync()) {
+          resolvedUrl = local;
+          resolvedIsLocal = true;
+        }
+      }
+
+      final syncedSong = SongItem(
+        id: songId ?? 'sync_${DateTime.now().millisecondsSinceEpoch}',
+        youtubeId: youtubeId,
+        title: title,
+        artist: artist ?? 'Partner Queue',
+        durationSeconds: durationSec,
+        audioUrl: resolvedUrl,
+        coverColor: const Color(0xFFD97706),
+        isLocal: resolvedIsLocal,
+        addedBy: 'Partner',
+        thumbnailUrl: thumb,
+      );
+      _songs.insert(0, syncedSong);
+      matchIdx = 0;
+    }
+
+    final bool switchedTrack = matchIdx != -1 && matchIdx != _currentSongIndex;
+    if (switchedTrack) {
+      _currentSongIndex = matchIdx;
+      _songDuration = Duration(seconds: _songs[matchIdx].durationSeconds);
+    }
+
+    if (type == 'SELECT' || type == 'PLAY') {
+      if (type == 'PLAY' && !switchedTrack && (_songPlayer.state == PlayerState.paused || _songPlayer.state == PlayerState.playing)) {
+        if (positionSec != null && (_songPosition.inSeconds - positionSec).abs() > 2) {
+          final target = Duration(seconds: positionSec);
+          _songPosition = target;
+          songPositionNotifier.value = target;
+          await _songPlayer.seek(target);
+        }
+        _isSongPlaying = true;
+        await _songPlayer.resume();
+        _syncNotificationState();
+      } else {
+        final startPos = Duration(seconds: positionSec ?? 0);
+        _songPosition = startPos;
+        songPositionNotifier.value = startPos;
+        _isSongPlaying = true;
+        await _playCurrentSongWithCrossfade();
+        if (positionSec != null && positionSec > 2) {
+          await _songPlayer.seek(startPos);
+        }
+      }
+    } else if (type == 'PAUSE') {
+      _isSongPlaying = false;
+      _syncNotificationState();
+      await _songPlayer.pause();
+      if (positionSec != null && (_songPosition.inSeconds - positionSec).abs() > 2) {
+        final target = Duration(seconds: positionSec);
+        _songPosition = target;
+        songPositionNotifier.value = target;
+        await _songPlayer.seek(target);
+      }
+    } else if (type == 'SEEK' && positionSec != null) {
+      final target = Duration(seconds: positionSec);
+      _songPosition = target;
+      songPositionNotifier.value = target;
+      await _songPlayer.seek(target);
+    }
+    notifyListeners();
   }
 
   void endListenTogether() {
@@ -1716,9 +1735,8 @@ class AudioProvider extends ChangeNotifier {
   }
 
   void _broadcastSync(String type, int positionSec) {
-    if (!_isListenTogetherActive || _syncChannel == null) return;
+    if (!_isListenTogetherActive && _syncChannel == null && _syncSpaceId.isEmpty) return;
     try {
-      _ignoreIncomingSync = true;
       final payload = {
         'type': type,
         'senderId': _syncUserId,
@@ -1737,18 +1755,24 @@ class AudioProvider extends ChangeNotifier {
         'timestamp': DateTime.now().millisecondsSinceEpoch,
       };
 
-      _syncChannel!.sendBroadcastMessage(
-        event: 'playback_update',
-        payload: payload,
-      );
-      _syncChannel!.sendBroadcastMessage(
-        event: 'playback_sync',
-        payload: payload,
-      );
+      if (_syncChannel != null) {
+        _syncChannel!.sendBroadcastMessage(
+          event: 'playback_update',
+          payload: payload,
+        );
+        _syncChannel!.sendBroadcastMessage(
+          event: 'playback_sync',
+          payload: payload,
+        );
+      }
 
-      Future.delayed(const Duration(milliseconds: 300), () {
-        _ignoreIncomingSync = false;
-      });
+      if (_syncSpaceId.isNotEmpty) {
+        SupabaseService.broadcastEvent(
+          spaceId: _syncSpaceId,
+          eventType: 'MUSIC_PLAYBACK',
+          payload: payload,
+        );
+      }
     } catch (_) {}
   }
 

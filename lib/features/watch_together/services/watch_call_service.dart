@@ -91,8 +91,11 @@ class WatchCallService {
       {'urls': 'stun:stun2.l.google.com:19302'},
       {'urls': 'stun:stun3.l.google.com:19302'},
       {'urls': 'stun:stun4.l.google.com:19302'},
+      {'urls': 'stun:global.stun.twilio.com:3478'},
     ],
     'sdpSemantics': 'unified-plan',
+    'bundlePolicy': 'max-bundle',
+    'rtcpMuxPolicy': 'require',
   };
 
   /// Pre-initialize video renderers safely
@@ -241,13 +244,21 @@ class WatchCallService {
     }
   }
 
-  /// Optimize SDP bandwidth attributes for crystal-clear video streaming
+  /// Optimize SDP attributes for ultra-low latency & crystal-clear video streaming
   String _optimizeSdp(String sdp) {
     var modified = sdp;
+    // Set video bitrate cap (2000 kbps)
     if (modified.contains('m=video')) {
       modified = modified.replaceAllMapped(
         RegExp(r'(m=video[^\r\n]*[\r\n]+)'),
         (match) => '${match.group(1)}b=AS:2000\r\n',
+      );
+    }
+    // Enable low-latency Opus audio attributes (stereo=1, low latency mode)
+    if (modified.contains('opus/48000')) {
+      modified = modified.replaceAll(
+        'useinbandfec=1',
+        'useinbandfec=1; stereo=1; maxaveragebitrate=128000; cbr=1',
       );
     }
     return modified;

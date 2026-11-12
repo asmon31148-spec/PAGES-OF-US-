@@ -888,6 +888,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         if (update != null) {
                           showDialog(
                             context: context,
+                            barrierDismissible: false,
                             builder: (_) => UpdateDialog(updateInfo: update),
                           );
                         } else {

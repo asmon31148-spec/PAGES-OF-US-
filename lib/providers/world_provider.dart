@@ -1607,10 +1607,13 @@ class WorldProvider extends ChangeNotifier {
     } catch (_) {}
   }
 
-  /// Flushes hardware pedometer & fresh GPS immediately when app returns to foreground.
+  /// Flushes hardware pedometer, fresh GPS, and latest partner cloud data immediately when app returns to foreground.
   Future<void> syncHardwareStepsAndLocationNow() async {
     if (_currentUserId == null || _spaceId == null) return;
     _checkMidnightRollover();
+    // Refresh partner location, pinned places, and journey trail from cloud
+    _fetchCloudData(_spaceId!);
+    refreshPartnerJourneyTrail();
     try {
       if (defaultTargetPlatform == TargetPlatform.android) {
         await DeviceStatusService.syncStepSensor();

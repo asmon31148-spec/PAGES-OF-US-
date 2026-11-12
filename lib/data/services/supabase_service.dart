@@ -111,6 +111,7 @@ class SupabaseService {
   static Function(Map<String, dynamic> data)? _onGentleMode;
   static Function(Map<String, dynamic> data)? _onPlaylistsUpdate;
   static Function(Map<String, dynamic> data)? _onMusicUpdate;
+  static Function(Map<String, dynamic> data)? _onMusicPlayback;
   static Function(Map<String, dynamic> data)? _onProfileUpdate;
   static Function(Map<String, dynamic> data)? _onBucketListUpdate;
   static Function(Map<String, dynamic> data)? _onBatteryStatus;
@@ -125,9 +126,11 @@ class SupabaseService {
   static void setMusicSyncListener({
     Function(Map<String, dynamic> data)? onPlaylistsUpdate,
     Function(Map<String, dynamic> data)? onMusicUpdate,
+    Function(Map<String, dynamic> data)? onMusicPlayback,
   }) {
     _onPlaylistsUpdate = onPlaylistsUpdate;
     _onMusicUpdate = onMusicUpdate;
+    _onMusicPlayback = onMusicPlayback;
   }
 
   static void setProfileUpdateListener(Function(Map<String, dynamic> data)? callback) {
@@ -287,6 +290,11 @@ class SupabaseService {
     ch.onBroadcast(
       event: 'MUSIC_UPDATE',
       callback: (payload) => _onMusicUpdate?.call(payload),
+    );
+
+    ch.onBroadcast(
+      event: 'MUSIC_PLAYBACK',
+      callback: (payload) => _onMusicPlayback?.call(payload),
     );
 
     ch.onBroadcast(
