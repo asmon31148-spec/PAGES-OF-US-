@@ -421,4 +421,34 @@ class DeviceStatusService {
       });
     } catch (_) {}
   }
+
+  /// Mode A: Starts continuous background location foreground service.
+  static Future<bool> startLocationService() async {
+    try {
+      final ok = await _channel.invokeMethod<bool>('startLocationService');
+      return ok == true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Mode A: Stops continuous background location foreground service and removes notification.
+  static Future<bool> stopLocationService() async {
+    try {
+      final ok = await _channel.invokeMethod<bool>('stopLocationService');
+      return ok == true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Mode B: Takes an instant on-demand live telemetry snapshot (< 300ms) and uploads to cloud.
+  static Future<bool> collectLiveTelemetryNow() async {
+    try {
+      final ok = await _channel.invokeMethod<bool>('collectLiveTelemetryNow');
+      return ok == true;
+    } catch (_) {
+      return false;
+    }
+  }
 }

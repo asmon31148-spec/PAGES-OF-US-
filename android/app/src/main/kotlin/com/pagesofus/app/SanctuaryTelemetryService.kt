@@ -31,7 +31,6 @@ class SanctuaryTelemetryService : Service() {
     companion object {
         private const val CHANNEL_ID = "sanctuary_telemetry_quiet"
         private const val NOTIFICATION_ID = 4108
-        private const val HEARTBEAT_INTERVAL_MS = 120_000L
 
         fun start(context: Context) {
             val appCtx = context.applicationContext
@@ -69,13 +68,6 @@ class SanctuaryTelemetryService : Service() {
     private var lastUploadedBattery = -1
     private var lastUploadAtMs = 0L
 
-    private val heartbeatRunnable = object : Runnable {
-        override fun run() {
-            scheduleBackgroundSync(force = true)
-            mainHandler.postDelayed(this, HEARTBEAT_INTERVAL_MS)
-        }
-    }
-
     override fun onCreate() {
         super.onCreate()
         clearLegacyForegroundNotification(this)
@@ -88,9 +80,6 @@ class SanctuaryTelemetryService : Service() {
         registerReceivers()
         registerNetworkObserver()
         registerStepSensor()
-        mainHandler.removeCallbacks(heartbeatRunnable)
-        mainHandler.postDelayed(heartbeatRunnable, HEARTBEAT_INTERVAL_MS)
-        scheduleBackgroundSync(force = true)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -100,7 +89,6 @@ class SanctuaryTelemetryService : Service() {
     }
 
     override fun onDestroy() {
-        mainHandler.removeCallbacks(heartbeatRunnable)
         try {
             stateReceiver?.let { unregisterReceiver(it) }
         } catch (_: Exception) {}

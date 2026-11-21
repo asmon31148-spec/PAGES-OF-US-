@@ -11,6 +11,9 @@ class SanctuaryBootReceiver : BroadcastReceiver() {
         if (action == Intent.ACTION_BOOT_COMPLETED || action == Intent.ACTION_MY_PACKAGE_REPLACED) {
             SanctuaryTelemetryStore.ensureDayAndArchiveIfNeeded(ctx)
             SanctuaryTelemetryService.start(ctx)
+            if (SanctuaryLocationService.isLocationServiceActive(ctx)) {
+                SanctuaryLocationService.start(ctx)
+            }
         }
     }
 }

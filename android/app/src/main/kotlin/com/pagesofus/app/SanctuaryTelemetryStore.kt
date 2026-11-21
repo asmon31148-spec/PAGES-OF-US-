@@ -586,6 +586,36 @@ object SanctuaryTelemetryStore {
         }
     }
 
+    fun getSupabaseConfig(context: Context): Map<String, String> {
+        synchronized(lock) {
+            val p = prefs(context)
+            return mapOf(
+                "urlBase" to (p.getString(KEY_CFG_SUPABASE_URL, "") ?: ""),
+                "anonKey" to (p.getString(KEY_CFG_SUPABASE_KEY, "") ?: ""),
+                "accessToken" to (p.getString(KEY_CFG_ACCESS_TOKEN, "") ?: ""),
+                "spaceId" to (p.getString(KEY_CFG_SPACE_ID, "") ?: ""),
+                "userId" to (p.getString(KEY_CFG_MY_USER_ID, "") ?: ""),
+                "myName" to (p.getString(KEY_CFG_MY_NAME, "") ?: "")
+            )
+        }
+    }
+
+    /**
+     * Mode B: Instant On-Demand Telemetry Snapshot & Upload.
+     * Reads genuine hardware battery, network, and current unlock state and uploads to Supabase.
+     */
+    fun collectAndUploadNow(context: Context, reason: String = "on_demand"): Boolean {
+        try {
+            readAndRecordBattery(context)
+            readAndRecordNetwork(context)
+            uploadSnapshotAndPendingSummaries(context)
+            return true
+        } catch (e: Exception) {
+            appendSyncError(context, "on_demand_collect", e.message ?: "Collection error")
+            return false
+        }
+    }
+
     fun uploadSnapshotAndPendingSummaries(context: Context) {
         val nowMs = System.currentTimeMillis()
         ensureDayAndArchiveIfNeeded(context, nowMs)
@@ -699,7 +729,7 @@ object SanctuaryTelemetryStore {
         }
     }
 
-    private fun postSupabaseUpsert(urlBase: String, anonKey: String, bearer: String, rowPayload: JSONObject) {
+    fun postSupabaseUpsert(urlBase: String, anonKey: String, bearer: String, rowPayload: JSONObject) {
         val cleanBase = urlBase.trimEnd('/')
         val url = URL("$cleanBase/rest/v1/app_content?on_conflict=id")
         val conn = (url.openConnection() as HttpURLConnection).apply {

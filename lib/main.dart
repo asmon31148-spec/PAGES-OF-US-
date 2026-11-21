@@ -40,6 +40,13 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
     await Firebase.initializeApp();
     final notification = message.notification;
     final data = message.data;
+
+    // Silent background wake trigger for Mode B on-demand telemetry
+    if (data['action'] == 'COLLECT_TELEMETRY' || data['type'] == 'REQUEST_TELEMETRY') {
+      await DeviceStatusService.collectLiveTelemetryNow();
+      return;
+    }
+
     final title = notification?.title ?? data['title'] ?? 'Pages of Us ✦';
     final body = notification?.body ?? data['body'] ?? 'Your partner shared something special in your sanctuary.';
     final payload = data['payload'] ?? 'tab_0';

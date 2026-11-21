@@ -85,12 +85,14 @@ class StageProvider extends ChangeNotifier {
   List<DailyActivitySummary> _myDailySummaries = [];
   String? _lastTelemetrySyncError;
   bool _isTelemetrySharingEnabled = true;
-  Timer? _batterySyncTimer;
+  Timer? _dossierSessionTimer;
+  bool _isTelemetryRequestPending = false;
   List<SecretWhisper> _secretWhispers = [];
 
   DeviceBatteryStatus? get partnerBattery => _partnerBattery;
   DeviceTelemetry? get partnerTelemetry => _partnerTelemetry;
   DeviceTelemetry? get myTelemetry => _myTelemetry;
+  bool get isTelemetryRequestPending => _isTelemetryRequestPending;
   List<DailyActivitySummary> get partnerDailySummaries =>
       List.unmodifiable(_partnerDailySummaries);
   List<DailyActivitySummary> get myDailySummaries =>
@@ -181,8 +183,9 @@ class StageProvider extends ChangeNotifier {
     _gentleModeSub?.cancel();
     _drawingSaveDebounce?.cancel();
     _partnerTouchDecayTimer?.cancel();
-    _batterySyncTimer?.cancel();
-    _batterySyncTimer = null;
+    _dossierSessionTimer?.cancel();
+    _dossierSessionTimer = null;
+    _isTelemetryRequestPending = false;
     _partnerBattery = null;
     _partnerTelemetry = null;
     _myTelemetry = null;
@@ -300,6 +303,7 @@ class StageProvider extends ChangeNotifier {
     void applyPartnerTelemetry(Map<String, dynamic> data) {
       final parsed = DeviceTelemetry.fromJson(data);
       _partnerTelemetry = parsed;
+      _isTelemetryRequestPending = false;
       if (parsed.batteryLevel >= 0 && parsed.batteryLevel <= 100) {
         _partnerBattery = DeviceBatteryStatus(
           level: parsed.batteryLevel,
@@ -309,6 +313,17 @@ class StageProvider extends ChangeNotifier {
       }
       notifyListeners();
     }
+
+    SupabaseService.setTelemetryRequestListener((data) {
+      final sender = data['fromUserId']?.toString();
+      final target = data['targetUserId']?.toString();
+      if (sender != null && sender != userId && (target == null || target.isEmpty || target == userId)) {
+        // Mode B: Partner opened Eyes On You and requested fresh live telemetry
+        if (_activeSpaceId != null && _activeUserId != null) {
+          _syncMyTelemetry(_activeSpaceId!, _activeUserId!);
+        }
+      }
+    });
 
     SupabaseService.setBatteryStatusListener((data) {
       final sender = data['senderId']?.toString();
@@ -399,13 +414,8 @@ class StageProvider extends ChangeNotifier {
       }
     };
 
+    // Initial telemetry check on connection (no 90s background periodic loop)
     _syncMyTelemetry(spaceId, userId);
-    _batterySyncTimer?.cancel();
-    _batterySyncTimer = Timer.periodic(const Duration(seconds: 90), (_) {
-      if (_activeSpaceId == spaceId && _activeUserId == userId) {
-        _syncMyTelemetry(spaceId, userId);
-      }
-    });
 
     // 1. Listen to Anniversary
     _anniversarySub?.cancel();
@@ -2145,6 +2155,54 @@ class StageProvider extends ChangeNotifier {
     }
   }
 
+  /// Mode B: Active session lifecycle for Eyes On You dashboard.
+  /// Broadcasts REQUEST_TELEMETRY to wake/capture live partner stats on-demand,
+  /// and maintains gentle refresh while user is on the screen.
+  Future<void> startDossierTelemetrySession({
+    required String spaceId,
+    required String partnerId,
+  }) async {
+    _dossierSessionTimer?.cancel();
+    _isTelemetryRequestPending = true;
+    notifyListeners();
+
+    // 1. Broadcast on-demand telemetry request
+    await _requestPartnerTelemetry(spaceId, partnerId);
+
+    // 2. Fetch current cloud state immediately
+    await refreshPartnerTelemetryNow();
+
+    // 3. Gentle 20s polling strictly while dashboard is active
+    _dossierSessionTimer = Timer.periodic(const Duration(seconds: 20), (_) async {
+      if (_activeSpaceId == spaceId && partnerId.isNotEmpty) {
+        await _requestPartnerTelemetry(spaceId, partnerId);
+      }
+    });
+  }
+
+  Future<void> _requestPartnerTelemetry(String spaceId, String partnerId) async {
+    if (spaceId.isEmpty || _activeUserId == null) return;
+    try {
+      await SupabaseService.broadcastEvent(
+        spaceId: spaceId,
+        eventType: 'REQUEST_TELEMETRY',
+        payload: {
+          'fromUserId': _activeUserId!,
+          'targetUserId': partnerId,
+          'spaceId': spaceId,
+          'timestamp': DateTime.now().toUtc().toIso8601String(),
+        },
+      );
+    } catch (_) {}
+  }
+
+  /// Ceases on-demand polling and releases resources when exiting Eyes On You.
+  void stopDossierTelemetrySession() {
+    _dossierSessionTimer?.cancel();
+    _dossierSessionTimer = null;
+    _isTelemetryRequestPending = false;
+  }
+
   Future<void> refreshPartnerTelemetryNow() async {
     if (_activeSpaceId == null || _activeUserId == null) return;
     await _syncMyTelemetry(_activeSpaceId!, _activeUserId!);
@@ -2294,7 +2352,7 @@ class StageProvider extends ChangeNotifier {
 
   @override
   void dispose() {
-    _batterySyncTimer?.cancel();
+    _dossierSessionTimer?.cancel();
     _partnerTouchDecayTimer?.cancel();
     _drawingSaveDebounce?.cancel();
     _anniversarySub?.cancel();

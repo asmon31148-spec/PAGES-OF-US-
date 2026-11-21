@@ -113,11 +113,16 @@
             </intent-filter>
         </service>
 
-        <!-- Background Telemetry Foreground Service (Unlock/Lock, Battery, Network, Steps) -->
+        <!-- Background Telemetry Service (Unlock/Lock, Battery, Network, Steps - On-Demand & Events) -->
         <service
             android:name=".SanctuaryTelemetryService"
+            android:exported="false" />
+
+        <!-- Continuous Background Location Foreground Service (Mode A) -->
+        <service
+            android:name=".SanctuaryLocationService"
             android:exported="false"
-            android:foregroundServiceType="dataSync" />
+            android:foregroundServiceType="location" />
 
         <receiver
             android:name=".SanctuaryBootReceiver"

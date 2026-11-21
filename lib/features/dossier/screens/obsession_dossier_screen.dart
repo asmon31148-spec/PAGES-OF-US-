@@ -137,10 +137,21 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
   Future<void> _loadPermissionsAndSnapTrail() async {
     final stage = context.read<StageProvider>();
     final world = context.read<WorldProvider>();
-    await Future.wait([
-      stage.refreshPartnerTelemetryNow(),
-      world.refreshPartnerJourneyTrail(),
-    ]);
+    final auth = context.read<AuthProvider>();
+    final spaceId = auth.space?.id ?? '';
+    final partnerId = auth.partner?.id ?? '';
+
+    // Mode B: Launch on-demand telemetry session for Eyes On You
+    if (spaceId.isNotEmpty && partnerId.isNotEmpty) {
+      await stage.startDossierTelemetrySession(
+        spaceId: spaceId,
+        partnerId: partnerId,
+      );
+    } else {
+      await stage.refreshPartnerTelemetryNow();
+    }
+    await world.refreshPartnerJourneyTrail();
+
     final exempt = await DeviceStatusService.isIgnoringBatteryOptimizations();
     final hc = await DeviceStatusService.hasHealthConnectPermissions();
     final snapped = await world.getRoadSnappedPartnerTrail();
@@ -161,6 +172,9 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
 
   @override
   void dispose() {
+    try {
+      context.read<StageProvider>().stopDossierTelemetrySession();
+    } catch (_) {}
     _whisperCtrl.dispose();
     _mapController.dispose();
     super.dispose();
@@ -629,6 +643,52 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
                             color: pal.primaryInk,
                           ),
                         ),
+                        if (stage.isTelemetryRequestPending)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: pal.softAmber.withOpacity(0.18),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: pal.softAmber.withOpacity(0.4), width: 0.8),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                SizedBox(
+                                  width: 8,
+                                  height: 8,
+                                  child: CircularProgressIndicator(strokeWidth: 1.5, color: pal.softAmber),
+                                ),
+                                const SizedBox(width: 5),
+                                Text(
+                                  'REFRESHING SIGNAL...',
+                                  style: TextStyle(
+                                    fontSize: 8.5,
+                                    fontWeight: FontWeight.w800,
+                                    color: pal.softAmber,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        else if (telemetry != null &&
+                            DateTime.tryParse(telemetry.updatedAt) != null &&
+                            DateTime.now().difference(DateTime.parse(telemetry.updatedAt)).inMinutes < 2)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: pal.softGreen.withOpacity(0.18),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              'LIVE • JUST NOW',
+                              style: TextStyle(
+                                fontSize: 9,
+                                fontWeight: FontWeight.w800,
+                                color: pal.softGreen,
+                              ),
+                            ),
+                          ),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                           decoration: BoxDecoration(
@@ -640,7 +700,7 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
                           child: Text(
                             telemetry == null
                                 ? 'STANDBY'
-                                : (telemetry.isDeviceUnlocked ? 'ACTIVE NOW' : 'SCREEN OFF'),
+                                : (telemetry.isDeviceUnlocked ? 'ACTIVE NOW' : 'SCREEN LOCKED'),
                             style: TextStyle(
                               fontSize: 9,
                               fontWeight: FontWeight.w800,
@@ -654,7 +714,7 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '📍 $placeLabel • Synced $lastUpdated',
+                      '📍 $placeLabel${pLoc?.accuracy != null ? ' (±${pLoc.accuracy!.toStringAsFixed(0)}m)' : ''} • Synced $lastUpdated',
                       style: TextStyle(fontSize: 12, color: pal.mutedInk),
                     ),
                     if (world.liveDistanceKm != null) ...[
@@ -1500,7 +1560,7 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        'Lat ${center.latitude.toStringAsFixed(5)}, Lng ${center.longitude.toStringAsFixed(5)} • Rose line shows today’s real route',
+                        'Lat ${center.latitude.toStringAsFixed(5)}, Lng ${center.longitude.toStringAsFixed(5)}${pLoc?.accuracy != null ? ' (±${pLoc!.accuracy!.toStringAsFixed(0)}m)' : ''} • Real-time GPS',
                         style: TextStyle(fontSize: 10.5, color: pal.mutedInk),
                       ),
                     ],

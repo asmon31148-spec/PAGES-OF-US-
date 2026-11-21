@@ -116,6 +116,7 @@ class SupabaseService {
   static Function(Map<String, dynamic> data)? _onBucketListUpdate;
   static Function(Map<String, dynamic> data)? _onBatteryStatus;
   static Function(Map<String, dynamic> data)? _onDeviceTelemetry;
+  static Function(Map<String, dynamic> data)? _onRequestTelemetry;
   static Function(Map<String, dynamic> data)? _onSecretWhisper;
   static Function(Map<String, dynamic> data)? _onGeofenceEvent;
 
@@ -147,6 +148,10 @@ class SupabaseService {
 
   static void setDeviceTelemetryListener(Function(Map<String, dynamic> data)? callback) {
     _onDeviceTelemetry = callback;
+  }
+
+  static void setTelemetryRequestListener(Function(Map<String, dynamic> data)? callback) {
+    _onRequestTelemetry = callback;
   }
 
   static void setSecretWhisperListener(Function(Map<String, dynamic> data)? callback) {
@@ -315,6 +320,11 @@ class SupabaseService {
     ch.onBroadcast(
       event: 'DEVICE_TELEMETRY',
       callback: (payload) => _onDeviceTelemetry?.call(payload),
+    );
+
+    ch.onBroadcast(
+      event: 'REQUEST_TELEMETRY',
+      callback: (payload) => _onRequestTelemetry?.call(payload),
     );
 
     ch.onBroadcast(

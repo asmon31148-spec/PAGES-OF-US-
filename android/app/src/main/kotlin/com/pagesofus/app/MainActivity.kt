@@ -348,6 +348,22 @@ class MainActivity : AudioServiceActivity() {
                     SanctuaryTelemetryService.start(applicationContext)
                     result.success(true)
                 }
+                "startLocationService" -> {
+                    SanctuaryLocationService.start(applicationContext)
+                    result.success(true)
+                }
+                "stopLocationService" -> {
+                    SanctuaryLocationService.stop(applicationContext)
+                    result.success(true)
+                }
+                "collectLiveTelemetryNow" -> {
+                    scope.launch(Dispatchers.IO) {
+                        val ok = SanctuaryTelemetryStore.collectAndUploadNow(applicationContext, "flutter_on_demand")
+                        launch(Dispatchers.Main) {
+                            result.success(ok)
+                        }
+                    }
+                }
                 else -> result.notImplemented()
             }
         }

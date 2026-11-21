@@ -1533,6 +1533,8 @@ class WorldProvider extends ChangeNotifier {
           if (hwSteps != null) {
             _hardwareStepsToday = hwSteps;
           }
+          // Mode A: Start continuous native background location foreground service
+          await DeviceStatusService.startLocationService();
         } catch (_) {}
       }
 
@@ -1665,6 +1667,9 @@ class WorldProvider extends ChangeNotifier {
     _positionStreamSub?.cancel();
     _positionStreamSub = null;
     _gpsStatus = 'Standby';
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      DeviceStatusService.stopLocationService();
+    }
     notifyListeners();
   }
 
@@ -2288,6 +2293,13 @@ class WorldProvider extends ChangeNotifier {
     if (spaceId.isEmpty || currentUserId.isEmpty) return;
 
     _isSharing = !_isSharing;
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      if (_isSharing) {
+        DeviceStatusService.startLocationService();
+      } else {
+        DeviceStatusService.stopLocationService();
+      }
+    }
     if (_locations.containsKey(currentUserId)) {
       final updated = _locations[currentUserId]!.copyWith(isSharingEnabled: _isSharing);
       _locations[currentUserId] = updated;
