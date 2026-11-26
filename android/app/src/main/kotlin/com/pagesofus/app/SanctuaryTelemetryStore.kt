@@ -199,10 +199,8 @@ object SanctuaryTelemetryStore {
             }
 
             if (!wasUnlocked || incrementCount) {
-                if (incrementCount) {
-                    count += 1
-                    editor.putInt(KEY_UNLOCK_COUNT, count)
-                }
+                count += 1
+                editor.putInt(KEY_UNLOCK_COUNT, count)
                 if (p.getLong(KEY_UNLOCK_SESSION_START_MS, 0L) <= 0L) {
                     editor.putLong(KEY_UNLOCK_SESSION_START_MS, nowMs)
                 }
@@ -517,12 +515,26 @@ object SanctuaryTelemetryStore {
                 movement = "stationary"
             }
 
-            val isUnlocked = p.getBoolean(KEY_IS_SCREEN_UNLOCKED, false)
-            val isInteractive = try {
-                val pm = context.getSystemService(Context.POWER_SERVICE) as? PowerManager
-                pm?.isInteractive == true
-            } catch (_: Exception) {
-                isUnlocked
+            val pm = context.getSystemService(Context.POWER_SERVICE) as? PowerManager
+            val km = context.getSystemService(Context.KEYGUARD_SERVICE) as? KeyguardManager
+            val liveInteractive = pm?.isInteractive == true
+            val liveKeyguardLocked = km?.isKeyguardLocked == true
+            val liveUnlocked = liveInteractive && !liveKeyguardLocked
+            val isUnlocked = liveUnlocked || (liveInteractive && p.getBoolean(KEY_IS_SCREEN_UNLOCKED, false))
+            val isInteractive = liveInteractive || isUnlocked
+
+            val storedUnlockCount = p.getInt(KEY_UNLOCK_COUNT, 0)
+            val storedLockCount = p.getInt(KEY_LOCK_COUNT, 0)
+            val effectiveUnlockCount = if (storedLockCount > 0 && storedUnlockCount == 0) {
+                if (isUnlocked) storedLockCount + 1 else storedLockCount
+            } else {
+                kotlin.math.max(storedUnlockCount, if (isUnlocked && storedUnlockCount <= storedLockCount) storedLockCount + 1 else storedUnlockCount)
+            }
+
+            var lastUnlockedMs = p.getLong(KEY_LAST_UNLOCKED, 0L)
+            val lastLockedMs = p.getLong(KEY_LAST_LOCKED, 0L)
+            if (isUnlocked && (lastUnlockedMs <= 0L || (lastLockedMs > 0L && lastUnlockedMs < lastLockedMs))) {
+                lastUnlockedMs = nowMs
             }
 
             return mapOf(
@@ -534,11 +546,11 @@ object SanctuaryTelemetryStore {
                 "batteryUpdatedAtMs" to p.getLong(KEY_BATTERY_UPDATED_AT, nowMs),
                 "networkType" to networkType,
                 "networkUpdatedAtMs" to p.getLong(KEY_NETWORK_UPDATED_AT, nowMs),
-                "lastUnlockedAtMs" to p.getLong(KEY_LAST_UNLOCKED, 0L),
+                "lastUnlockedAtMs" to lastUnlockedMs,
                 "firstUnlockedAtMs" to p.getLong(KEY_FIRST_UNLOCKED, 0L),
-                "lastLockedAtMs" to p.getLong(KEY_LAST_LOCKED, 0L),
-                "unlockCountToday" to p.getInt(KEY_UNLOCK_COUNT, 0),
-                "lockCountToday" to p.getInt(KEY_LOCK_COUNT, 0),
+                "lastLockedAtMs" to lastLockedMs,
+                "unlockCountToday" to effectiveUnlockCount,
+                "lockCountToday" to storedLockCount,
                 "isScreenUnlocked" to isUnlocked,
                 "isDeviceUnlocked" to isUnlocked,
                 "isScreenOn" to isInteractive,
@@ -600,14 +612,35 @@ object SanctuaryTelemetryStore {
         }
     }
 
+    fun syncLiveHardwareState(context: Context, nowMs: Long = System.currentTimeMillis()) {
+        ensureDayAndArchiveIfNeeded(context, nowMs)
+        readAndRecordBattery(context)
+        readAndRecordNetwork(context)
+
+        val pm = context.getSystemService(Context.POWER_SERVICE) as? PowerManager
+        val km = context.getSystemService(Context.KEYGUARD_SERVICE) as? KeyguardManager
+        val liveInteractive = pm?.isInteractive == true
+        val liveUnlocked = liveInteractive && (km?.isKeyguardLocked == false)
+
+        synchronized(lock) {
+            val p = prefs(context)
+            val wasUnlocked = p.getBoolean(KEY_IS_SCREEN_UNLOCKED, false)
+
+            if (liveUnlocked && !wasUnlocked) {
+                recordUserPresentUnlock(context, incrementCount = true, nowMs = nowMs)
+            } else if (!liveInteractive && wasUnlocked) {
+                recordScreenOffLock(context, nowMs = nowMs)
+            }
+        }
+    }
+
     /**
      * Mode B: Instant On-Demand Telemetry Snapshot & Upload.
      * Reads genuine hardware battery, network, and current unlock state and uploads to Supabase.
      */
     fun collectAndUploadNow(context: Context, reason: String = "on_demand"): Boolean {
         try {
-            readAndRecordBattery(context)
-            readAndRecordNetwork(context)
+            syncLiveHardwareState(context)
             uploadSnapshotAndPendingSummaries(context)
             return true
         } catch (e: Exception) {
@@ -618,7 +651,7 @@ object SanctuaryTelemetryStore {
 
     fun uploadSnapshotAndPendingSummaries(context: Context) {
         val nowMs = System.currentTimeMillis()
-        ensureDayAndArchiveIfNeeded(context, nowMs)
+        syncLiveHardwareState(context, nowMs)
         val snap = buildTelemetryMap(context, nowMs)
         val urlBase: String
         val anonKey: String

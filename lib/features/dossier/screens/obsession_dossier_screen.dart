@@ -692,7 +692,7 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                           decoration: BoxDecoration(
-                            color: telemetry?.isDeviceUnlocked == true
+                            color: (telemetry?.isDeviceUnlocked == true || telemetry?.isScreenOn == true)
                                 ? pal.softGreen.withOpacity(0.16)
                                 : pal.accent.withOpacity(0.15),
                             borderRadius: BorderRadius.circular(8),
@@ -700,13 +700,15 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
                           child: Text(
                             telemetry == null
                                 ? 'STANDBY'
-                                : (telemetry.isDeviceUnlocked ? 'ACTIVE NOW' : 'SCREEN LOCKED'),
+                                : ((telemetry.isDeviceUnlocked || telemetry.isScreenOn)
+                                    ? 'SCREEN ON'
+                                    : 'SCREEN OFF'),
                             style: TextStyle(
                               fontSize: 9,
                               fontWeight: FontWeight.w800,
-                              color: telemetry?.isDeviceUnlocked == true
+                              color: (telemetry?.isDeviceUnlocked == true || telemetry?.isScreenOn == true)
                                   ? pal.softGreen
-                                  : pal.accent,
+                                  : pal.mutedInk,
                             ),
                           ),
                         ),
@@ -828,11 +830,13 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
     required dynamic pLoc,
     required DossierPalette pal,
   }) {
+    final isScreenActive = telemetry != null &&
+        (telemetry.isDeviceUnlocked || telemetry.isScreenOn);
     final screenLabel = telemetry == null
         ? 'Awaiting signal'
         : (telemetry.isDeviceUnlocked
-            ? 'Unlocked & Active'
-            : (telemetry.isScreenOn ? 'Lockscreen On' : 'Screen Off'));
+            ? 'Screen On • Unlocked'
+            : (telemetry.isScreenOn ? 'Screen On' : 'Screen Off'));
 
     final todayKey = TelemetryMath.localDateKeyFor(
       DateTime.now(),
@@ -851,11 +855,17 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
         : 0;
     final unlockCount = isTelemetryToday ? (telemetry?.unlockCountToday ?? 0) : 0;
     final lockCount = isTelemetryToday ? (telemetry?.lockCountToday ?? 0) : 0;
+    final effectiveUnlocks = (lockCount > 0 && unlockCount == 0)
+        ? (isScreenActive ? lockCount + 1 : lockCount)
+        : unlockCount;
+
     final unlockSub = telemetry == null
         ? 'Needs partner app active'
-        : 'Unlocked: ${_formatExactAndRelative(telemetry.lastUnlockedAt)}'
-          ' • Locked: ${_formatExactAndRelative(telemetry.lastLockedAt)}\n'
-          '$unlockCount unlocks • $lockCount locks • Screen ${screenMins}m today${isTelemetryToday ? '' : ' (awaiting today\'s sync)'}';
+        : (isScreenActive
+            ? 'Active now • Screen on ${screenMins}m today • $effectiveUnlocks unlocks today'
+            : (telemetry.lastLockedAt != null
+                ? 'Screen turned off ${_formatExactAndRelative(telemetry.lastLockedAt)}\n$effectiveUnlocks unlocks today • Screen ${screenMins}m today'
+                : 'Screen resting • $effectiveUnlocks unlocks today • Screen ${screenMins}m today'));
 
     final netAge = TelemetryMath.formatAgeLabel(telemetry?.networkUpdatedAt);
     final netStale = TelemetryMath.isTimestampStale(telemetry?.networkUpdatedAt);
@@ -902,13 +912,13 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
     return Column(
       children: [
         _metricTile(
-          icon: telemetry?.isDeviceUnlocked == true
+          icon: isScreenActive
               ? Icons.lock_open_rounded
               : Icons.lock_outline_rounded,
-          title: 'PHONE STATE, UNLOCKS & LOCKS',
+          title: 'SCREEN & DEVICE ACTIVITY',
           value: screenLabel,
           subtitle: unlockSub,
-          accent: telemetry?.isDeviceUnlocked == true ? pal.softGreen : pal.accent,
+          accent: isScreenActive ? pal.softGreen : pal.mutedInk,
           pal: pal,
           fullWidth: true,
         ),
@@ -987,7 +997,7 @@ class _ObsessionDossierScreenState extends State<ObsessionDossierScreen> {
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 3),
                     child: Text(
-                      '${ev.type == 'unlock' ? '🔓 Unlocked' : '🔒 Locked'} at $timeStr$durStr',
+                      '${ev.type == 'unlock' ? '🔓 Screen On • Unlocked' : '🔒 Screen Off • Locked'} at $timeStr$durStr',
                       style: TextStyle(fontSize: 11.5, color: pal.primaryInk),
                     ),
                   );

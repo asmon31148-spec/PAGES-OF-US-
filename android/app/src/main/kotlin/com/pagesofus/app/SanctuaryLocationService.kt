@@ -6,8 +6,10 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
@@ -113,6 +115,7 @@ class SanctuaryLocationService : Service(), LocationListener {
     private var lastUploadAtMs = 0L
     private var isGpsRegistered = false
     private var isNetworkRegistered = false
+    private var stateReceiver: BroadcastReceiver? = null
 
     private val periodicSyncRunnable = object : Runnable {
         override fun run() {
@@ -127,12 +130,14 @@ class SanctuaryLocationService : Service(), LocationListener {
         startForegroundNotification()
         locationManager = getSystemService(Context.LOCATION_SERVICE) as? LocationManager
         registerLocationListeners()
+        registerStateReceiver()
         mainHandler.postDelayed(periodicSyncRunnable, MIN_UPLOAD_INTERVAL_MS)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == ACTION_STOP) {
             stopLocationUpdates()
+            unregisterStateReceiver()
             mainHandler.removeCallbacks(periodicSyncRunnable)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
                 stopForeground(STOP_FOREGROUND_REMOVE)
@@ -146,14 +151,71 @@ class SanctuaryLocationService : Service(), LocationListener {
 
         startForegroundNotification()
         registerLocationListeners()
+        registerStateReceiver()
         return START_STICKY
     }
 
     override fun onDestroy() {
         stopLocationUpdates()
+        unregisterStateReceiver()
         mainHandler.removeCallbacks(periodicSyncRunnable)
         scope.cancel()
         super.onDestroy()
+    }
+
+    private fun registerStateReceiver() {
+        if (stateReceiver != null) return
+        val filter = IntentFilter().apply {
+            addAction(Intent.ACTION_USER_PRESENT)
+            addAction(Intent.ACTION_SCREEN_ON)
+            addAction(Intent.ACTION_SCREEN_OFF)
+            addAction(Intent.ACTION_BATTERY_CHANGED)
+        }
+        stateReceiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context?, intent: Intent?) {
+                val ctx = context ?: return
+                val action = intent?.action ?: return
+                when (action) {
+                    Intent.ACTION_USER_PRESENT -> {
+                        SanctuaryTelemetryStore.recordUserPresentUnlock(ctx, incrementCount = true)
+                        scope.launch {
+                            SanctuaryTelemetryStore.uploadSnapshotAndPendingSummaries(ctx)
+                        }
+                    }
+                    Intent.ACTION_SCREEN_ON -> {
+                        if (SanctuaryTelemetryStore.isCurrentlyUnlocked(ctx)) {
+                            SanctuaryTelemetryStore.recordUserPresentUnlock(ctx, incrementCount = false)
+                        }
+                        scope.launch {
+                            SanctuaryTelemetryStore.uploadSnapshotAndPendingSummaries(ctx)
+                        }
+                    }
+                    Intent.ACTION_SCREEN_OFF -> {
+                        SanctuaryTelemetryStore.recordScreenOffLock(ctx)
+                        scope.launch {
+                            SanctuaryTelemetryStore.uploadSnapshotAndPendingSummaries(ctx)
+                        }
+                    }
+                    Intent.ACTION_BATTERY_CHANGED -> {
+                        SanctuaryTelemetryStore.readAndRecordBattery(ctx, intent)
+                    }
+                }
+            }
+        }
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                registerReceiver(stateReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+            } else {
+                registerReceiver(stateReceiver, filter)
+            }
+        } catch (_: Exception) {}
+    }
+
+    private fun unregisterStateReceiver() {
+        try {
+            stateReceiver?.let { unregisterReceiver(it) }
+        } catch (_: Exception) {}
+        stateReceiver = null
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -469,6 +531,9 @@ class SanctuaryLocationService : Service(), LocationListener {
                     put("updated_at", isoNow)
                 }
                 SanctuaryTelemetryStore.postSupabaseUpsert(urlBase, anonKey, bearer, locationRowPayload)
+                try {
+                    SanctuaryTelemetryStore.uploadSnapshotAndPendingSummaries(this@SanctuaryLocationService)
+                } catch (_: Exception) {}
 
                 lastUploadAtMs = nowMs
             } catch (e: Exception) {

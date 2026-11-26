@@ -2172,7 +2172,15 @@ class StageProvider extends ChangeNotifier {
     // 2. Fetch current cloud state immediately
     await refreshPartnerTelemetryNow();
 
-    // 3. Gentle 20s polling strictly while dashboard is active
+    // 3. Safety timeout so pending indicator never gets stuck
+    Future.delayed(const Duration(seconds: 4), () {
+      if (_isTelemetryRequestPending) {
+        _isTelemetryRequestPending = false;
+        notifyListeners();
+      }
+    });
+
+    // 4. Gentle 20s polling strictly while dashboard is active
     _dossierSessionTimer = Timer.periodic(const Duration(seconds: 20), (_) async {
       if (_activeSpaceId == spaceId && partnerId.isNotEmpty) {
         await _requestPartnerTelemetry(spaceId, partnerId);
@@ -2208,6 +2216,7 @@ class StageProvider extends ChangeNotifier {
     await _syncMyTelemetry(_activeSpaceId!, _activeUserId!);
     if (_activePartnerId != null && _activePartnerId!.isNotEmpty) {
       final data = await SupabaseService.getAppContent('telemetry_${_activeSpaceId!}_${_activePartnerId!}');
+      _isTelemetryRequestPending = false;
       if (data != null && data['disabled'] != true) {
         final parsed = DeviceTelemetry.fromJson(data);
         _partnerTelemetry = parsed;
